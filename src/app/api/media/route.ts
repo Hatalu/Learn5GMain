@@ -16,7 +16,12 @@ export async function GET() {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ media: data || [] });
+    const mapped = (data || []).map((m: any) => ({
+      ...m,
+      access_tier: m.access_tier || 'premium',
+    }));
+
+    return NextResponse.json({ media: mapped });
   } catch (err: any) {
     console.error('API /api/media unexpected error:', err);
     return NextResponse.json(

@@ -11,8 +11,7 @@ interface MediaRailProps {
   items: MediaItem[];
   favoriteIds: Set<string>;
   onToggleFavorite: (mediaId: string, currentFav: boolean) => void;
-  onMediaOpened?: (mediaId: string) => void;
-  onAuthRequired?: (media: MediaItem, action: 'open' | 'favorite') => void;
+  onSelectMedia?: (media: MediaItem) => void;
   icon?: React.ReactNode;
 }
 
@@ -22,8 +21,7 @@ export function MediaRail({
   items,
   favoriteIds,
   onToggleFavorite,
-  onMediaOpened,
-  onAuthRequired,
+  onSelectMedia,
   icon,
 }: MediaRailProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -90,8 +88,7 @@ export function MediaRail({
               media={media}
               isFavorite={favoriteIds.has(media.id)}
               onToggleFavorite={onToggleFavorite}
-              onMediaOpened={onMediaOpened}
-              onAuthRequired={onAuthRequired}
+              onSelectMedia={onSelectMedia}
               priority={idx < 4}
             />
           </div>

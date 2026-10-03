@@ -36,6 +36,7 @@ create table if not exists public.media (
   subject text not null check (subject in ('คณิตศาสตร์', 'วิทยาศาสตร์', 'ภาษาอังกฤษ')),
   grade_level text[] not null default '{}',
   media_type text not null check (media_type in ('เกม', 'แบบฝึกหัด', 'แบบทดสอบ', 'สื่อ Interactive', 'วิดีโอ', 'อื่น ๆ')),
+  access_tier text not null default 'premium' check (access_tier in ('free', 'premium')),
   game_url text not null,
   view_count integer not null default 0,
   created_by uuid references public.profiles(id) on delete set null,
@@ -46,6 +47,7 @@ create table if not exists public.media (
 -- Indexes on media
 create index if not exists idx_media_subject on public.media(subject);
 create index if not exists idx_media_media_type on public.media(media_type);
+create index if not exists idx_media_access_tier on public.media(access_tier);
 create index if not exists idx_media_created_at on public.media(created_at desc);
 create index if not exists idx_media_view_count on public.media(view_count desc);
 create index if not exists idx_media_grade_level on public.media using gin(grade_level);

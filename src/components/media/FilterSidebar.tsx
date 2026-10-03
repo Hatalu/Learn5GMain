@@ -5,12 +5,13 @@ import {
   ALL_GRADES,
   ALL_MEDIA_TYPES,
   ALL_SUBJECTS,
+  AccessTier,
   FilterState,
   GradeLevel,
   MediaType,
   Subject,
 } from '@/types/database';
-import { Filter, RotateCcw, Check, BookOpen, GraduationCap, Layers } from 'lucide-react';
+import { Filter, RotateCcw, Check, BookOpen, GraduationCap, Layers, Crown, Unlock } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
 interface FilterSidebarProps {
@@ -47,10 +48,18 @@ export function FilterSidebar({
     onFilterChange({ ...filters, mediaTypes: next });
   };
 
+  const toggleAccessTier = (tier: AccessTier) => {
+    const next = filters.accessTiers.includes(tier)
+      ? filters.accessTiers.filter((t) => t !== tier)
+      : [...filters.accessTiers, tier];
+    onFilterChange({ ...filters, accessTiers: next });
+  };
+
   const hasActiveFilters =
     filters.subjects.length > 0 ||
     filters.grades.length > 0 ||
-    filters.mediaTypes.length > 0;
+    filters.mediaTypes.length > 0 ||
+    filters.accessTiers.length > 0;
 
   return (
     <aside className="w-full flex flex-col gap-6 p-5 rounded-2xl bg-white dark:bg-gray-900 border border-gray-200/90 dark:border-gray-800 shadow-sm sticky top-20">
@@ -76,6 +85,77 @@ export function FilterSidebar({
             <span>ล้าง</span>
           </button>
         )}
+      </div>
+
+      {/* 0. Access Tier Filter (Free / Premium) */}
+      <div>
+        <div className="flex items-center gap-2 mb-2.5">
+          <Crown className="w-3.5 h-3.5 text-amber-500" />
+          <h3 className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+            สิทธิ์การเข้าถึง
+          </h3>
+        </div>
+        <div className="space-y-1.5">
+          <label
+            className={cn(
+              'flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-sm cursor-pointer transition-all duration-150',
+              filters.accessTiers.includes('free')
+                ? 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-900 dark:text-emerald-200 font-semibold'
+                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/60'
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <Unlock className="w-3.5 h-3.5 text-emerald-500" />
+              <span>ฟรี (Free)</span>
+            </div>
+            <input
+              type="checkbox"
+              checked={filters.accessTiers.includes('free')}
+              onChange={() => toggleAccessTier('free')}
+              className="sr-only"
+            />
+            <div
+              className={cn(
+                'w-4 h-4 rounded-md border flex items-center justify-center transition-colors',
+                filters.accessTiers.includes('free')
+                  ? 'bg-emerald-600 border-emerald-600 text-white'
+                  : 'border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800'
+              )}
+            >
+              {filters.accessTiers.includes('free') && <Check className="w-3 h-3 stroke-[3]" />}
+            </div>
+          </label>
+
+          <label
+            className={cn(
+              'flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-sm cursor-pointer transition-all duration-150',
+              filters.accessTiers.includes('premium')
+                ? 'bg-amber-50 dark:bg-amber-950/70 text-amber-900 dark:text-amber-200 font-semibold'
+                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/60'
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <Crown className="w-3.5 h-3.5 text-amber-500" />
+              <span>พรีเมียม (Premium)</span>
+            </div>
+            <input
+              type="checkbox"
+              checked={filters.accessTiers.includes('premium')}
+              onChange={() => toggleAccessTier('premium')}
+              className="sr-only"
+            />
+            <div
+              className={cn(
+                'w-4 h-4 rounded-md border flex items-center justify-center transition-colors',
+                filters.accessTiers.includes('premium')
+                  ? 'bg-amber-600 border-amber-600 text-white'
+                  : 'border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800'
+              )}
+            >
+              {filters.accessTiers.includes('premium') && <Check className="w-3 h-3 stroke-[3]" />}
+            </div>
+          </label>
+        </div>
       </div>
 
       {/* 1. Subject Filter */}
@@ -130,23 +210,28 @@ export function FilterSidebar({
             ระดับชั้น
           </h3>
         </div>
-        <div className="grid grid-cols-3 gap-1.5">
+        <div className="grid grid-cols-2 gap-1.5">
           {ALL_GRADES.map((grade) => {
-            const isSelected = filters.grades.includes(grade);
+            const isChecked = filters.grades.includes(grade);
             return (
-              <button
+              <label
                 key={grade}
-                type="button"
-                onClick={() => toggleGrade(grade)}
                 className={cn(
-                  'py-1.5 px-2 rounded-xl text-xs font-medium border transition-all duration-150 text-center',
-                  isSelected
-                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
-                    : 'bg-gray-50 dark:bg-gray-800/80 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-750'
+                  'flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs cursor-pointer border transition-all duration-150',
+                  isChecked
+                    ? 'bg-indigo-50 dark:bg-indigo-950/70 border-indigo-200 dark:border-indigo-800 text-indigo-900 dark:text-indigo-200 font-semibold'
+                    : 'border-gray-200/80 dark:border-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/60'
                 )}
               >
-                {grade}
-              </button>
+                <span>{grade}</span>
+                <input
+                  type="checkbox"
+                  checked={isChecked}
+                  onChange={() => toggleGrade(grade)}
+                  className="hidden"
+                />
+                {isChecked && <Check className="w-3 h-3 text-indigo-600 dark:text-indigo-400 stroke-[3]" />}
+              </label>
             );
           })}
         </div>

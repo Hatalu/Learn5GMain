@@ -5,12 +5,13 @@ import {
   ALL_GRADES,
   ALL_MEDIA_TYPES,
   ALL_SUBJECTS,
+  AccessTier,
   FilterState,
   GradeLevel,
   MediaType,
   Subject,
 } from '@/types/database';
-import { X, RotateCcw, Check, BookOpen, GraduationCap, Layers } from 'lucide-react';
+import { X, RotateCcw, Check, BookOpen, GraduationCap, Layers, Crown, Unlock } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
 interface MobileFilterDrawerProps {
@@ -65,6 +66,13 @@ export function MobileFilterDrawer({
     onFilterChange({ ...filters, mediaTypes: next });
   };
 
+  const toggleAccessTier = (tier: AccessTier) => {
+    const next = filters.accessTiers.includes(tier)
+      ? filters.accessTiers.filter((t) => t !== tier)
+      : [...filters.accessTiers, tier];
+    onFilterChange({ ...filters, accessTiers: next });
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex lg:hidden">
       {/* Backdrop */}
@@ -96,6 +104,77 @@ export function MobileFilterDrawer({
 
         {/* Content (Scrollable) */}
         <div className="flex-1 overflow-y-auto p-4 space-y-6">
+          {/* 0. Access Tier (Free / Premium) */}
+          <div>
+            <div className="flex items-center gap-2 mb-2.5">
+              <Crown className="w-3.5 h-3.5 text-amber-500" />
+              <h3 className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                สิทธิ์การเข้าถึง
+              </h3>
+            </div>
+            <div className="space-y-1">
+              <label
+                className={cn(
+                  'flex items-center justify-between px-3 py-2 rounded-xl text-sm cursor-pointer',
+                  filters.accessTiers.includes('free')
+                    ? 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-900 dark:text-emerald-200 font-semibold'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  <Unlock className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>ฟรี (Free)</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={filters.accessTiers.includes('free')}
+                  onChange={() => toggleAccessTier('free')}
+                  className="hidden"
+                />
+                <div
+                  className={cn(
+                    'w-4 h-4 rounded-md border flex items-center justify-center transition-colors',
+                    filters.accessTiers.includes('free')
+                      ? 'bg-emerald-600 border-emerald-600 text-white'
+                      : 'border-gray-300 dark:border-gray-700'
+                  )}
+                >
+                  {filters.accessTiers.includes('free') && <Check className="w-3 h-3 stroke-[3]" />}
+                </div>
+              </label>
+
+              <label
+                className={cn(
+                  'flex items-center justify-between px-3 py-2 rounded-xl text-sm cursor-pointer',
+                  filters.accessTiers.includes('premium')
+                    ? 'bg-amber-50 dark:bg-amber-950/70 text-amber-900 dark:text-amber-200 font-semibold'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  <Crown className="w-3.5 h-3.5 text-amber-500" />
+                  <span>พรีเมียม (Premium)</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={filters.accessTiers.includes('premium')}
+                  onChange={() => toggleAccessTier('premium')}
+                  className="hidden"
+                />
+                <div
+                  className={cn(
+                    'w-4 h-4 rounded-md border flex items-center justify-center transition-colors',
+                    filters.accessTiers.includes('premium')
+                      ? 'bg-amber-600 border-amber-600 text-white'
+                      : 'border-gray-300 dark:border-gray-700'
+                  )}
+                >
+                  {filters.accessTiers.includes('premium') && <Check className="w-3 h-3 stroke-[3]" />}
+                </div>
+              </label>
+            </div>
+          </div>
+
           {/* 1. Subjects */}
           <div>
             <div className="flex items-center gap-2 mb-2.5">

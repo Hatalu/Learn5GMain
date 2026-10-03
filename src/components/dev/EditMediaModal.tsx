@@ -5,6 +5,7 @@ import {
   ALL_GRADES,
   ALL_MEDIA_TYPES,
   ALL_SUBJECTS,
+  AccessTier,
   GradeLevel,
   MediaItem,
   MediaType,
@@ -15,7 +16,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/Toast';
 import { ImageCropperModal } from '@/components/media/ImageCropperModal';
 import { generateSafeStoragePath } from '@/lib/utils/image';
-import { X, Upload, Edit3, Loader2 } from 'lucide-react';
+import { X, Upload, Edit3, Loader2, Crown, Unlock } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
 interface EditMediaModalProps {
@@ -39,6 +40,7 @@ export function EditMediaModal({
   const [subject, setSubject] = useState<Subject>('คณิตศาสตร์');
   const [gradeLevel, setGradeLevel] = useState<GradeLevel[]>(['ป.1']);
   const [mediaType, setMediaType] = useState<MediaType>('เกม');
+  const [accessTier, setAccessTier] = useState<AccessTier>('premium');
   const [gameUrl, setGameUrl] = useState('');
   const [iconUrl, setIconUrl] = useState('');
   const [croppedBlob, setCroppedBlob] = useState<Blob | null>(null);
@@ -54,6 +56,7 @@ export function EditMediaModal({
       setSubject(media.subject);
       setGradeLevel((media.grade_level as GradeLevel[]) || ['ป.1']);
       setMediaType(media.media_type);
+      setAccessTier((media.access_tier as AccessTier) || 'premium');
       setGameUrl(media.game_url);
       setIconUrl(media.icon_url);
       setCroppedBlob(null);
@@ -89,6 +92,7 @@ export function EditMediaModal({
       subject,
       grade_level: gradeLevel,
       media_type: mediaType,
+      access_tier: accessTier,
       game_url: gameUrl,
       icon_url: iconUrl,
     });
@@ -138,6 +142,7 @@ export function EditMediaModal({
           subject,
           grade_level: gradeLevel,
           media_type: mediaType,
+          access_tier: accessTier,
           game_url: gameUrl.trim(),
           updated_at: new Date().toISOString(),
         })
@@ -247,6 +252,42 @@ export function EditMediaModal({
               {fieldErrors.description && (
                 <p className="text-xs text-rose-500 mt-1">{fieldErrors.description}</p>
               )}
+            </div>
+
+            {/* 3.1 Access Tier: Free vs Premium */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                ประเภทการเข้าถึง (สิทธิ์การใช้งาน) *
+              </label>
+              <div className="grid grid-cols-2 gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setAccessTier('premium')}
+                  className={cn(
+                    'py-2.5 px-3 rounded-xl text-xs sm:text-sm font-semibold border flex items-center justify-center gap-2 transition-all',
+                    accessTier === 'premium'
+                      ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white border-amber-500 shadow-md shadow-amber-500/25 ring-2 ring-amber-400/50'
+                      : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-750'
+                  )}
+                >
+                  <Crown className="w-4 h-4 text-amber-200" />
+                  <span>พรีเมียม (Premium)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setAccessTier('free')}
+                  className={cn(
+                    'py-2.5 px-3 rounded-xl text-xs sm:text-sm font-semibold border flex items-center justify-center gap-2 transition-all',
+                    accessTier === 'free'
+                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-600/25 ring-2 ring-emerald-400/50'
+                      : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-750'
+                  )}
+                >
+                  <Unlock className="w-4 h-4 text-emerald-200" />
+                  <span>ฟรี (Free)</span>
+                </button>
+              </div>
             </div>
 
             {/* 4. Subject */}

@@ -18,16 +18,15 @@ import { MobileFilterDrawer } from '@/components/media/MobileFilterDrawer';
 import { SortDropdown } from '@/components/media/SortDropdown';
 import { EmptyState } from '@/components/media/EmptyState';
 import { AddMediaModal } from '@/components/dev/AddMediaModal';
-import { AuthRequiredModal } from '@/components/media/AuthRequiredModal';
+import { MediaDetailModal } from '@/components/media/MediaDetailModal';
 import {
   Filter,
   Sparkles,
-  Flame,
   LayoutGrid,
   Loader2,
   X,
-  Compass,
 } from 'lucide-react';
+import { cn } from '@/lib/utils/cn';
 
 export default function HomePage() {
   const { user, isDev, isLoading: authLoading } = useAuth();
@@ -40,11 +39,12 @@ export default function HomePage() {
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [isLoadingMedia, setIsLoadingMedia] = useState(true);
 
-  // Filters state
+  // Filters state with accessTiers
   const [filters, setFilters] = useState<FilterState>({
     subjects: [],
     grades: [],
     mediaTypes: [],
+    accessTiers: [],
   });
   const [sortOption, setSortOption] = useState<SortOption>('latest');
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
@@ -52,21 +52,14 @@ export default function HomePage() {
   // Dev add modal trigger
   const [isAddMediaOpen, setIsAddMediaOpen] = useState(false);
 
-  // Auth modal state for unauthenticated interactions
-  const [authModalMedia, setAuthModalMedia] = useState<MediaItem | null>(null);
-  const [authModalAction, setAuthModalAction] = useState<'open' | 'favorite'>('open');
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  // Media Detail Modal (Center Popup)
+  const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
-  const handleAuthRequired = useCallback((media: MediaItem, action: 'open' | 'favorite') => {
-    setAuthModalMedia(media);
-    setAuthModalAction(action);
-    setIsAuthModalOpen(true);
-    if (action === 'open') {
-      error('คุณยังไม่ได้เข้าสู่ระบบ กรุณาเข้าสู่ระบบเพื่อเปิดใช้งานสื่อการสอน');
-    } else {
-      error('คุณยังไม่ได้เข้าสู่ระบบ กรุณาเข้าสู่ระบบเพื่อบันทึกรายการโปรด');
-    }
-  }, [error]);
+  const handleSelectMedia = useCallback((media: MediaItem) => {
+    setSelectedMedia(media);
+    setIsDetailModalOpen(true);
+  }, []);
 
   // Fetch all media
   const fetchMedia = useCallback(async () => {
@@ -114,7 +107,7 @@ export default function HomePage() {
     }
   }, [user, supabase]);
 
-  // Fetch media on mount immediately (for all visitors, logged in or not)
+  // Fetch media on mount immediately
   useEffect(() => {
     fetchMedia();
   }, [fetchMedia]);
@@ -130,7 +123,10 @@ export default function HomePage() {
 
   // Toggle favorite
   const handleToggleFavorite = async (mediaId: string, currentFav: boolean) => {
-    if (!user) return;
+    if (!user) {
+      error('คุณยังไม่ได้เข้าสู่ระบบ กรุณาเข้าสู่ระบบเพื่อบันทึกรายการโปรด');
+      return;
+    }
 
     // Optimistic update
     const nextFavs = new Set(favoriteIds);
@@ -187,12 +183,20 @@ export default function HomePage() {
       subjects: [],
       grades: [],
       mediaTypes: [],
+      accessTiers: [],
     });
   };
 
   // Filter and Sort calculation
   const filteredAndSortedMedia = useMemo(() => {
     let result = [...allMedia];
+
+    // Filter by Access Tier (Free vs Premium)
+    if (filters.accessTiers.length > 0) {
+      result = result.filter((m) =>
+        filters.accessTiers.includes((m.access_tier || 'premium') as any)
+      );
+    }
 
     // Filter by Subject (multi-select)
     if (filters.subjects.length > 0) {
@@ -228,17 +232,20 @@ export default function HomePage() {
     return result;
   }, [allMedia, filters, sortOption]);
 
-  // Latest media items for Netflix Rail (top 8 newest)
+  // Netflix Rail items: latest items
   const latestMediaList = useMemo(() => {
     return [...allMedia]
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      .slice(0, 8);
+      .sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )
+      .slice(0, 10);
   }, [allMedia]);
 
   const hasActiveFilters =
     filters.subjects.length > 0 ||
     filters.grades.length > 0 ||
-    filters.mediaTypes.length > 0;
+    filters.mediaTypes.length > 0 ||
+    filters.accessTiers.length > 0;
 
   if (authLoading) {
     return (
@@ -262,8 +269,7 @@ export default function HomePage() {
               items={latestMediaList}
               favoriteIds={favoriteIds}
               onToggleFavorite={handleToggleFavorite}
-              onMediaOpened={handleMediaOpened}
-              onAuthRequired={handleAuthRequired}
+              onSelectMedia={handleSelectMedia}
               icon={<Sparkles className="w-5 h-5 text-indigo-500" />}
             />
           </div>
@@ -321,6 +327,35 @@ export default function HomePage() {
                 <span className="text-xs text-gray-500 dark:text-gray-400">
                   ตัวกรองที่เลือก:
                 </span>
+
+                {/* Access Tier Tags */}
+                {filters.accessTiers.map((tier) => (
+                  <span
+                    key={tier}
+                    className={cn(
+                      'inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border',
+                      tier === 'free'
+                        ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                        : 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+                    )}
+                  >
+                    <span>{tier === 'free' ? 'ฟรี (Free)' : 'พรีเมียม (Premium)'}</span>
+                    <button
+                      onClick={() =>
+                        setFilters({
+                          ...filters,
+                          accessTiers: filters.accessTiers.filter((t) => t !== tier),
+                        })
+                      }
+                      className="hover:opacity-75"
+                      aria-label={`ลบตัวกรอง ${tier}`}
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+
+                {/* Subject Tags */}
                 {filters.subjects.map((sub) => (
                   <span
                     key={sub}
@@ -341,6 +376,8 @@ export default function HomePage() {
                     </button>
                   </span>
                 ))}
+
+                {/* Grade Tags */}
                 {filters.grades.map((grade) => (
                   <span
                     key={grade}
@@ -361,10 +398,12 @@ export default function HomePage() {
                     </button>
                   </span>
                 ))}
+
+                {/* Media Type Tags */}
                 {filters.mediaTypes.map((type) => (
                   <span
                     key={type}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
                   >
                     <span>{type}</span>
                     <button
@@ -374,13 +413,14 @@ export default function HomePage() {
                           mediaTypes: filters.mediaTypes.filter((t) => t !== type),
                         })
                       }
-                      className="hover:text-amber-900 dark:hover:text-white"
+                      className="hover:text-indigo-900 dark:hover:text-white"
                       aria-label={`ลบตัวกรอง ${type}`}
                     >
                       <X className="w-3 h-3" />
                     </button>
                   </span>
                 ))}
+
                 <button
                   onClick={handleResetFilters}
                   className="text-xs text-rose-600 dark:text-rose-400 hover:underline font-medium ml-1"
@@ -422,8 +462,7 @@ export default function HomePage() {
                     media={media}
                     isFavorite={favoriteIds.has(media.id)}
                     onToggleFavorite={handleToggleFavorite}
-                    onMediaOpened={handleMediaOpened}
-                    onAuthRequired={handleAuthRequired}
+                    onSelectMedia={handleSelectMedia}
                   />
                 ))}
               </div>
@@ -442,23 +481,21 @@ export default function HomePage() {
         totalFilteredCount={filteredAndSortedMedia.length}
       />
 
-      {/* Dev Add Media Modal (triggered if empty state button clicked by Dev) */}
+      {/* Dev Add Media Modal */}
       <AddMediaModal
         isOpen={isAddMediaOpen}
         onClose={() => setIsAddMediaOpen(false)}
         onSuccess={fetchMedia}
       />
 
-      {/* Authentication Required Modal for Unauthenticated Visitors */}
-      <AuthRequiredModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-        mediaTitle={authModalMedia?.title}
-        message={
-          authModalAction === 'open'
-            ? 'คุณยังไม่ได้เข้าสู่ระบบ กรุณาเข้าสู่ระบบด้วยบัญชีสมาชิกเพื่อเปิดเข้าใช้งานสื่อการสอนและเกมการศึกษา'
-            : 'คุณยังไม่ได้เข้าสู่ระบบ กรุณาเข้าสู่ระบบเพื่อบันทึกสื่อการสอนนี้เป็นรายการโปรดของคุณ'
-        }
+      {/* Media Detail Popup (Netflix-style center quick view & play) */}
+      <MediaDetailModal
+        isOpen={isDetailModalOpen}
+        onClose={() => setIsDetailModalOpen(false)}
+        media={selectedMedia}
+        isFavorite={selectedMedia ? favoriteIds.has(selectedMedia.id) : false}
+        onToggleFavorite={handleToggleFavorite}
+        onMediaOpened={handleMediaOpened}
       />
     </div>
   );

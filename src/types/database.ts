@@ -6,6 +6,8 @@ export type GradeLevel = 'ป.1' | 'ป.2' | 'ป.3' | 'ป.4' | 'ป.5' | 'ป.
 
 export type MediaType = 'เกม' | 'แบบฝึกหัด' | 'แบบทดสอบ' | 'สื่อ Interactive' | 'วิดีโอ' | 'อื่น ๆ';
 
+export type AccessTier = 'free' | 'premium';
+
 export const ALL_SUBJECTS: Subject[] = ['คณิตศาสตร์', 'วิทยาศาสตร์', 'ภาษาอังกฤษ'];
 
 export const ALL_GRADES: GradeLevel[] = ['ป.1', 'ป.2', 'ป.3', 'ป.4', 'ป.5', 'ป.6'];
@@ -18,6 +20,8 @@ export const ALL_MEDIA_TYPES: MediaType[] = [
   'วิดีโอ',
   'อื่น ๆ',
 ];
+
+export const ALL_ACCESS_TIERS: AccessTier[] = ['free', 'premium'];
 
 export interface Profile {
   id: string;
@@ -37,6 +41,7 @@ export interface MediaItem {
   subject: Subject;
   grade_level: string[];
   media_type: MediaType;
+  access_tier: AccessTier;
   game_url: string;
   view_count: number;
   created_by: string | null;
@@ -58,6 +63,7 @@ export interface FilterState {
   subjects: Subject[];
   grades: GradeLevel[];
   mediaTypes: MediaType[];
+  accessTiers: AccessTier[];
 }
 
 export interface SystemStats {
