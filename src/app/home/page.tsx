@@ -65,30 +65,53 @@ export default function HomePage() {
   const fetchMedia = useCallback(async () => {
     setIsLoadingMedia(true);
     try {
-      // 1. Try public endpoint first
-      const res = await fetch('/api/media');
-      if (res.ok) {
-        const json = await res.json();
-        if (json.media && Array.isArray(json.media)) {
-          setAllMedia(json.media);
-          return;
-        }
-      }
-
-      // 2. Fallback to direct supabase query
+      // 1. Direct Supabase query (always fresh directly from DB without HTTP proxy cache)
       const { data, error: mediaError } = await supabase
         .from('media')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (mediaError) throw mediaError;
-      setAllMedia((data as MediaItem[]) || []);
+      if (!mediaError && data) {
+        const mapped = data.map((m: any) => ({
+          ...m,
+          access_tier: m.access_tier ? String(m.access_tier).toLowerCase().trim() : 'premium',
+        }));
+        setAllMedia(mapped as MediaItem[]);
+        return;
+      }
+
+      // 2. Fallback to API endpoint with cache-busting timestamp
+      const res = await fetch(`/api/media?t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.media && Array.isArray(json.media)) {
+          const mapped = json.media.map((m: any) => ({
+            ...m,
+            access_tier: m.access_tier ? String(m.access_tier).toLowerCase().trim() : 'premium',
+          }));
+          setAllMedia(mapped);
+          return;
+        }
+      }
     } catch (err) {
       console.error('Error fetching media:', err);
     } finally {
       setIsLoadingMedia(false);
     }
   }, [supabase]);
+
+  // Keep selectedMedia in sync if allMedia updates
+  useEffect(() => {
+    if (selectedMedia) {
+      const updated = allMedia.find((m) => m.id === selectedMedia.id);
+      if (updated && updated.access_tier !== selectedMedia.access_tier) {
+        setSelectedMedia(updated);
+      }
+    }
+  }, [allMedia, selectedMedia]);
 
   // Fetch user favorites
   const fetchFavorites = useCallback(async () => {
@@ -107,10 +130,32 @@ export default function HomePage() {
     }
   }, [user, supabase]);
 
-  // Fetch media on mount immediately
+  // Fetch media on mount + window focus + Supabase realtime changes
   useEffect(() => {
     fetchMedia();
-  }, [fetchMedia]);
+
+    const handleFocus = () => {
+      fetchMedia();
+    };
+    window.addEventListener('focus', handleFocus);
+
+    // Realtime postgres changes listener on 'media' table
+    const channel = supabase
+      .channel('public:media-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'media' },
+        () => {
+          fetchMedia();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      supabase.removeChannel(channel);
+    };
+  }, [fetchMedia, supabase]);
 
   // Fetch favorites when user auth state changes
   useEffect(() => {

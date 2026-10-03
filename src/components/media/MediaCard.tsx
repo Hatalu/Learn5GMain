@@ -26,7 +26,7 @@ export function MediaCard({
   const [imgError, setImgError] = useState(false);
   const localViews = media.view_count;
 
-  const isFree = (media.access_tier || 'premium') === 'free';
+  const isFree = String(media.access_tier || 'premium').toLowerCase().trim() === 'free';
 
   // Subject badge color scheme
   const getSubjectBadge = (subject: string) => {

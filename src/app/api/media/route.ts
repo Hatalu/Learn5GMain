@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
 
 export async function GET() {
   try {
@@ -18,10 +20,19 @@ export async function GET() {
 
     const mapped = (data || []).map((m: any) => ({
       ...m,
-      access_tier: m.access_tier || 'premium',
+      access_tier: m.access_tier ? String(m.access_tier).toLowerCase().trim() : 'premium',
     }));
 
-    return NextResponse.json({ media: mapped });
+    return NextResponse.json(
+      { media: mapped },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      }
+    );
   } catch (err: any) {
     console.error('API /api/media unexpected error:', err);
     return NextResponse.json(

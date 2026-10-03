@@ -57,7 +57,7 @@ export function MediaDetailModal({
 
   if (!isOpen || !media) return null;
 
-  const isFree = (media.access_tier || 'premium') === 'free';
+  const isFree = String(media.access_tier || 'premium').toLowerCase().trim() === 'free';
 
   // Check premium status for logged in member
   const checkPremiumActive = (): boolean => {
