@@ -26,6 +26,7 @@ import {
   Loader2,
   X,
 } from 'lucide-react';
+import { FacebookIcon } from '@/components/icons/FacebookIcon';
 import { cn } from '@/lib/utils/cn';
 
 export default function HomePage() {
@@ -515,6 +516,47 @@ export default function HomePage() {
           </div>
         </div>
       </main>
+
+      {/* Footer */}
+      <footer className="mt-16 border-t border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm py-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+          <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
+            <span className="font-bold text-gray-900 dark:text-white">สื่อการสอน 5G</span>
+            <span className="hidden sm:inline text-gray-400 dark:text-gray-600">|</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">คลังสื่อการเรียนรู้ออนไลน์ระดับประถมศึกษา</span>
+          </div>
+
+          <a
+            href="https://www.facebook.com/profile.php?id=61594556657667"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-900/60 transition-all shadow-sm group"
+          >
+            <FacebookIcon className="w-4 h-4 group-hover:scale-110 transition-transform" />
+            <span>ติดต่อสอบถาม / สมัครสมาชิก ผ่านเพจ Facebook</span>
+          </a>
+        </div>
+      </footer>
+
+      {/* Floating Action Button (FAB) for Facebook Contact */}
+      <div className="fixed bottom-6 right-6 z-40">
+        <a
+          href="https://www.facebook.com/profile.php?id=61594556657667"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2.5 px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-full shadow-lg shadow-blue-600/30 hover:shadow-xl hover:shadow-blue-600/40 hover:-translate-y-0.5 active:translate-y-0 transition-all group"
+          title="ติดต่อเพจ Facebook สื่อการสอน 5G"
+        >
+          <div className="relative">
+            <FacebookIcon className="w-5 h-5" />
+            <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+            </span>
+          </div>
+          <span className="text-xs sm:text-sm font-semibold tracking-wide pr-1">ติดต่อเพจ</span>
+        </a>
+      </div>
 
       {/* Mobile Filter Drawer */}
       <MobileFilterDrawer

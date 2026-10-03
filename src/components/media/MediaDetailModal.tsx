@@ -22,6 +22,7 @@ import {
   Copy,
   Check,
 } from 'lucide-react';
+import { FacebookIcon } from '@/components/icons/FacebookIcon';
 import { cn } from '@/lib/utils/cn';
 
 interface MediaDetailModalProps {
@@ -315,13 +316,22 @@ export function MediaDetailModal({
                       </p>
                     </div>
                   </div>
-                  <div className="mt-3 flex items-center gap-2">
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <a
+                      href="https://www.facebook.com/profile.php?id=61594556657667"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-sm active:scale-95 transition-all"
+                    >
+                      <FacebookIcon className="w-3.5 h-3.5" />
+                      <span>ติดต่อเพจ Facebook สื่อการสอน 5G</span>
+                    </a>
                     <button
                       onClick={handleCopyPage}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold shadow-sm active:scale-95 transition-all"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-gray-800 border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-300 text-xs font-semibold shadow-sm active:scale-95 transition-all"
                     >
-                      {copiedPage ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                      <span>{copiedPage ? 'คัดลอกชื่อเพจแล้ว!' : 'คัดลอกชื่อเพจ: สื่อการสอน 5G'}</span>
+                      {copiedPage ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedPage ? 'คัดลอกแล้ว!' : 'คัดลอกชื่อเพจ'}</span>
                     </button>
                   </div>
                 </div>

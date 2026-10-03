@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { ThemeToggle } from '@/components/navbar/ThemeToggle';
 import { Sparkles, Lock, User, Eye, EyeOff, Loader2, BookOpen, ArrowLeft } from 'lucide-react';
+import { FacebookIcon } from '@/components/icons/FacebookIcon';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -193,7 +194,16 @@ export default function LoginPage() {
           {/* Footer note: Specification #3 requirement */}
           <div className="mt-6 pt-5 border-t border-gray-200/80 dark:border-gray-800 text-center">
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              ลืมรหัสผ่าน? กรุณาติดต่อแอดมินผ่านเพจ
+              ลืมรหัสผ่านหรือต้องการสมัครสมาชิก?{' '}
+              <a
+                href="https://www.facebook.com/profile.php?id=61594556657667"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1 transition-colors"
+              >
+                <FacebookIcon className="w-3.5 h-3.5" />
+                ติดต่อแอดมินผ่านเพจ สื่อการสอน 5G
+              </a>
             </p>
           </div>
         </div>

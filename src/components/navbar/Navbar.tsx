@@ -8,6 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import { ThemeToggle } from './ThemeToggle';
 import { UserMenu } from './UserMenu';
 import { ShieldCheck, Home, LogIn, UserX } from 'lucide-react';
+import { FacebookIcon } from '@/components/icons/FacebookIcon';
 
 export function Navbar() {
   const { user, isDev } = useAuth();
@@ -47,6 +48,18 @@ export function Navbar() {
 
         {/* Right: Actions */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Facebook Page Contact Button */}
+          <a
+            href="https://www.facebook.com/profile.php?id=61594556657667"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/80 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/60 transition-all shadow-sm group"
+            title="ติดต่อเพจ Facebook สื่อการสอน 5G"
+          >
+            <FacebookIcon className="w-4 h-4 group-hover:scale-110 transition-transform text-blue-600 dark:text-blue-400" />
+            <span className="hidden md:inline text-xs font-semibold">เพจ Facebook</span>
+          </a>
+
           {/* Dev Button - ONLY rendered if user has dev role! */}
           {user && isDev && (
             isDevPage ? (
@@ -78,7 +91,7 @@ export function Navbar() {
             <UserMenu />
           ) : (
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-[11px] sm:text-xs font-medium bg-gray-100 dark:bg-gray-800/80 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
+              <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-[11px] sm:text-xs font-medium bg-gray-100 dark:bg-gray-800/80 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
                 <UserX className="w-3.5 h-3.5 text-gray-400" />
                 <span>ยังไม่ได้เข้าสู่ระบบ</span>
               </span>
