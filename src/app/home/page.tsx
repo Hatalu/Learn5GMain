@@ -18,6 +18,7 @@ import { MobileFilterDrawer } from '@/components/media/MobileFilterDrawer';
 import { SortDropdown } from '@/components/media/SortDropdown';
 import { EmptyState } from '@/components/media/EmptyState';
 import { AddMediaModal } from '@/components/dev/AddMediaModal';
+import { AuthRequiredModal } from '@/components/media/AuthRequiredModal';
 import {
   Filter,
   Sparkles,
@@ -51,17 +52,37 @@ export default function HomePage() {
   // Dev add modal trigger
   const [isAddMediaOpen, setIsAddMediaOpen] = useState(false);
 
-  // Redirect if not logged in
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.replace('/login');
+  // Auth modal state for unauthenticated interactions
+  const [authModalMedia, setAuthModalMedia] = useState<MediaItem | null>(null);
+  const [authModalAction, setAuthModalAction] = useState<'open' | 'favorite'>('open');
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
+  const handleAuthRequired = useCallback((media: MediaItem, action: 'open' | 'favorite') => {
+    setAuthModalMedia(media);
+    setAuthModalAction(action);
+    setIsAuthModalOpen(true);
+    if (action === 'open') {
+      error('คุณยังไม่ได้เข้าสู่ระบบ กรุณาเข้าสู่ระบบเพื่อเปิดใช้งานสื่อการสอน');
+    } else {
+      error('คุณยังไม่ได้เข้าสู่ระบบ กรุณาเข้าสู่ระบบเพื่อบันทึกรายการโปรด');
     }
-  }, [user, authLoading, router]);
+  }, [error]);
 
   // Fetch all media
   const fetchMedia = useCallback(async () => {
     setIsLoadingMedia(true);
     try {
+      // 1. Try public endpoint first
+      const res = await fetch('/api/media');
+      if (res.ok) {
+        const json = await res.json();
+        if (json.media && Array.isArray(json.media)) {
+          setAllMedia(json.media);
+          return;
+        }
+      }
+
+      // 2. Fallback to direct supabase query
       const { data, error: mediaError } = await supabase
         .from('media')
         .select('*')
@@ -93,12 +114,19 @@ export default function HomePage() {
     }
   }, [user, supabase]);
 
+  // Fetch media on mount immediately (for all visitors, logged in or not)
+  useEffect(() => {
+    fetchMedia();
+  }, [fetchMedia]);
+
+  // Fetch favorites when user auth state changes
   useEffect(() => {
     if (user) {
-      fetchMedia();
       fetchFavorites();
+    } else {
+      setFavoriteIds(new Set());
     }
-  }, [user, fetchMedia, fetchFavorites]);
+  }, [user, fetchFavorites]);
 
   // Toggle favorite
   const handleToggleFavorite = async (mediaId: string, currentFav: boolean) => {
@@ -212,7 +240,7 @@ export default function HomePage() {
     filters.grades.length > 0 ||
     filters.mediaTypes.length > 0;
 
-  if (authLoading || (!user && !authLoading)) {
+  if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
@@ -235,6 +263,7 @@ export default function HomePage() {
               favoriteIds={favoriteIds}
               onToggleFavorite={handleToggleFavorite}
               onMediaOpened={handleMediaOpened}
+              onAuthRequired={handleAuthRequired}
               icon={<Sparkles className="w-5 h-5 text-indigo-500" />}
             />
           </div>
@@ -394,6 +423,7 @@ export default function HomePage() {
                     isFavorite={favoriteIds.has(media.id)}
                     onToggleFavorite={handleToggleFavorite}
                     onMediaOpened={handleMediaOpened}
+                    onAuthRequired={handleAuthRequired}
                   />
                 ))}
               </div>
@@ -417,6 +447,18 @@ export default function HomePage() {
         isOpen={isAddMediaOpen}
         onClose={() => setIsAddMediaOpen(false)}
         onSuccess={fetchMedia}
+      />
+
+      {/* Authentication Required Modal for Unauthenticated Visitors */}
+      <AuthRequiredModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        mediaTitle={authModalMedia?.title}
+        message={
+          authModalAction === 'open'
+            ? 'คุณยังไม่ได้เข้าสู่ระบบ กรุณาเข้าสู่ระบบด้วยบัญชีสมาชิกเพื่อเปิดเข้าใช้งานสื่อการสอนและเกมการศึกษา'
+            : 'คุณยังไม่ได้เข้าสู่ระบบ กรุณาเข้าสู่ระบบเพื่อบันทึกสื่อการสอนนี้เป็นรายการโปรดของคุณ'
+        }
       />
     </div>
   );

@@ -7,10 +7,10 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { ThemeToggle } from './ThemeToggle';
 import { UserMenu } from './UserMenu';
-import { ShieldCheck, Home } from 'lucide-react';
+import { ShieldCheck, Home, LogIn, UserX } from 'lucide-react';
 
 export function Navbar() {
-  const { isDev } = useAuth();
+  const { user, isDev } = useAuth();
   const pathname = usePathname();
   const isDevPage = pathname.startsWith('/dev');
 
@@ -26,7 +26,7 @@ export function Navbar() {
           <div className="relative w-11 h-11 sm:w-12 sm:h-12 rounded-xl overflow-hidden shrink-0 ring-2 ring-indigo-400 dark:ring-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.7)] dark:shadow-[0_0_20px_rgba(129,140,248,0.85)] group-hover:shadow-[0_0_25px_rgba(99,102,241,0.95)] transition-all duration-300 transform group-hover:scale-105 bg-white dark:bg-gray-900">
             <Image
               src="/logo.png"
-              alt="Educational Media Hub Logo"
+              alt="สื่อการสอน 5G Logo"
               fill
               sizes="48px"
               priority
@@ -36,7 +36,7 @@ export function Navbar() {
           <div>
             <div className="flex items-center gap-2">
               <span className="font-bold text-base sm:text-lg tracking-tight text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                Educational Media Hub
+                สื่อการสอน 5G
               </span>
             </div>
             <p className="text-[11px] text-gray-500 dark:text-gray-400 hidden sm:block">
@@ -46,9 +46,9 @@ export function Navbar() {
         </Link>
 
         {/* Right: Actions */}
-        <div className="flex items-center gap-2.5 sm:gap-3.5">
+        <div className="flex items-center gap-2 sm:gap-3">
           {/* Dev Button - ONLY rendered if user has dev role! */}
-          {isDev && (
+          {user && isDev && (
             isDevPage ? (
               <Link
                 href="/home"
@@ -73,8 +73,24 @@ export function Navbar() {
           {/* Theme Toggle */}
           <ThemeToggle />
 
-          {/* User Menu */}
-          <UserMenu />
+          {/* User Menu or Unauthenticated Status */}
+          {user ? (
+            <UserMenu />
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-[11px] sm:text-xs font-medium bg-gray-100 dark:bg-gray-800/80 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
+                <UserX className="w-3.5 h-3.5 text-gray-400" />
+                <span>ยังไม่ได้เข้าสู่ระบบ</span>
+              </span>
+              <Link
+                href="/login"
+                className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 text-xs sm:text-sm font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shadow-indigo-600/25 active:scale-95 transition-all"
+              >
+                <LogIn className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span>เข้าสู่ระบบ</span>
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </header>

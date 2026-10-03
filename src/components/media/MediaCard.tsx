@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
+import { useAuth } from '@/context/AuthContext';
 import { MediaItem } from '@/types/database';
 import { Heart, ExternalLink, Eye, Layers } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
@@ -11,6 +12,7 @@ interface MediaCardProps {
   isFavorite: boolean;
   onToggleFavorite: (mediaId: string, currentFav: boolean) => void;
   onMediaOpened?: (mediaId: string) => void;
+  onAuthRequired?: (media: MediaItem, action: 'open' | 'favorite') => void;
   priority?: boolean;
 }
 
@@ -19,8 +21,10 @@ export function MediaCard({
   isFavorite,
   onToggleFavorite,
   onMediaOpened,
+  onAuthRequired,
   priority = false,
 }: MediaCardProps) {
+  const { user } = useAuth();
   const [imgError, setImgError] = useState(false);
   const [localViews, setLocalViews] = useState(media.view_count);
   const [hasClickedRecently, setHasClickedRecently] = useState(false);
@@ -42,6 +46,16 @@ export function MediaCard({
   const handleOpenMedia = async (e: React.MouseEvent) => {
     // If user clicked directly on the favorite button, don't open the link
     if ((e.target as HTMLElement).closest('.fav-btn')) {
+      return;
+    }
+
+    // If user is not logged in, block opening media
+    if (!user) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (onAuthRequired) {
+        onAuthRequired(media, 'open');
+      }
       return;
     }
 
@@ -93,6 +107,12 @@ export function MediaCard({
         <button
           onClick={(e) => {
             e.stopPropagation();
+            if (!user) {
+              if (onAuthRequired) {
+                onAuthRequired(media, 'favorite');
+              }
+              return;
+            }
             onToggleFavorite(media.id, isFavorite);
           }}
           className={cn(

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Dev Dashboard - Educational Media Hub',
+  title: 'Dev Dashboard - สื่อการสอน 5G',
   description: 'ระบบจัดการสื่อการสอนและสมาชิกสำหรับผู้พัฒนา',
 };
 

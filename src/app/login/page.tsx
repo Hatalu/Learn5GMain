@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { ThemeToggle } from '@/components/navbar/ThemeToggle';
-import { Sparkles, Lock, User, Eye, EyeOff, Loader2, BookOpen } from 'lucide-react';
+import { Sparkles, Lock, User, Eye, EyeOff, Loader2, BookOpen, ArrowLeft } from 'lucide-react';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -58,7 +59,17 @@ export default function LoginPage() {
       <div className="absolute top-10 left-10 w-72 h-72 bg-indigo-500/10 dark:bg-indigo-600/15 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-10 right-10 w-80 h-80 bg-violet-500/10 dark:bg-violet-600/15 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Top bar with theme toggle */}
+      {/* Top bar controls */}
+      <div className="absolute top-5 left-5 sm:top-8 sm:left-8 z-10">
+        <Link
+          href="/home"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white/70 dark:bg-gray-900/70 hover:bg-white dark:hover:bg-gray-800 text-xs font-semibold text-gray-700 dark:text-gray-300 shadow-sm backdrop-blur-md transition-all active:scale-95"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>ดูสื่อการสอน (หน้าหลัก)</span>
+        </Link>
+      </div>
+
       <div className="absolute top-5 right-5 sm:top-8 sm:right-8 z-10">
         <ThemeToggle />
       </div>
@@ -70,12 +81,12 @@ export default function LoginPage() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/logo.png"
-              alt="Educational Media Hub Logo"
+              alt="สื่อการสอน 5G Logo"
               className="w-full h-full object-cover"
             />
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-            Educational Media Hub
+            สื่อการสอน 5G
           </h1>
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
             ศูนย์รวมสื่อการสอนและเกมการศึกษา ประถมศึกษา

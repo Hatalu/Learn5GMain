@@ -144,9 +144,10 @@ create policy "Devs can delete profiles"
 
 -- MEDIA POLICIES
 drop policy if exists "Authenticated users can view media" on public.media;
-create policy "Authenticated users can view media"
+drop policy if exists "Anyone can view media" on public.media;
+create policy "Anyone can view media"
   on public.media for select
-  to authenticated
+  to public
   using (true);
 
 drop policy if exists "Only devs can insert media" on public.media;

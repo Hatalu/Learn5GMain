@@ -11,7 +11,7 @@ const notoSansThai = Noto_Sans_Thai({
 });
 
 export const metadata: Metadata = {
-  title: 'Educational Media Hub - ศูนย์รวมสื่อการสอนและเกมการศึกษา',
+  title: 'สื่อการสอน 5G - ศูนย์รวมสื่อการสอนและเกมการศึกษา',
   description: 'แพลตฟอร์มคลังสื่อการสอนและเกมการศึกษาออนไลน์ รวบรวมสื่อคุณภาพสำหรับระดับชั้นประถมศึกษา',
   icons: {
     icon: '/favicon.ico',

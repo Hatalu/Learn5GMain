@@ -40,8 +40,7 @@ export async function updateSession(request: NextRequest) {
 
   // 1. Root redirect
   if (path === '/') {
-    const target = user ? '/home' : '/login';
-    return NextResponse.redirect(new URL(target, request.url));
+    return NextResponse.redirect(new URL('/home', request.url));
   }
 
   // 2. Already logged in accessing /login
@@ -49,8 +48,8 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(new URL('/home', request.url));
   }
 
-  // 3. Unauthenticated accessing protected routes (/home or /dev)
-  if (!user && (path.startsWith('/home') || path.startsWith('/dev'))) {
+  // 3. Unauthenticated accessing protected routes (/dev only)
+  if (!user && path.startsWith('/dev')) {
     const url = new URL('/login', request.url);
     url.searchParams.set('redirect', path);
     return NextResponse.redirect(url);
