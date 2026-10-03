@@ -306,8 +306,8 @@ export default function HomePage() {
       <Navbar />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Netflix-style Rail: สื่อใหม่ล่าสุด (Shown when not filtering) */}
-        {!hasActiveFilters && latestMediaList.length > 0 && (
+        {/* Netflix-style Rail: สื่อใหม่ล่าสุด */}
+        {latestMediaList.length > 0 && (
           <div className="mb-8">
             <MediaRail
               title="สื่อใหม่ล่าสุด"
@@ -334,7 +334,7 @@ export default function HomePage() {
           </div>
 
           {/* Right Main Media Grid */}
-          <div className="lg:col-span-3 space-y-6">
+          <div className="lg:col-span-3 space-y-6 min-h-[500px]">
             {/* Top Toolbar */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-gray-200/80 dark:border-gray-800">
               <div className="flex items-center gap-2">
@@ -387,6 +387,7 @@ export default function HomePage() {
                   >
                     <span>{tier === 'free' ? 'ฟรี (Free)' : 'พรีเมียม (Premium)'}</span>
                     <button
+                      type="button"
                       onClick={() =>
                         setFilters({
                           ...filters,
@@ -409,6 +410,7 @@ export default function HomePage() {
                   >
                     <span>{sub}</span>
                     <button
+                      type="button"
                       onClick={() =>
                         setFilters({
                           ...filters,
@@ -431,6 +433,7 @@ export default function HomePage() {
                   >
                     <span>{grade}</span>
                     <button
+                      type="button"
                       onClick={() =>
                         setFilters({
                           ...filters,
@@ -453,6 +456,7 @@ export default function HomePage() {
                   >
                     <span>{type}</span>
                     <button
+                      type="button"
                       onClick={() =>
                         setFilters({
                           ...filters,
@@ -468,6 +472,7 @@ export default function HomePage() {
                 ))}
 
                 <button
+                  type="button"
                   onClick={handleResetFilters}
                   className="text-xs text-rose-600 dark:text-rose-400 hover:underline font-medium ml-1"
                 >

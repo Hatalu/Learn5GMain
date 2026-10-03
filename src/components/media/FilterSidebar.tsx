@@ -77,6 +77,7 @@ export function FilterSidebar({
 
         {hasActiveFilters && (
           <button
+            type="button"
             onClick={onReset}
             className="flex items-center gap-1 text-xs text-rose-600 dark:text-rose-400 hover:underline font-medium"
             title="ล้างตัวกรองทั้งหมด"
@@ -96,9 +97,13 @@ export function FilterSidebar({
           </h3>
         </div>
         <div className="space-y-1.5">
-          <label
+          <button
+            type="button"
+            role="checkbox"
+            aria-checked={filters.accessTiers.includes('free')}
+            onClick={() => toggleAccessTier('free')}
             className={cn(
-              'flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-sm cursor-pointer transition-all duration-150',
+              'w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-sm text-left transition-all duration-150',
               filters.accessTiers.includes('free')
                 ? 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-900 dark:text-emerald-200 font-semibold'
                 : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/60'
@@ -108,12 +113,6 @@ export function FilterSidebar({
               <Unlock className="w-3.5 h-3.5 text-emerald-500" />
               <span>ฟรี (Free)</span>
             </div>
-            <input
-              type="checkbox"
-              checked={filters.accessTiers.includes('free')}
-              onChange={() => toggleAccessTier('free')}
-              className="sr-only"
-            />
             <div
               className={cn(
                 'w-4 h-4 rounded-md border flex items-center justify-center transition-colors',
@@ -124,11 +123,15 @@ export function FilterSidebar({
             >
               {filters.accessTiers.includes('free') && <Check className="w-3 h-3 stroke-[3]" />}
             </div>
-          </label>
+          </button>
 
-          <label
+          <button
+            type="button"
+            role="checkbox"
+            aria-checked={filters.accessTiers.includes('premium')}
+            onClick={() => toggleAccessTier('premium')}
             className={cn(
-              'flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-sm cursor-pointer transition-all duration-150',
+              'w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-sm text-left transition-all duration-150',
               filters.accessTiers.includes('premium')
                 ? 'bg-amber-50 dark:bg-amber-950/70 text-amber-900 dark:text-amber-200 font-semibold'
                 : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/60'
@@ -138,12 +141,6 @@ export function FilterSidebar({
               <Crown className="w-3.5 h-3.5 text-amber-500" />
               <span>พรีเมียม (Premium)</span>
             </div>
-            <input
-              type="checkbox"
-              checked={filters.accessTiers.includes('premium')}
-              onChange={() => toggleAccessTier('premium')}
-              className="sr-only"
-            />
             <div
               className={cn(
                 'w-4 h-4 rounded-md border flex items-center justify-center transition-colors',
@@ -154,7 +151,7 @@ export function FilterSidebar({
             >
               {filters.accessTiers.includes('premium') && <Check className="w-3 h-3 stroke-[3]" />}
             </div>
-          </label>
+          </button>
         </div>
       </div>
 
@@ -170,22 +167,20 @@ export function FilterSidebar({
           {ALL_SUBJECTS.map((sub) => {
             const isChecked = filters.subjects.includes(sub);
             return (
-              <label
+              <button
                 key={sub}
+                type="button"
+                role="checkbox"
+                aria-checked={isChecked}
+                onClick={() => toggleSubject(sub)}
                 className={cn(
-                  'flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-sm cursor-pointer transition-all duration-150',
+                  'w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-sm text-left transition-all duration-150',
                   isChecked
                     ? 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-900 dark:text-indigo-200 font-semibold'
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/60'
                 )}
               >
                 <span>{sub}</span>
-                <input
-                  type="checkbox"
-                  checked={isChecked}
-                  onChange={() => toggleSubject(sub)}
-                  className="hidden"
-                />
                 <div
                   className={cn(
                     'w-4 h-4 rounded-md border flex items-center justify-center transition-colors',
@@ -196,7 +191,7 @@ export function FilterSidebar({
                 >
                   {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
                 </div>
-              </label>
+              </button>
             );
           })}
         </div>
@@ -214,24 +209,22 @@ export function FilterSidebar({
           {ALL_GRADES.map((grade) => {
             const isChecked = filters.grades.includes(grade);
             return (
-              <label
+              <button
                 key={grade}
+                type="button"
+                role="checkbox"
+                aria-checked={isChecked}
+                onClick={() => toggleGrade(grade)}
                 className={cn(
-                  'flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs cursor-pointer border transition-all duration-150',
+                  'flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs text-left border transition-all duration-150',
                   isChecked
                     ? 'bg-indigo-50 dark:bg-indigo-950/70 border-indigo-200 dark:border-indigo-800 text-indigo-900 dark:text-indigo-200 font-semibold'
                     : 'border-gray-200/80 dark:border-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/60'
                 )}
               >
                 <span>{grade}</span>
-                <input
-                  type="checkbox"
-                  checked={isChecked}
-                  onChange={() => toggleGrade(grade)}
-                  className="hidden"
-                />
                 {isChecked && <Check className="w-3 h-3 text-indigo-600 dark:text-indigo-400 stroke-[3]" />}
-              </label>
+              </button>
             );
           })}
         </div>
@@ -249,22 +242,20 @@ export function FilterSidebar({
           {ALL_MEDIA_TYPES.map((type) => {
             const isChecked = filters.mediaTypes.includes(type);
             return (
-              <label
+              <button
                 key={type}
+                type="button"
+                role="checkbox"
+                aria-checked={isChecked}
+                onClick={() => toggleMediaType(type)}
                 className={cn(
-                  'flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-sm cursor-pointer transition-all duration-150',
+                  'w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-sm text-left transition-all duration-150',
                   isChecked
                     ? 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-900 dark:text-indigo-200 font-semibold'
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/60'
                 )}
               >
                 <span>{type}</span>
-                <input
-                  type="checkbox"
-                  checked={isChecked}
-                  onChange={() => toggleMediaType(type)}
-                  className="hidden"
-                />
                 <div
                   className={cn(
                     'w-4 h-4 rounded-md border flex items-center justify-center transition-colors',
@@ -275,7 +266,7 @@ export function FilterSidebar({
                 >
                   {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
                 </div>
-              </label>
+              </button>
             );
           })}
         </div>
@@ -284,6 +275,7 @@ export function FilterSidebar({
       {/* Clear Button */}
       {hasActiveFilters && (
         <button
+          type="button"
           onClick={onReset}
           className="w-full py-2.5 px-3 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 text-xs font-medium transition-colors flex items-center justify-center gap-1.5"
         >

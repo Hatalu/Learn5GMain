@@ -45,6 +45,10 @@
   border-color: hsl(var(--border));
 }
 
+html {
+  scrollbar-gutter: stable;
+}
+
 body {
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));

@@ -94,6 +94,7 @@ export function MobileFilterDrawer({
             )}
           </div>
           <button
+            type="button"
             onClick={onClose}
             className="p-1.5 rounded-lg text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
             aria-label="ปิดตัวกรอง"
@@ -113,9 +114,13 @@ export function MobileFilterDrawer({
               </h3>
             </div>
             <div className="space-y-1">
-              <label
+              <button
+                type="button"
+                role="checkbox"
+                aria-checked={filters.accessTiers.includes('free')}
+                onClick={() => toggleAccessTier('free')}
                 className={cn(
-                  'flex items-center justify-between px-3 py-2 rounded-xl text-sm cursor-pointer',
+                  'w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm text-left transition-colors',
                   filters.accessTiers.includes('free')
                     ? 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-900 dark:text-emerald-200 font-semibold'
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
@@ -125,12 +130,6 @@ export function MobileFilterDrawer({
                   <Unlock className="w-3.5 h-3.5 text-emerald-500" />
                   <span>ฟรี (Free)</span>
                 </div>
-                <input
-                  type="checkbox"
-                  checked={filters.accessTiers.includes('free')}
-                  onChange={() => toggleAccessTier('free')}
-                  className="hidden"
-                />
                 <div
                   className={cn(
                     'w-4 h-4 rounded-md border flex items-center justify-center transition-colors',
@@ -141,11 +140,15 @@ export function MobileFilterDrawer({
                 >
                   {filters.accessTiers.includes('free') && <Check className="w-3 h-3 stroke-[3]" />}
                 </div>
-              </label>
+              </button>
 
-              <label
+              <button
+                type="button"
+                role="checkbox"
+                aria-checked={filters.accessTiers.includes('premium')}
+                onClick={() => toggleAccessTier('premium')}
                 className={cn(
-                  'flex items-center justify-between px-3 py-2 rounded-xl text-sm cursor-pointer',
+                  'w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm text-left transition-colors',
                   filters.accessTiers.includes('premium')
                     ? 'bg-amber-50 dark:bg-amber-950/70 text-amber-900 dark:text-amber-200 font-semibold'
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
@@ -155,12 +158,6 @@ export function MobileFilterDrawer({
                   <Crown className="w-3.5 h-3.5 text-amber-500" />
                   <span>พรีเมียม (Premium)</span>
                 </div>
-                <input
-                  type="checkbox"
-                  checked={filters.accessTiers.includes('premium')}
-                  onChange={() => toggleAccessTier('premium')}
-                  className="hidden"
-                />
                 <div
                   className={cn(
                     'w-4 h-4 rounded-md border flex items-center justify-center transition-colors',
@@ -171,7 +168,7 @@ export function MobileFilterDrawer({
                 >
                   {filters.accessTiers.includes('premium') && <Check className="w-3 h-3 stroke-[3]" />}
                 </div>
-              </label>
+              </button>
             </div>
           </div>
 
@@ -187,22 +184,20 @@ export function MobileFilterDrawer({
               {ALL_SUBJECTS.map((sub) => {
                 const isChecked = filters.subjects.includes(sub);
                 return (
-                  <label
+                  <button
                     key={sub}
+                    type="button"
+                    role="checkbox"
+                    aria-checked={isChecked}
+                    onClick={() => toggleSubject(sub)}
                     className={cn(
-                      'flex items-center justify-between px-3 py-2 rounded-xl text-sm cursor-pointer',
+                      'w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm text-left transition-colors',
                       isChecked
                         ? 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-900 dark:text-indigo-200 font-medium'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
                     )}
                   >
                     <span>{sub}</span>
-                    <input
-                      type="checkbox"
-                      checked={isChecked}
-                      onChange={() => toggleSubject(sub)}
-                      className="hidden"
-                    />
                     <div
                       className={cn(
                         'w-4 h-4 rounded-md border flex items-center justify-center transition-colors',
@@ -213,7 +208,7 @@ export function MobileFilterDrawer({
                     >
                       {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
                     </div>
-                  </label>
+                  </button>
                 );
               })}
             </div>
@@ -261,22 +256,20 @@ export function MobileFilterDrawer({
               {ALL_MEDIA_TYPES.map((type) => {
                 const isChecked = filters.mediaTypes.includes(type);
                 return (
-                  <label
+                  <button
                     key={type}
+                    type="button"
+                    role="checkbox"
+                    aria-checked={isChecked}
+                    onClick={() => toggleMediaType(type)}
                     className={cn(
-                      'flex items-center justify-between px-3 py-2 rounded-xl text-sm cursor-pointer',
+                      'w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm text-left transition-colors',
                       isChecked
                         ? 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-900 dark:text-indigo-200 font-medium'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
                     )}
                   >
                     <span>{type}</span>
-                    <input
-                      type="checkbox"
-                      checked={isChecked}
-                      onChange={() => toggleMediaType(type)}
-                      className="hidden"
-                    />
                     <div
                       className={cn(
                         'w-4 h-4 rounded-md border flex items-center justify-center transition-colors',
@@ -287,7 +280,7 @@ export function MobileFilterDrawer({
                     >
                       {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
                     </div>
-                  </label>
+                  </button>
                 );
               })}
             </div>
@@ -297,6 +290,7 @@ export function MobileFilterDrawer({
         {/* Footer actions */}
         <div className="p-4 border-t border-gray-100 dark:border-gray-800 flex gap-2">
           <button
+            type="button"
             onClick={onReset}
             className="flex-1 py-2.5 px-3 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium flex items-center justify-center gap-1.5"
           >
@@ -304,6 +298,7 @@ export function MobileFilterDrawer({
             <span>ล้าง</span>
           </button>
           <button
+            type="button"
             onClick={onClose}
             className="flex-1 py-2.5 px-3 rounded-xl bg-indigo-600 text-white text-sm font-semibold shadow-md shadow-indigo-600/20"
           >
