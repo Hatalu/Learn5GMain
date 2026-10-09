@@ -73,12 +73,14 @@ export default function HomePage() {
         .order('created_at', { ascending: false });
 
       if (!mediaError && data) {
-        const mapped = data.map((m: any) => ({
-          ...m,
-          access_tier: m.access_tier ? String(m.access_tier).toLowerCase().trim() : 'premium',
-          is_public: m.is_public !== false,
-        }));
-        setAllMedia(mapped as MediaItem[]);
+        const publicOnly = data
+          .filter((m: any) => m.is_public !== false)
+          .map((m: any) => ({
+            ...m,
+            access_tier: m.access_tier ? String(m.access_tier).toLowerCase().trim() : 'premium',
+            is_public: true,
+          }));
+        setAllMedia(publicOnly as MediaItem[]);
         return;
       }
 
@@ -90,12 +92,14 @@ export default function HomePage() {
       if (res.ok) {
         const json = await res.json();
         if (json.media && Array.isArray(json.media)) {
-          const mapped = json.media.map((m: any) => ({
-            ...m,
-            access_tier: m.access_tier ? String(m.access_tier).toLowerCase().trim() : 'premium',
-            is_public: m.is_public !== false,
-          }));
-          setAllMedia(mapped);
+          const publicOnly = json.media
+            .filter((m: any) => m.is_public !== false)
+            .map((m: any) => ({
+              ...m,
+              access_tier: m.access_tier ? String(m.access_tier).toLowerCase().trim() : 'premium',
+              is_public: true,
+            }));
+          setAllMedia(publicOnly);
           return;
         }
       }
@@ -237,12 +241,8 @@ export default function HomePage() {
 
   // Filter and Sort calculation
   const filteredAndSortedMedia = useMemo(() => {
-    let result = [...allMedia];
-
-    // Visibility: Non-dev users can only see public media
-    if (!isDev) {
-      result = result.filter((m) => m.is_public !== false);
-    }
+    // Only public media is shown on the Home page (Private media is only visible in Dev dashboard)
+    let result = allMedia.filter((m) => m.is_public !== false);
 
     // Filter by Access Tier (Free vs Premium)
     if (filters.accessTiers.length > 0) {
@@ -283,17 +283,17 @@ export default function HomePage() {
     });
 
     return result;
-  }, [allMedia, filters, sortOption, isDev]);
+  }, [allMedia, filters, sortOption]);
 
   // Netflix Rail items: latest items
   const latestMediaList = useMemo(() => {
-    const list = isDev ? allMedia : allMedia.filter((m) => m.is_public !== false);
-    return [...list]
+    return allMedia
+      .filter((m) => m.is_public !== false)
       .sort(
         (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       )
       .slice(0, 10);
-  }, [allMedia, isDev]);
+  }, [allMedia]);
 
   const hasActiveFilters =
     filters.subjects.length > 0 ||

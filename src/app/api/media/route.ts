@@ -18,11 +18,13 @@ export async function GET() {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    const mapped = (data || []).map((m: any) => ({
-      ...m,
-      access_tier: m.access_tier ? String(m.access_tier).toLowerCase().trim() : 'premium',
-      is_public: m.is_public !== false,
-    }));
+    const mapped = (data || [])
+      .filter((m: any) => m.is_public !== false)
+      .map((m: any) => ({
+        ...m,
+        access_tier: m.access_tier ? String(m.access_tier).toLowerCase().trim() : 'premium',
+        is_public: true,
+      }));
 
     return NextResponse.json(
       { media: mapped },

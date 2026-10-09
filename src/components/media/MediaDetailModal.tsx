@@ -235,13 +235,6 @@ export function MediaDetailModal({
                   <Layers className="w-3 h-3" />
                   <span>{media.media_type}</span>
                 </span>
-
-                {media.is_public === false && (
-                  <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-gray-900 text-amber-300 border border-gray-700 flex items-center gap-1">
-                    <Lock className="w-3 h-3" />
-                    <span>Private (ส่วนตัว)</span>
-                  </span>
-                )}
               </div>
 
               {/* Title */}
