@@ -21,6 +21,7 @@ export async function GET() {
     const mapped = (data || []).map((m: any) => ({
       ...m,
       access_tier: m.access_tier ? String(m.access_tier).toLowerCase().trim() : 'premium',
+      is_public: m.is_public !== false,
     }));
 
     return NextResponse.json(

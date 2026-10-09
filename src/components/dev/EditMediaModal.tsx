@@ -16,7 +16,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/Toast';
 import { ImageCropperModal } from '@/components/media/ImageCropperModal';
 import { generateSafeStoragePath } from '@/lib/utils/image';
-import { X, Upload, Edit3, Loader2, Crown, Unlock } from 'lucide-react';
+import { X, Upload, Edit3, Loader2, Crown, Unlock, Globe, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
 interface EditMediaModalProps {
@@ -41,6 +41,7 @@ export function EditMediaModal({
   const [gradeLevel, setGradeLevel] = useState<GradeLevel[]>(['ป.1']);
   const [mediaType, setMediaType] = useState<MediaType>('เกม');
   const [accessTier, setAccessTier] = useState<AccessTier>('premium');
+  const [isPublic, setIsPublic] = useState(true);
   const [gameUrl, setGameUrl] = useState('');
   const [iconUrl, setIconUrl] = useState('');
   const [croppedBlob, setCroppedBlob] = useState<Blob | null>(null);
@@ -57,6 +58,7 @@ export function EditMediaModal({
       setGradeLevel((media.grade_level as GradeLevel[]) || ['ป.1']);
       setMediaType(media.media_type);
       setAccessTier((media.access_tier as AccessTier) || 'premium');
+      setIsPublic(media.is_public !== false);
       setGameUrl(media.game_url);
       setIconUrl(media.icon_url);
       setCroppedBlob(null);
@@ -133,20 +135,30 @@ export function EditMediaModal({
       }
 
       // Update record in Supabase media table
-      const { error: updateError } = await supabase
+      const updatePayload: any = {
+        title: title.trim(),
+        description: description.trim() || null,
+        icon_url: finalIconUrl,
+        subject,
+        grade_level: gradeLevel,
+        media_type: mediaType,
+        access_tier: accessTier,
+        is_public: isPublic,
+        game_url: gameUrl.trim(),
+        updated_at: new Date().toISOString(),
+      };
+
+      let { error: updateError } = await supabase
         .from('media')
-        .update({
-          title: title.trim(),
-          description: description.trim() || null,
-          icon_url: finalIconUrl,
-          subject,
-          grade_level: gradeLevel,
-          media_type: mediaType,
-          access_tier: accessTier,
-          game_url: gameUrl.trim(),
-          updated_at: new Date().toISOString(),
-        })
+        .update(updatePayload)
         .eq('id', media.id);
+
+      // Graceful fallback if is_public column not yet created in Supabase
+      if (updateError && (updateError.message?.includes('is_public') || (updateError as any).code === 'PGRST204')) {
+        delete updatePayload.is_public;
+        const retry = await supabase.from('media').update(updatePayload).eq('id', media.id);
+        updateError = retry.error;
+      }
 
       if (updateError) {
         throw new Error(updateError.message);
@@ -286,6 +298,42 @@ export function EditMediaModal({
                 >
                   <Unlock className="w-4 h-4 text-emerald-200" />
                   <span>ฟรี (Free)</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 3.2 Visibility: Public vs Private */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                สถานะการเผยแพร่ (การมองเห็น) *
+              </label>
+              <div className="grid grid-cols-2 gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setIsPublic(true)}
+                  className={cn(
+                    'py-2.5 px-3 rounded-xl text-xs sm:text-sm font-semibold border flex items-center justify-center gap-2 transition-all',
+                    isPublic
+                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-blue-600 shadow-md shadow-blue-600/25 ring-2 ring-blue-400/50'
+                      : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-750'
+                  )}
+                >
+                  <Globe className="w-4 h-4 text-blue-200" />
+                  <span>สาธารณะ (Public - แสดงหน้าเว็บ)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsPublic(false)}
+                  className={cn(
+                    'py-2.5 px-3 rounded-xl text-xs sm:text-sm font-semibold border flex items-center justify-center gap-2 transition-all',
+                    !isPublic
+                      ? 'bg-gradient-to-r from-gray-700 to-slate-800 text-white border-gray-700 shadow-md shadow-gray-700/25 ring-2 ring-gray-500/50'
+                      : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-750'
+                  )}
+                >
+                  <Lock className="w-4 h-4 text-amber-300" />
+                  <span>ส่วนตัว (Private - ซ่อนไว้เฉพาะ Dev)</span>
                 </button>
               </div>
             </div>

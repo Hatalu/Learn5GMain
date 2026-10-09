@@ -76,6 +76,7 @@ export default function HomePage() {
         const mapped = data.map((m: any) => ({
           ...m,
           access_tier: m.access_tier ? String(m.access_tier).toLowerCase().trim() : 'premium',
+          is_public: m.is_public !== false,
         }));
         setAllMedia(mapped as MediaItem[]);
         return;
@@ -92,6 +93,7 @@ export default function HomePage() {
           const mapped = json.media.map((m: any) => ({
             ...m,
             access_tier: m.access_tier ? String(m.access_tier).toLowerCase().trim() : 'premium',
+            is_public: m.is_public !== false,
           }));
           setAllMedia(mapped);
           return;
@@ -237,6 +239,11 @@ export default function HomePage() {
   const filteredAndSortedMedia = useMemo(() => {
     let result = [...allMedia];
 
+    // Visibility: Non-dev users can only see public media
+    if (!isDev) {
+      result = result.filter((m) => m.is_public !== false);
+    }
+
     // Filter by Access Tier (Free vs Premium)
     if (filters.accessTiers.length > 0) {
       result = result.filter((m) =>
@@ -276,16 +283,17 @@ export default function HomePage() {
     });
 
     return result;
-  }, [allMedia, filters, sortOption]);
+  }, [allMedia, filters, sortOption, isDev]);
 
   // Netflix Rail items: latest items
   const latestMediaList = useMemo(() => {
-    return [...allMedia]
+    const list = isDev ? allMedia : allMedia.filter((m) => m.is_public !== false);
+    return [...list]
       .sort(
         (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       )
       .slice(0, 10);
-  }, [allMedia]);
+  }, [allMedia, isDev]);
 
   const hasActiveFilters =
     filters.subjects.length > 0 ||

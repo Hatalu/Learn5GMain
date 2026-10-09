@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
 import { MediaItem } from '@/types/database';
-import { Heart, ExternalLink, Eye, Layers, Crown, Unlock } from 'lucide-react';
+import { Heart, ExternalLink, Eye, Layers, Crown, Unlock, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
 interface MediaCardProps {
@@ -63,8 +63,8 @@ export function MediaCard({
     >
       {/* 1:1 Aspect Ratio Thumbnail */}
       <div className="relative aspect-square w-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
-        {/* Tier Badge (Top Left) */}
-        <div className="absolute top-3 left-3 z-10 pointer-events-none">
+        {/* Tier & Visibility Badges (Top Left) */}
+        <div className="absolute top-3 left-3 z-10 pointer-events-none flex flex-col gap-1 items-start">
           {isFree ? (
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500 text-white shadow-md shadow-emerald-500/30">
               <Unlock className="w-3 h-3" />
@@ -74,6 +74,13 @@ export function MediaCard({
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/30">
               <Crown className="w-3 h-3" />
               <span>PREMIUM</span>
+            </span>
+          )}
+
+          {media.is_public === false && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-900/90 text-amber-300 border border-gray-700 shadow-md backdrop-blur-sm">
+              <Lock className="w-2.5 h-2.5" />
+              <span>PRIVATE</span>
             </span>
           )}
         </div>

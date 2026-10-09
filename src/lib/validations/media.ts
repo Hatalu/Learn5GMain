@@ -24,6 +24,7 @@ export const mediaSchema = z.object({
   access_tier: z.enum(['free', 'premium'], {
     message: 'กรุณาเลือกระดับการเข้าถึง (free หรือ premium)',
   }).default('premium'),
+  is_public: z.boolean().default(true).optional(),
   game_url: z
     .string()
     .url({ message: 'กรุณากรอกลิงก์เว็บไซต์ที่ถูกต้อง (เช่น https://example.com)' })

@@ -42,6 +42,7 @@ export interface MediaItem {
   grade_level: string[];
   media_type: MediaType;
   access_tier: AccessTier;
+  is_public?: boolean;
   game_url: string;
   view_count: number;
   created_by: string | null;
