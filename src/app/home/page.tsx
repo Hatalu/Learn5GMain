@@ -17,7 +17,9 @@ import { FilterSidebar } from '@/components/media/FilterSidebar';
 import { MobileFilterDrawer } from '@/components/media/MobileFilterDrawer';
 import { SortDropdown } from '@/components/media/SortDropdown';
 import { EmptyState } from '@/components/media/EmptyState';
-import { HomeHero } from '@/components/media/HomeHero';
+import { HeroCarousel } from '@/components/hero/HeroCarousel';
+import { FeatureStrip } from '@/components/media/FeatureStrip';
+import { Reveal } from '@/components/ui/Reveal';
 import { AddMediaModal } from '@/components/dev/AddMediaModal';
 import { MediaDetailModal } from '@/components/media/MediaDetailModal';
 import {
@@ -230,13 +232,18 @@ export default function HomePage() {
     );
   };
 
-  const handleToggleSubject = (subject: FilterState['subjects'][number]) => {
+  const scrollToLibrary = () => {
+    document.getElementById('library')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  // เลือกวิชาจากป้ายหน้าแรก: กรองเฉพาะวิชานั้น แล้วเลื่อนลงไปที่คลังสื่อ
+  const handlePickSubject = (subject: FilterState['subjects'][number]) => {
     setFilters((prev) => ({
       ...prev,
-      subjects: prev.subjects.includes(subject)
-        ? prev.subjects.filter((s) => s !== subject)
-        : [...prev.subjects, subject],
+      subjects:
+        prev.subjects.length === 1 && prev.subjects[0] === subject ? [] : [subject],
     }));
+    scrollToLibrary();
   };
 
   // Reset all filters
@@ -324,15 +331,22 @@ export default function HomePage() {
       <Navbar />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <HomeHero
+        <HeroCarousel
           media={allMedia}
+          isLoading={isLoadingMedia}
           selectedSubjects={filters.subjects}
-          onToggleSubject={handleToggleSubject}
+          onPickSubject={handlePickSubject}
+          onSelectMedia={handleSelectMedia}
+          onBrowseAll={scrollToLibrary}
         />
+
+        <div className="mt-6 sm:mt-8">
+          <FeatureStrip />
+        </div>
 
         {/* Netflix-style Rail: สื่อใหม่ล่าสุด */}
         {latestMediaList.length > 0 && (
-          <div className="mb-8">
+          <Reveal className="mb-8">
             <MediaRail
               title="สื่อใหม่ล่าสุด"
               subtitle="คลังสื่อการสอนและเกมการศึกษาที่เพิ่มเข้ามาใหม่ล่าสุด"
@@ -346,11 +360,11 @@ export default function HomePage() {
                 </span>
               }
             />
-          </div>
+          </Reveal>
         )}
 
         {/* Main Content Layout: Sidebar + Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 sm:gap-8 items-start">
+        <div id="library" className="grid grid-cols-1 lg:grid-cols-4 gap-6 sm:gap-8 items-start scroll-mt-24">
           {/* Desktop Left Sidebar Filter */}
           <div className="hidden lg:block lg:col-span-1">
             <FilterSidebar
@@ -535,14 +549,20 @@ export default function HomePage() {
             ) : (
               // Responsive Card Grid (1 col mobile, 2 col tablet, 3 col desktop)
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5">
-                {filteredAndSortedMedia.map((media) => (
-                  <MediaCard
-                    key={media.id}
-                    media={media}
-                    isFavorite={favoriteIds.has(media.id)}
-                    onToggleFavorite={handleToggleFavorite}
-                    onSelectMedia={handleSelectMedia}
-                  />
+                {filteredAndSortedMedia.map((media, i) => (
+                  // การ์ดเด้งเข้าทีละใบ (key รวมตัวกรอง เพื่อให้เล่นใหม่ทุกครั้งที่กรอง)
+                  <div
+                    key={`${media.id}-${filters.subjects.join()}-${filters.grades.join()}-${filters.mediaTypes.join()}-${filters.accessTiers.join()}-${sortOption}`}
+                    className="h-full animate-pop-in"
+                    style={{ animationDelay: `${Math.min(i, 8) * 70}ms` }}
+                  >
+                    <MediaCard
+                      media={media}
+                      isFavorite={favoriteIds.has(media.id)}
+                      onToggleFavorite={handleToggleFavorite}
+                      onSelectMedia={handleSelectMedia}
+                    />
+                  </div>
                 ))}
               </div>
             )}

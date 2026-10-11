@@ -75,6 +75,8 @@ export function MediaCard({
           )}
         />
 
+        <span className="card-shine" aria-hidden="true" />
+
         {/* Hover play overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-indigo-950/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center pointer-events-none">
           <span className="w-16 h-16 rounded-full bg-white/95 text-indigo-600 flex items-center justify-center shadow-xl scale-75 group-hover:scale-100 transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]">

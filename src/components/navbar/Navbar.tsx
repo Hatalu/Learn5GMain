@@ -53,7 +53,7 @@ export function Navbar() {
             href="https://www.facebook.com/profile.php?id=61594556657667"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/80 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/60 transition-all shadow-sm group"
+            className="hidden sm:inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/80 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/60 transition-all shadow-sm group"
             title="ติดต่อเพจ Facebook สื่อการสอน 5G"
           >
             <FacebookIcon className="w-4 h-4 group-hover:scale-110 transition-transform text-blue-600 dark:text-blue-400" />

@@ -121,6 +121,7 @@ const config: Config = {
         wiggle: "wiggle 2.4s ease-in-out infinite",
         "pop-in": "popIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both",
         shimmer: "shimmer 3.5s linear infinite",
+        kenburns: "kenburns 18s ease-in-out infinite alternate",
       },
       keyframes: {
         fadeIn: {
@@ -150,6 +151,10 @@ const config: Config = {
         shimmer: {
           "0%": { backgroundPosition: "0% 50%" },
           "100%": { backgroundPosition: "200% 50%" },
+        },
+        kenburns: {
+          "0%": { transform: "scale(1.25) translate(0, 0)" },
+          "100%": { transform: "scale(1.45) translate(-4%, -3%)" },
         },
       },
     },
