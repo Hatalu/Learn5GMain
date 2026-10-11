@@ -59,6 +59,15 @@ export default function LoginPage() {
       {/* Background ambient decorative shapes */}
       <div className="absolute top-10 left-10 w-72 h-72 bg-indigo-500/10 dark:bg-indigo-600/15 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-10 right-10 w-80 h-80 bg-violet-500/10 dark:bg-violet-600/15 rounded-full blur-3xl pointer-events-none" />
+      {/* ดาวและรูปทรงลอยเบาๆ */}
+      <svg className="absolute top-[18%] right-[14%] w-8 h-8 text-sun-400 animate-twinkle pointer-events-none" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 0c.9 6.2 2.8 8.9 12 12-9.2 3.1-11.1 5.8-12 12-.9-6.2-2.8-8.9-12-12C9.2 8.9 11.1 6.2 12 0z" fill="currentColor" />
+      </svg>
+      <svg className="absolute bottom-[22%] left-[10%] w-6 h-6 text-violet-400 animate-twinkle [animation-delay:1.4s] pointer-events-none" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 0c.9 6.2 2.8 8.9 12 12-9.2 3.1-11.1 5.8-12 12-.9-6.2-2.8-8.9-12-12C9.2 8.9 11.1 6.2 12 0z" fill="currentColor" />
+      </svg>
+      <div className="hidden sm:block absolute top-[30%] left-[12%] w-14 h-14 rounded-2xl bg-mint-500/80 rotate-12 animate-float pointer-events-none" />
+      <div className="hidden sm:block absolute bottom-[16%] right-[12%] w-12 h-12 rounded-full bg-sky-400/80 animate-float-slow pointer-events-none" />
 
       {/* Top bar controls */}
       <div className="absolute top-5 left-5 sm:top-8 sm:left-8 z-10">
@@ -86,7 +95,7 @@ export default function LoginPage() {
               className="w-full h-full object-cover"
             />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
+          <h1 className="text-3xl sm:text-4xl font-medium text-gradient-brand">
             สื่อการสอน 5G
           </h1>
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
@@ -95,7 +104,7 @@ export default function LoginPage() {
         </div>
 
         {/* Login Card */}
-        <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-gray-200/80 dark:border-gray-800 rounded-3xl p-6 sm:p-8 shadow-2xl shadow-indigo-950/5 dark:shadow-black/40">
+        <div className="bg-white/85 dark:bg-gray-900/80 backdrop-blur-xl border-2 border-indigo-100 dark:border-indigo-900 rounded-[2rem] p-6 sm:p-8 shadow-toy-lg">
           <div className="flex items-center gap-2 mb-6">
             <Sparkles className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -177,7 +186,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-medium text-sm shadow-md shadow-indigo-600/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="btn-primary-grad w-full py-3.5 px-4 rounded-2xl font-display font-medium text-base flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? (
                   <>

@@ -223,7 +223,7 @@ export function EditMediaModal({
                     <Upload className="w-3.5 h-3.5" />
                     <span>เปลี่ยนรูป Icon (Crop 1:1)</span>
                   </button>
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     หากไม่ต้องการเปลี่ยนรูปภาพ ให้คงรูปเดิมไว้
                   </p>
                   {fieldErrors.icon_url && (

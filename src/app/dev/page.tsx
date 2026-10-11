@@ -352,7 +352,7 @@ export default function DevDashboardPage() {
                                 href={m.game_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline mt-0.5 truncate"
+                                className="inline-flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400 hover:underline mt-0.5 truncate"
                               >
                                 <span>เปิดสื่อ</span>
                                 <ExternalLink className="w-3 h-3" />
@@ -363,7 +363,7 @@ export default function DevDashboardPage() {
 
                         {/* Subject */}
                         <td className="py-3.5 px-4">
-                          <span className="inline-block px-2 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300">
+                          <span className="inline-block px-2 py-0.5 rounded-md text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300">
                             {m.subject}
                           </span>
                         </td>
@@ -374,7 +374,7 @@ export default function DevDashboardPage() {
                             {m.grade_level?.map((g) => (
                               <span
                                 key={g}
-                                className="px-1.5 py-0.5 rounded text-[10px] bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300"
+                                className="px-1.5 py-0.5 rounded text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300"
                               >
                                 {g}
                               </span>
@@ -392,12 +392,12 @@ export default function DevDashboardPage() {
                         {/* Access Tier */}
                         <td className="py-3.5 px-4">
                           {String(m.access_tier || 'premium').toLowerCase().trim() === 'free' ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                               <Unlock className="w-3 h-3" />
                               <span>Free</span>
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-amber-50 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-amber-50 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
                               <Crown className="w-3 h-3 text-amber-500" />
                               <span>Premium</span>
                             </span>
@@ -411,7 +411,7 @@ export default function DevDashboardPage() {
                             onClick={() => handleToggleVisibility(m)}
                             disabled={updatingVisibilityId === m.id}
                             className={cn(
-                              'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all active:scale-95 cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-wait',
+                              'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition-all active:scale-95 cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-wait',
                               m.is_public !== false
                                 ? 'bg-blue-50 dark:bg-blue-950/70 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/60'
                                 : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-750'

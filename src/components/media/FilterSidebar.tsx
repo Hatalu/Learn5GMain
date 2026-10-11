@@ -62,14 +62,14 @@ export function FilterSidebar({
     filters.accessTiers.length > 0;
 
   return (
-    <aside className="w-full flex flex-col gap-6 p-5 rounded-2xl bg-white dark:bg-gray-900 border border-gray-200/90 dark:border-gray-800 shadow-sm sticky top-20">
+    <aside className="w-full flex flex-col gap-6 p-5 rounded-3xl bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-800 shadow-toy sticky top-20">
       {/* Filter Header */}
       <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-800">
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
           <span className="font-bold text-sm text-gray-900 dark:text-white">ตัวกรองสื่อ</span>
           {typeof totalFilteredCount === 'number' && (
-            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300">
+            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300">
               {totalFilteredCount} รายการ
             </span>
           )}

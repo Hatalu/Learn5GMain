@@ -200,7 +200,7 @@ export function AddMediaModal({ isOpen, onClose, onSuccess }: AddMediaModalProps
                     <Upload className="w-3.5 h-3.5" />
                     <span>{iconUrl ? 'เปลี่ยนรูปภาพ (Crop 1:1)' : 'อัปโหลดรูปภาพ (Crop 1:1)'}</span>
                   </button>
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     รองรับ JPG, PNG, WEBP ปรับขนาดเป็น 600x600 อัตโนมัติ
                   </p>
                   {fieldErrors.icon_url && (

@@ -37,11 +37,11 @@ export function UserMenu() {
           <div className="text-xs font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-1.5">
             <span>{username}</span>
             {isDev ? (
-              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
                 Dev
               </span>
             ) : (
-              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
                 Member
               </span>
             )}
@@ -69,7 +69,7 @@ export function UserMenu() {
                 </>
               )}
             </div>
-            <div className="mt-1.5 pt-1.5 border-t border-gray-100 dark:border-gray-800 text-[11px] text-gray-500 dark:text-gray-400 flex items-center justify-between">
+            <div className="mt-1.5 pt-1.5 border-t border-gray-100 dark:border-gray-800 text-xs text-gray-500 dark:text-gray-400 flex items-center justify-between">
               <span>วันหมดอายุ Premium:</span>
               <span className="font-semibold text-gray-700 dark:text-gray-300">
                 {profile?.premium_until

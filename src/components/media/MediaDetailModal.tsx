@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { FacebookIcon } from '@/components/icons/FacebookIcon';
 import { cn } from '@/lib/utils/cn';
+import { getSubjectBadge } from '@/lib/utils/subject';
 
 interface MediaDetailModalProps {
   media: MediaItem | null;
@@ -55,6 +56,21 @@ export function MediaDetailModal({
       setHasClickedRecently(false);
     }
   }, [media]);
+
+  // ปิดด้วย Esc + ล็อก scroll พื้นหลังระหว่างเปิด popup
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [isOpen, onClose]);
 
   if (!isOpen || !media) return null;
 
@@ -116,26 +132,16 @@ export function MediaDetailModal({
     setTimeout(() => setCopiedPage(false), 2500);
   };
 
-  const getSubjectBadge = (subject: string) => {
-    switch (subject) {
-      case 'คณิตศาสตร์':
-        return 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30';
-      case 'วิทยาศาสตร์':
-        return 'bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30';
-      case 'ภาษาอังกฤษ':
-        return 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30';
-      default:
-        return 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-500/30';
-    }
-  };
-
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/75 backdrop-blur-md animate-fade-in overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-indigo-950/70 backdrop-blur-md animate-fade-in overflow-y-auto"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-2xl bg-white dark:bg-gray-900 rounded-3xl p-5 sm:p-7 shadow-2xl border border-gray-200 dark:border-gray-800 animate-scale-up my-auto overflow-hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-label={media.title}
+        className="relative w-full max-w-2xl bg-white dark:bg-gray-900 rounded-[2rem] p-5 sm:p-7 shadow-toy-lg border-2 border-indigo-200 dark:border-indigo-900 animate-pop-in my-auto overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top Close Button */}
@@ -165,12 +171,12 @@ export function MediaDetailModal({
                 {isFree ? (
                   <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500 text-white shadow-md shadow-emerald-500/30">
                     <Unlock className="w-3.5 h-3.5" />
-                    <span>FREE</span>
+                    <span>เล่นฟรี</span>
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/30">
                     <Crown className="w-3.5 h-3.5" />
-                    <span>PREMIUM</span>
+                    <span>พรีเมียม</span>
                   </span>
                 )}
               </div>
@@ -225,13 +231,13 @@ export function MediaDetailModal({
                 {media.grade_level?.map((grade) => (
                   <span
                     key={grade}
-                    className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200/60 dark:border-gray-700/60"
+                    className="px-2 py-0.5 rounded-md text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200/60 dark:border-gray-700/60"
                   >
                     {grade}
                   </span>
                 ))}
 
-                <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60 flex items-center gap-1">
+                <span className="px-2 py-0.5 rounded-md text-xs font-medium bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60 flex items-center gap-1">
                   <Layers className="w-3 h-3" />
                   <span>{media.media_type}</span>
                 </span>
@@ -250,7 +256,7 @@ export function MediaDetailModal({
               </div>
 
               {/* Metadata row */}
-              <div className="mt-3 flex items-center gap-4 text-[11px] text-gray-400 dark:text-gray-500">
+              <div className="mt-3 flex items-center gap-4 text-xs text-gray-400 dark:text-gray-500">
                 <div className="flex items-center gap-1">
                   <Calendar className="w-3.5 h-3.5" />
                   <span>
@@ -270,7 +276,7 @@ export function MediaDetailModal({
                     <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-300">
                       สื่อฟรีสำหรับทุกคน (Free Access)
                     </p>
-                    <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-0.5">
+                    <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-0.5">
                       คุณสามารถเปิดใช้งานสื่อการสอนนี้ได้ทันที ไม่จำเป็นต้องเข้าสู่ระบบ
                     </p>
                   </div>
@@ -284,13 +290,13 @@ export function MediaDetailModal({
                       <p className="text-xs font-bold text-amber-900 dark:text-amber-200">
                         ยังไม่ได้เข้าสู่ระบบ
                       </p>
-                      <p className="text-[11px] text-amber-800 dark:text-amber-300 mt-0.5 leading-relaxed">
+                      <p className="text-xs text-amber-800 dark:text-amber-300 mt-0.5 leading-relaxed">
                         สื่อนี้เป็นสื่อระดับ Premium กรุณาเข้าสู่ระบบด้วยบัญชีสมาชิกเพื่อเปิดเข้าใช้งาน
                       </p>
                     </div>
                   </div>
                   <div className="mt-2.5 pt-2 border-t border-amber-200/60 dark:border-amber-900/60 flex items-center justify-between">
-                    <span className="text-[11px] text-amber-700 dark:text-amber-400">
+                    <span className="text-xs text-amber-700 dark:text-amber-400">
                       มีบัญชีสมาชิกอยู่แล้ว?
                     </span>
                     <Link
@@ -306,12 +312,12 @@ export function MediaDetailModal({
                 /* Case 3: Premium Media - Logged in Member but Premium Expired or '-' */
                 <div className="p-3.5 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/50 dark:to-orange-950/40 border border-amber-300 dark:border-amber-800/80">
                   <div className="flex items-start gap-2.5">
-                    <Crown className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0 animate-bounce" />
+                    <Crown className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
                     <div>
                       <p className="text-xs sm:text-sm font-bold text-amber-900 dark:text-amber-200">
                         ต้องเป็นสมาชิก Premium ก่อน ติดต่อได้ทางเพจ สื่อการสอน 5G
                       </p>
-                      <p className="text-[11px] text-amber-800 dark:text-amber-300 mt-1 leading-relaxed">
+                      <p className="text-xs text-amber-800 dark:text-amber-300 mt-1 leading-relaxed">
                         บัญชีของคุณยังไม่มีสิทธิ์ Premium หรือหมดอายุแล้ว หากต้องการเปิดใช้งานสื่อนี้ กรุณาติดต่อแอดมินทางเพจเฟซบุ๊ก
                       </p>
                     </div>
@@ -343,7 +349,7 @@ export function MediaDetailModal({
                     <p className="text-xs font-semibold text-indigo-900 dark:text-indigo-200">
                       {isDev ? 'สิทธิ์ผู้พัฒนา (Dev Access)' : 'สิทธิ์สมาชิก Premium พร้อมใช้งาน'}
                     </p>
-                    <p className="text-[11px] text-indigo-700 dark:text-indigo-400 mt-0.5">
+                    <p className="text-xs text-indigo-700 dark:text-indigo-400 mt-0.5">
                       {isDev
                         ? 'คุณสามารถเปิดใช้งานสื่อได้ทุกรายการ'
                         : `วันหมดอายุ: ${new Date(profile!.premium_until!).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' })}`}
@@ -356,15 +362,15 @@ export function MediaDetailModal({
               {canAccess ? (
                 <button
                   onClick={handleOpenMedia}
-                  className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold text-sm sm:text-base shadow-lg shadow-indigo-600/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2 group"
+                  className="btn-primary-grad w-full py-4 px-6 rounded-2xl font-display font-medium text-base sm:text-lg flex items-center justify-center gap-2 group"
                 >
-                  <span>ใช้งานสื่อ</span>
+                  <span>เล่นเลย!</span>
                   <ExternalLink className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                 </button>
               ) : !user ? (
                 <Link
                   href="/login"
-                  className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold text-sm sm:text-base shadow-lg shadow-indigo-600/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                  className="btn-primary-grad w-full py-4 px-6 rounded-2xl font-display font-medium text-base sm:text-lg flex items-center justify-center gap-2"
                 >
                   <LogIn className="w-4 h-4 sm:w-5 sm:h-5" />
                   <span>เข้าสู่ระบบเพื่อใช้งานสื่อ</span>

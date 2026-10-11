@@ -1,5 +1,5 @@
-import type { Metadata } from 'next';
-import { Noto_Sans_Thai } from 'next/font/google';
+import type { Metadata, Viewport } from 'next';
+import { Noto_Sans_Thai, Mitr } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
 
@@ -10,12 +10,34 @@ const notoSansThai = Noto_Sans_Thai({
   display: 'swap',
 });
 
+// ฟอนต์หัวข้อ: Mitr ตัวกลมมน อ่านง่าย เป็นมิตรกับเด็ก
+const mitr = Mitr({
+  subsets: ['thai', 'latin'],
+  weight: ['400', '500', '600'],
+  variable: '--font-mitr',
+  display: 'swap',
+});
+
 export const metadata: Metadata = {
   title: 'สื่อการสอน 5G - ศูนย์รวมสื่อการสอนและเกมการศึกษา',
   description: 'แพลตฟอร์มคลังสื่อการสอนและเกมการศึกษาออนไลน์ รวบรวมสื่อคุณภาพสำหรับระดับชั้นประถมศึกษา',
   icons: {
     icon: '/logo.png',
   },
+  openGraph: {
+    title: 'สื่อการสอน 5G',
+    description: 'ศูนย์รวมเกมและสื่อการเรียนรู้สำหรับเด็กประถม เล่นสนุก เรียนรู้จริง',
+    images: ['/logo.png'],
+    locale: 'th_TH',
+    type: 'website',
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#f9f6ff' },
+    { media: '(prefers-color-scheme: dark)', color: '#0e0a1f' },
+  ],
 };
 
 export default function RootLayout({
@@ -24,7 +46,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="th" suppressHydrationWarning className={notoSansThai.variable}>
+    <html
+      lang="th"
+      suppressHydrationWarning
+      className={`${notoSansThai.variable} ${mitr.variable}`}
+    >
       <body className="min-h-screen bg-background font-sans antialiased selection:bg-indigo-500 selection:text-white transition-colors duration-200">
         <Providers>{children}</Providers>
       </body>

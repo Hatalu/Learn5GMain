@@ -46,7 +46,7 @@ export function MediaRail({
         <div className="flex items-center gap-2">
           {icon || <Sparkles className="w-5 h-5 text-indigo-500" />}
           <div>
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white tracking-tight">
+            <h2 className="text-xl sm:text-2xl font-medium text-gray-900 dark:text-white">
               {title}
             </h2>
             {subtitle && (

@@ -80,7 +80,7 @@ export function AuthRequiredModal({
         </div>
 
         {/* Note */}
-        <p className="mt-4 text-center text-[11px] text-gray-400 dark:text-gray-500">
+        <p className="mt-4 text-center text-xs text-gray-400 dark:text-gray-500">
           * หากยังไม่มีบัญชีหรือต้องการเปิดใช้งาน กรุณาติดต่อแอดมินผ่านเพจ
         </p>
       </div>

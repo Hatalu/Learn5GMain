@@ -4,8 +4,9 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
 import { MediaItem } from '@/types/database';
-import { Heart, ExternalLink, Eye, Layers, Crown, Unlock, Lock } from 'lucide-react';
+import { Heart, Play, Eye, Layers, Crown, Unlock, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import { getSubjectBadge } from '@/lib/utils/subject';
 
 interface MediaCardProps {
   media: MediaItem;
@@ -22,63 +23,45 @@ export function MediaCard({
   onSelectMedia,
   priority = false,
 }: MediaCardProps) {
-  const { user } = useAuth();
+  const { user, profile, isDev } = useAuth();
   const [imgError, setImgError] = useState(false);
   const localViews = media.view_count;
 
   const isFree = String(media.access_tier || 'premium').toLowerCase().trim() === 'free';
 
-  // Subject badge color scheme
-  const getSubjectBadge = (subject: string) => {
-    switch (subject) {
-      case 'คณิตศาสตร์':
-        return 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30';
-      case 'วิทยาศาสตร์':
-        return 'bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30';
-      case 'ภาษาอังกฤษ':
-        return 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30';
-      default:
-        return 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-500/30';
-    }
-  };
+  // สถานะล็อก: premium และผู้ใช้ยังไม่มีสิทธิ์ (ใช้แสดงผลเท่านั้น)
+  const premiumActive =
+    isDev ||
+    (!!profile?.premium_until && new Date(profile.premium_until).getTime() > Date.now());
+  const isLocked = !isFree && !(user && premiumActive);
 
-  const handleCardClick = (e: React.MouseEvent) => {
-    // If user clicked directly on the favorite button, do not open details modal
-    if ((e.target as HTMLElement).closest('.fav-btn')) {
-      return;
-    }
-    e.preventDefault();
-    if (onSelectMedia) {
-      onSelectMedia(media);
-    }
-  };
+  const openDetail = () => onSelectMedia?.(media);
 
   const fallbackImage =
-    'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600"><rect width="100%" height="100%" fill="%236366f1"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="28" fill="white">Educational Media</text></svg>';
+    'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="%237140f0"/><stop offset="1" stop-color="%23f53d9b"/></linearGradient></defs><rect width="100%" height="100%" fill="url(%23g)"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="700" fill="white">5G</text></svg>';
 
   return (
-    <div
-      onClick={handleCardClick}
-      className="group relative flex flex-col h-full bg-white dark:bg-gray-900 border border-gray-200/90 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 media-card-hover cursor-pointer"
+    <article
+      onClick={openDetail}
+      className="group relative flex flex-col h-full bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-800 hover:border-indigo-400 dark:hover:border-indigo-500 rounded-3xl overflow-hidden shadow-toy hover:shadow-toy-lg media-card-hover cursor-pointer"
     >
-      {/* 1:1 Aspect Ratio Thumbnail */}
+      {/* 1:1 Thumbnail */}
       <div className="relative aspect-square w-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
-        {/* Tier Badge (Top Left) */}
+        {/* Tier Badge */}
         <div className="absolute top-3 left-3 z-10 pointer-events-none">
           {isFree ? (
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500 text-white shadow-md shadow-emerald-500/30">
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-mint-500 text-white shadow-md shadow-mint-500/40 ring-2 ring-white/70">
               <Unlock className="w-3 h-3" />
-              <span>FREE</span>
+              <span>เล่นฟรี</span>
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/30">
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-sun-500 to-orange-500 text-white shadow-md shadow-amber-500/40 ring-2 ring-white/70">
               <Crown className="w-3 h-3" />
-              <span>PREMIUM</span>
+              <span>พรีเมียม</span>
             </span>
           )}
         </div>
 
-        {/* Thumbnail Image */}
         <Image
           src={imgError ? fallbackImage : media.icon_url || fallbackImage}
           alt={media.title}
@@ -86,10 +69,20 @@ export function MediaCard({
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
           priority={priority}
           onError={() => setImgError(true)}
-          className="object-cover group-hover:scale-105 transition-transform duration-300 ease-out"
+          className={cn(
+            'object-cover group-hover:scale-110 transition-transform duration-500 ease-out',
+            isLocked && 'saturate-[0.85]'
+          )}
         />
 
-        {/* Floating Favorite Button (Top Right) */}
+        {/* Hover play overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-indigo-950/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center pointer-events-none">
+          <span className="w-16 h-16 rounded-full bg-white/95 text-indigo-600 flex items-center justify-center shadow-xl scale-75 group-hover:scale-100 transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
+            {isLocked ? <Lock className="w-7 h-7" /> : <Play className="w-7 h-7 fill-current ml-1" />}
+          </span>
+        </div>
+
+        {/* Favorite */}
         <button
           type="button"
           onClick={(e) => {
@@ -97,85 +90,84 @@ export function MediaCard({
             onToggleFavorite(media.id, isFavorite);
           }}
           className={cn(
-            'fav-btn absolute top-3 right-3 p-2 rounded-full backdrop-blur-md transition-all duration-200 shadow-md focus:outline-none focus:ring-2 focus:ring-rose-500 z-10',
+            'fav-btn btn-jelly absolute top-3 right-3 p-2.5 rounded-full backdrop-blur-md shadow-md z-10 ring-2 ring-white/60',
             isFavorite
-              ? 'bg-rose-500 text-white hover:bg-rose-600 scale-105'
+              ? 'bg-violet-500 text-white'
               : 'bg-black/40 text-white/90 hover:text-white hover:bg-black/60'
           )}
           aria-label={isFavorite ? 'นำออกจากรายการโปรด' : 'เพิ่มลงรายการโปรด'}
+          aria-pressed={isFavorite}
           title={isFavorite ? 'นำออกจากรายการโปรด' : 'เพิ่มลงรายการโปรด'}
         >
-          <Heart
-            className={cn(
-              'w-4 h-4 transition-transform active:scale-75',
-              isFavorite && 'fill-current text-white'
-            )}
-          />
+          <Heart className={cn('w-4 h-4', isFavorite && 'fill-current')} />
         </button>
 
-        {/* Views counter tag overlay (Bottom Left) */}
-        <div className="absolute bottom-2.5 left-2.5 px-2 py-1 rounded-lg bg-black/60 backdrop-blur-md text-white text-[11px] font-medium flex items-center gap-1 shadow-sm">
+        {/* Views */}
+        <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-xs font-medium flex items-center gap-1 shadow-sm">
           <Eye className="w-3.5 h-3.5 opacity-90" />
           <span>{localViews.toLocaleString('th-TH')}</span>
         </div>
 
-        {/* Media type tag overlay (Bottom Right) */}
-        <div className="absolute bottom-2.5 right-2.5 px-2 py-1 rounded-lg bg-white/90 dark:bg-gray-900/90 backdrop-blur-md text-gray-800 dark:text-gray-200 text-[10px] font-semibold flex items-center gap-1 shadow-sm border border-gray-200/50 dark:border-gray-700/50">
+        {/* Media type */}
+        <div className="absolute bottom-3 right-3 px-2.5 py-1 rounded-full bg-white/95 dark:bg-gray-900/90 backdrop-blur-md text-gray-800 dark:text-gray-100 text-xs font-semibold flex items-center gap-1 shadow-sm">
           <Layers className="w-3 h-3 text-indigo-500" />
           <span>{media.media_type}</span>
         </div>
       </div>
 
-      {/* Card Content */}
-      <div className="p-4 flex flex-col flex-1 justify-between gap-3">
+      {/* Content */}
+      <div className="p-4 sm:p-5 flex flex-col flex-1 justify-between gap-3">
         <div>
-          {/* Badges: Subject & Grades */}
-          <div className="flex flex-wrap items-center gap-1.5 mb-2">
+          <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
             <span
               className={cn(
-                'px-2 py-0.5 rounded-md text-[11px] font-semibold border',
+                'px-2.5 py-0.5 rounded-full text-xs font-bold border',
                 getSubjectBadge(media.subject)
               )}
             >
               {media.subject}
             </span>
-
             {media.grade_level?.map((grade) => (
               <span
                 key={grade}
-                className="px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200/60 dark:border-gray-700/60"
+                className="px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300"
               >
                 {grade}
               </span>
             ))}
           </div>
 
-          {/* Title */}
-          <h4
-            className="font-bold text-sm sm:text-base text-gray-900 dark:text-white line-clamp-2 leading-snug group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors"
+          <h3
+            className="font-display font-medium text-base sm:text-lg text-gray-900 dark:text-white line-clamp-2 leading-snug group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors"
             title={media.title}
           >
             {media.title}
-          </h4>
+          </h3>
 
-          {/* Description */}
           {media.description && (
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 line-clamp-2 leading-relaxed">
+            <p className="mt-1.5 text-sm text-gray-500 dark:text-gray-400 line-clamp-2 leading-relaxed">
               {media.description}
             </p>
           )}
         </div>
 
-        {/* Action Button: Opens Details Popup */}
         <button
           type="button"
-          onClick={handleCardClick}
-          className="w-full mt-2 inline-flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-semibold bg-gray-100 hover:bg-indigo-600 text-gray-800 hover:text-white dark:bg-gray-800 dark:hover:bg-indigo-600 dark:text-gray-200 dark:hover:text-white transition-all duration-200 border border-gray-200 dark:border-gray-700 group/btn"
+          onClick={(e) => {
+            e.stopPropagation();
+            openDetail();
+          }}
+          className={cn(
+            'btn-jelly w-full mt-1 inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-2xl text-sm font-bold',
+            isLocked
+              ? 'bg-sun-400/25 text-amber-800 dark:text-sun-300 border-2 border-sun-500/50'
+              : 'btn-primary-grad'
+          )}
         >
-          <span>เข้าสู่สื่อ</span>
-          <ExternalLink className="w-3.5 h-3.5 opacity-70 group-hover/btn:translate-x-0.5 transition-transform" />
+          {isLocked ? <Lock className="w-4 h-4" /> : <Play className="w-4 h-4 fill-current" />}
+          <span>{isLocked ? 'ดูรายละเอียด' : 'เล่นเลย'}</span>
         </button>
       </div>
-    </div>
+    </article>
   );
 }

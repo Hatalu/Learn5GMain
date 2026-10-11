@@ -16,7 +16,7 @@ export function Navbar() {
   const isDevPage = pathname.startsWith('/dev');
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-gray-200/80 dark:border-gray-800 bg-white/80 dark:bg-gray-950/80 backdrop-blur-xl transition-colors duration-200">
+    <header className="sticky top-0 z-40 w-full border-b-2 border-indigo-100 dark:border-indigo-950 bg-white/80 dark:bg-gray-950/75 backdrop-blur-xl transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
         {/* Left: Brand with Glowing Logo */}
         <Link
@@ -36,11 +36,11 @@ export function Navbar() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-base sm:text-lg tracking-tight text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+              <span className="font-display font-medium whitespace-nowrap text-lg sm:text-xl text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                 สื่อการสอน 5G
               </span>
             </div>
-            <p className="text-[11px] text-gray-500 dark:text-gray-400 hidden sm:block">
+            <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
               ศูนย์รวมสื่อการสอนและเกมการศึกษา
             </p>
           </div>
@@ -91,15 +91,15 @@ export function Navbar() {
             <UserMenu />
           ) : (
             <div className="flex items-center gap-2">
-              <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-[11px] sm:text-xs font-medium bg-gray-100 dark:bg-gray-800/80 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
+              <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs sm:text-xs font-medium bg-gray-100 dark:bg-gray-800/80 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
                 <UserX className="w-3.5 h-3.5 text-gray-400" />
                 <span>ยังไม่ได้เข้าสู่ระบบ</span>
               </span>
               <Link
                 href="/login"
-                className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 text-xs sm:text-sm font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shadow-indigo-600/25 active:scale-95 transition-all"
+                className="btn-primary-grad inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-2 text-sm font-bold rounded-2xl whitespace-nowrap"
               >
-                <LogIn className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <LogIn className="w-4 h-4" />
                 <span>เข้าสู่ระบบ</span>
               </Link>
             </div>

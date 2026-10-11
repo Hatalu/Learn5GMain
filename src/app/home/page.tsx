@@ -17,6 +17,7 @@ import { FilterSidebar } from '@/components/media/FilterSidebar';
 import { MobileFilterDrawer } from '@/components/media/MobileFilterDrawer';
 import { SortDropdown } from '@/components/media/SortDropdown';
 import { EmptyState } from '@/components/media/EmptyState';
+import { HomeHero } from '@/components/media/HomeHero';
 import { AddMediaModal } from '@/components/dev/AddMediaModal';
 import { MediaDetailModal } from '@/components/media/MediaDetailModal';
 import {
@@ -64,7 +65,7 @@ export default function HomePage() {
 
   // Fetch all media
   const fetchMedia = useCallback(async () => {
-    setIsLoadingMedia(true);
+    // แสดง skeleton เฉพาะการโหลดครั้งแรก (กันตารางกะพริบตอนสลับแท็บ/realtime)
     try {
       // 1. Direct Supabase query (always fresh directly from DB without HTTP proxy cache)
       const { data, error: mediaError } = await supabase
@@ -229,6 +230,15 @@ export default function HomePage() {
     );
   };
 
+  const handleToggleSubject = (subject: FilterState['subjects'][number]) => {
+    setFilters((prev) => ({
+      ...prev,
+      subjects: prev.subjects.includes(subject)
+        ? prev.subjects.filter((s) => s !== subject)
+        : [...prev.subjects, subject],
+    }));
+  };
+
   // Reset all filters
   const handleResetFilters = () => {
     setFilters({
@@ -314,6 +324,12 @@ export default function HomePage() {
       <Navbar />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <HomeHero
+          media={allMedia}
+          selectedSubjects={filters.subjects}
+          onToggleSubject={handleToggleSubject}
+        />
+
         {/* Netflix-style Rail: สื่อใหม่ล่าสุด */}
         {latestMediaList.length > 0 && (
           <div className="mb-8">
@@ -324,7 +340,11 @@ export default function HomePage() {
               favoriteIds={favoriteIds}
               onToggleFavorite={handleToggleFavorite}
               onSelectMedia={handleSelectMedia}
-              icon={<Sparkles className="w-5 h-5 text-indigo-500" />}
+              icon={
+                <span className="w-9 h-9 rounded-2xl bg-gradient-to-br from-sun-400 to-orange-500 flex items-center justify-center shadow-md shadow-orange-500/30 animate-wiggle">
+                  <Sparkles className="w-5 h-5 text-white" />
+                </span>
+              }
             />
           </div>
         )}
@@ -347,9 +367,9 @@ export default function HomePage() {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-gray-200/80 dark:border-gray-800">
               <div className="flex items-center gap-2">
                 <LayoutGrid className="w-5 h-5 text-indigo-500" />
-                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+                <h2 className="text-xl sm:text-2xl font-medium text-gray-900 dark:text-white">
                   {hasActiveFilters ? 'ผลลัพธ์การกรองสื่อ' : 'คลังสื่อการสอนทั้งหมด'}
-                </h1>
+                </h2>
                 <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800">
                   {filteredAndSortedMedia.length} รายการ
                 </span>
@@ -531,10 +551,10 @@ export default function HomePage() {
       </main>
 
       {/* Footer */}
-      <footer className="mt-16 border-t border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm py-8 px-4 sm:px-6 lg:px-8">
+      <footer className="mt-16 border-t-2 border-indigo-100 dark:border-indigo-950 bg-white/60 dark:bg-gray-900/50 backdrop-blur-sm py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
           <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
-            <span className="font-bold text-gray-900 dark:text-white">สื่อการสอน 5G</span>
+            <span className="font-display text-lg text-gradient-brand">สื่อการสอน 5G</span>
             <span className="hidden sm:inline text-gray-400 dark:text-gray-600">|</span>
             <span className="text-xs text-gray-500 dark:text-gray-400">คลังสื่อการเรียนรู้ออนไลน์ระดับประถมศึกษา</span>
           </div>
@@ -557,7 +577,8 @@ export default function HomePage() {
           href="https://www.facebook.com/profile.php?id=61594556657667"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-2.5 px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-full shadow-lg shadow-blue-600/30 hover:shadow-xl hover:shadow-blue-600/40 hover:-translate-y-0.5 active:translate-y-0 transition-all group"
+          className="btn-jelly flex items-center gap-2.5 p-3.5 sm:px-4 sm:py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full shadow-lg shadow-blue-600/30 ring-2 ring-white/70 dark:ring-gray-900 group"
+          aria-label="ติดต่อเพจ Facebook สื่อการสอน 5G"
           title="ติดต่อเพจ Facebook สื่อการสอน 5G"
         >
           <div className="relative">
@@ -567,7 +588,7 @@ export default function HomePage() {
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
             </span>
           </div>
-          <span className="text-xs sm:text-sm font-semibold tracking-wide pr-1">ติดต่อเพจ</span>
+          <span className="hidden sm:inline text-sm font-semibold tracking-wide pr-1">ติดต่อเพจ</span>
         </a>
       </div>
 

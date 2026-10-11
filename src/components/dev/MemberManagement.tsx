@@ -381,7 +381,7 @@ export function MemberManagement() {
                         >
                           <Calendar className="w-3 h-3" />
                           <span>{premiumFormatted}</span>
-                          {!isPremiumActive && <span className="text-[10px]">(หมดอายุแล้ว)</span>}
+                          {!isPremiumActive && <span className="text-xs">(หมดอายุแล้ว)</span>}
                         </span>
                       )}
                     </td>
@@ -476,7 +476,7 @@ export function MemberManagement() {
                   placeholder="ความยาวอย่างน้อย 6 ตัวอักษร"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
-                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   รหัสผ่านจะถูกบันทึกและแสดงในตารางเพื่อให้ Dev ตรวจสอบและส่งมอบให้ผู้เรียนได้
                 </p>
               </div>
@@ -524,7 +524,7 @@ export function MemberManagement() {
                     <button
                       type="button"
                       onClick={() => setNewPremiumUntil('')}
-                      className="text-[11px] text-rose-500 hover:underline"
+                      className="text-xs text-rose-500 hover:underline"
                     >
                       ล้างเป็น (-)
                     </button>
@@ -536,7 +536,7 @@ export function MemberManagement() {
                   onChange={(e) => setNewPremiumUntil(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
-                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   หากไม่ระบุวันที่ ระบบจะตั้งเป็นค่าเริ่มต้นคือ &quot;-&quot;
                 </p>
               </div>
@@ -637,7 +637,7 @@ export function MemberManagement() {
                     <button
                       type="button"
                       onClick={() => setEditPremiumUntil('')}
-                      className="text-[11px] text-rose-500 hover:underline"
+                      className="text-xs text-rose-500 hover:underline"
                     >
                       ล้างเป็น (-)
                     </button>
