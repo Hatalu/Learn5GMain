@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { MediaItem } from '@/types/database';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/Toast';
@@ -21,6 +22,7 @@ import {
   MessageCircle,
   Copy,
   Check,
+  Monitor,
 } from 'lucide-react';
 import { FacebookIcon } from '@/components/icons/FacebookIcon';
 import { cn } from '@/lib/utils/cn';
@@ -43,7 +45,8 @@ export function MediaDetailModal({
   onToggleFavorite,
   onMediaOpened,
 }: MediaDetailModalProps) {
-  const { user, profile, isDev } = useAuth();
+  const { user, profile, isDev, isTeacher } = useAuth();
+  const router = useRouter();
   const { success, error } = useToast();
   const [copiedPage, setCopiedPage] = useState(false);
   const [hasClickedRecently, setHasClickedRecently] = useState(false);
@@ -101,6 +104,13 @@ export function MediaDetailModal({
       } else {
         error('ต้องเป็นสมาชิก Premium ก่อน ติดต่อได้ทางเพจ สื่อการสอน 5G');
       }
+      return;
+    }
+
+    // ผู้ที่ล็อกอิน: เล่นผ่านหน้าเล่นของเรา (บันทึกผล/เวลา/ยอดเล่น และตรวจสิทธิ์ที่เซิร์ฟเวอร์)
+    if (user) {
+      onClose();
+      router.push(`/play/${media.id}`);
       return;
     }
 
@@ -255,6 +265,24 @@ export function MediaDetailModal({
                 </p>
               </div>
 
+              {(media.learning_goal || (media.standards && media.standards.length > 0)) && (
+                <div className="mt-3 p-3.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/60">
+                  {media.learning_goal && (
+                    <p className="text-sm text-gray-700 dark:text-gray-200">
+                      <span className="font-semibold text-indigo-700 dark:text-indigo-300">เป้าหมายการเรียนรู้: </span>
+                      {media.learning_goal}
+                    </p>
+                  )}
+                  {media.standards && media.standards.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {media.standards.map((st) => (
+                        <span key={st} className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white dark:bg-gray-800 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">{st}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Metadata row */}
               <div className="mt-3 flex items-center gap-4 text-xs text-gray-400 dark:text-gray-500">
                 <div className="flex items-center gap-1">
@@ -383,6 +411,18 @@ export function MediaDetailModal({
                   <Lock className="w-4 h-4 text-amber-500" />
                   <span>ต้องเป็นสมาชิก Premium ก่อน</span>
                 </button>
+              )}
+
+              {/* ครู: เปิดสอนหน้าชั้น (แผงข้อมูลบทเรียน + พิมพ์แผนการสอน) */}
+              {canAccess && user && (isTeacher || isDev) && (
+                <Link
+                  href={`/play/${media.id}?mode=teach`}
+                  onClick={onClose}
+                  className="btn-jelly w-full py-3 px-5 rounded-2xl border-2 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-200 font-bold flex items-center justify-center gap-2"
+                >
+                  <Monitor className="w-5 h-5" />
+                  <span>เปิดสอนหน้าชั้น</span>
+                </Link>
               )}
             </div>
           </div>

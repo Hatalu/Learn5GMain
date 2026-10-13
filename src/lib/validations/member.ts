@@ -11,8 +11,8 @@ export const createMemberSchema = z.object({
     .string()
     .min(6, { message: 'รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร' })
     .max(100, { message: 'รหัสผ่านยาวเกินไป' }),
-  role: z.enum(['member', 'dev'], {
-    message: 'สิทธิ์ผู้ใช้งานต้องเป็น member หรือ dev เท่านั้น',
+  role: z.enum(['member', 'dev', 'parent', 'teacher'], {
+    message: 'สิทธิ์ผู้ใช้งานต้องไม่ถูกต้อง',
   }),
   premium_until: z.string().optional().nullable(),
 });
@@ -24,8 +24,8 @@ export const editMemberSchema = z.object({
     .max(30, { message: 'ชื่อผู้ใช้ต้องไม่เกิน 30 ตัวอักษร' })
     .regex(/^[a-zA-Z0-9_-]+$/, { message: 'ชื่อผู้ใช้ต้องเป็นตัวอักษรภาษาอังกฤษ ตัวเลข หรือ _ - เท่านั้น' })
     .trim(),
-  role: z.enum(['member', 'dev'], {
-    message: 'สิทธิ์ผู้ใช้งานต้องเป็น member หรือ dev เท่านั้น',
+  role: z.enum(['member', 'dev', 'parent', 'teacher'], {
+    message: 'สิทธิ์ผู้ใช้งานต้องไม่ถูกต้อง',
   }),
   premium_until: z.string().optional().nullable(),
 });

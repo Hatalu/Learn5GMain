@@ -1,36 +1,40 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { ThemeToggle } from '@/components/navbar/ThemeToggle';
 import { Sparkles, Lock, User, Eye, EyeOff, Loader2, BookOpen, ArrowLeft } from 'lucide-react';
 import { FacebookIcon } from '@/components/icons/FacebookIcon';
 
-export default function LoginPage() {
+function LoginForm() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { signIn, user, isLoading } = useAuth();
+  const { signIn, user, profile, isLoading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
-  // If already logged in, redirect to /home
+  // ล็อกอินแล้ว: ไปหน้าที่ขอไว้ หรือหน้าหลักของบทบาทนั้น
   useEffect(() => {
-    if (!isLoading && user) {
-      router.replace('/home');
-    }
-  }, [user, isLoading, router]);
+    if (isLoading || !user || !profile) return;
+    const wanted = searchParams.get('redirect');
+    const safe = wanted && wanted.startsWith('/') && !wanted.startsWith('//') ? wanted : null;
+    router.replace(
+      safe || (profile.role === 'student' ? '/me' : profile.role === 'teacher' ? '/teacher' : '/home')
+    );
+  }, [user, profile, isLoading, router, searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
 
     if (!username.trim()) {
-      setErrorMsg('กรุณากรอกชื่อผู้ใช้');
+      setErrorMsg('กรุณากรอกอีเมลหรือชื่อผู้ใช้');
       return;
     }
 
@@ -44,8 +48,6 @@ export default function LoginPage() {
       const res = await signIn(username, password);
       if (!res.success) {
         setErrorMsg(res.error || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
-      } else {
-        router.push('/home');
       }
     } catch {
       setErrorMsg('เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง');
@@ -129,7 +131,7 @@ export default function LoginPage() {
                 htmlFor="username"
                 className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5"
               >
-                ชื่อผู้ใช้
+                อีเมล หรือ ชื่อผู้ใช้
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
@@ -138,11 +140,11 @@ export default function LoginPage() {
                 <input
                   id="username"
                   type="text"
-                  autoComplete="username"
+                  autoComplete="username" inputMode="email"
                   required
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="กรอกชื่อผู้ใช้ของคุณ"
+                  placeholder="เช่น teacher@email.com"
                   className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800/80 text-gray-900 dark:text-white placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                 />
               </div>
@@ -200,23 +202,38 @@ export default function LoginPage() {
             </div>
           </form>
 
-          {/* Footer note: Specification #3 requirement */}
-          <div className="mt-6 pt-5 border-t border-gray-200/80 dark:border-gray-800 text-center">
+          <div className="mt-6 pt-5 border-t border-gray-200/80 dark:border-gray-800 space-y-3 text-center">
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+              ยังไม่มีบัญชี?{' '}
+              <Link href="/register" className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+                สมัครสมาชิก (ผู้ปกครอง / คุณครู)
+              </Link>
+            </p>
+            <Link
+              href="/kid"
+              className="btn-jelly flex items-center justify-center gap-2 w-full py-3 rounded-2xl bg-sun-400/25 text-amber-800 dark:text-sun-300 border-2 border-sun-500/50 font-display"
+            >
+              <span className="w-6 h-6 rounded-full bg-gradient-to-br from-sun-400 to-orange-500 text-white flex items-center justify-center text-xs font-bold" aria-hidden="true">A</span>
+              ฉันเป็นนักเรียน
+            </Link>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              ลืมรหัสผ่านหรือต้องการสมัครสมาชิก?{' '}
-              <a
-                href="https://www.facebook.com/profile.php?id=61594556657667"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-medium text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1 transition-colors"
-              >
+              ลืมรหัสผ่าน?{' '}
+              <a href="https://www.facebook.com/profile.php?id=61594556657667" target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1">
                 <FacebookIcon className="w-3.5 h-3.5" />
-                ติดต่อแอดมินผ่านเพจ สื่อการสอน 5G
+                ติดต่อแอดมินผ่านเพจ
               </a>
             </p>
           </div>
         </div>
       </div>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   );
 }

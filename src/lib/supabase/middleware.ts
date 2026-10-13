@@ -43,29 +43,47 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(new URL('/home', request.url));
   }
 
-  // 2. Already logged in accessing /login
-  if (path === '/login' && user) {
-    return NextResponse.redirect(new URL('/home', request.url));
-  }
+  // เส้นทางที่ต้องล็อกอิน + บทบาทที่อนุญาต (ตรวจซ้ำที่ API ทุกจุดอีกชั้น)
+  const guarded: Array<[string, string[]]> = [
+    ['/dev', ['dev']],
+    ['/teacher', ['teacher', 'dev']],
+    ['/parent', ['parent', 'member', 'dev']],
+    ['/me', ['student']],
+    ['/play', ['student', 'parent', 'teacher', 'member', 'dev']],
+  ];
+  const rule = guarded.find(([prefix]) => path === prefix || path.startsWith(prefix + '/'));
 
-  // 3. Unauthenticated accessing protected routes (/dev only)
-  if (!user && path.startsWith('/dev')) {
-    const url = new URL('/login', request.url);
-    url.searchParams.set('redirect', path);
-    return NextResponse.redirect(url);
-  }
-
-  // 4. Role check for /dev routes
-  if (user && path.startsWith('/dev')) {
+  const getRole = async (): Promise<string | null> => {
+    if (!user) return null;
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', user.id)
       .maybeSingle();
+    return profile?.role ?? null;
+  };
 
-    if (!profile || profile.role !== 'dev') {
-      // Forbidden: redirect to home
-      return NextResponse.redirect(new URL('/home?error=unauthorized_dev', request.url));
+  const homeFor = (role: string | null) =>
+    role === 'student' ? '/me' : role === 'teacher' ? '/teacher' : '/home';
+
+  // 2. ล็อกอินแล้วแต่เข้าหน้า login/สมัคร -> ส่งไปหน้าของบทบาทนั้น
+  if (user && (path === '/login' || path === '/register' || path === '/kid')) {
+    return NextResponse.redirect(new URL(homeFor(await getRole()), request.url));
+  }
+
+  if (rule) {
+    // 3. ยังไม่ล็อกอิน
+    if (!user) {
+      const target = path.startsWith('/play') || path.startsWith('/me') ? '/kid' : '/login';
+      const url = new URL(target, request.url);
+      url.searchParams.set('redirect', path);
+      return NextResponse.redirect(url);
+    }
+    // 4. ตรวจบทบาท
+    const role = await getRole();
+    if (!role || !rule[1].includes(role)) {
+      const dest = path.startsWith('/dev') ? '/home?error=unauthorized_dev' : homeFor(role);
+      return NextResponse.redirect(new URL(dest, request.url));
     }
   }
 

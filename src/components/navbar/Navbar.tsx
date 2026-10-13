@@ -7,11 +7,11 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { ThemeToggle } from './ThemeToggle';
 import { UserMenu } from './UserMenu';
-import { ShieldCheck, Home, LogIn, UserX } from 'lucide-react';
+import { ShieldCheck, Home, LogIn, UserX, Compass, School, Users, UserPlus } from 'lucide-react';
 import { FacebookIcon } from '@/components/icons/FacebookIcon';
 
 export function Navbar() {
-  const { user, isDev } = useAuth();
+  const { user, isDev, isStudent, isTeacher, isParent } = useAuth();
   const pathname = usePathname();
   const isDevPage = pathname.startsWith('/dev');
 
@@ -60,6 +60,17 @@ export function Navbar() {
             <span className="hidden md:inline text-xs font-semibold">เพจ Facebook</span>
           </a>
 
+          {/* ลิงก์หน้าหลักตามบทบาท */}
+          {user && (isStudent || isTeacher || isParent) && (
+            <Link
+              href={isStudent ? '/me' : isTeacher ? '/teacher' : '/parent'}
+              className="btn-jelly inline-flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-bold rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-200 border-2 border-indigo-200 dark:border-indigo-800 whitespace-nowrap"
+            >
+              {isStudent ? <Compass className="w-4 h-4" /> : isTeacher ? <School className="w-4 h-4" /> : <Users className="w-4 h-4" />}
+              <span className="hidden sm:inline">{isStudent ? 'ห้องผจญภัย' : isTeacher ? 'ห้องเรียนของฉัน' : 'ครอบครัวของฉัน'}</span>
+            </Link>
+          )}
+
           {/* Dev Button - ONLY rendered if user has dev role! */}
           {user && isDev && (
             isDevPage ? (
@@ -91,10 +102,21 @@ export function Navbar() {
             <UserMenu />
           ) : (
             <div className="flex items-center gap-2">
-              <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs sm:text-xs font-medium bg-gray-100 dark:bg-gray-800/80 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
-                <UserX className="w-3.5 h-3.5 text-gray-400" />
-                <span>ยังไม่ได้เข้าสู่ระบบ</span>
-              </span>
+              <Link
+                href="/kid"
+                className="btn-jelly inline-flex items-center gap-1.5 px-3 py-2 text-sm font-bold rounded-2xl bg-sun-400/25 text-amber-800 dark:text-sun-300 border-2 border-sun-500/50 whitespace-nowrap"
+              >
+                <Compass className="w-4 h-4" />
+                <span className="hidden sm:inline">นักเรียนเข้าห้อง</span>
+                <span className="sm:hidden">นักเรียน</span>
+              </Link>
+              <Link
+                href="/register"
+                className="btn-jelly hidden lg:inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-bold rounded-2xl border-2 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-200 whitespace-nowrap"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>สมัครสมาชิก</span>
+              </Link>
               <Link
                 href="/login"
                 className="btn-primary-grad inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-2 text-sm font-bold rounded-2xl whitespace-nowrap"

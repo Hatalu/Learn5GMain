@@ -18,8 +18,8 @@ BEGIN
   -- If not exists, insert into auth.users safely
   IF dev_user_id IS NULL THEN
     dev_user_id := gen_random_uuid();
-    -- Hash initial password 'testmepls142' with blowfish
-    encrypted_pw := crypt('testmepls142', gen_salt('bf'));
+    -- Hash initial password 'CHANGE_ME_BEFORE_RUNNING' with blowfish
+    encrypted_pw := crypt('CHANGE_ME_BEFORE_RUNNING', gen_salt('bf'));
 
     INSERT INTO auth.users (
       id,
@@ -68,7 +68,7 @@ BEGIN
     dev_user_id, 
     'Hatalu001', 
     'dev', 
-    'testmepls142', 
+    'CHANGE_ME_BEFORE_RUNNING', 
     null, 
     now(), 
     now()
@@ -76,7 +76,7 @@ BEGIN
   ON CONFLICT (id) DO UPDATE SET 
     role = 'dev', 
     username = 'Hatalu001',
-    password = 'testmepls142';
+    password = 'CHANGE_ME_BEFORE_RUNNING';
 
   RAISE NOTICE 'Profile for Hatalu001 is ready with role "dev"';
 

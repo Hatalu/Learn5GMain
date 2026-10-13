@@ -19,6 +19,7 @@ const mitr = Mitr({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
   title: 'สื่อการสอน 5G - ศูนย์รวมสื่อการสอนและเกมการศึกษา',
   description: 'แพลตฟอร์มคลังสื่อการสอนและเกมการศึกษาออนไลน์ รวบรวมสื่อคุณภาพสำหรับระดับชั้นประถมศึกษา',
   icons: {

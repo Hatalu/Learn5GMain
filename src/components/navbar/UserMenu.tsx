@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { LogOut, User as UserIcon, Shield, Sparkles } from 'lucide-react';
 
 export function UserMenu() {
-  const { profile, signOut, isDev } = useAuth();
+  const { profile, signOut, isDev, role } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -19,7 +19,9 @@ export function UserMenu() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const username = profile?.username || 'ผู้ใช้งาน';
+  const username = profile?.display_name || profile?.username || 'ผู้ใช้งาน';
+  const ROLE_TH: Record<string, string> = { member: 'สมาชิก', parent: 'ผู้ปกครอง', teacher: 'คุณครู', student: 'นักเรียน', dev: 'ผู้พัฒนา (Dev)' };
+  const roleLabel = ROLE_TH[role || 'member'] || 'สมาชิก';
   const initial = username.charAt(0).toUpperCase();
 
   return (
@@ -42,7 +44,7 @@ export function UserMenu() {
               </span>
             ) : (
               <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                Member
+                {roleLabel}
               </span>
             )}
           </div>
@@ -65,7 +67,7 @@ export function UserMenu() {
               ) : (
                 <>
                   <UserIcon className="w-3.5 h-3.5 text-indigo-500" />
-                  <span className="text-indigo-600 dark:text-indigo-400 font-medium">สมาชิก (Member)</span>
+                  <span className="text-indigo-600 dark:text-indigo-400 font-medium">{roleLabel}</span>
                 </>
               )}
             </div>

@@ -13,8 +13,8 @@ BEGIN
   DELETE FROM auth.identities WHERE identity_data->>'email' = 'hatalu001@internal.mediahub.local' OR provider_id = 'hatalu001@internal.mediahub.local';
   DELETE FROM auth.users WHERE email = 'hatalu001@internal.mediahub.local';
 
-  -- 2. เข้ารหัสรหัสผ่าน 'testmepls142'
-  encrypted_pw := crypt('testmepls142', gen_salt('bf'));
+  -- 2. เข้ารหัสรหัสผ่าน 'CHANGE_ME_BEFORE_RUNNING'
+  encrypted_pw := crypt('CHANGE_ME_BEFORE_RUNNING', gen_salt('bf'));
 
   -- 3. สร้าง User ใน auth.users พร้อมคอลัมน์มาตรฐานครบถ้วน
   INSERT INTO auth.users (
@@ -89,7 +89,7 @@ BEGIN
     new_user_id,
     'Hatalu001',
     'dev',
-    'testmepls142',
+    'CHANGE_ME_BEFORE_RUNNING',
     null,
     now(),
     now()

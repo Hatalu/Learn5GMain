@@ -1,5 +1,6 @@
 'use client';
 
+import { CurriculumFields, parseStandards, saveWithColumnFallback } from './CurriculumFields';
 import React, { useState, useEffect } from 'react';
 import {
   ALL_GRADES,
@@ -43,6 +44,8 @@ export function EditMediaModal({
   const [accessTier, setAccessTier] = useState<AccessTier>('premium');
   const [isPublic, setIsPublic] = useState(true);
   const [gameUrl, setGameUrl] = useState('');
+  const [learningGoal, setLearningGoal] = useState('');
+  const [standardsText, setStandardsText] = useState('');
   const [iconUrl, setIconUrl] = useState('');
   const [croppedBlob, setCroppedBlob] = useState<Blob | null>(null);
 
@@ -60,6 +63,8 @@ export function EditMediaModal({
       setAccessTier((media.access_tier as AccessTier) || 'premium');
       setIsPublic(media.is_public !== false);
       setGameUrl(media.game_url);
+      setLearningGoal(media.learning_goal || '');
+      setStandardsText((media.standards || []).join(', '));
       setIconUrl(media.icon_url);
       setCroppedBlob(null);
       setFieldErrors({});
@@ -145,20 +150,15 @@ export function EditMediaModal({
         access_tier: accessTier,
         is_public: isPublic,
         game_url: gameUrl.trim(),
+        learning_goal: learningGoal.trim() || null,
+        standards: parseStandards(standardsText),
         updated_at: new Date().toISOString(),
       };
 
-      let { error: updateError } = await supabase
-        .from('media')
-        .update(updatePayload)
-        .eq('id', media.id);
-
-      // Graceful fallback if is_public column not yet created in Supabase
-      if (updateError && (updateError.message?.includes('is_public') || (updateError as any).code === 'PGRST204')) {
-        delete updatePayload.is_public;
-        const retry = await supabase.from('media').update(updatePayload).eq('id', media.id);
-        updateError = retry.error;
-      }
+      const updateError = await saveWithColumnFallback(
+        (body) => supabase.from('media').update(body).eq('id', media.id),
+        updatePayload
+      );
 
       if (updateError) {
         throw new Error(updateError.message);
@@ -426,6 +426,9 @@ export function EditMediaModal({
                 <p className="text-xs text-rose-500 mt-1">{fieldErrors.game_url}</p>
               )}
             </div>
+
+
+            <CurriculumFields goal={learningGoal} onGoal={setLearningGoal} standards={standardsText} onStandards={setStandardsText} />
 
             {/* Actions */}
             <div className="pt-4 border-t border-gray-100 dark:border-gray-800 flex justify-end gap-3">

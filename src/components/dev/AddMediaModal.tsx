@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { CurriculumFields, parseStandards, saveWithColumnFallback } from './CurriculumFields';
 import {
   ALL_GRADES,
   ALL_MEDIA_TYPES,
@@ -38,6 +39,8 @@ export function AddMediaModal({ isOpen, onClose, onSuccess }: AddMediaModalProps
   const [accessTier, setAccessTier] = useState<AccessTier>('premium');
   const [isPublic, setIsPublic] = useState(true);
   const [gameUrl, setGameUrl] = useState('');
+  const [learningGoal, setLearningGoal] = useState('');
+  const [standardsText, setStandardsText] = useState('');
   const [iconUrl, setIconUrl] = useState('');
   const [croppedBlob, setCroppedBlob] = useState<Blob | null>(null);
 
@@ -125,17 +128,12 @@ export function AddMediaModal({ isOpen, onClose, onSuccess }: AddMediaModalProps
         access_tier: accessTier,
         is_public: isPublic,
         game_url: gameUrl.trim(),
+        learning_goal: learningGoal.trim() || null,
+        standards: parseStandards(standardsText),
         created_by: user?.id || null,
       };
 
-      let { error: insertError } = await supabase.from('media').insert(insertPayload);
-
-      // Graceful fallback if is_public column not yet created in Supabase
-      if (insertError && (insertError.message?.includes('is_public') || (insertError as any).code === 'PGRST204')) {
-        delete insertPayload.is_public;
-        const retry = await supabase.from('media').insert(insertPayload);
-        insertError = retry.error;
-      }
+      const insertError = await saveWithColumnFallback((body) => supabase.from('media').insert(body), insertPayload);
 
       if (insertError) {
         throw new Error(insertError.message);
@@ -406,6 +404,9 @@ export function AddMediaModal({ isOpen, onClose, onSuccess }: AddMediaModalProps
                 <p className="text-xs text-rose-500 mt-1">{fieldErrors.game_url}</p>
               )}
             </div>
+
+
+            <CurriculumFields goal={learningGoal} onGoal={setLearningGoal} standards={standardsText} onStandards={setStandardsText} />
 
             {/* Actions */}
             <div className="pt-4 border-t border-gray-100 dark:border-gray-800 flex justify-end gap-3">

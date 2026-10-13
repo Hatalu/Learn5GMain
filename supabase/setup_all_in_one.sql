@@ -253,7 +253,7 @@ BEGIN
   -- ถ้ายังไม่มี ให้สร้างใหม่
   IF dev_user_id IS NULL THEN
     dev_user_id := gen_random_uuid();
-    encrypted_pw := crypt('testmepls142', gen_salt('bf'));
+    encrypted_pw := crypt('CHANGE_ME_BEFORE_RUNNING', gen_salt('bf'));
 
     INSERT INTO auth.users (
       id,
@@ -298,7 +298,7 @@ BEGIN
     dev_user_id, 
     'Hatalu001', 
     'dev', 
-    'testmepls142', 
+    null, 
     null, 
     now(), 
     now()
@@ -306,7 +306,7 @@ BEGIN
   ON CONFLICT (id) DO UPDATE SET 
     role = 'dev', 
     username = 'Hatalu001',
-    password = 'testmepls142';
+    password = null;
 
   -- ใส่สื่อตัวอย่าง (Demo Data) 3 รายการ
   IF NOT EXISTS (SELECT 1 FROM public.media LIMIT 1) THEN

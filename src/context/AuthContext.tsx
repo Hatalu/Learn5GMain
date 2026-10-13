@@ -11,8 +11,15 @@ interface AuthContextType {
   profile: Profile | null;
   role: UserRole | null;
   isDev: boolean;
+  isTeacher: boolean;
+  /** ผู้ปกครอง (รวมสมาชิกเดิมที่ยังเป็น role = member) */
+  isParent: boolean;
+  isStudent: boolean;
   isLoading: boolean;
-  signIn: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  /** เข้าสู่ระบบด้วยอีเมล (ผู้ใหญ่) หรือชื่อผู้ใช้เดิม */
+  signIn: (identifier: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  /** นักเรียนเข้าด้วยรหัสนักเรียน + PIN */
+  signInKid: (code: string, pin: string) => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -94,22 +101,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [supabase, fetchProfile]);
 
-  const signIn = async (username: string, password: string) => {
+  const signIn = async (identifier: string, password: string) => {
     try {
-      const cleanUsername = username.trim().toLowerCase();
-      const internalEmail = `${cleanUsername}@internal.mediahub.local`;
+      const clean = identifier.trim().toLowerCase();
+      // มี @ = อีเมลจริง (ผู้ปกครอง/ครู) ไม่มี = ชื่อผู้ใช้แบบเดิม
+      const email = clean.includes('@') ? clean : `${clean}@internal.mediahub.local`;
 
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: internalEmail,
-        password,
-      });
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
       if (error) {
         return {
           success: false,
           error:
             error.message.includes('Invalid login credentials')
-              ? 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง'
+              ? 'อีเมล/ชื่อผู้ใช้ หรือรหัสผ่านไม่ถูกต้อง'
               : 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ กรุณาลองใหม่อีกครั้ง',
         };
       }
@@ -127,16 +132,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const signInKid = async (code: string, pin: string) => {
+    try {
+      const res = await fetch('/api/auth/kid-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, pin }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.tokenHash) {
+        return { success: false, error: json.error || 'เข้าสู่ระบบไม่สำเร็จ ลองใหม่อีกครั้งนะ' };
+      }
+
+      const { data, error } = await supabase.auth.verifyOtp({ token_hash: json.tokenHash, type: 'magiclink' });
+      if (error || !data.user) {
+        return { success: false, error: 'เข้าสู่ระบบไม่สำเร็จ ลองใหม่อีกครั้งนะ' };
+      }
+      setUser(data.user);
+      const p = await fetchProfile(data.user.id);
+      if (p) setProfile(p);
+      return { success: true };
+    } catch {
+      return { success: false, error: 'เชื่อมต่อไม่ได้ ลองใหม่อีกครั้งนะ' };
+    }
+  };
+
   const signOut = async () => {
+    const wasStudent = profile?.role === 'student';
     try {
       await supabase.auth.signOut();
       setUser(null);
       setProfile(null);
-      router.push('/login');
     } catch (err) {
       console.error('Error signing out:', err);
-      router.push('/login');
     }
+    router.push(wasStudent ? '/kid' : '/login');
   };
 
   const role = profile?.role ?? null;
@@ -149,8 +179,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         profile,
         role,
         isDev,
+        isTeacher: role === 'teacher',
+        isParent: role === 'parent' || role === 'member',
+        isStudent: role === 'student',
         isLoading,
         signIn,
+        signInKid,
         signOut,
         refreshProfile,
       }}

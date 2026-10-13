@@ -9,7 +9,11 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const devUsername = process.env.SEED_DEV_USERNAME || 'Hatalu001';
-const devPassword = process.env.SEED_DEV_PASSWORD || 'testmepls142';
+const devPassword = process.env.SEED_DEV_PASSWORD || '';
+if (devPassword.length < 10) {
+  console.error('กรุณาตั้ง SEED_DEV_PASSWORD ใน .env.local (อย่างน้อย 10 ตัวอักษร) ก่อนรัน seed');
+  process.exit(1);
+}
 
 if (!supabaseUrl || !serviceRoleKey || supabaseUrl.includes('your-project-id')) {
   console.error('\n❌ Missing or default Supabase credentials in .env.local!');
@@ -106,7 +110,6 @@ async function runSeed() {
       id: devUserId,
       username: devUsername,
       role: 'dev',
-      password: devPassword,
       premium_until: null,
     });
 
@@ -177,7 +180,7 @@ async function runSeed() {
   console.log('----------------------------------------------------');
   console.log('🔑 Login Credentials:');
   console.log(`   Username: ${devUsername}`);
-  console.log(`   Password: ${devPassword}`);
+  console.log('   Password: (ตามค่า SEED_DEV_PASSWORD ที่ตั้งไว้)');
   console.log(`   Role:     dev`);
   console.log('----------------------------------------------------\n');
 }
