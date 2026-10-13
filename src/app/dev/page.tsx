@@ -10,7 +10,6 @@ import { createClient } from '@/lib/supabase/client';
 import { Navbar } from '@/components/navbar/Navbar';
 import { StatCards } from '@/components/dev/StatCards';
 import { MemberManagement } from '@/components/dev/MemberManagement';
-import { PremiumRequests } from '@/components/dev/PremiumRequests';
 import { AddMediaModal } from '@/components/dev/AddMediaModal';
 import { EditMediaModal } from '@/components/dev/EditMediaModal';
 import { DeleteConfirmModal } from '@/components/dev/DeleteConfirmModal';
@@ -38,7 +37,7 @@ export default function DevDashboardPage() {
   const { success, error } = useToast();
   const supabase = createClient();
 
-  const [activeTab, setActiveTab] = useState<'media' | 'members' | 'premium'>('media');
+  const [activeTab, setActiveTab] = useState<'media' | 'members'>('media');
   const [stats, setStats] = useState<SystemStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
 
@@ -228,19 +227,6 @@ export default function DevDashboardPage() {
           >
             <Users className="w-4 h-4" />
             <span>จัดการสมาชิก</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('premium')}
-            className={cn(
-              'flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 transition-all',
-              activeTab === 'premium'
-                ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
-                : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'
-            )}
-          >
-            <Crown className="w-4 h-4" />
-            <span>คำขอ Premium</span>
           </button>
         </div>
 
@@ -501,7 +487,6 @@ export default function DevDashboardPage() {
 
         {/* Tab 2: Member Management */}
         {activeTab === 'members' && <MemberManagement />}
-        {activeTab === 'premium' && <PremiumRequests />}
       </main>
 
       {/* Modals */}

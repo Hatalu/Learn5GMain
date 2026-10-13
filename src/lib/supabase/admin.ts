@@ -62,7 +62,7 @@ export async function createMemberAccount(
     throw new Error(authError?.message || 'ไม่สามารถสร้างผู้ใช้งานในระบบ Auth ได้');
   }
 
-  // Create profile record (username, role, premium_until) — ไม่เก็บรหัสผ่านใดๆ ในตาราง
+  // Create profile record (username, role, premium_until) — ไม่เก็บรหัสผ่านในตาราง
   const { data: profileData, error: profileError } = await admin
     .from('profiles')
     .insert({
@@ -120,7 +120,7 @@ export async function updateMember(
   }
 
   // Safety rule: Cannot demote the last dev
-  if (current.role === 'dev' && newRole !== 'dev') {
+  if (current.role === 'dev' && newRole === 'member') {
     const devCount = await getDevCount();
     if (devCount <= 1) {
       throw new Error('ไม่สามารถลดสิทธิ์ Dev คนสุดท้ายได้ เนื่องจากระบบต้องมี Dev อย่างน้อย 1 คน');
@@ -166,13 +166,6 @@ export async function updateMember(
     .single();
 
   if (updateError) throw updateError;
-
-  // นักเรียนในความดูแลใช้สิทธิ์ Premium ตามผู้ดูแล
-  await admin
-    .from('profiles')
-    .update({ premium_until: newPremiumUntil ? new Date(newPremiumUntil).toISOString() : null })
-    .eq('owner_id', userId);
-
   return updated as Profile;
 }
 
@@ -188,11 +181,6 @@ export async function resetMemberPassword(userId: string, newPassword: string) {
   if (error) {
     throw new Error(`ไม่สามารถรีเซ็ตรหัสผ่านได้: ${error.message}`);
   }
-
-  await admin
-    .from('profiles')
-    .update({ updated_at: new Date().toISOString() })
-    .eq('id', userId);
 
   return true;
 }
@@ -219,12 +207,6 @@ export async function deleteMember(userId: string) {
     if (devCount <= 1) {
       throw new Error('ไม่สามารถลบ Dev คนสุดท้ายของระบบได้');
     }
-  }
-
-  // ลบนักเรียนในความดูแลทั้งหมดก่อน (บัญชี auth ของเด็กต้องถูกลบด้วย)
-  const { data: kids } = await admin.from('profiles').select('id').eq('owner_id', userId);
-  for (const kid of kids || []) {
-    await admin.auth.admin.deleteUser(kid.id);
   }
 
   // Delete profile first

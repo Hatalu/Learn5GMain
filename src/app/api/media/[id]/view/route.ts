@@ -1,32 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase/admin';
-import { clientIp, isSameOrigin, rateLimit } from '@/lib/server/security';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/**
- * นับยอดเล่นของผู้เยี่ยมชมที่ยังไม่ล็อกอิน (สื่อฟรีเท่านั้น)
- * - ผู้ที่ล็อกอินนับผ่าน /api/play/start อยู่แล้ว
- * - จำกัด 1 ครั้ง/นาที ต่อ IP ต่อสื่อ กันปั่นยอด
- */
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  if (!isSameOrigin(req)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  const mediaId = params.id;
-  if (!UUID.test(mediaId)) return NextResponse.json({ error: 'Invalid media id' }, { status: 400 });
+// กันปั่นยอดเบื้องต้น: 1 ครั้ง/นาที ต่อ IP ต่อสื่อ (ในหน่วยความจำ)
+const seen = new Map<string, number>();
 
-  if (!rateLimit(`guestview:${clientIp(req)}:${mediaId}`, 1, 60 * 1000)) {
-    return NextResponse.json({ success: true, counted: false });
+export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+  const mediaId = params.id;
+  if (!mediaId || !UUID.test(mediaId)) {
+    return NextResponse.json({ error: 'Invalid media id' }, { status: 400 });
   }
 
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+  const key = `${ip}:${mediaId}`;
+  const now = Date.now();
+  if (now - (seen.get(key) || 0) < 60_000) {
+    return NextResponse.json({ success: true, counted: false });
+  }
+  seen.set(key, now);
+  if (seen.size > 5000) seen.clear();
+
   try {
-    const admin = getAdminClient();
-    const { data: media } = await admin.from('media').select('access_tier, is_public').eq('id', mediaId).maybeSingle();
-    if (!media || media.is_public === false || String(media.access_tier).toLowerCase() !== 'free') {
-      return NextResponse.json({ success: true, counted: false });
-    }
-    await admin.rpc('increment_media_view', { p_media_id: mediaId });
+    // ฟังก์ชันนับยอดถูกจำกัดให้เรียกได้เฉพาะฝั่งเซิร์ฟเวอร์ (migration 004)
+    const { error } = await getAdminClient().rpc('increment_media_view', { p_media_id: mediaId });
+    if (error) throw error;
     return NextResponse.json({ success: true, counted: true });
-  } catch {
-    return NextResponse.json({ error: 'Error incrementing view' }, { status: 500 });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Error incrementing view';
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

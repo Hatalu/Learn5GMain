@@ -23,18 +23,13 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
-const ROLE_LABEL: Record<string, string> = {
-  member: 'สมาชิกทั่วไป',
-  parent: 'ผู้ปกครอง',
-  teacher: 'คุณครู',
-  dev: 'Dev',
-};
-
 export function MemberManagement() {
   const { success, error, warning, info } = useToast();
   const [members, setMembers] = useState<Profile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Password visibility set for table rows
+  const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set());
 
   // Modals state
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -80,6 +75,26 @@ export function MemberManagement() {
   useEffect(() => {
     fetchMembers();
   }, [fetchMembers]);
+
+  // Toggle password visibility in table
+  const togglePasswordVisibility = (userId: string) => {
+    setVisiblePasswords((prev) => {
+      const next = new Set(prev);
+      if (next.has(userId)) {
+        next.delete(userId);
+      } else {
+        next.add(userId);
+      }
+      return next;
+    });
+  };
+
+  // Copy password to clipboard
+  const copyPassword = (pwd: string) => {
+    if (!pwd) return;
+    navigator.clipboard.writeText(pwd);
+    info('คัดลอกรหัสผ่านลงคลิปบอร์ดแล้ว');
+  };
 
   // Format Premium Expiry Date (returns '-' if not set)
   const formatPremiumDate = (dateStr?: string | null) => {
@@ -138,7 +153,7 @@ export function MemberManagement() {
     if (!editMember || !editUsername.trim()) return;
 
     // Check last dev rule on UI before sending
-    if (editMember.role === 'dev' && editRole !== 'dev') {
+    if (editMember.role === 'dev' && editRole === 'member') {
       const devCount = members.filter((m) => m.role === 'dev').length;
       if (devCount <= 1) {
         warning('ไม่สามารถลดสิทธิ์ Dev คนสุดท้ายได้ ระบบต้องมี Dev อย่างน้อย 1 คน');
@@ -270,7 +285,7 @@ export function MemberManagement() {
             <thead className="bg-gray-50 dark:bg-gray-800/60 text-gray-600 dark:text-gray-400 uppercase tracking-wider font-semibold border-b border-gray-200 dark:border-gray-800">
               <tr>
                 <th className="py-3.5 px-4">1. ชื่อผู้ใช้ (Username)</th>
-                <th className="py-3.5 px-4">2. ความปลอดภัยรหัสผ่าน</th>
+                <th className="py-3.5 px-4">2. รหัสผ่าน (Password)</th>
                 <th className="py-3.5 px-4">3. สิทธิ์ (Role Member)</th>
                 <th className="py-3.5 px-4">4. วันหมดอายุ Premium</th>
                 <th className="py-3.5 px-4 text-right">การจัดการ</th>
@@ -278,6 +293,8 @@ export function MemberManagement() {
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
               {members.map((m) => {
+                const isPasswordVisible = visiblePasswords.has(m.id);
+                const displayPassword = m.password || '••••••';
                 const premiumFormatted = formatPremiumDate(m.premium_until);
                 const isPremiumActive =
                   m.premium_until && new Date(m.premium_until).getTime() > Date.now();
@@ -299,12 +316,37 @@ export function MemberManagement() {
                       </div>
                     </td>
 
-                    {/* 2. ระบบไม่เก็บรหัสผ่านที่อ่านได้อีกต่อไป */}
+                    {/* 2. Password (with view & copy) */}
                     <td className="py-3.5 px-4">
-                      <span className="inline-flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-                        <KeyRound className="w-3.5 h-3.5" />
-                        <span>เข้ารหัสแล้ว (ตั้งใหม่ได้ที่ปุ่มกุญแจ)</span>
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-md">
+                          {isPasswordVisible ? (m.password || '(ไม่มีข้อมูล)') : '••••••'}
+                        </span>
+                        {m.password && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => togglePasswordVisibility(m.id)}
+                              className="p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                              title={isPasswordVisible ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'}
+                            >
+                              {isPasswordVisible ? (
+                                <EyeOff className="w-3.5 h-3.5" />
+                              ) : (
+                                <Eye className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => copyPassword(m.password!)}
+                              className="p-1 rounded text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400"
+                              title="คัดลอกรหัสผ่าน"
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </td>
 
                     {/* 3. Role Member */}
@@ -317,7 +359,7 @@ export function MemberManagement() {
                       ) : (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
                           <UserIcon className="w-3 h-3" />
-                          <span>{ROLE_LABEL[m.role] || 'สมาชิก'}</span>
+                          <span>Role Member</span>
                         </span>
                       )}
                     </td>
@@ -444,7 +486,7 @@ export function MemberManagement() {
                 <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
                   3. สิทธิ์ (Role Member) *
                 </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setNewRole('member')}
@@ -456,30 +498,6 @@ export function MemberManagement() {
                     )}
                   >
                     Role Member
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setNewRole('parent')}
-                    className={cn(
-                      'py-2 px-3 rounded-xl text-xs font-semibold border text-center transition-all',
-                      newRole === 'parent'
-                        ? 'bg-indigo-600 border-indigo-600 text-white'
-                        : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300'
-                    )}
-                  >
-                    ผู้ปกครอง
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setNewRole('teacher')}
-                    className={cn(
-                      'py-2 px-3 rounded-xl text-xs font-semibold border text-center transition-all',
-                      newRole === 'teacher'
-                        ? 'bg-indigo-600 border-indigo-600 text-white'
-                        : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300'
-                    )}
-                  >
-                    คุณครู
                   </button>
                   <button
                     type="button"
@@ -581,7 +599,7 @@ export function MemberManagement() {
                 <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
                   สิทธิ์ (Role) *
                 </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setEditRole('member')}
@@ -593,30 +611,6 @@ export function MemberManagement() {
                     )}
                   >
                     Role Member
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEditRole('parent')}
-                    className={cn(
-                      'py-2 px-3 rounded-xl text-xs font-semibold border text-center transition-all',
-                      editRole === 'parent'
-                        ? 'bg-indigo-600 border-indigo-600 text-white'
-                        : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300'
-                    )}
-                  >
-                    ผู้ปกครอง
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEditRole('teacher')}
-                    className={cn(
-                      'py-2 px-3 rounded-xl text-xs font-semibold border text-center transition-all',
-                      editRole === 'teacher'
-                        ? 'bg-indigo-600 border-indigo-600 text-white'
-                        : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300'
-                    )}
-                  >
-                    คุณครู
                   </button>
                   <button
                     type="button"

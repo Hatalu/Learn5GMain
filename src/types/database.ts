@@ -1,7 +1,4 @@
-export type UserRole = 'member' | 'dev' | 'parent' | 'teacher' | 'student';
-
-/** บทบาทของผู้ใหญ่ที่สมัครใช้งานเองได้ */
-export type SelfServiceRole = 'parent' | 'teacher';
+export type UserRole = 'member' | 'dev';
 
 export type Subject = 'คณิตศาสตร์' | 'วิทยาศาสตร์' | 'ภาษาอังกฤษ';
 
@@ -30,13 +27,8 @@ export interface Profile {
   id: string;
   username: string;
   role: UserRole;
+  password?: string | null;
   premium_until?: string | null;
-  display_name?: string | null;
-  avatar?: string | null;
-  grade?: string | null;
-  owner_id?: string | null;
-  daily_limit_min?: number | null;
-  consent_at?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -52,8 +44,6 @@ export interface MediaItem {
   access_tier: AccessTier;
   is_public?: boolean;
   game_url: string;
-  learning_goal?: string | null;
-  standards?: string[] | null;
   view_count: number;
   created_by: string | null;
   created_at: string;

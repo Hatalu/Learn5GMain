@@ -19,7 +19,6 @@ import { SortDropdown } from '@/components/media/SortDropdown';
 import { EmptyState } from '@/components/media/EmptyState';
 import { HeroCarousel } from '@/components/hero/HeroCarousel';
 import { FeatureStrip } from '@/components/media/FeatureStrip';
-import { AudienceCards } from '@/components/media/AudienceCards';
 import { Reveal } from '@/components/ui/Reveal';
 import { AddMediaModal } from '@/components/dev/AddMediaModal';
 import { MediaDetailModal } from '@/components/media/MediaDetailModal';
@@ -344,8 +343,6 @@ export default function HomePage() {
         <div className="mt-6 sm:mt-8">
           <FeatureStrip />
         </div>
-
-        {!user && !authLoading && <AudienceCards />}
 
         {/* Netflix-style Rail: สื่อใหม่ล่าสุด */}
         {latestMediaList.length > 0 && (

@@ -47,7 +47,6 @@ export async function GET() {
     const { data: members, error } = await admin
       .from('profiles')
       .select('*')
-      .neq('role', 'student') // ข้อมูลเด็กไม่แสดงในรายชื่อผู้ดูแลระบบ
       .order('created_at', { ascending: false });
 
     if (error) throw error;
