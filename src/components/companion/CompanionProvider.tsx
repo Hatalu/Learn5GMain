@@ -11,22 +11,25 @@ import React, {
   useSyncExternalStore,
 } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useAuth } from '@/context/AuthContext';
 import { MediaItem } from '@/types/database';
-import {
-  autoPickDaily,
-  bkkParts,
-  type Hat,
-} from '@/lib/companion';
+import { autoPickDaily, bkkParts, type Hat } from '@/lib/companion';
 import {
   CompanionState,
   Reward,
+  attach,
+  clearLegacy,
   getServerSnapshot,
   getSnapshot,
-  loadStore,
+  hydrate,
+  readLegacy,
   recordPlay as storeRecordPlay,
   recordVisit,
+  setChangeHandler,
+  snapshotForSave,
   subscribe,
 } from '@/lib/companion-store';
+import { SyncStatus, fetchRemote, isMissingTable, saveRemote } from '@/lib/companion-sync';
 import { loadPrefs, sfx, unlockAudio } from '@/lib/sound';
 
 export interface DailyGame {
@@ -46,6 +49,13 @@ interface Ctx {
   /** id ของเกมที่ถูกปลดล็อกฟรีวันนี้ (หรือ null) */
   dailyUnlockedId: string | null;
   dailyPlayedToday: boolean;
+  /** มีสิทธิ์ใช้ปุ๋ง/สติกเกอร์ (Premium ที่ยังไม่หมดอายุ หรือ Dev) */
+  entitled: boolean;
+  /** ล็อกอินอยู่แต่ Premium หมดอายุ/ไม่มี (ใช้เลือกข้อความบนหน้าล็อก) */
+  loggedIn: boolean;
+  /** รู้สถานะสิทธิ์และโหลดข้อมูลเสร็จแล้ว */
+  ready: boolean;
+  syncStatus: SyncStatus;
   /** บันทึกว่าเด็กกดเล่นเกมนี้ (ให้ดาว/สติกเกอร์) และเข้าคิวแสดงรางวัล */
   recordPlay: (m: MediaItem) => Reward;
   rewards: Reward[];
@@ -67,27 +77,60 @@ export function useCompanionOptional(): Ctx | null {
   return useContext(CompanionContext);
 }
 
+const SAVE_DELAY_MS = 1500;
+
 export function CompanionProvider({ children }: { children: React.ReactNode }) {
   const state = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const supabase = useMemo(() => createClient(), []);
+  const { user, profile, isLoading: authLoading } = useAuth();
+
+  const uid = user?.id ?? null;
+  const entitled =
+    !!user &&
+    !!profile &&
+    (profile.role === 'dev' ||
+      (!!profile.premium_until && new Date(profile.premium_until).getTime() > Date.now()));
 
   const [media, setMedia] = useState<MediaItem[]>([]);
   const [mediaLoaded, setMediaLoaded] = useState(false);
   const [daily, setDaily] = useState<DailyGame | null>(null);
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [visit, setVisit] = useState<Ctx['visit']>(null);
-  const visited = useRef(false);
+  const [ready, setReady] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
 
-  // โหลดข้อมูลในเครื่อง + นับการเข้าเว็บวันนี้ + ปลดล็อกเสียงเมื่อมี gesture แรก
-  useEffect(() => {
-    loadStore();
-    loadPrefs();
-    if (!visited.current) {
-      visited.current = true;
-      const r = recordVisit(bkkParts().date);
-      setVisit({ checkinStars: r.checkinStars, firstEver: r.firstEver });
-      if (r.evolved) setRewards((q) => [...q, { starsGained: r.checkinStars, evolved: r.evolved, counted: true }]);
+  const canSync = useRef(false);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const uidRef = useRef<string | null>(null);
+
+  const doSave = useCallback(async () => {
+    const id = uidRef.current;
+    if (!id || !canSync.current) return;
+    setSyncStatus('saving');
+    const err = await saveRemote(supabase, id, snapshotForSave());
+    if (err) {
+      setSyncStatus(isMissingTable(err) ? 'missing' : 'error');
+      return;
     }
+    clearLegacy();
+    setSyncStatus('saved');
+  }, [supabase]);
+
+  const scheduleSave = useCallback(
+    (immediate = false) => {
+      if (!canSync.current) return;
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(() => {
+        saveTimer.current = null;
+        void doSave();
+      }, immediate ? 0 : SAVE_DELAY_MS);
+    },
+    [doSave]
+  );
+
+  // ตั้งค่าเสียง + ปลดล็อกเสียงเมื่อมี gesture แรก + เสียงป๊อปเมื่อกดปุ่มของเรา
+  useEffect(() => {
+    loadPrefs();
     const unlock = () => {
       unlockAudio();
       window.removeEventListener('pointerdown', unlock);
@@ -95,8 +138,6 @@ export function CompanionProvider({ children }: { children: React.ReactNode }) {
     };
     window.addEventListener('pointerdown', unlock);
     window.addEventListener('keydown', unlock);
-
-    // เสียงป๊อปเมื่อกดปุ่มของเรา
     const onClick = (e: PointerEvent) => {
       const el = e.target as HTMLElement | null;
       if (el?.closest?.('.btn-jelly, .btn-primary-grad, .media-card-hover')) sfx.pop();
@@ -108,6 +149,79 @@ export function CompanionProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener('pointerdown', onClick);
     };
   }, []);
+
+  // ผูกที่เก็บข้อมูลกับสิทธิ์ของผู้ใช้: ดึงจาก Supabase -> รวมกับของเครื่องนี้ -> เช็คอินวันนี้ -> บันทึกกลับ
+  useEffect(() => {
+    if (authLoading) return;
+    let off = false;
+    uidRef.current = uid;
+    canSync.current = false;
+    setChangeHandler(null);
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current);
+      saveTimer.current = null;
+    }
+    setReady(false);
+    setVisit(null);
+    attach({ userId: uid, entitled });
+
+    if (!entitled || !uid) {
+      setVisit({ checkinStars: 0, firstEver: false });
+      setSyncStatus('idle');
+      setReady(true);
+      return;
+    }
+
+    (async () => {
+      setSyncStatus('loading');
+      const { data, error } = await fetchRemote(supabase, uid);
+      if (off) return;
+
+      if (error) {
+        // ใช้ต่อได้จากแคชในเครื่อง แต่ยังไม่ซิงก์ขึ้นระบบจนกว่าจะแก้ปัญหา
+        setSyncStatus(isMissingTable(error) ? 'missing' : 'error');
+      } else {
+        canSync.current = true;
+      }
+
+      const legacy = !data && !error ? readLegacy() : null;
+      const needsPush = hydrate(error ? null : data, legacy);
+      const r = recordVisit(bkkParts().date);
+      setVisit({ checkinStars: r.checkinStars, firstEver: r.firstEver });
+      if (r.evolved) setRewards((q) => [...q, { starsGained: r.checkinStars, evolved: r.evolved, counted: true }]);
+
+      setChangeHandler(() => scheduleSave());
+      setReady(true);
+      if (canSync.current) {
+        if (needsPush || r.checkinStars > 0) scheduleSave(true);
+        else setSyncStatus('saved');
+      }
+    })();
+
+    return () => {
+      off = true;
+    };
+  }, [authLoading, uid, entitled, supabase, scheduleSave]);
+
+  // ออกจากหน้า/สลับแท็บ: บันทึกที่ค้างอยู่ทันที (ไม่รอ debounce)
+  useEffect(() => {
+    const flush = () => {
+      if (saveTimer.current) {
+        clearTimeout(saveTimer.current);
+        saveTimer.current = null;
+        void doSave();
+      }
+    };
+    const onVis = () => {
+      if (document.visibilityState === 'hidden') flush();
+    };
+    document.addEventListener('visibilitychange', onVis);
+    window.addEventListener('pagehide', flush);
+    return () => {
+      document.removeEventListener('visibilitychange', onVis);
+      window.removeEventListener('pagehide', flush);
+    };
+  }, [doSave]);
 
   // รายการสื่อ + เกมประจำวันของวันนี้ (ถ้าแอดมินตั้งไว้ใช้ตามนั้น ไม่งั้นเลือกอัตโนมัติ)
   useEffect(() => {
@@ -170,6 +284,10 @@ export function CompanionProvider({ children }: { children: React.ReactNode }) {
     daily,
     dailyUnlockedId: daily?.unlock ? daily.media.id : null,
     dailyPlayedToday: state.dailyClaimed === today,
+    entitled,
+    loggedIn: !!user,
+    ready: ready && !authLoading,
+    syncStatus,
     recordPlay,
     rewards,
     dismissReward,

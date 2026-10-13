@@ -20,8 +20,12 @@ import {
   EMPTY_STATE,
   _setStateForTest,
   getSnapshot,
+  isEnabled,
+  mergeStates,
   recordPlay,
   recordVisit,
+  sanitize,
+  setColor,
   setHat,
 } from '../src/lib/companion-store';
 
@@ -31,7 +35,7 @@ const t = (name: string, fn: () => void) => {
   passed++;
   console.log(`  ok  ${name}`);
 };
-const fresh = () => _setStateForTest({ ...EMPTY_STATE, createdAt: 1, plays: {}, visitDays: [] });
+const fresh = () => _setStateForTest({ ...EMPTY_STATE, createdAt: 1, plays: {}, visitDays: [] }, true);
 const M = (id: string) => ({ id, title: `เกม ${id}`, icon_url: 'x.png', subject: 'คณิตศาสตร์' });
 const MIN = 60 * 1000;
 
@@ -222,6 +226,108 @@ t('คำทักทายสั้น (ไม่เกิน 2 บรรทั
   const ev = buildGreeting({ ...base, event: eventOf(bkkParts(new Date('2026-04-14T05:00:00Z'))) });
   assert.match(ev[0], /สงกรานต์/);
   for (const l of [...first, ...g, ...y, ...ci, ...night, ...ev]) assert.ok(l.length <= 60, `ข้อความยาวเกิน: ${l}`);
+});
+
+console.log('โหมดล็อก (ไม่มีสิทธิ์ Premium) และการรวมข้อมูลหลายเครื่อง');
+t('โหมดล็อก: ไม่ให้ดาว/สติกเกอร์/เช็คอิน/แต่งตัว และไม่แก้สถานะ', () => {
+  _setStateForTest({ ...EMPTY_STATE, createdAt: 1 }, false);
+  const r = recordPlay(M('g1'), { now: Date.parse('2026-10-13T05:00:00Z') });
+  assert.equal(r.counted, false);
+  assert.equal(r.starsGained, 0);
+  assert.equal(recordVisit('2026-10-13').checkinStars, 0);
+  assert.equal(setHat('cap'), false);
+  setColor('pink');
+  assert.equal(getSnapshot().stars, 0);
+  assert.deepEqual(getSnapshot().plays, {});
+  assert.equal(getSnapshot().color, 'violet');
+  assert.equal(isEnabled(), false);
+  _setStateForTest({ ...EMPTY_STATE, createdAt: 1 }, true);
+  assert.equal(isEnabled(), true);
+});
+
+t('รวมข้อมูลสองเครื่อง: ไม่ทำให้ความก้าวหน้าหาย', () => {
+  const play = (c: number, last: number) => ({ c, last, title: 't', icon: 'i', subject: 's' });
+  const a = {
+    ...EMPTY_STATE,
+    createdAt: 100,
+    savedAt: 1000,
+    stars: 10,
+    visitDays: ['2026-10-10', '2026-10-11'],
+    plays: { g1: play(3, 500), g2: play(1, 300) },
+    color: 'pink',
+    hat: 'cap',
+    dailyClaimed: '2026-10-11',
+    lastPlayed: { id: 'g1', title: 't', at: 500, day: '2026-10-11' },
+  };
+  const b = {
+    ...EMPTY_STATE,
+    createdAt: 50,
+    savedAt: 2000,
+    stars: 14,
+    visitDays: ['2026-10-11', '2026-10-12'],
+    plays: { g1: play(2, 900), g3: play(4, 100) },
+    color: 'sky',
+    hat: 'none',
+    dailyClaimed: '2026-10-12',
+    lastPlayed: { id: 'g1', title: 't', at: 900, day: '2026-10-12' },
+  };
+  const m = mergeStates(a, b);
+  assert.equal(m.stars, 14);
+  assert.deepEqual(m.visitDays, ['2026-10-10', '2026-10-11', '2026-10-12']);
+  assert.equal(m.plays.g1.c, 3); // มากกว่า
+  assert.equal(m.plays.g1.last, 900); // ล่าสุด
+  assert.equal(m.plays.g2.c, 1);
+  assert.equal(m.plays.g3.c, 4);
+  assert.equal(m.color, 'sky'); // ฝั่งที่แก้ล่าสุด
+  assert.equal(m.hat, 'none');
+  assert.equal(m.createdAt, 50);
+  assert.equal(m.savedAt, 2000);
+  assert.equal(m.dailyClaimed, '2026-10-12');
+  assert.equal(m.lastPlayed?.at, 900);
+  // สลับลำดับอาร์กิวเมนต์ ผลต้องเท่ากัน
+  assert.deepEqual(mergeStates(b, a), m);
+  // รวมกับข้อมูลว่าง = เท่าเดิม
+  assert.equal(mergeStates(a, { ...EMPTY_STATE }).stars, 10);
+});
+
+t('sanitize: ตัดข้อมูลผิดรูป/เกินช่วง/ค่าแปลกปลอมออก', () => {
+  const s = sanitize({
+    stars: -5,
+    color: 'hotpink',
+    hat: 'rocket',
+    visitDays: ['2026-10-12', 'x', 7],
+    plays: { ok: { c: 2, last: 1, title: 'a', icon: 'b', subject: 'c' }, bad: { c: -1 }, huge: { c: 99999999 } },
+    lastPlayed: { id: 5 },
+    dailyClaimed: 12,
+  });
+  assert.equal(s.stars, 0);
+  assert.equal(s.color, 'violet');
+  assert.equal(s.hat, 'none');
+  assert.deepEqual(s.visitDays, ['2026-10-12']);
+  assert.deepEqual(Object.keys(s.plays), ['ok']);
+  assert.equal(s.lastPlayed, null);
+  assert.equal(s.dailyClaimed, null);
+  assert.equal(sanitize(null).stars, 0);
+  assert.equal(sanitize('ขยะ').createdAt, 0);
+});
+
+t('คำทักทายโหมดล็อก: ชวนสมัคร Premium และยังสั้น', () => {
+  const g = buildGreeting({
+    parts: bkkParts(new Date('2026-10-13T03:00:00Z')),
+    phase: 'day',
+    event: null,
+    firstVisit: false,
+    visitDays: 0,
+    lastPlayed: null,
+    dailyTitle: null,
+    dailyPlayedToday: false,
+    checkinStars: 0,
+    stage: 0,
+    locked: true,
+  });
+  assert.equal(g.length, 2);
+  assert.match(g[1], /Premium/);
+  for (const l of g) assert.ok(l.length <= 60);
 });
 
 console.log(`\n${passed} tests passed`);

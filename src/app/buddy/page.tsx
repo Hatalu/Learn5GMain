@@ -3,8 +3,10 @@
 import React, { useMemo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { CalendarDays, Gamepad2, Lock, RotateCcw, Sparkles, Image as ImageIcon } from 'lucide-react';
+import { CalendarDays, Cloud, CloudOff, Crown, Gamepad2, Loader2, Lock, RotateCcw, Sparkles, Image as ImageIcon } from 'lucide-react';
 import { Navbar } from '@/components/navbar/Navbar';
+import { FacebookIcon } from '@/components/icons/FacebookIcon';
+import { useAuth } from '@/context/AuthContext';
 import { Buddy } from '@/components/companion/Buddy';
 import { StarIcon } from '@/components/companion/Stars';
 import { useCompanion } from '@/components/companion/CompanionProvider';
@@ -26,7 +28,7 @@ import {
   type Hat,
   type StickerTier,
 } from '@/lib/companion';
-import { resetStore, setColor, setHat } from '@/lib/companion-store';
+import { EMPTY_STATE, resetStore, setColor, setHat, type CompanionState } from '@/lib/companion-store';
 import { sfx } from '@/lib/sound';
 import { cn } from '@/lib/utils/cn';
 
@@ -36,9 +38,27 @@ const FRAME: Record<number, string> = {
   3: 'border-sun-400 shadow-[0_0_0_5px_rgba(255,197,58,0.5)]',
 };
 
+const FB_URL = 'https://www.facebook.com/profile.php?id=61594556657667';
+
+function demoState(items: { id: string; title: string; icon_url: string; subject: string }[]): CompanionState {
+  const counts = [1, 3, 5, 2, 1, 4];
+  const plays: CompanionState['plays'] = {};
+  items.slice(0, counts.length).forEach((m, i) => {
+    plays[m.id] = { c: counts[i], last: 0, title: m.title, icon: m.icon_url, subject: m.subject };
+  });
+  return { ...EMPTY_STATE, createdAt: 1, stars: 47, visitDays: ['a', 'b', 'c'], plays, color: 'mint', hat: 'cap' };
+}
+
 export default function BuddyPage() {
-  const { state, media, mediaLoaded } = useCompanion();
+  const { state: liveState, media, mediaLoaded, entitled, loggedIn, ready, syncStatus } = useCompanion();
+  const { profile } = useAuth();
   const [confirmReset, setConfirmReset] = useState(false);
+
+  // ผู้ไม่มีสิทธิ์เห็นเป็นตัวอย่างเลือนราง ใช้งานจริงไม่ได้
+  const locked = ready && !entitled;
+  const state = useMemo(() => (locked ? demoState(media) : liveState), [locked, liveState, media]);
+  const expiredAt =
+    profile?.premium_until && new Date(profile.premium_until).getTime() <= Date.now() ? profile.premium_until : null;
 
   const stars = state.stars;
   const stage = buddyStage(stars);
@@ -60,7 +80,42 @@ export default function BuddyPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6 space-y-8">
+      <main className="relative flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6">
+        {locked && (
+          <div className="absolute inset-0 z-20 flex justify-center items-start px-4" role="dialog" aria-modal="false" aria-label="ต้องเป็นสมาชิก Premium">
+            <div className="sticky top-28 mt-16 sm:mt-24 w-full max-w-md rounded-[2rem] bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-2 border-sun-400 shadow-toy-lg p-6 sm:p-8 text-center animate-pop-in">
+              <span className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-sun-400 to-orange-500 text-white flex items-center justify-center shadow-lg mb-4">
+                <Lock className="w-8 h-8" />
+              </span>
+              <h1 className="text-2xl font-medium text-gray-900 dark:text-white">ห้องของปุ๋งสำหรับสมาชิก Premium</h1>
+              <p className="mt-3 font-display text-lg text-amber-800 dark:text-sun-300">ต้องสมัคร Premium ก่อน ติดต่อได้ทางเพจ สื่อการสอน 5G</p>
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                สมาชิกเก็บดาว สติกเกอร์ และแต่งตัวปุ๋งได้ โดยข้อมูลถูกบันทึกกับบัญชี ใช้ได้ทุกเครื่อง
+              </p>
+              {expiredAt && (
+                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                  Premium ของคุณหมดอายุเมื่อ {new Date(expiredAt).toLocaleDateString('th-TH', { dateStyle: 'long' })} ข้อมูลที่เคยสะสมยังเก็บไว้ ต่ออายุแล้วกลับมาเล่นต่อได้
+                </p>
+              )}
+              <div className="mt-5 flex flex-col gap-2.5">
+                <a href={FB_URL} target="_blank" rel="noopener noreferrer" className="btn-primary-grad btn-jelly inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-display text-lg">
+                  <FacebookIcon className="w-5 h-5" /> ติดต่อเพจสมัคร Premium
+                </a>
+                {!loggedIn && (
+                  <Link href="/login" className="btn-jelly inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl border-2 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-200 font-semibold">
+                    มีบัญชีสมาชิกแล้ว? เข้าสู่ระบบ
+                  </Link>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div
+          className={cn('space-y-8 transition-[filter] duration-500', locked && 'blur-[7px] saturate-[0.8] select-none pointer-events-none')}
+          aria-hidden={locked || undefined}
+          {...(locked ? ({ inert: '' } as Record<string, string>) : {})}
+        >
         {/* ตัวละคร */}
         <section className="relative overflow-hidden rounded-[2rem] border-2 border-white/20 bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-600 dark:from-indigo-800 dark:via-indigo-900 dark:to-violet-800 shadow-toy-lg p-5 sm:p-8 text-white">
           <div className="pointer-events-none absolute inset-0 opacity-[0.12]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, #fff 1.2px, transparent 0)', backgroundSize: '26px 26px' }} />
@@ -228,15 +283,32 @@ export default function BuddyPage() {
         </Reveal>
 
         <section className="surface p-5 text-sm text-gray-600 dark:text-gray-300">
-          <p>ข้อมูลของ{BUDDY_NAME}และสติกเกอร์เก็บไว้ในเครื่องนี้เท่านั้น (ไม่ต้องสมัครสมาชิก และไม่ส่งไปที่ไหน) ถ้าเปลี่ยนเครื่องหรือล้างข้อมูลเบราว์เซอร์ จะเริ่มสะสมใหม่</p>
-          <button type="button" onClick={() => setConfirmReset(true)} className="btn-jelly mt-3 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border-2 border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 font-semibold">
-            <RotateCcw className="w-4 h-4" /> ล้างข้อมูลคู่หูในเครื่องนี้
-          </button>
+          <p className="flex items-center gap-2 font-semibold text-gray-800 dark:text-gray-100">
+            <Crown className="w-4 h-4 text-sun-500" /> สิทธิ์สมาชิก Premium
+          </p>
+          <p className="mt-1">ข้อมูลของ{BUDDY_NAME}และสติกเกอร์บันทึกกับบัญชีของคุณ ใช้ได้ทุกเครื่องที่เข้าสู่ระบบ ถ้าเล่นหลายเครื่อง ระบบจะรวมความก้าวหน้าให้โดยไม่ทำให้หาย</p>
+          <p className="mt-3 inline-flex items-center gap-2 text-xs" aria-live="polite">
+            {syncStatus === 'saving' || syncStatus === 'loading' ? (
+              <><Loader2 className="w-4 h-4 animate-spin text-indigo-500" /> กำลังบันทึก...</>
+            ) : syncStatus === 'saved' ? (
+              <><Cloud className="w-4 h-4 text-mint-600" /> บันทึกขึ้นระบบแล้ว</>
+            ) : syncStatus === 'missing' ? (
+              <><CloudOff className="w-4 h-4 text-amber-600" /> ผู้ดูแลต้องรัน migration 006 ก่อน จึงจะบันทึกขึ้นระบบได้ (ตอนนี้เก็บไว้ในเครื่องนี้)</>
+            ) : syncStatus === 'error' ? (
+              <><CloudOff className="w-4 h-4 text-rose-600" /> บันทึกขึ้นระบบไม่สำเร็จ (ข้อมูลยังอยู่ในเครื่องนี้ จะลองใหม่เมื่อมีการเปลี่ยนแปลง)</>
+            ) : null}
+          </p>
+          <div>
+            <button type="button" onClick={() => setConfirmReset(true)} className="btn-jelly mt-3 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border-2 border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 font-semibold">
+              <RotateCcw className="w-4 h-4" /> เริ่มสะสมใหม่ทั้งหมด
+            </button>
+          </div>
         </section>
+        </div>
       </main>
 
       <Modal open={confirmReset} onClose={() => setConfirmReset(false)} title="ล้างข้อมูลคู่หู?">
-        <p className="text-gray-700 dark:text-gray-300">ดาว สติกเกอร์ และการแต่งตัวทั้งหมดในเครื่องนี้จะถูกลบ และ{BUDDY_NAME}จะกลับไปเป็นไข่ <b className="text-rose-600">กู้คืนไม่ได้</b> (เหมาะเมื่อเครื่องนี้เปลี่ยนคนเล่น)</p>
+        <p className="text-gray-700 dark:text-gray-300">ดาว สติกเกอร์ และการแต่งตัวทั้งหมดของบัญชีนี้จะถูกลบ (ทุกเครื่อง) และ{BUDDY_NAME}จะกลับไปเป็นไข่ <b className="text-rose-600">กู้คืนไม่ได้</b> </p>
         <div className="mt-5 flex justify-end gap-3">
           <button onClick={() => setConfirmReset(false)} className="btn-jelly px-5 py-3 rounded-2xl border-2 border-gray-200 dark:border-gray-700 font-semibold text-gray-700 dark:text-gray-200">ยกเลิก</button>
           <button

@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { Volume2, X } from 'lucide-react';
 import { Buddy } from './Buddy';
 import { useCompanion } from './CompanionProvider';
-import { BUDDY_NAME, CHATTER, bkkParts, buddyStage, buildGreeting, eventOf, phaseOf, type Hat } from '@/lib/companion';
+import { BUDDY_NAME, CHATTER, CHATTER_LOCKED, bkkParts, buddyStage, buildGreeting, eventOf, phaseOf, type Hat } from '@/lib/companion';
 import { sfx, speakThai } from '@/lib/sound';
 
 type Mode = 'asleep' | 'awake';
@@ -19,7 +19,7 @@ const HIDDEN = 'l5g_buddy_hidden';
  */
 export function CompanionWidget() {
   const path = usePathname();
-  const { state, daily, mediaLoaded, dailyPlayedToday, visit } = useCompanion();
+  const { state, daily, mediaLoaded, dailyPlayedToday, visit, ready, entitled } = useCompanion();
 
   const [mode, setMode] = useState<Mode>('awake');
   const [waking, setWaking] = useState(false);
@@ -32,7 +32,6 @@ export function CompanionWidget() {
 
   const stars = state.stars;
   const stage = buddyStage(stars);
-  const ready = state.createdAt > 0;
 
   useEffect(() => {
     try {
@@ -86,6 +85,7 @@ export function CompanionWidget() {
         dailyPlayedToday,
         checkinStars: visit.checkinStars,
         stage: stage.index,
+        locked: !entitled,
       });
       showLines(g, 11000);
       try {
@@ -109,7 +109,8 @@ export function CompanionWidget() {
     sfx.sparkle();
     setWaking(true);
     setTimeout(() => setWaking(false), 900);
-    const line = CHATTER[chatIdx.current++ % CHATTER.length];
+    const pool = entitled ? CHATTER : CHATTER_LOCKED;
+    const line = pool[chatIdx.current++ % pool.length];
     showLines([line], 8000);
   };
 
@@ -164,7 +165,7 @@ export function CompanionWidget() {
           ))}
           <div className="mt-2.5 flex flex-wrap items-center gap-2">
             <Link href="/buddy" className="btn-jelly inline-flex items-center px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-200 text-sm font-bold">
-              ห้องของฉัน
+              {entitled ? 'ห้องของฉัน' : 'ดูสิทธิ์สมาชิก'}
             </Link>
             {canSpeak && (
               <button type="button" onClick={speak} aria-label="ฟังเสียงพูด" className="btn-jelly p-1.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">

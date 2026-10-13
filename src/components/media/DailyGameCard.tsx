@@ -37,7 +37,7 @@ function Countdown() {
 
 /** การ์ด "เกมประจำวัน" บนหน้าหลัก: เปลี่ยนทุกวัน มีนับถอยหลังถึงเที่ยงคืน */
 export function DailyGameCard({ onSelect }: { onSelect: (m: MediaItem) => void }) {
-  const { daily, dailyPlayedToday, mediaLoaded } = useCompanion();
+  const { daily, dailyPlayedToday, mediaLoaded, entitled } = useCompanion();
 
   if (!mediaLoaded) {
     return <div className="h-56 rounded-[2rem] bg-gray-200/70 dark:bg-gray-800/70 animate-pulse" />;
@@ -91,7 +91,11 @@ export function DailyGameCard({ onSelect }: { onSelect: (m: MediaItem) => void }
             <button type="button" onClick={() => onSelect(m)} className="btn-jelly inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-white text-orange-700 font-bold text-base shadow-[0_5px_0_0_rgba(0,0,0,0.2)]">
               <Play className="w-5 h-5 fill-current" /> เล่นเลย
             </button>
-            {dailyPlayedToday ? (
+            {!entitled ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-black/20 text-sm font-semibold">
+                <StarIcon className="w-5 h-5" /> สมาชิก Premium รับโบนัส +{STAR_RULES.dailyGame} ดาว
+              </span>
+            ) : dailyPlayedToday ? (
               <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-black/20 text-sm font-semibold">
                 <StarIcon className="w-5 h-5" /> เล่นวันนี้แล้ว ได้โบนัสไปแล้ว
               </span>

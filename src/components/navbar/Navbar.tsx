@@ -7,12 +7,15 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { ThemeToggle } from './ThemeToggle';
 import { SoundToggle } from './SoundToggle';
+import { useCompanionOptional } from '@/components/companion/CompanionProvider';
 import { UserMenu } from './UserMenu';
-import { ShieldCheck, Home, LogIn, UserX, Sparkles } from 'lucide-react';
+import { ShieldCheck, Home, LogIn, UserX, Sparkles, Lock } from 'lucide-react';
 import { FacebookIcon } from '@/components/icons/FacebookIcon';
 
 export function Navbar() {
   const { user, isDev } = useAuth();
+  const companion = useCompanionOptional();
+  const buddyLocked = !!companion && companion.ready && !companion.entitled;
   const pathname = usePathname();
   const isDevPage = pathname.startsWith('/dev');
 
@@ -91,7 +94,7 @@ export function Navbar() {
               className="btn-jelly inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 text-sm font-bold rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-200 border-2 border-indigo-200 dark:border-indigo-800 whitespace-nowrap"
               title="ห้องของคู่หูและสมุดสะสมสติกเกอร์"
             >
-              <Sparkles className="w-4 h-4" />
+              {buddyLocked ? <Lock className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
               <span className="hidden md:inline">คู่หูของฉัน</span>
             </Link>
           )}
