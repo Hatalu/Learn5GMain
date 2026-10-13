@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import { SUBJECT_STYLE } from '@/lib/utils/subject';
 import { cn } from '@/lib/utils/cn';
 import { FacebookIcon } from '@/components/icons/FacebookIcon';
+import { CountUp } from '@/components/fx/CountUp';
 import {
   ArrowRight,
   ChevronLeft,
@@ -235,7 +236,7 @@ export function HeroCarousel({
                 <Icon className="w-5 h-5 text-sun-300" aria-hidden="true" />
                 <dt className="sr-only">{label}</dt>
                 <dd className="text-white leading-tight">
-                  <span className="block font-display text-xl">{isLoading ? '-' : value}</span>
+                  <span className="block font-display text-xl">{isLoading ? '-' : <CountUp value={value} />}</span>
                   <span className="block text-xs text-white/75">{label}</span>
                 </dd>
               </div>

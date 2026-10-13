@@ -6,8 +6,9 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { ThemeToggle } from './ThemeToggle';
+import { SoundToggle } from './SoundToggle';
 import { UserMenu } from './UserMenu';
-import { ShieldCheck, Home, LogIn, UserX } from 'lucide-react';
+import { ShieldCheck, Home, LogIn, UserX, Sparkles } from 'lucide-react';
 import { FacebookIcon } from '@/components/icons/FacebookIcon';
 
 export function Navbar() {
@@ -34,7 +35,7 @@ export function Navbar() {
               className="object-cover"
             />
           </div>
-          <div>
+          <div className="hidden min-[470px]:block">
             <div className="flex items-center gap-2">
               <span className="font-display font-medium whitespace-nowrap text-lg sm:text-xl text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                 สื่อการสอน 5G
@@ -83,7 +84,20 @@ export function Navbar() {
             )
           )}
 
-          {/* Theme Toggle */}
+          {/* คู่หู + สมุดสะสม */}
+          {!isDevPage && (
+            <Link
+              href="/buddy"
+              className="btn-jelly inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 text-sm font-bold rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-200 border-2 border-indigo-200 dark:border-indigo-800 whitespace-nowrap"
+              title="ห้องของคู่หูและสมุดสะสมสติกเกอร์"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span className="hidden md:inline">คู่หูของฉัน</span>
+            </Link>
+          )}
+
+          {/* Sound + Theme Toggle */}
+          <SoundToggle />
           <ThemeToggle />
 
           {/* User Menu or Unauthenticated Status */}

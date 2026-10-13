@@ -25,6 +25,7 @@ import {
 import { FacebookIcon } from '@/components/icons/FacebookIcon';
 import { cn } from '@/lib/utils/cn';
 import { getSubjectBadge } from '@/lib/utils/subject';
+import { useCompanion } from '@/components/companion/CompanionProvider';
 
 interface MediaDetailModalProps {
   media: MediaItem | null;
@@ -44,6 +45,7 @@ export function MediaDetailModal({
   onMediaOpened,
 }: MediaDetailModalProps) {
   const { user, profile, isDev } = useAuth();
+  const { dailyUnlockedId, recordPlay } = useCompanion();
   const { success, error } = useToast();
   const [copiedPage, setCopiedPage] = useState(false);
   const [hasClickedRecently, setHasClickedRecently] = useState(false);
@@ -74,7 +76,9 @@ export function MediaDetailModal({
 
   if (!isOpen || !media) return null;
 
-  const isFree = String(media.access_tier || 'premium').toLowerCase().trim() === 'free';
+  // เกมประจำวันที่แอดมินตั้งให้ "ปลดล็อกฟรีเฉพาะวันนี้" ทุกคนเล่นได้
+  const isDailyFree = dailyUnlockedId === media.id;
+  const isFree = isDailyFree || String(media.access_tier || 'premium').toLowerCase().trim() === 'free';
 
   // Check premium status for logged in member
   const checkPremiumActive = (): boolean => {
@@ -104,6 +108,9 @@ export function MediaDetailModal({
       return;
     }
 
+    // ให้ดาว/สติกเกอร์แก่คู่หูทันที (ไม่รอเครือข่ายของการนับยอดวิว)
+    recordPlay(media);
+
     // Debounce view count increment
     if (!hasClickedRecently) {
       setHasClickedRecently(true);
@@ -121,8 +128,10 @@ export function MediaDetailModal({
       }, 5000);
     }
 
-    // Open game URL in new tab
+    // เปิดเกมในแท็บใหม่
     window.open(media.game_url, '_blank', 'noopener,noreferrer');
+    // ปิดป๊อปอัปเพื่อให้หน้าฉลองรางวัลของคู่หูขึ้นเด่นเมื่อกลับมา
+    onClose();
   };
 
   const handleCopyPage = () => {
@@ -274,10 +283,10 @@ export function MediaDetailModal({
                   <Unlock className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
                   <div>
                     <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-300">
-                      สื่อฟรีสำหรับทุกคน (Free Access)
+                      {isDailyFree ? 'ปลดล็อกฟรีเฉพาะวันนี้ (เกมประจำวัน)' : 'สื่อฟรีสำหรับทุกคน (Free Access)'}
                     </p>
                     <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-0.5">
-                      คุณสามารถเปิดใช้งานสื่อการสอนนี้ได้ทันที ไม่จำเป็นต้องเข้าสู่ระบบ
+                      {isDailyFree ? 'วันนี้เล่นได้เลยไม่ต้องเข้าสู่ระบบ พรุ่งนี้กลับเป็นสื่อสำหรับสมาชิกตามเดิม' : 'คุณสามารถเปิดใช้งานสื่อการสอนนี้ได้ทันที ไม่จำเป็นต้องเข้าสู่ระบบ'}
                     </p>
                   </div>
                 </div>

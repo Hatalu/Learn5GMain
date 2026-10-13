@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Navbar } from '@/components/navbar/Navbar';
 import { StatCards } from '@/components/dev/StatCards';
 import { MemberManagement } from '@/components/dev/MemberManagement';
+import { DailyGamesAdmin } from '@/components/dev/DailyGamesAdmin';
 import { AddMediaModal } from '@/components/dev/AddMediaModal';
 import { EditMediaModal } from '@/components/dev/EditMediaModal';
 import { DeleteConfirmModal } from '@/components/dev/DeleteConfirmModal';
@@ -28,6 +29,7 @@ import {
   Lock,
   Crown,
   Unlock,
+  CalendarCheck2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
@@ -37,7 +39,7 @@ export default function DevDashboardPage() {
   const { success, error } = useToast();
   const supabase = createClient();
 
-  const [activeTab, setActiveTab] = useState<'media' | 'members'>('media');
+  const [activeTab, setActiveTab] = useState<'media' | 'members' | 'daily'>('media');
   const [stats, setStats] = useState<SystemStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
 
@@ -227,6 +229,19 @@ export default function DevDashboardPage() {
           >
             <Users className="w-4 h-4" />
             <span>จัดการสมาชิก</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('daily')}
+            className={cn(
+              'flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 transition-all',
+              activeTab === 'daily'
+                ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
+                : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'
+            )}
+          >
+            <CalendarCheck2 className="w-4 h-4" />
+            <span>เกมประจำวัน</span>
           </button>
         </div>
 
@@ -487,6 +502,7 @@ export default function DevDashboardPage() {
 
         {/* Tab 2: Member Management */}
         {activeTab === 'members' && <MemberManagement />}
+        {activeTab === 'daily' && <DailyGamesAdmin mediaList={mediaList} />}
       </main>
 
       {/* Modals */}

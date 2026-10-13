@@ -7,6 +7,7 @@ import { MediaItem } from '@/types/database';
 import { Heart, Play, Eye, Layers, Crown, Unlock, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { getSubjectBadge } from '@/lib/utils/subject';
+import { useCompanionOptional } from '@/components/companion/CompanionProvider';
 
 interface MediaCardProps {
   media: MediaItem;
@@ -27,7 +28,8 @@ export function MediaCard({
   const [imgError, setImgError] = useState(false);
   const localViews = media.view_count;
 
-  const isFree = String(media.access_tier || 'premium').toLowerCase().trim() === 'free';
+  const dailyFree = useCompanionOptional()?.dailyUnlockedId === media.id;
+  const isFree = dailyFree || String(media.access_tier || 'premium').toLowerCase().trim() === 'free';
 
   // สถานะล็อก: premium และผู้ใช้ยังไม่มีสิทธิ์ (ใช้แสดงผลเท่านั้น)
   const premiumActive =
@@ -52,7 +54,7 @@ export function MediaCard({
           {isFree ? (
             <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-mint-500 text-white shadow-md shadow-mint-500/40 ring-2 ring-white/70">
               <Unlock className="w-3 h-3" />
-              <span>เล่นฟรี</span>
+              <span>{dailyFree && String(media.access_tier) !== 'free' ? 'ฟรีวันนี้' : 'เล่นฟรี'}</span>
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-sun-500 to-orange-500 text-white shadow-md shadow-amber-500/40 ring-2 ring-white/70">

@@ -19,6 +19,8 @@ import { SortDropdown } from '@/components/media/SortDropdown';
 import { EmptyState } from '@/components/media/EmptyState';
 import { HeroCarousel } from '@/components/hero/HeroCarousel';
 import { FeatureStrip } from '@/components/media/FeatureStrip';
+import { DailyGameCard } from '@/components/media/DailyGameCard';
+import { BuddyLoader } from '@/components/fx/BuddyLoader';
 import { Reveal } from '@/components/ui/Reveal';
 import { AddMediaModal } from '@/components/dev/AddMediaModal';
 import { MediaDetailModal } from '@/components/media/MediaDetailModal';
@@ -319,11 +321,7 @@ export default function HomePage() {
     filters.accessTiers.length > 0;
 
   if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
-      </div>
-    );
+    return <BuddyLoader />;
   }
 
   return (
@@ -339,6 +337,11 @@ export default function HomePage() {
           onSelectMedia={handleSelectMedia}
           onBrowseAll={scrollToLibrary}
         />
+
+        {/* เกมประจำวัน: เปลี่ยนทุกวัน แอดมินกำหนดได้ที่หน้า Dev */}
+        <Reveal className="mt-6 sm:mt-8">
+          <DailyGameCard onSelect={handleSelectMedia} />
+        </Reveal>
 
         <div className="mt-6 sm:mt-8">
           <FeatureStrip />

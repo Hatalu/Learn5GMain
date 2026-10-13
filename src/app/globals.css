@@ -271,3 +271,81 @@ h1, h2, h3 {
     scroll-behavior: auto !important;
   }
 }
+
+/* ---------------- ท้องฟ้า/ฤดู (AmbientSky) ---------------- */
+.sky-layer { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+.sky-gradient {
+  position: absolute; inset: 0 0 auto 0; height: 78vh; transition: background 3s ease, opacity 3s ease;
+  -webkit-mask-image: linear-gradient(to bottom, #000 25%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 25%, transparent 100%);
+}
+.fx-fall { position: absolute; top: -8vh; animation: fxFall linear infinite; will-change: transform; }
+@keyframes fxFall {
+  0% { transform: translate3d(0, 0, 0) rotate(0deg); opacity: 0; }
+  8% { opacity: 1; }
+  50% { transform: translate3d(28px, 55vh, 0) rotate(160deg); }
+  100% { transform: translate3d(-18px, 112vh, 0) rotate(330deg); opacity: 0.9; }
+}
+.fx-rain { position: absolute; top: -12vh; width: 2px; height: 56px; border-radius: 2px;
+  background: linear-gradient(to bottom, transparent, rgb(150 200 255 / 0.55)); animation: fxRain linear infinite; }
+@keyframes fxRain { to { transform: translate3d(-40px, 118vh, 0); } }
+.fx-rise { position: absolute; bottom: -12vh; animation: fxRise linear infinite; will-change: transform; }
+@keyframes fxRise {
+  0% { transform: translate3d(0, 0, 0); opacity: 0; }
+  10% { opacity: 1; }
+  50% { transform: translate3d(22px, -58vh, 0); }
+  100% { transform: translate3d(-14px, -118vh, 0); opacity: 0.8; }
+}
+.fx-cloud { position: absolute; animation: fxCloud linear infinite; will-change: transform; }
+@keyframes fxCloud { from { transform: translateX(-30vw); } to { transform: translateX(130vw); } }
+.fx-boat { position: absolute; bottom: 2.5vh; animation: fxBoat linear infinite; will-change: transform; }
+@keyframes fxBoat {
+  0% { transform: translate3d(-20vw, 0, 0); } 25% { transform: translate3d(20vw, -5px, 0); }
+  50% { transform: translate3d(55vw, 3px, 0); } 75% { transform: translate3d(85vw, -4px, 0); }
+  100% { transform: translate3d(120vw, 0, 0); }
+}
+.fx-firefly { position: absolute; width: 6px; height: 6px; border-radius: 9999px; background: #ffe98a;
+  box-shadow: 0 0 10px 3px rgb(255 233 138 / 0.7); animation: fxFirefly ease-in-out infinite; }
+@keyframes fxFirefly {
+  0%, 100% { transform: translate3d(0, 0, 0); opacity: 0.15; }
+  25% { transform: translate3d(30px, -20px, 0); opacity: 1; }
+  50% { transform: translate3d(-10px, -42px, 0); opacity: 0.3; }
+  75% { transform: translate3d(-34px, -14px, 0); opacity: 1; }
+}
+.sun-rays { animation: spin 60s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------------- ตัวละครคู่หู ---------------- */
+.buddy-eyes { transform-box: fill-box; transform-origin: center; animation: buddyBlink 5.5s infinite; }
+@keyframes buddyBlink { 0%, 93%, 100% { transform: scaleY(1); } 96% { transform: scaleY(0.08); } }
+.buddy-wake { animation: buddyWake 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+@keyframes buddyWake {
+  0% { transform: translateY(40px) scale(0.85) rotate(-6deg); }
+  45% { transform: translateY(-18px) scale(1.08) rotate(5deg); }
+  70% { transform: translateY(0) scale(0.97) rotate(-2deg); }
+  100% { transform: none; }
+}
+.buddy-snooze { animation: buddySnooze 2.6s ease-in-out infinite; }
+@keyframes buddySnooze { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04, 0.97); } }
+.zzz { animation: zzz 2.2s ease-in-out infinite; }
+@keyframes zzz { 0% { opacity: 0; transform: translate(0, 6px) scale(0.7); } 40% { opacity: 1; } 100% { opacity: 0; transform: translate(10px, -22px) scale(1.15); } }
+.bubble-in { animation: bubbleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both; transform-origin: bottom left; }
+@keyframes bubbleIn { from { opacity: 0; transform: scale(0.6) translateY(10px); } to { opacity: 1; transform: none; } }
+
+/* ---------------- เปลี่ยนหน้า ---------------- */
+.page-enter { animation: pageEnter 0.55s cubic-bezier(0.2, 0.9, 0.25, 1) backwards; }
+@keyframes pageEnter { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+.curtain { position: fixed; inset: 0; z-index: 9990; pointer-events: none; display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(115deg, #5f2fd4, #a64cf0 55%, #f53d9b); animation: curtainSweep 0.75s cubic-bezier(0.7, 0, 0.3, 1) both; }
+@keyframes curtainSweep {
+  0% { transform: translateX(-102%); } 42%, 58% { transform: translateX(0); } 100% { transform: translateX(102%); }
+}
+
+/* ---------------- คอนเฟตติ ---------------- */
+.confetti { position: absolute; top: -10px; animation: confettiFall linear forwards; }
+@keyframes confettiFall { to { transform: translate3d(var(--dx, 0), 105vh, 0) rotate(var(--rot, 540deg)); opacity: 0.9; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .fx-fall, .fx-rain, .fx-rise, .fx-cloud, .fx-boat, .fx-firefly, .sun-rays, .confetti, .curtain { display: none !important; }
+  .page-enter, .buddy-wake { animation: none; }
+}
