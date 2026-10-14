@@ -47,8 +47,14 @@ export async function GET() {
       .from('favorites')
       .select('*', { count: 'exact', head: true });
 
+    // 5. Total trial plays (ตารางอาจยังไม่ถูกสร้าง = 0)
+    const { count: totalTrials } = await admin
+      .from('trial_plays')
+      .select('*', { count: 'exact', head: true });
+
     return NextResponse.json({
       stats: {
+        totalTrials: totalTrials || 0,
         totalMedia: totalMedia || 0,
         totalMembers: totalMembers || 0,
         totalViews,

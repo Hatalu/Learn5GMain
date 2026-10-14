@@ -36,6 +36,8 @@ export async function POST(req: NextRequest) {
     }
 
     await sweepTrialAccounts().catch(() => 0);
+    // นับยอดทดลองเล่น (ไม่ให้ล้มการทดลองถ้าตารางยังไม่ถูกสร้าง)
+    await getAdminClient().from('trial_plays').insert({ media_id: media.id }).then(() => null, () => null);
     const { token, n } = signTrialToken();
     const acct = await createTrialAccount(n);
     const base = String(media.game_url).split('#')[0];

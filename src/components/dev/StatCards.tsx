@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { SystemStats } from '@/types/database';
-import { BookOpen, Users, Eye, Heart } from 'lucide-react';
+import { BookOpen, Users, Eye, Heart, PlayCircle } from 'lucide-react';
 
 interface StatCardsProps {
   stats: SystemStats | null;
@@ -43,10 +43,18 @@ export function StatCards({ stats, isLoading }: StatCardsProps) {
       bgColor: 'bg-rose-50 dark:bg-rose-950/60',
       borderColor: 'border-rose-100 dark:border-rose-900/60',
     },
+    {
+      title: 'ยอดทดลองเล่น (ครั้ง)',
+      value: stats?.totalTrials ?? 0,
+      icon: PlayCircle,
+      color: 'text-amber-600 dark:text-amber-400',
+      bgColor: 'bg-amber-50 dark:bg-amber-950/60',
+      borderColor: 'border-amber-100 dark:border-amber-900/60',
+    },
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 mb-8">
+    <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-5 mb-8">
       {cards.map((c) => {
         const Icon = c.icon;
         return (

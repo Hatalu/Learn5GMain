@@ -73,4 +73,6 @@ export interface SystemStats {
   totalMembers: number;
   totalViews: number;
   totalFavorites: number;
+  /** จำนวนครั้งที่กดทดลองเล่น (รวมผู้ที่ยังไม่สมัคร) */
+  totalTrials?: number;
 }
