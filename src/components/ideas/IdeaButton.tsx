@@ -75,9 +75,20 @@ export function IdeaButton() {
         onClick={() => setOpen(true)}
         aria-label="ส่งไอเดีย"
         title="ส่งไอเดีย"
-        className="btn-jelly fixed left-3 sm:left-4 top-[4.75rem] z-40 w-14 h-14 sm:w-16 sm:h-16 rounded-full drop-shadow-lg hover:drop-shadow-xl"
+        className="btn-jelly group fixed left-2 sm:left-4 top-[4.5rem] z-40 w-28 h-28 sm:w-32 sm:h-32"
       >
-        <Image src="/icon-idea.png" alt="" fill sizes="64px" className="object-contain" />
+        {/* เอฟเฟกต์รอบไอคอน: แสงเต้น + วงประหมุน + ประกายดาว */}
+        <span aria-hidden="true" className="pointer-events-none absolute inset-2 rounded-full bg-amber-300/40 blur-xl animate-pulse motion-reduce:animate-none" />
+        <span aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-full border-2 border-dashed border-amber-300/80 animate-spin motion-reduce:animate-none" style={{ animationDuration: '14s' }} />
+        <span aria-hidden="true" className="pointer-events-none absolute inset-1 rounded-full ring-2 ring-pink-400/50 animate-ping motion-reduce:animate-none" style={{ animationDuration: '2.6s' }} />
+        <span aria-hidden="true" className="pointer-events-none absolute inset-0 motion-reduce:hidden">
+          <span className="absolute -top-1 left-3 w-3 h-3 bg-amber-300 animate-pulse" style={{ clipPath: 'polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%)' }} />
+          <span className="absolute top-2 -right-1 w-4 h-4 bg-pink-300 animate-pulse" style={{ clipPath: 'polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%)', animationDelay: '.6s' }} />
+          <span className="absolute -bottom-1 right-6 w-3 h-3 bg-sky-300 animate-pulse" style={{ clipPath: 'polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%)', animationDelay: '1.2s' }} />
+        </span>
+        <span className="relative block w-full h-full animate-float-slow motion-reduce:animate-none drop-shadow-xl group-hover:scale-105 transition-transform">
+          <Image src="/icon-idea.png" alt="" fill sizes="128px" className="object-contain p-2" />
+        </span>
       </button>
 
       {open && (
