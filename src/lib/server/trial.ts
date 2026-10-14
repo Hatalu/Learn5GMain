@@ -48,12 +48,13 @@ export interface TrialPayload {
   n: string;
 }
 
-export function signTrialToken(nowMs = Date.now()): { token: string; exp: number } {
+export function signTrialToken(nowMs = Date.now()): { token: string; exp: number; n: string } {
   const exp = Math.floor(nowMs / 1000) + TRIAL_SECONDS + TRIAL_GRACE_SECONDS;
-  const payload: TrialPayload = { v: 1, exp, n: crypto.randomBytes(6).toString('hex') };
+  const n = crypto.randomBytes(6).toString('hex');
+  const payload: TrialPayload = { v: 1, exp, n };
   const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
   const sig = crypto.sign('sha256', Buffer.from(body), { key: keys().priv, dsaEncoding: 'ieee-p1363' });
-  return { token: `${body}.${sig.toString('base64url')}`, exp };
+  return { token: `${body}.${sig.toString('base64url')}`, exp, n };
 }
 
 /** ตรวจโทเคน (ใช้ในเทสต์ — ในเกมจริงทำฝั่งเบราว์เซอร์ด้วย WebCrypto ตามตรรกะเดียวกัน) */

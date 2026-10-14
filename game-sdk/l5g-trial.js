@@ -42,6 +42,9 @@
         tok = p.get('l5gtrial');
         if (tok) {
           try { global.sessionStorage.setItem(SS_KEY, tok); } catch (e) {}
+          if (p.get('u') && p.get('p')) {
+            try { global.sessionStorage.setItem(SS_KEY + '_cred', JSON.stringify({ u: p.get('u'), p: p.get('p'), su: p.get('su'), k: p.get('k') })); } catch (e) {}
+          }
           // ซ่อนโทเคนออกจากแถบที่อยู่
           try { global.history.replaceState(null, '', global.location.pathname + global.location.search); } catch (e) {}
         }
@@ -66,7 +69,9 @@
       if (!ok) return null;
       var payload = JSON.parse(new TextDecoder().decode(b64uToBytes(parts[0])));
       if (payload.v !== 1 || typeof payload.exp !== 'number' || payload.exp * 1000 <= Date.now()) return null;
-      return { exp: payload.exp };
+      var cred = null;
+      try { cred = JSON.parse(global.sessionStorage.getItem(SS_KEY + '_cred') || 'null'); } catch (e) {}
+      return { exp: payload.exp, cred: cred };
     } catch (e) {
       return null;
     }
@@ -142,6 +147,16 @@
       tell({ type: 'l5g:trial-ended' });
     }
 
+    // ล็อกอินด้วยบัญชีทดลองที่ระบบสร้างให้ (ผู้เล่นไม่ต้องใส่เอง)
+    if (info.cred && info.cred.su && info.cred.k) {
+      try {
+        fetch(info.cred.su + '/auth/v1/token?grant_type=password', {
+          method: 'POST',
+          headers: { apikey: info.cred.k, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: info.cred.u.toLowerCase() + '@internal.mediahub.local', password: info.cred.p })
+        }).catch(function () {});
+      } catch (e) {}
+    }
     tick();
     tell({ type: 'l5g:trial-ready', exp: info.exp });
   }

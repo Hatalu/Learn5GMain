@@ -37,6 +37,18 @@ export function TrialModal({ media, onClose }: { media: MediaItem; onClose: () =
 
   const startedAt = useRef<number | null>(null);
   const loadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const accountRef = useRef<string>('');
+  const cleanedRef = useRef(false);
+
+  // ลบบัญชีทดลองที่ระบบสร้างให้ (ครั้งเดียว)
+  const cleanup = useCallback(() => {
+    if (cleanedRef.current || !accountRef.current) return;
+    cleanedRef.current = true;
+    try {
+      fetch('/api/trial/end', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ account: accountRef.current }), keepalive: true }).catch(() => {});
+    } catch { /* ตัวกวาดจะลบให้ */ }
+  }, []);
+  useEffect(() => cleanup, [cleanup]);
 
   // ขอโทเคนทดลองจากเซิร์ฟเวอร์
   useEffect(() => {
@@ -55,6 +67,7 @@ export function TrialModal({ media, onClose }: { media: MediaItem; onClose: () =
           setPhase('error');
           return;
         }
+        accountRef.current = String(json.account || '');
         setTotal(Number(json.seconds) || 120);
         setUrl(json.url);
       } catch {
@@ -115,9 +128,10 @@ export function TrialModal({ media, onClose }: { media: MediaItem; onClose: () =
   // หมดเวลา: จอเกมจางลง แล้วปิดเกมจริง (หยุดเสียงและการเล่น)
   useEffect(() => {
     if (phase !== 'ended') return;
+    cleanup();
     const t = setTimeout(() => setFrameGone(true), 1500);
     return () => clearTimeout(t);
-  }, [phase]);
+  }, [phase, cleanup]);
 
   // Esc ปิด + ล็อก scroll พื้นหลัง
   useEffect(() => {

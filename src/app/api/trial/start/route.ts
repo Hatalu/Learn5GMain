@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase/admin';
 import { TRIAL_SECONDS, signTrialToken } from '@/lib/server/trial';
+import { createTrialAccount, sweepTrialAccounts } from '@/lib/server/trial-account';
 import { clientIp, isSameOrigin, rateLimit } from '@/lib/server/rate-limit';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -34,11 +35,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'ไม่พบสื่อนี้' }, { status: 404 });
     }
 
-    const { token } = signTrialToken();
+    await sweepTrialAccounts().catch(() => 0);
+    const { token, n } = signTrialToken();
+    const acct = await createTrialAccount(n);
     const base = String(media.game_url).split('#')[0];
+    const q = new URLSearchParams({
+      l5gtrial: token,
+      u: acct.username,
+      p: acct.password,
+      su: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+      k: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+    });
     return NextResponse.json({
       title: media.title,
-      url: `${base}#l5gtrial=${token}`,
+      url: `${base}#${q.toString()}`,
+      account: n,
       seconds: TRIAL_SECONDS,
     });
   } catch {
