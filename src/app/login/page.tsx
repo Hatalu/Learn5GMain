@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { ThemeToggle } from '@/components/navbar/ThemeToggle';
-import { Sparkles, Lock, User, Eye, EyeOff, Loader2, BookOpen, ArrowLeft } from 'lucide-react';
+import { Sparkles, Lock, User, Eye, EyeOff, Loader2, BookOpen, ArrowLeft, PlayCircle, Crown } from 'lucide-react';
 import { FacebookIcon } from '@/components/icons/FacebookIcon';
 
 /** หน้าที่ขอไว้ก่อนมาล็อกอิน (?redirect=/dev) รับเฉพาะ path ภายในเว็บเรา */
@@ -91,7 +91,7 @@ export default function LoginPage() {
         <ThemeToggle />
       </div>
 
-      <div className="w-full max-w-md relative z-10">
+      <div className="w-full max-w-md lg:max-w-4xl relative z-10">
         {/* Logo & Header with glowing edge */}
         <div className="text-center mb-8">
           <div className="inline-block relative w-20 h-20 rounded-2xl overflow-hidden mb-4 ring-4 ring-indigo-400/80 dark:ring-indigo-400 shadow-[0_0_25px_rgba(99,102,241,0.85)] dark:shadow-[0_0_30px_rgba(129,140,248,0.95)] transform hover:scale-105 transition-all duration-300 bg-white dark:bg-gray-900">
@@ -110,6 +110,7 @@ export default function LoginPage() {
           </p>
         </div>
 
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)] lg:items-start lg:justify-center">
         {/* Login Card */}
         <div className="bg-white/85 dark:bg-gray-900/80 backdrop-blur-xl border-2 border-indigo-100 dark:border-indigo-900 rounded-[2rem] p-6 sm:p-8 shadow-toy-lg">
           <div className="flex items-center gap-2 mb-6">
@@ -222,6 +223,41 @@ export default function LoginPage() {
               </a>
             </p>
           </div>
+        </div>
+
+        {/* ทางเข้าสำหรับคนที่ยังไม่มีบัญชี */}
+        <aside className="rounded-[2rem] border-2 border-amber-200/80 dark:border-amber-900/60 bg-gradient-to-br from-amber-50/90 to-pink-50/80 dark:from-amber-950/30 dark:to-pink-950/20 backdrop-blur-xl p-6 sm:p-7 shadow-toy">
+          <p className="text-xs font-bold uppercase tracking-widest text-amber-700 dark:text-amber-300">ยังไม่มีบัญชี?</p>
+          <h2 className="mt-1 font-display text-xl sm:text-2xl text-gray-900 dark:text-white">เริ่มต้นได้ใน 2 ทาง</h2>
+          <ol className="mt-4 space-y-3">
+            <li className="flex gap-3">
+              <span className="w-7 h-7 shrink-0 rounded-full bg-sun-400 text-indigo-950 text-sm font-bold flex items-center justify-center">1</span>
+              <p className="text-sm text-gray-700 dark:text-gray-200">
+                <b>ลองก่อนฟรี</b> เปิดเว็บทดลอง กดปุ่ม &quot;ทดลองเล่น&quot; เล่นได้ทุกเกมครั้งละ 2 นาที ไม่ต้องใส่รหัส
+              </p>
+            </li>
+            <li className="flex gap-3">
+              <span className="w-7 h-7 shrink-0 rounded-full bg-pink-400 text-white text-sm font-bold flex items-center justify-center">2</span>
+              <p className="text-sm text-gray-700 dark:text-gray-200">
+                <b>ชอบแล้วสมัครเลย</b> เลือกแพลนตั้งแต่ 39 บาท สแกนจ่ายพร้อมเพย์ รับสิทธิ์ทันที
+              </p>
+            </li>
+          </ol>
+          <div className="mt-5 flex flex-col gap-2.5">
+            <Link
+              href="/home"
+              className="btn-jelly inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-white dark:bg-gray-800 border-2 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 font-bold shadow-sm"
+            >
+              <PlayCircle className="w-5 h-5" /> เปิดเว็บทดลอง
+            </Link>
+            <Link
+              href="/membership"
+              className="btn-jelly inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-sun-400 to-orange-400 text-indigo-950 font-display text-lg shadow-md ring-2 ring-white/70 dark:ring-gray-900"
+            >
+              <Crown className="w-5 h-5" /> ดูแพลนสมาชิก
+            </Link>
+          </div>
+        </aside>
         </div>
       </div>
     </main>
