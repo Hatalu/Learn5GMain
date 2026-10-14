@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
@@ -27,14 +27,12 @@ import {
   Sparkles,
   Globe,
   Lock,
-  Crown,
-  Unlock,
   CalendarCheck2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
 export default function DevDashboardPage() {
-  const { isDev, isLoading: authLoading } = useAuth();
+  const { isDev, user, refreshProfile, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const { success, error } = useToast();
   const supabase = createClient();
@@ -53,12 +51,22 @@ export default function DevDashboardPage() {
   const [editingMedia, setEditingMedia] = useState<MediaItem | null>(null);
   const [deletingMedia, setDeletingMedia] = useState<MediaItem | null>(null);
 
-  // Guard: if not dev after loading, push to /home
+  // Guard: ตรวจสิทธิ์ Dev (ไม่เด้งทันที: ถ้ามี session แต่โปรไฟล์ยังไม่มา ลองโหลดซ้ำก่อนตัดสิน)
+  const retried = useRef(false);
+  const [recheck, setRecheck] = useState(0);
   useEffect(() => {
-    if (!authLoading && !isDev) {
-      router.replace('/home');
+    if (authLoading || isDev) return;
+    if (!user) {
+      router.replace('/login?redirect=%2Fdev');
+      return;
     }
-  }, [authLoading, isDev, router]);
+    if (!retried.current) {
+      retried.current = true;
+      refreshProfile().finally(() => setTimeout(() => setRecheck((n) => n + 1), 1200));
+      return;
+    }
+    router.replace('/home?error=unauthorized_dev');
+  }, [authLoading, isDev, user, router, refreshProfile, recheck]);
 
   // Fetch system stats
   const fetchStats = useCallback(async () => {
@@ -331,7 +339,6 @@ export default function DevDashboardPage() {
                       <th className="py-3.5 px-4">วิชา</th>
                       <th className="py-3.5 px-4 hidden md:table-cell">ระดับชั้น</th>
                       <th className="py-3.5 px-4 hidden sm:table-cell">ประเภท</th>
-                      <th className="py-3.5 px-4">สิทธิ์เข้าถึง</th>
                       <th className="py-3.5 px-4">สถานะ (Public/Private)</th>
                       <th className="py-3.5 px-4 text-center">ยอดชม</th>
                       <th className="py-3.5 px-4 hidden lg:table-cell">วันที่สร้าง</th>
@@ -402,21 +409,6 @@ export default function DevDashboardPage() {
                           <span className="text-xs text-gray-600 dark:text-gray-300">
                             {m.media_type}
                           </span>
-                        </td>
-
-                        {/* Access Tier */}
-                        <td className="py-3.5 px-4">
-                          {String(m.access_tier || 'premium').toLowerCase().trim() === 'free' ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                              <Unlock className="w-3 h-3" />
-                              <span>Free</span>
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-amber-50 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-                              <Crown className="w-3 h-3 text-amber-500" />
-                              <span>Premium</span>
-                            </span>
-                          )}
                         </td>
 
                         {/* Visibility (Public / Private with 1-click toggle) */}

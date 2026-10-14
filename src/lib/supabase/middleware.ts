@@ -57,11 +57,15 @@ export async function updateSession(request: NextRequest) {
 
   // 4. Role check for /dev routes
   if (user && path.startsWith('/dev')) {
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', user.id)
       .maybeSingle();
+
+    // อ่านโปรไฟล์ไม่สำเร็จ (ไม่ใช่ "ไม่ใช่ Dev") = ปัญหาชั่วคราว ไม่เด้งออก
+    // หน้า /dev และ API /api/dev/* ตรวจบทบาทซ้ำเองอยู่แล้ว ข้อมูลจริงถูกกันด้วย RLS
+    if (profileError) return supabaseResponse;
 
     if (!profile || profile.role !== 'dev') {
       // Forbidden: redirect to home

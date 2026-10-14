@@ -269,7 +269,7 @@ export interface GreetContext {
   dailyPlayedToday: boolean;
   checkinStars: number;
   stage: number;
-  /** ยังไม่มีสิทธิ์สะสม (ไม่ใช่ Premium) ปุ๋งทักทายได้แต่ชวนสมัคร */
+  /** ยังไม่มีสิทธิ์สะสม (ไม่ใช่สมาชิก) ปุ๋งทักทายได้แต่ชวนสมัคร */
   locked?: boolean;
 }
 
@@ -300,7 +300,7 @@ export function buildGreeting(c: GreetContext): string[] {
   }
 
   if (c.locked) {
-    lines.push(c.dailyTitle && !c.dailyPlayedToday ? `เกมประจำวันคือ "${c.dailyTitle}" ไปเล่นกันไหม` : 'สมัคร Premium แล้วฉันจะจำเธอได้ มาสะสมดาวด้วยกัน');
+    lines.push(c.dailyTitle && !c.dailyPlayedToday ? `เกมประจำวันคือ "${c.dailyTitle}" ไปเล่นกันไหม` : 'สมัครสมาชิกแล้วฉันจะจำเธอได้ มาสะสมดาวด้วยกัน');
     return lines.slice(0, 2);
   }
 
@@ -331,7 +331,7 @@ export const CHATTER = [
 
 /** ข้อความตอนกดคุยกับปุ๋งสำหรับผู้ที่ยังไม่มีสิทธิ์ */
 export const CHATTER_LOCKED = [
-  'สมาชิก Premium สะสมดาวและสติกเกอร์กับฉันได้นะ',
-  'ฉันจะโตขึ้นและแต่งตัวได้ เมื่อเธอเป็นสมาชิก Premium',
+  'สมาชิกสะสมดาวและสติกเกอร์กับฉันได้นะ',
+  'ฉันจะโตขึ้นและแต่งตัวได้ เมื่อเธอเป็นสมาชิก',
   'อยากให้ฉันจำเธอได้ ติดต่อเพจ สื่อการสอน 5G ได้เลย',
 ];

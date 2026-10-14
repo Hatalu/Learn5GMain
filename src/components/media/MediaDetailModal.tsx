@@ -21,11 +21,14 @@ import {
   MessageCircle,
   Copy,
   Check,
+  Play,
 } from 'lucide-react';
 import { FacebookIcon } from '@/components/icons/FacebookIcon';
 import { cn } from '@/lib/utils/cn';
 import { getSubjectBadge } from '@/lib/utils/subject';
 import { useCompanion } from '@/components/companion/CompanionProvider';
+import { useTrial } from '@/components/trial/TrialProvider';
+import { CONTACT_PAGE_URL, hasMembership } from '@/lib/membership';
 
 interface MediaDetailModalProps {
   media: MediaItem | null;
@@ -46,6 +49,7 @@ export function MediaDetailModal({
 }: MediaDetailModalProps) {
   const { user, profile, isDev } = useAuth();
   const { dailyUnlockedId, recordPlay } = useCompanion();
+  const { openTrial } = useTrial();
   const { success, error } = useToast();
   const [copiedPage, setCopiedPage] = useState(false);
   const [hasClickedRecently, setHasClickedRecently] = useState(false);
@@ -76,34 +80,19 @@ export function MediaDetailModal({
 
   if (!isOpen || !media) return null;
 
-  // เกมประจำวันที่แอดมินตั้งให้ "ปลดล็อกฟรีเฉพาะวันนี้" ทุกคนเล่นได้
+  // เกมประจำวันที่แอดมินตั้งให้ "เปิดให้ทุกคนเล่นเฉพาะวันนั้น" (โปรโมต) ทุกคนเล่นได้
   const isDailyFree = dailyUnlockedId === media.id;
-  const isFree = isDailyFree || String(media.access_tier || 'premium').toLowerCase().trim() === 'free';
 
-  // Check premium status for logged in member
-  const checkPremiumActive = (): boolean => {
-    if (isDev) return true;
-    if (!profile?.premium_until || profile.premium_until === '-' || profile.premium_until.trim() === '') {
-      return false;
-    }
-    const expireDate = new Date(profile.premium_until);
-    if (isNaN(expireDate.getTime())) return false;
-    return expireDate.getTime() > Date.now();
-  };
-
-  const isPremiumActive = checkPremiumActive();
-
-  // Can user open the media?
-  // 1. Free media: ANYONE can open (even guests)
-  // 2. Premium media: requires login AND (isDev OR isPremiumActive)
-  const canAccess = isFree || (Boolean(user) && (isDev || isPremiumActive));
+  // ทุกสื่อสำหรับสมาชิก: ต้องล็อกอิน + สิทธิ์สมาชิกยังไม่หมดอายุ (Dev เล่นได้เสมอ)
+  const isMemberActive = Boolean(user) && hasMembership(profile);
+  const canAccess = isDailyFree || isMemberActive;
 
   const handleOpenMedia = async () => {
     if (!canAccess) {
       if (!user) {
         error('คุณยังไม่ได้เข้าสู่ระบบ กรุณาเข้าสู่ระบบก่อนใช้งานสื่อ');
       } else {
-        error('ต้องเป็นสมาชิก Premium ก่อน ติดต่อได้ทางเพจ สื่อการสอน 5G');
+        error('ต้องเป็นสมาชิกก่อน ติดต่อได้ทางเพจ สื่อการสอน 5G (หรือกดทดลองเล่นได้เลย)');
       }
       return;
     }
@@ -175,20 +164,22 @@ export function MediaDetailModal({
                 className="object-cover"
               />
 
-              {/* Tier Overlay Badge */}
-              <div className="absolute top-3 left-3">
-                {isFree ? (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500 text-white shadow-md shadow-emerald-500/30">
-                    <Unlock className="w-3.5 h-3.5" />
-                    <span>เล่นฟรี</span>
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/30">
-                    <Crown className="w-3.5 h-3.5" />
-                    <span>พรีเมียม</span>
-                  </span>
-                )}
-              </div>
+              {/* ป้ายสถานะ */}
+              {(isDailyFree || !canAccess) && (
+                <div className="absolute top-3 left-3">
+                  {isDailyFree ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500 text-white shadow-md shadow-emerald-500/30">
+                      <Unlock className="w-3.5 h-3.5" />
+                      <span>ฟรีวันนี้</span>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/30">
+                      <Lock className="w-3.5 h-3.5" />
+                      <span>สำหรับสมาชิก</span>
+                    </span>
+                  )}
+                </div>
+              )}
 
               {/* View Count Tag */}
               <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur-md text-white text-xs font-medium flex items-center gap-1.5 shadow-sm">
@@ -277,21 +268,21 @@ export function MediaDetailModal({
 
             {/* Access Permission & Action Button Area */}
             <div className="pt-2 border-t border-gray-100 dark:border-gray-800 space-y-3">
-              {/* Case 1: Free Media */}
-              {isFree ? (
+              {/* Case 1: เกมประจำวันที่เปิดให้ทุกคน */}
+              {isDailyFree ? (
                 <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 flex items-start gap-2.5">
                   <Unlock className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
                   <div>
                     <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-300">
-                      {isDailyFree ? 'ปลดล็อกฟรีเฉพาะวันนี้ (เกมประจำวัน)' : 'สื่อฟรีสำหรับทุกคน (Free Access)'}
+                      แจกเล่นฟรีวันนี้ (เกมประจำวัน)
                     </p>
                     <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-0.5">
-                      {isDailyFree ? 'วันนี้เล่นได้เลยไม่ต้องเข้าสู่ระบบ พรุ่งนี้กลับเป็นสื่อสำหรับสมาชิกตามเดิม' : 'คุณสามารถเปิดใช้งานสื่อการสอนนี้ได้ทันที ไม่จำเป็นต้องเข้าสู่ระบบ'}
+                      วันนี้เล่นได้เลยไม่ต้องเข้าสู่ระบบ พรุ่งนี้กลับเป็นสื่อสำหรับสมาชิกตามเดิม
                     </p>
                   </div>
                 </div>
               ) : !user ? (
-                /* Case 2: Premium Media - User NOT logged in */
+                /* Case 2: ยังไม่ได้ล็อกอิน */
                 <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60">
                   <div className="flex items-start gap-2.5">
                     <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
@@ -300,7 +291,7 @@ export function MediaDetailModal({
                         ยังไม่ได้เข้าสู่ระบบ
                       </p>
                       <p className="text-xs text-amber-800 dark:text-amber-300 mt-0.5 leading-relaxed">
-                        สื่อนี้เป็นสื่อระดับ Premium กรุณาเข้าสู่ระบบด้วยบัญชีสมาชิกเพื่อเปิดเข้าใช้งาน
+                        สื่อนี้สำหรับสมาชิก เข้าสู่ระบบด้วยบัญชีสมาชิกเพื่อเล่นเต็มรูปแบบ หรือกด "ทดลองเล่น" ด้านล่างเพื่อลองเล่นฟรี 2 นาที
                       </p>
                     </div>
                   </div>
@@ -317,23 +308,23 @@ export function MediaDetailModal({
                     </Link>
                   </div>
                 </div>
-              ) : !isDev && !isPremiumActive ? (
-                /* Case 3: Premium Media - Logged in Member but Premium Expired or '-' */
+              ) : !isMemberActive ? (
+                /* Case 3: ล็อกอินแล้วแต่ยังไม่มีสิทธิ์/สิทธิ์หมดอายุ */
                 <div className="p-3.5 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/50 dark:to-orange-950/40 border border-amber-300 dark:border-amber-800/80">
                   <div className="flex items-start gap-2.5">
                     <Crown className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
                     <div>
                       <p className="text-xs sm:text-sm font-bold text-amber-900 dark:text-amber-200">
-                        ต้องเป็นสมาชิก Premium ก่อน ติดต่อได้ทางเพจ สื่อการสอน 5G
+                        ต้องเป็นสมาชิกก่อน ติดต่อได้ทางเพจ สื่อการสอน 5G
                       </p>
                       <p className="text-xs text-amber-800 dark:text-amber-300 mt-1 leading-relaxed">
-                        บัญชีของคุณยังไม่มีสิทธิ์ Premium หรือหมดอายุแล้ว หากต้องการเปิดใช้งานสื่อนี้ กรุณาติดต่อแอดมินทางเพจเฟซบุ๊ก
+                        บัญชีของคุณยังไม่มีสิทธิ์สมาชิกหรือหมดอายุแล้ว ติดต่อแอดมินทางเพจเฟซบุ๊กเพื่อเปิดสิทธิ์ ระหว่างนี้กด "ทดลองเล่น" ลองเกมก่อนได้
                       </p>
                     </div>
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <a
-                      href="https://www.facebook.com/profile.php?id=61594556657667"
+                      href={CONTACT_PAGE_URL}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-sm active:scale-95 transition-all"
@@ -351,12 +342,12 @@ export function MediaDetailModal({
                   </div>
                 </div>
               ) : (
-                /* Case 4: Premium Media - User has active Premium or is Dev */
+                /* Case 4: สมาชิกที่สิทธิ์ยังไม่หมดอายุ หรือ Dev */
                 <div className="p-3 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900/60 flex items-start gap-2.5">
                   <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400 mt-0.5 shrink-0" />
                   <div>
                     <p className="text-xs font-semibold text-indigo-900 dark:text-indigo-200">
-                      {isDev ? 'สิทธิ์ผู้พัฒนา (Dev Access)' : 'สิทธิ์สมาชิก Premium พร้อมใช้งาน'}
+                      {isDev ? 'สิทธิ์ผู้พัฒนา (Dev Access)' : 'สิทธิ์สมาชิกพร้อมใช้งาน'}
                     </p>
                     <p className="text-xs text-indigo-700 dark:text-indigo-400 mt-0.5">
                       {isDev
@@ -390,9 +381,23 @@ export function MediaDetailModal({
                   className="w-full py-3.5 px-6 rounded-2xl bg-gray-200 dark:bg-gray-800 text-gray-500 dark:text-gray-400 font-bold text-sm sm:text-base border border-gray-300 dark:border-gray-700 flex items-center justify-center gap-2 cursor-pointer hover:bg-gray-300 dark:hover:bg-gray-750 transition-colors"
                 >
                   <Lock className="w-4 h-4 text-amber-500" />
-                  <span>ต้องเป็นสมาชิก Premium ก่อน</span>
+                  <span>ต้องเป็นสมาชิกก่อน</span>
                 </button>
               )}
+
+              {/* ทดลองเล่น: ทุกเกม ทุกคน (ไม่ต้องสมัคร) จอทดลองเปิดบนหน้านี้ มีเวลา 2 นาที */}
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  openTrial(media);
+                }}
+                className="btn-jelly w-full py-3 px-5 rounded-2xl border-2 border-sun-500/60 bg-sun-400/20 text-amber-900 dark:text-sun-300 font-bold flex items-center justify-center gap-2"
+              >
+                <Play className="w-5 h-5 fill-current" />
+                <span>ทดลองเล่น 2 นาที</span>
+                <span className="text-xs font-medium opacity-80">(ไม่ต้องใส่รหัส)</span>
+              </button>
             </div>
           </div>
         </div>

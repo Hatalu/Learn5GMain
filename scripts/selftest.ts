@@ -28,6 +28,8 @@ import {
   setColor,
   setHat,
 } from '../src/lib/companion-store';
+import { hasMembership } from '../src/lib/membership';
+import { TRIAL_GRACE_SECONDS, TRIAL_SECONDS, signTrialToken, trialPublicJwk, verifyTrialToken } from '../src/lib/server/trial';
 
 let passed = 0;
 const t = (name: string, fn: () => void) => {
@@ -311,7 +313,7 @@ t('sanitize: ตัดข้อมูลผิดรูป/เกินช่ว
   assert.equal(sanitize('ขยะ').createdAt, 0);
 });
 
-t('คำทักทายโหมดล็อก: ชวนสมัคร Premium และยังสั้น', () => {
+t('คำทักทายโหมดล็อก: ชวนสมัครสมาชิก และยังสั้น', () => {
   const g = buildGreeting({
     parts: bkkParts(new Date('2026-10-13T03:00:00Z')),
     phase: 'day',
@@ -326,8 +328,56 @@ t('คำทักทายโหมดล็อก: ชวนสมัคร Pr
     locked: true,
   });
   assert.equal(g.length, 2);
-  assert.match(g[1], /Premium/);
+  assert.match(g[1], /สมัครสมาชิก/);
   for (const l of g) assert.ok(l.length <= 60);
+});
+
+console.log('\nสมาชิก');
+t('hasMembership: ผู้เยี่ยมชม/สมาชิกหมดอายุ/สมาชิกปกติ/dev', () => {
+  const day = 24 * 60 * 60 * 1000;
+  const future = new Date(Date.now() + 30 * day).toISOString();
+  const past = new Date(Date.now() - day).toISOString();
+  assert.equal(hasMembership(null), false);
+  assert.equal(hasMembership(undefined), false);
+  assert.equal(hasMembership({ role: 'member', premium_until: null }), false);
+  assert.equal(hasMembership({ role: 'member', premium_until: '-' as unknown as string }), false);
+  assert.equal(hasMembership({ role: 'member', premium_until: 'ขยะ' }), false);
+  assert.equal(hasMembership({ role: 'member', premium_until: past }), false);
+  assert.equal(hasMembership({ role: 'member', premium_until: future }), true);
+  assert.equal(hasMembership({ role: 'dev', premium_until: null }), true);
+});
+
+console.log('\nทดลองเล่น');
+process.env.TRIAL_SIGNING_SEED = process.env.TRIAL_SIGNING_SEED || 'selftest-seed';
+t('โทเคนทดลองเล่น: เซ็นแล้วตรวจผ่าน และหมดอายุตามเวลา', () => {
+  const now = 1_800_000_000_000;
+  const { token, exp } = signTrialToken(now);
+  assert.equal(exp, Math.floor(now / 1000) + TRIAL_SECONDS + TRIAL_GRACE_SECONDS);
+  assert.ok(verifyTrialToken(token, now + 1000));
+  assert.ok(verifyTrialToken(token, now + (TRIAL_SECONDS + TRIAL_GRACE_SECONDS - 1) * 1000));
+  assert.equal(verifyTrialToken(token, now + (TRIAL_SECONDS + TRIAL_GRACE_SECONDS + 1) * 1000), null);
+});
+
+t('โทเคนทดลองเล่น: แก้ข้อมูล/ลายเซ็น/รูปแบบผิด ใช้ไม่ได้', () => {
+  const now = 1_800_000_000_000;
+  const { token } = signTrialToken(now);
+  const [body, sig] = token.split('.');
+  // ยืดเวลาหมดอายุเอง
+  const forged = Buffer.from(JSON.stringify({ v: 1, exp: Math.floor(now / 1000) + 99999, n: 'aaaa' })).toString('base64url');
+  assert.equal(verifyTrialToken(forged + '.' + sig, now), null);
+  // ลายเซ็นเพี้ยน
+  const bad = sig.slice(0, -2) + (sig.endsWith('AA') ? 'BB' : 'AA');
+  assert.equal(verifyTrialToken(body + '.' + bad, now), null);
+  for (const junk of ['', 'abc', 'a.b', '.', body + '.', '.' + sig]) assert.equal(verifyTrialToken(junk, now), null);
+  // โทเคนต่างกันทุกครั้ง
+  assert.notEqual(signTrialToken(now).token, signTrialToken(now).token);
+});
+
+t('กุญแจสาธารณะเป็น EC P-256 และไม่เปิดเผยกุญแจส่วนตัว', () => {
+  const k = trialPublicJwk() as Record<string, unknown>;
+  assert.equal(k.kty, 'EC');
+  assert.equal(k.crv, 'P-256');
+  assert.equal(k.d, undefined);
 });
 
 console.log(`\n${passed} tests passed`);

@@ -2,8 +2,9 @@
 
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { CalendarCheck2, Gift, Play, Timer } from 'lucide-react';
+import { CalendarCheck2, Gift, PlayCircle, Play, Timer } from 'lucide-react';
 import { useCompanion } from '@/components/companion/CompanionProvider';
+import { useTrial } from '@/components/trial/TrialProvider';
 import { StarIcon } from '@/components/companion/Stars';
 import { MediaItem } from '@/types/database';
 import { STAR_RULES, bkkParts, msUntilMidnight } from '@/lib/companion';
@@ -38,14 +39,14 @@ function Countdown() {
 /** การ์ด "เกมประจำวัน" บนหน้าหลัก: เปลี่ยนทุกวัน มีนับถอยหลังถึงเที่ยงคืน */
 export function DailyGameCard({ onSelect }: { onSelect: (m: MediaItem) => void }) {
   const { daily, dailyPlayedToday, mediaLoaded, entitled } = useCompanion();
+  const { openTrial } = useTrial();
 
   if (!mediaLoaded) {
     return <div className="h-56 rounded-[2rem] bg-gray-200/70 dark:bg-gray-800/70 animate-pulse" />;
   }
   if (!daily) return null;
   const m = daily.media;
-  const premium = String(m.access_tier) !== 'free';
-  const freeToday = daily.unlock && premium;
+  const freeToday = daily.unlock;
 
   return (
     <section aria-labelledby="daily-h" className="relative isolate overflow-hidden rounded-[2rem] border-2 border-white/25 shadow-toy-lg bg-gradient-to-br from-amber-400 via-orange-500 to-pink-600 dark:from-amber-600 dark:via-orange-700 dark:to-pink-800 p-5 sm:p-7 text-white">
@@ -70,7 +71,7 @@ export function DailyGameCard({ onSelect }: { onSelect: (m: MediaItem) => void }
             </span>
             {freeToday && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-400 text-emerald-950 text-sm font-bold shadow-md animate-wiggle">
-                <Gift className="w-4 h-4" /> ปลดล็อกฟรีเฉพาะวันนี้
+                <Gift className="w-4 h-4" /> แจกเล่นฟรีวันนี้
               </span>
             )}
           </div>
@@ -91,9 +92,12 @@ export function DailyGameCard({ onSelect }: { onSelect: (m: MediaItem) => void }
             <button type="button" onClick={() => onSelect(m)} className="btn-jelly inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-white text-orange-700 font-bold text-base shadow-[0_5px_0_0_rgba(0,0,0,0.2)]">
               <Play className="w-5 h-5 fill-current" /> เล่นเลย
             </button>
+            <button type="button" onClick={() => openTrial(m)} className="btn-jelly inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-white/20 border-2 border-white/60 text-white font-bold text-base backdrop-blur">
+              <PlayCircle className="w-5 h-5" /> ทดลองเล่น
+            </button>
             {!entitled ? (
               <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-black/20 text-sm font-semibold">
-                <StarIcon className="w-5 h-5" /> สมาชิก Premium รับโบนัส +{STAR_RULES.dailyGame} ดาว
+                <StarIcon className="w-5 h-5" /> สมาชิกรับโบนัส +{STAR_RULES.dailyGame} ดาว
               </span>
             ) : dailyPlayedToday ? (
               <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-black/20 text-sm font-semibold">

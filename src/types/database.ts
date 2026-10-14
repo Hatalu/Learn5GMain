@@ -64,7 +64,6 @@ export interface FilterState {
   subjects: Subject[];
   grades: GradeLevel[];
   mediaTypes: MediaType[];
-  accessTiers: AccessTier[];
 }
 
 export interface SystemStats {

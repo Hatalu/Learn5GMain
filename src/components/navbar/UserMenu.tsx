@@ -70,7 +70,7 @@ export function UserMenu() {
               )}
             </div>
             <div className="mt-1.5 pt-1.5 border-t border-gray-100 dark:border-gray-800 text-xs text-gray-500 dark:text-gray-400 flex items-center justify-between">
-              <span>วันหมดอายุ Premium:</span>
+              <span>สมาชิกหมดอายุ:</span>
               <span className="font-semibold text-gray-700 dark:text-gray-300">
                 {profile?.premium_until
                   ? new Date(profile.premium_until).toLocaleDateString('th-TH', {

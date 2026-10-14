@@ -8,6 +8,13 @@ import { ThemeToggle } from '@/components/navbar/ThemeToggle';
 import { Sparkles, Lock, User, Eye, EyeOff, Loader2, BookOpen, ArrowLeft } from 'lucide-react';
 import { FacebookIcon } from '@/components/icons/FacebookIcon';
 
+/** หน้าที่ขอไว้ก่อนมาล็อกอิน (?redirect=/dev) รับเฉพาะ path ภายในเว็บเรา */
+function redirectTarget(): string {
+  if (typeof window === 'undefined') return '/home';
+  const r = new URLSearchParams(window.location.search).get('redirect');
+  return r && r.startsWith('/') && !r.startsWith('//') ? r : '/home';
+}
+
 export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -21,7 +28,7 @@ export default function LoginPage() {
   // If already logged in, redirect to /home
   useEffect(() => {
     if (!isLoading && user) {
-      router.replace('/home');
+      router.replace(redirectTarget());
     }
   }, [user, isLoading, router]);
 
@@ -45,7 +52,7 @@ export default function LoginPage() {
       if (!res.success) {
         setErrorMsg(res.error || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
       } else {
-        router.push('/home');
+        router.push(redirectTarget());
       }
     } catch {
       setErrorMsg('เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง');

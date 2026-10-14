@@ -4,10 +4,12 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
 import { MediaItem } from '@/types/database';
-import { Heart, Play, Eye, Layers, Crown, Unlock, Lock } from 'lucide-react';
+import { Heart, Play, Eye, Layers, Unlock, Lock, PlayCircle } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { getSubjectBadge } from '@/lib/utils/subject';
 import { useCompanionOptional } from '@/components/companion/CompanionProvider';
+import { useTrial } from '@/components/trial/TrialProvider';
+import { hasMembership } from '@/lib/membership';
 
 interface MediaCardProps {
   media: MediaItem;
@@ -24,18 +26,14 @@ export function MediaCard({
   onSelectMedia,
   priority = false,
 }: MediaCardProps) {
-  const { user, profile, isDev } = useAuth();
+  const { user, profile } = useAuth();
+  const { openTrial } = useTrial();
   const [imgError, setImgError] = useState(false);
   const localViews = media.view_count;
 
+  // ทุกสื่อสำหรับสมาชิก: ล็อกถ้ายังไม่ใช่สมาชิก (เกมประจำวันที่แอดมินเปิดให้ทุกคนเล่นเฉพาะวันนั้นไม่ล็อก)
   const dailyFree = useCompanionOptional()?.dailyUnlockedId === media.id;
-  const isFree = dailyFree || String(media.access_tier || 'premium').toLowerCase().trim() === 'free';
-
-  // สถานะล็อก: premium และผู้ใช้ยังไม่มีสิทธิ์ (ใช้แสดงผลเท่านั้น)
-  const premiumActive =
-    isDev ||
-    (!!profile?.premium_until && new Date(profile.premium_until).getTime() > Date.now());
-  const isLocked = !isFree && !(user && premiumActive);
+  const isLocked = !dailyFree && !(user && hasMembership(profile));
 
   const openDetail = () => onSelectMedia?.(media);
 
@@ -49,20 +47,22 @@ export function MediaCard({
     >
       {/* 1:1 Thumbnail */}
       <div className="relative aspect-square w-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
-        {/* Tier Badge */}
-        <div className="absolute top-3 left-3 z-10 pointer-events-none">
-          {isFree ? (
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-mint-500 text-white shadow-md shadow-mint-500/40 ring-2 ring-white/70">
-              <Unlock className="w-3 h-3" />
-              <span>{dailyFree && String(media.access_tier) !== 'free' ? 'ฟรีวันนี้' : 'เล่นฟรี'}</span>
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-sun-500 to-orange-500 text-white shadow-md shadow-amber-500/40 ring-2 ring-white/70">
-              <Crown className="w-3 h-3" />
-              <span>พรีเมียม</span>
-            </span>
-          )}
-        </div>
+        {/* ป้ายสถานะ */}
+        {(dailyFree || isLocked) && (
+          <div className="absolute top-3 left-3 z-10 pointer-events-none">
+            {dailyFree ? (
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-mint-500 text-white shadow-md shadow-mint-500/40 ring-2 ring-white/70">
+                <Unlock className="w-3 h-3" />
+                <span>ฟรีวันนี้</span>
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-sun-500 to-orange-500 text-white shadow-md shadow-amber-500/40 ring-2 ring-white/70">
+                <Lock className="w-3 h-3" />
+                <span>สำหรับสมาชิก</span>
+              </span>
+            )}
+          </div>
+        )}
 
         <Image
           src={imgError ? fallbackImage : media.icon_url || fallbackImage}
@@ -155,22 +155,37 @@ export function MediaCard({
           )}
         </div>
 
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            openDetail();
-          }}
-          className={cn(
-            'btn-jelly w-full mt-1 inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-2xl text-sm font-bold',
-            isLocked
-              ? 'bg-sun-400/25 text-amber-800 dark:text-sun-300 border-2 border-sun-500/50'
-              : 'btn-primary-grad'
-          )}
-        >
-          {isLocked ? <Lock className="w-4 h-4" /> : <Play className="w-4 h-4 fill-current" />}
-          <span>{isLocked ? 'ดูรายละเอียด' : 'เล่นเลย'}</span>
-        </button>
+        <div className="mt-1 flex flex-wrap items-stretch gap-2">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              openDetail();
+            }}
+            className={cn(
+              'btn-jelly flex-1 min-w-[6.5rem] inline-flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl text-sm font-bold',
+              isLocked
+                ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-200 border-2 border-indigo-200 dark:border-indigo-800'
+                : 'btn-primary-grad'
+            )}
+          >
+            {isLocked ? <Lock className="w-4 h-4 shrink-0" /> : <Play className="w-4 h-4 fill-current shrink-0" />}
+            <span className="truncate">{isLocked ? 'ดูข้อมูล' : 'เล่นเลย'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              openTrial(media);
+            }}
+            className="btn-jelly flex-1 min-w-[7rem] inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-2xl text-sm font-bold bg-sun-400/25 text-amber-900 dark:text-sun-300 border-2 border-sun-500/60"
+            title="ทดลองเล่น 2 นาที ไม่ต้องใส่รหัส"
+            aria-label={`ทดลองเล่น ${media.title} 2 นาที`}
+          >
+            <PlayCircle className="w-4 h-4" />
+            <span>ทดลองเล่น</span>
+          </button>
+        </div>
       </div>
     </article>
   );

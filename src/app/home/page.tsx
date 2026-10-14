@@ -45,12 +45,11 @@ export default function HomePage() {
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [isLoadingMedia, setIsLoadingMedia] = useState(true);
 
-  // Filters state with accessTiers
+  // Filters state
   const [filters, setFilters] = useState<FilterState>({
     subjects: [],
     grades: [],
     mediaTypes: [],
-    accessTiers: [],
   });
   const [sortOption, setSortOption] = useState<SortOption>('latest');
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
@@ -65,6 +64,16 @@ export default function HomePage() {
   const handleSelectMedia = useCallback((media: MediaItem) => {
     setSelectedMedia(media);
     setIsDetailModalOpen(true);
+  }, []);
+
+  // ถูกเด้งมาจาก /dev: บอกเหตุผล แล้วล้างพารามิเตอร์ออกจาก URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('error') === 'unauthorized_dev') {
+      error('บัญชีนี้ไม่มีสิทธิ์เข้าหน้า Dev หรือ session หมดอายุ ลองออกจากระบบแล้วเข้าสู่ระบบใหม่ด้วยบัญชี Dev');
+      window.history.replaceState(null, '', '/home');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Fetch all media
@@ -254,7 +263,6 @@ export default function HomePage() {
       subjects: [],
       grades: [],
       mediaTypes: [],
-      accessTiers: [],
     });
   };
 
@@ -262,13 +270,6 @@ export default function HomePage() {
   const filteredAndSortedMedia = useMemo(() => {
     // Only public media is shown on the Home page (Private media is only visible in Dev dashboard)
     let result = allMedia.filter((m) => m.is_public !== false);
-
-    // Filter by Access Tier (Free vs Premium)
-    if (filters.accessTiers.length > 0) {
-      result = result.filter((m) =>
-        filters.accessTiers.includes((m.access_tier || 'premium') as any)
-      );
-    }
 
     // Filter by Subject (multi-select)
     if (filters.subjects.length > 0) {
@@ -317,8 +318,7 @@ export default function HomePage() {
   const hasActiveFilters =
     filters.subjects.length > 0 ||
     filters.grades.length > 0 ||
-    filters.mediaTypes.length > 0 ||
-    filters.accessTiers.length > 0;
+    filters.mediaTypes.length > 0;
 
   if (authLoading) {
     return <BuddyLoader />;
@@ -418,34 +418,6 @@ export default function HomePage() {
                 <span className="text-xs text-gray-500 dark:text-gray-400">
                   ตัวกรองที่เลือก:
                 </span>
-
-                {/* Access Tier Tags */}
-                {filters.accessTiers.map((tier) => (
-                  <span
-                    key={tier}
-                    className={cn(
-                      'inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border',
-                      tier === 'free'
-                        ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
-                        : 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
-                    )}
-                  >
-                    <span>{tier === 'free' ? 'ฟรี (Free)' : 'พรีเมียม (Premium)'}</span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setFilters({
-                          ...filters,
-                          accessTiers: filters.accessTiers.filter((t) => t !== tier),
-                        })
-                      }
-                      className="hover:opacity-75"
-                      aria-label={`ลบตัวกรอง ${tier}`}
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </span>
-                ))}
 
                 {/* Subject Tags */}
                 {filters.subjects.map((sub) => (
@@ -555,7 +527,7 @@ export default function HomePage() {
                 {filteredAndSortedMedia.map((media, i) => (
                   // การ์ดเด้งเข้าทีละใบ (key รวมตัวกรอง เพื่อให้เล่นใหม่ทุกครั้งที่กรอง)
                   <div
-                    key={`${media.id}-${filters.subjects.join()}-${filters.grades.join()}-${filters.mediaTypes.join()}-${filters.accessTiers.join()}-${sortOption}`}
+                    key={`${media.id}-${filters.subjects.join()}-${filters.grades.join()}-${filters.mediaTypes.join()}-${sortOption}`}
                     className="h-full animate-pop-in"
                     style={{ animationDelay: `${Math.min(i, 8) * 70}ms` }}
                   >

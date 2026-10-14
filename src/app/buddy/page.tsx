@@ -82,24 +82,24 @@ export default function BuddyPage() {
       <Navbar />
       <main className="relative flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6">
         {locked && (
-          <div className="absolute inset-0 z-20 flex justify-center items-start px-4" role="dialog" aria-modal="false" aria-label="ต้องเป็นสมาชิก Premium">
+          <div className="absolute inset-0 z-20 flex justify-center items-start px-4" role="dialog" aria-modal="false" aria-label="ต้องเป็นสมาชิก">
             <div className="sticky top-28 mt-16 sm:mt-24 w-full max-w-md rounded-[2rem] bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-2 border-sun-400 shadow-toy-lg p-6 sm:p-8 text-center animate-pop-in">
               <span className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-sun-400 to-orange-500 text-white flex items-center justify-center shadow-lg mb-4">
                 <Lock className="w-8 h-8" />
               </span>
-              <h1 className="text-2xl font-medium text-gray-900 dark:text-white">ห้องของปุ๋งสำหรับสมาชิก Premium</h1>
-              <p className="mt-3 font-display text-lg text-amber-800 dark:text-sun-300">ต้องสมัคร Premium ก่อน ติดต่อได้ทางเพจ สื่อการสอน 5G</p>
+              <h1 className="text-2xl font-medium text-gray-900 dark:text-white">ห้องของปุ๋งสำหรับสมาชิก</h1>
+              <p className="mt-3 font-display text-lg text-amber-800 dark:text-sun-300">ต้องสมัครสมาชิกก่อน ติดต่อได้ทางเพจ สื่อการสอน 5G</p>
               <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
                 สมาชิกเก็บดาว สติกเกอร์ และแต่งตัวปุ๋งได้ โดยข้อมูลถูกบันทึกกับบัญชี ใช้ได้ทุกเครื่อง
               </p>
               {expiredAt && (
                 <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                  Premium ของคุณหมดอายุเมื่อ {new Date(expiredAt).toLocaleDateString('th-TH', { dateStyle: 'long' })} ข้อมูลที่เคยสะสมยังเก็บไว้ ต่ออายุแล้วกลับมาเล่นต่อได้
+                  สมาชิกของคุณหมดอายุเมื่อ {new Date(expiredAt).toLocaleDateString('th-TH', { dateStyle: 'long' })} ข้อมูลที่เคยสะสมยังเก็บไว้ ต่ออายุแล้วกลับมาเล่นต่อได้
                 </p>
               )}
               <div className="mt-5 flex flex-col gap-2.5">
                 <a href={FB_URL} target="_blank" rel="noopener noreferrer" className="btn-primary-grad btn-jelly inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-display text-lg">
-                  <FacebookIcon className="w-5 h-5" /> ติดต่อเพจสมัคร Premium
+                  <FacebookIcon className="w-5 h-5" /> ติดต่อเพจสมัครสมาชิก
                 </a>
                 {!loggedIn && (
                   <Link href="/login" className="btn-jelly inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl border-2 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-200 font-semibold">
@@ -284,7 +284,7 @@ export default function BuddyPage() {
 
         <section className="surface p-5 text-sm text-gray-600 dark:text-gray-300">
           <p className="flex items-center gap-2 font-semibold text-gray-800 dark:text-gray-100">
-            <Crown className="w-4 h-4 text-sun-500" /> สิทธิ์สมาชิก Premium
+            <Crown className="w-4 h-4 text-sun-500" /> สิทธิ์สมาชิก
           </p>
           <p className="mt-1">ข้อมูลของ{BUDDY_NAME}และสติกเกอร์บันทึกกับบัญชีของคุณ ใช้ได้ทุกเครื่องที่เข้าสู่ระบบ ถ้าเล่นหลายเครื่อง ระบบจะรวมความก้าวหน้าให้โดยไม่ทำให้หาย</p>
           <p className="mt-3 inline-flex items-center gap-2 text-xs" aria-live="polite">

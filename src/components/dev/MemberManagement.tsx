@@ -260,7 +260,7 @@ export function MemberManagement() {
             <span>จัดการสมาชิก (Member Management)</span>
           </h2>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-            เก็บข้อมูล: Username, Password, Role (Member/Dev) และวันหมดอายุ Premium (ค่าเริ่มต้นเป็น -)
+            เก็บข้อมูล: Username, Password, Role (Member/Dev) และวันหมดอายุสมาชิก (ค่าเริ่มต้นเป็น -)
           </p>
         </div>
 
@@ -287,7 +287,7 @@ export function MemberManagement() {
                 <th className="py-3.5 px-4">1. ชื่อผู้ใช้ (Username)</th>
                 <th className="py-3.5 px-4">2. รหัสผ่าน (Password)</th>
                 <th className="py-3.5 px-4">3. สิทธิ์ (Role Member)</th>
-                <th className="py-3.5 px-4">4. วันหมดอายุ Premium</th>
+                <th className="py-3.5 px-4">4. วันหมดอายุสมาชิก</th>
                 <th className="py-3.5 px-4 text-right">การจัดการ</th>
               </tr>
             </thead>
@@ -364,7 +364,7 @@ export function MemberManagement() {
                       )}
                     </td>
 
-                    {/* 4. วันหมดอายุ Premium (Default เป็น -) */}
+                    {/* 4. วันหมดอายุสมาชิก (Default เป็น -) */}
                     <td className="py-3.5 px-4">
                       {premiumFormatted === '-' ? (
                         <span className="text-gray-400 dark:text-gray-500 font-medium text-xs">
@@ -399,7 +399,7 @@ export function MemberManagement() {
                             );
                           }}
                           className="p-1.5 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                          title="แก้ไขข้อมูลสมาชิก & วันหมดอายุ Premium"
+                          title="แก้ไขข้อมูลสมาชิก & วันหมดอายุสมาชิก"
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
@@ -514,11 +514,11 @@ export function MemberManagement() {
                 </div>
               </div>
 
-              {/* 4. วันหมดอายุ Premium */}
+              {/* 4. วันหมดอายุสมาชิก */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                    4. วันหมดอายุ Premium (ค่าเริ่มต้นคือ -)
+                    4. วันหมดอายุสมาชิก (ค่าเริ่มต้นคือ -)
                   </label>
                   {newPremiumUntil && (
                     <button
@@ -627,11 +627,11 @@ export function MemberManagement() {
                 </div>
               </div>
 
-              {/* 4. วันหมดอายุ Premium */}
+              {/* 4. วันหมดอายุสมาชิก */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                    วันหมดอายุ Premium
+                    วันหมดอายุสมาชิก
                   </label>
                   {editPremiumUntil && (
                     <button

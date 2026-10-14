@@ -8,6 +8,7 @@ import { SUBJECT_STYLE } from '@/lib/utils/subject';
 import { cn } from '@/lib/utils/cn';
 import { FacebookIcon } from '@/components/icons/FacebookIcon';
 import { CountUp } from '@/components/fx/CountUp';
+import { hasMembership } from '@/lib/membership';
 import {
   ArrowRight,
   ChevronLeft,
@@ -137,7 +138,7 @@ export function HeroCarousel({
   onSelectMedia,
   onBrowseAll,
 }: HeroCarouselProps) {
-  const { user, profile, isDev } = useAuth();
+  const { user, profile } = useAuth();
   const [index, setIndex] = useState(0);
   const [hovered, setHovered] = useState(false);
   const [userPaused, setUserPaused] = useState(false);
@@ -155,13 +156,11 @@ export function HeroCarousel({
 
   /* ---------------- ข้อมูลประกอบสไลด์ ---------------- */
   const total = media.length;
-  const freeCount = media.filter((m) => String(m.access_tier || '').toLowerCase().trim() === 'free').length;
   const gameCount = media.filter((m) => m.media_type === 'เกม').length;
   const latest = media.length
     ? [...media].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
     : null;
-  const premiumActive =
-    isDev || (!!profile?.premium_until && new Date(profile.premium_until).getTime() > Date.now());
+  const premiumActive = hasMembership(profile);
 
   const slides: SlideDef[] = [];
 
@@ -230,7 +229,7 @@ export function HeroCarousel({
             {[
               { icon: Layers, label: 'สื่อทั้งหมด', value: total },
               { icon: Gamepad2, label: 'เกม', value: gameCount },
-              { icon: Gift, label: 'เล่นฟรี', value: freeCount },
+              { icon: Gift, label: 'ทดลองเล่นได้', value: total },
             ].map(({ icon: Icon, label, value }) => (
               <div key={label} className="flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-black/15 backdrop-blur border border-white/15">
                 <Icon className="w-5 h-5 text-sun-300" aria-hidden="true" />
@@ -391,7 +390,7 @@ export function HeroCarousel({
   // 4) Premium
   slides.push({
     key: 'premium',
-    label: 'สมาชิก Premium',
+    label: 'สมัครสมาชิก',
     bg: 'from-gray-950 via-indigo-950 to-violet-900',
     art: <CrownArt />,
     content: (
@@ -399,7 +398,7 @@ export function HeroCarousel({
         <Rise>
           <span className={cn(eyebrowCls, 'text-sun-300 border-sun-400/40')}>
             <Crown className="w-4 h-4" />
-            สมาชิก Premium
+            สมัครสมาชิก
           </span>
         </Rise>
         <Rise d={90}>
@@ -419,7 +418,7 @@ export function HeroCarousel({
           <p className={descCls}>
             {user && premiumActive
               ? 'เลือกเกมที่ชอบ แล้วเริ่มผจญภัยได้ทันที'
-              : 'สมาชิก Premium เล่นได้ทุกสื่อ ติดต่อแอดมินทางเพจ สื่อการสอน 5G'}
+              : 'ทุกเกมเล่นเต็มรูปแบบได้เฉพาะสมาชิก ลองเล่นฟรี 2 นาทีก่อนได้ทุกเกม หรือติดต่อสมัครทางเพจ สื่อการสอน 5G'}
           </p>
         </Rise>
         <Rise d={270}>

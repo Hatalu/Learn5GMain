@@ -34,7 +34,7 @@ import { loadPrefs, sfx, unlockAudio } from '@/lib/sound';
 
 export interface DailyGame {
   media: MediaItem;
-  /** true = ปลดล็อกให้เล่นฟรีเฉพาะวันนี้แม้เป็นสื่อ Premium */
+  /** true = แจกให้ทุกคนเล่นฟรีเฉพาะวันนี้ (โปรโมชัน) */
   unlock: boolean;
   source: 'dev' | 'auto';
   note: string | null;
@@ -49,9 +49,9 @@ interface Ctx {
   /** id ของเกมที่ถูกปลดล็อกฟรีวันนี้ (หรือ null) */
   dailyUnlockedId: string | null;
   dailyPlayedToday: boolean;
-  /** มีสิทธิ์ใช้ปุ๋ง/สติกเกอร์ (Premium ที่ยังไม่หมดอายุ หรือ Dev) */
+  /** มีสิทธิ์ใช้ปุ๋ง/สติกเกอร์ (สมาชิกที่ยังไม่หมดอายุ หรือ Dev) */
   entitled: boolean;
-  /** ล็อกอินอยู่แต่ Premium หมดอายุ/ไม่มี (ใช้เลือกข้อความบนหน้าล็อก) */
+  /** ล็อกอินอยู่แต่สมาชิกหมดอายุ/ไม่มี (ใช้เลือกข้อความบนหน้าล็อก) */
   loggedIn: boolean;
   /** รู้สถานะสิทธิ์และโหลดข้อมูลเสร็จแล้ว */
   ready: boolean;

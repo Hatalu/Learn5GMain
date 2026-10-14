@@ -45,7 +45,7 @@ export function DailyGamesAdmin({ mediaList }: { mediaList: MediaItem[] }) {
 
   const [day, setDay] = useState(today);
   const [mediaId, setMediaId] = useState('');
-  const [unlock, setUnlock] = useState(true);
+  const [unlock, setUnlock] = useState(false);
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -138,7 +138,7 @@ export function DailyGamesAdmin({ mediaList }: { mediaList: MediaItem[] }) {
         <CalendarCheck2 className="w-5 h-5 shrink-0 mt-0.5" />
         <p>
           เกมประจำวันจะขึ้นบนหน้าแรกของทุกคน พร้อมนับถอยหลังถึงเที่ยงคืน (เวลาไทย) วันไหนไม่ได้ตั้งไว้ ระบบเลือกให้อัตโนมัติจากเกมที่เผยแพร่อยู่ (ไม่ซ้ำกับเมื่อวาน)
-          ถ้าติ๊ก &quot;ปลดล็อกฟรีเฉพาะวันนั้น&quot; เกม Premium จะเล่นได้ฟรีเฉพาะวันนั้น ส่วนเกมที่ตั้งอัตโนมัติจะไม่ปลดล็อก
+          ปกติทุกเกมเล่นเต็มได้เฉพาะสมาชิก (คนทั่วไปกดทดลองเล่น 2 นาทีได้) ถ้าติ๊ก &quot;แจกเล่นฟรีเฉพาะวันนั้น&quot; เกมนี้จะเล่นได้ทุกคนเฉพาะวันนั้น เป็นโปรโมชันพิเศษ ส่วนเกมที่ตั้งอัตโนมัติจะไม่แจกฟรี
         </p>
       </div>
 
@@ -153,7 +153,7 @@ export function DailyGamesAdmin({ mediaList }: { mediaList: MediaItem[] }) {
             {published.length === 0 && <option value="">ยังไม่มีสื่อที่เผยแพร่</option>}
             {published.map((m) => (
               <option key={m.id} value={m.id}>
-                {m.title} ({String(m.access_tier) === 'free' ? 'ฟรี' : 'Premium'})
+                {m.title}
               </option>
             ))}
           </select>
@@ -164,7 +164,7 @@ export function DailyGamesAdmin({ mediaList }: { mediaList: MediaItem[] }) {
         </div>
         <label className="sm:col-span-2 flex items-center gap-3 text-sm text-gray-700 dark:text-gray-200 cursor-pointer select-none">
           <input type="checkbox" checked={unlock} onChange={(e) => setUnlock(e.target.checked)} className="w-5 h-5 accent-indigo-600" />
-          <span className="inline-flex items-center gap-1.5 font-semibold"><Gift className="w-4 h-4 text-emerald-600" /> ปลดล็อกฟรีเฉพาะวันนั้น (ทุกคนเล่นเกมนี้ได้ แม้เป็นสื่อ Premium)</span>
+          <span className="inline-flex items-center gap-1.5 font-semibold"><Gift className="w-4 h-4 text-emerald-600" /> แจกเล่นฟรีเฉพาะวันนั้น (โปรโมชัน ทุกคนเล่นเกมนี้ได้เต็มรูปแบบ)</span>
         </label>
         <div className="sm:col-span-2 flex justify-end">
           <button type="submit" disabled={saving || !mediaId} className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md disabled:opacity-50 inline-flex items-center gap-2">
@@ -191,7 +191,7 @@ export function DailyGamesAdmin({ mediaList }: { mediaList: MediaItem[] }) {
                       {set ? (
                         <>
                           <span className="text-indigo-600 dark:text-indigo-300 font-semibold">แอดมินตั้งไว้</span>
-                          {set.unlock && String(media.access_tier) !== 'free' ? ' · ปลดล็อกฟรีวันนั้น' : ''}
+                          {set.unlock ? ' · แจกเล่นฟรีวันนั้น' : ''}
                           {set.note ? ` · ${set.note}` : ''}
                         </>
                       ) : (

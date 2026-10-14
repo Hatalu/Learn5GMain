@@ -10,6 +10,7 @@ import { RewardModal } from '@/components/companion/RewardModal';
 import { AmbientSky } from '@/components/fx/AmbientSky';
 import { StarTrail } from '@/components/fx/StarTrail';
 import { RouteCurtain } from '@/components/fx/RouteCurtain';
+import { TrialProvider } from '@/components/trial/TrialProvider';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -17,12 +18,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <AuthProvider>
         <ToastProvider>
           <CompanionProvider>
-            <AmbientSky />
-            {children}
-            <CompanionWidget />
-            <RewardModal />
-            <RouteCurtain />
-            <StarTrail />
+            <TrialProvider>
+              <AmbientSky />
+              {children}
+              <CompanionWidget />
+              <RewardModal />
+              <RouteCurtain />
+              <StarTrail />
+            </TrialProvider>
           </CompanionProvider>
         </ToastProvider>
       </AuthProvider>
