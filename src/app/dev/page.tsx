@@ -11,6 +11,7 @@ import { Navbar } from '@/components/navbar/Navbar';
 import { StatCards } from '@/components/dev/StatCards';
 import { MemberManagement } from '@/components/dev/MemberManagement';
 import { DailyGamesAdmin } from '@/components/dev/DailyGamesAdmin';
+import { TrialAccountsAdmin } from '@/components/dev/TrialAccountsAdmin';
 import { AddMediaModal } from '@/components/dev/AddMediaModal';
 import { EditMediaModal } from '@/components/dev/EditMediaModal';
 import { DeleteConfirmModal } from '@/components/dev/DeleteConfirmModal';
@@ -18,6 +19,7 @@ import {
   ShieldCheck,
   BookOpen,
   Users,
+  FlaskConical,
   Plus,
   Edit2,
   Trash2,
@@ -37,7 +39,7 @@ export default function DevDashboardPage() {
   const { success, error } = useToast();
   const supabase = createClient();
 
-  const [activeTab, setActiveTab] = useState<'media' | 'members' | 'daily'>('media');
+  const [activeTab, setActiveTab] = useState<'media' | 'members' | 'trial' | 'daily'>('media');
   const [stats, setStats] = useState<SystemStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
 
@@ -237,6 +239,19 @@ export default function DevDashboardPage() {
           >
             <Users className="w-4 h-4" />
             <span>จัดการสมาชิก</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('trial')}
+            className={cn(
+              'flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 transition-all',
+              activeTab === 'trial'
+                ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
+                : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'
+            )}
+          >
+            <FlaskConical className="w-4 h-4" />
+            <span>บัญชีทดลองเล่น</span>
           </button>
 
           <button
@@ -494,6 +509,7 @@ export default function DevDashboardPage() {
 
         {/* Tab 2: Member Management */}
         {activeTab === 'members' && <MemberManagement />}
+        {activeTab === 'trial' && <TrialAccountsAdmin />}
         {activeTab === 'daily' && <DailyGamesAdmin mediaList={mediaList} />}
       </main>
 

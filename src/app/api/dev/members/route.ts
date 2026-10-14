@@ -47,6 +47,7 @@ export async function GET() {
     const { data: members, error } = await admin
       .from('profiles')
       .select('*')
+      .not('username', 'like', 'trial\\_%')
       .order('created_at', { ascending: false });
 
     if (error) throw error;
