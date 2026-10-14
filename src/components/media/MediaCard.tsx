@@ -172,8 +172,8 @@ export function MediaCard({
               openTrial(media);
             }}
             className="btn-jelly flex-1 min-w-[7rem] inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-2xl text-sm font-bold bg-sun-400/25 text-amber-900 dark:text-sun-300 border-2 border-sun-500/60"
-            title="ทดลองเล่น 2 นาที ไม่ต้องใส่รหัส"
-            aria-label={`ทดลองเล่น ${media.title} 2 นาที`}
+            title="ทดลองเล่น 5 นาที ไม่ต้องใส่รหัส"
+            aria-label={`ทดลองเล่น ${media.title} 5 นาที`}
           >
             <PlayCircle className="w-4 h-4" />
             <span>ทดลองเล่น</span>

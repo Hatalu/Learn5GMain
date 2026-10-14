@@ -1,8 +1,8 @@
 import crypto from 'crypto';
 import { createMemberAccount, getAdminClient, deleteMember } from '@/lib/supabase/admin';
 
-/** บัญชีทดลองเล่นมีอายุ 2 นาที 10 วินาที แล้วถูกลบ */
-export const TRIAL_ACCOUNT_SECONDS = 130;
+/** บัญชีทดลองเล่นมีอายุ 5 นาที 10 วินาที แล้วถูกลบ */
+export const TRIAL_ACCOUNT_SECONDS = 310;
 export const TRIAL_PREFIX = 'trial_';
 
 /** ลบบัญชีทดลองที่หมดอายุแล้วทั้งหมด (เรียกทุกครั้งที่มีคนเริ่มทดลอง กันบัญชีค้าง) */

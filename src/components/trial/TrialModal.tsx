@@ -20,7 +20,7 @@ const fmt = (ms: number) => {
 
 /**
  * จอทดลองเล่น: อยู่กลางหน้าเว็บเดิม เกือบเต็มจอ เล่นเกมได้เหมือนสมาชิก (ไม่ต้องใส่รหัส)
- * มีเวลา 2 นาทีมุมบนขวาของจอเกม หมดเวลาแล้วจอเกมจางลงและขึ้นโปรโมทสมัครสมาชิก
+ * มีเวลา 5 นาทีมุมบนขวาของจอเกม หมดเวลาแล้วจอเกมจางลงและขึ้นโปรโมทสมัครสมาชิก
  * (โทเคนทดลองเซ็นโดยเซิร์ฟเวอร์และหมดอายุเอง เกมจึงล็อกตัวเองด้วยถ้าถูกเปิดแยก)
  */
 export function TrialModal({ media, onClose }: { media: MediaItem; onClose: () => void }) {
@@ -31,7 +31,7 @@ export function TrialModal({ media, onClose }: { media: MediaItem; onClose: () =
   const [phase, setPhase] = useState<Phase>('loading');
   const [error, setError] = useState('');
   const [url, setUrl] = useState('');
-  const [total, setTotal] = useState(120);
+  const [total, setTotal] = useState(300);
   const [left, setLeft] = useState<number | null>(null);
   const [frameGone, setFrameGone] = useState(false);
 
@@ -68,7 +68,7 @@ export function TrialModal({ media, onClose }: { media: MediaItem; onClose: () =
           return;
         }
         accountRef.current = String(json.account || '');
-        setTotal(Number(json.seconds) || 120);
+        setTotal(Number(json.seconds) || 300);
         setUrl(json.url);
       } catch {
         if (!off) {
@@ -203,7 +203,7 @@ export function TrialModal({ media, onClose }: { media: MediaItem; onClose: () =
         </svg>
         <Timer className="absolute inset-0 m-auto w-3.5 h-3.5" />
       </span>
-      <span className="font-mono text-base font-bold tabular-nums">{left === null ? '2:00' : fmt(left)}</span>
+      <span className="font-mono text-base font-bold tabular-nums">{left === null ? '5:00' : fmt(left)}</span>
     </div>
   )}
           <button

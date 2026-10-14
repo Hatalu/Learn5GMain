@@ -101,8 +101,8 @@
 
   /** เริ่มโหมดทดลอง: ซ่อนป้ายผู้ใช้/ปุ่มออกจากระบบ + แสดงป้ายเวลา + ล็อกเกมเมื่อหมดเวลา */
   function begin(info) {
-    // ทดลองเล่นจริง 120 วินาทีนับจากเริ่มเกม (โทเคนเผื่อเวลาโหลดไว้อีกเล็กน้อย)
-    var exp = Math.min(info.exp * 1000, Date.now() + 120000);
+    // ทดลองเล่นจริง 300 วินาทีนับจากเริ่มเกม (โทเคนเผื่อเวลาโหลดไว้อีกเล็กน้อย)
+    var exp = Math.min(info.exp * 1000, Date.now() + 300000);
     document.documentElement.classList.add('l5g-trial');
     ['userBadge', 'user-auth-badge', 'user-auth-badge-hud', 'auth-gate-modal'].forEach(function (id) {
       var n = document.getElementById(id);

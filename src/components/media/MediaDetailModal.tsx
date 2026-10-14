@@ -284,7 +284,7 @@ export function MediaDetailModal({
                         ยังไม่ได้เข้าสู่ระบบ
                       </p>
                       <p className="text-xs text-amber-800 dark:text-amber-300 mt-0.5 leading-relaxed">
-                        สื่อนี้สำหรับสมาชิก เข้าสู่ระบบด้วยบัญชีสมาชิกเพื่อเล่นเต็มรูปแบบ หรือกด "ทดลองเล่น" ด้านล่างเพื่อลองเล่นฟรี 2 นาที
+                        สื่อนี้สำหรับสมาชิก เข้าสู่ระบบด้วยบัญชีสมาชิกเพื่อเล่นเต็มรูปแบบ หรือกด "ทดลองเล่น" ด้านล่างเพื่อลองเล่นฟรี 5 นาที
                       </p>
                     </div>
                   </div>
@@ -386,7 +386,7 @@ export function MediaDetailModal({
                 </button>
               )}
 
-              {/* ทดลองเล่น: ทุกเกม ทุกคน (ไม่ต้องสมัคร) จอทดลองเปิดบนหน้านี้ มีเวลา 2 นาที */}
+              {/* ทดลองเล่น: ทุกเกม ทุกคน (ไม่ต้องสมัคร) จอทดลองเปิดบนหน้านี้ มีเวลา 5 นาที */}
               <button
                 type="button"
                 onClick={() => {
@@ -396,7 +396,7 @@ export function MediaDetailModal({
                 className="btn-jelly w-full py-3 px-5 rounded-2xl border-2 border-sun-500/60 bg-sun-400/20 text-amber-900 dark:text-sun-300 font-bold flex items-center justify-center gap-2"
               >
                 <Play className="w-5 h-5 fill-current" />
-                <span>ทดลองเล่น 2 นาที</span>
+                <span>ทดลองเล่น 5 นาที</span>
                 <span className="text-xs font-medium opacity-80">(ไม่ต้องใส่รหัส)</span>
               </button>
             </div>

@@ -250,7 +250,7 @@ export default function MembershipPage() {
           <p className="mt-8 text-center text-sm font-bold text-[#2a2350]/80">
             ยังไม่แน่ใจ?{' '}
             <Link href="/home" className="underline decoration-2 underline-offset-4">
-              ลองเล่นฟรี 2 นาทีได้ทุกเกม
+              ลองเล่นฟรี 5 นาทีได้ทุกเกม
             </Link>
           </p>
         </section>

@@ -10,7 +10,7 @@
  */
 import crypto from 'crypto';
 
-export const TRIAL_SECONDS = 120;
+export const TRIAL_SECONDS = 300;
 /** เผื่อเวลาโหลดเกม: โทเคนหมดอายุหลังจากเวลาทดลองจริงอีกเท่านี้ */
 export const TRIAL_GRACE_SECONDS = 45;
 

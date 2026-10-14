@@ -53,7 +53,7 @@ export function TrialAccountsAdmin() {
       <div className="flex items-start gap-3 p-4 rounded-2xl bg-sky-50 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-900 text-sm text-sky-900 dark:text-sky-200">
         <FlaskConical className="w-5 h-5 shrink-0 mt-0.5" />
         <p>
-          ทุกครั้งที่มีคนกด &quot;ทดลองเล่น&quot; ระบบสร้างบัญชี trial_… ให้ใช้ 2 นาที 10 วินาที แล้วลบทิ้งเอง บัญชีเหล่านี้ไม่ปนกับรายชื่อสมาชิกปกติ
+          ทุกครั้งที่มีคนกด &quot;ทดลองเล่น&quot; ระบบสร้างบัญชี trial_… ให้ใช้ 5 นาที 10 วินาที แล้วลบทิ้งเอง บัญชีเหล่านี้ไม่ปนกับรายชื่อสมาชิกปกติ
           ปกติหน้านี้ควรว่างหรือมีไม่กี่บัญชี ถ้ามีค้างหลายบัญชีกด &quot;ลบที่หมดอายุ&quot;
         </p>
       </div>

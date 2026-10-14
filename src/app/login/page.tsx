@@ -233,7 +233,7 @@ export default function LoginPage() {
             <li className="flex gap-3">
               <span className="w-7 h-7 shrink-0 rounded-full bg-sun-400 text-indigo-950 text-sm font-bold flex items-center justify-center">1</span>
               <p className="text-sm text-gray-700 dark:text-gray-200">
-                <b>ลองก่อนฟรี</b> เปิดเว็บทดลอง กดปุ่ม &quot;ทดลองเล่น&quot; เล่นได้ทุกเกมครั้งละ 2 นาที ไม่ต้องใส่รหัส
+                <b>ลองก่อนฟรี</b> เปิดเว็บทดลอง กดปุ่ม &quot;ทดลองเล่น&quot; เล่นได้ทุกเกมครั้งละ 5 นาที ไม่ต้องใส่รหัส
               </p>
             </li>
             <li className="flex gap-3">
