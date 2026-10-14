@@ -8,7 +8,7 @@ import { useTrial } from '@/components/trial/TrialProvider';
 import { StarIcon } from '@/components/companion/Stars';
 import { MediaItem } from '@/types/database';
 import { STAR_RULES, bkkParts, msUntilMidnight } from '@/lib/companion';
-import { getSubjectBadge } from '@/lib/utils/subject';
+import { SubjectTag } from '@/components/media/SubjectTag';
 import { cn } from '@/lib/utils/cn';
 
 const two = (n: number) => String(n).padStart(2, '0');
@@ -92,7 +92,7 @@ export function DailyGameCard({ onSelect }: { onSelect: (m: MediaItem) => void }
           </p>
 
           <div className="mt-3 flex flex-wrap items-center justify-center sm:justify-start gap-2">
-            <span className={cn('px-3 py-1 rounded-full text-sm font-bold border bg-white', getSubjectBadge(m.subject))}>{m.subject}</span>
+            <SubjectTag subject={m.subject} size="md" />
             {m.grade_level?.slice(0, 3).map((g) => (
               <span key={g} className="px-3 py-1 rounded-full text-sm font-semibold bg-white/20">{g}</span>
             ))}

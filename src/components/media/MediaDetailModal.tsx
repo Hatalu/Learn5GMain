@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { FacebookIcon } from '@/components/icons/FacebookIcon';
 import { cn } from '@/lib/utils/cn';
-import { getSubjectBadge } from '@/lib/utils/subject';
+import { SubjectTag } from '@/components/media/SubjectTag';
 import { useCompanion } from '@/components/companion/CompanionProvider';
 import { useTrial } from '@/components/trial/TrialProvider';
 import { CONTACT_PAGE_URL, hasMembership } from '@/lib/membership';
@@ -219,14 +219,7 @@ export function MediaDetailModal({
             <div>
               {/* Badges Row: Subject, Grade, Type */}
               <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
-                <span
-                  className={cn(
-                    'px-2.5 py-0.5 rounded-md text-xs font-semibold border',
-                    getSubjectBadge(media.subject)
-                  )}
-                >
-                  {media.subject}
-                </span>
+                <SubjectTag subject={media.subject} size="md" />
 
                 {media.grade_level?.map((grade) => (
                   <span

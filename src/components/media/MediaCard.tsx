@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { MediaItem } from '@/types/database';
 import { Heart, Play, Eye, Layers, Unlock, Lock, PlayCircle } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
-import { getSubjectBadge } from '@/lib/utils/subject';
+import { SubjectTag } from '@/components/media/SubjectTag';
 import { useCompanionOptional } from '@/components/companion/CompanionProvider';
 import { useTrial } from '@/components/trial/TrialProvider';
 import { hasMembership } from '@/lib/membership';
@@ -123,14 +123,7 @@ export function MediaCard({
       <div className="p-4 sm:p-5 flex flex-col flex-1 justify-between gap-3">
         <div>
           <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
-            <span
-              className={cn(
-                'px-2.5 py-0.5 rounded-full text-xs font-bold border',
-                getSubjectBadge(media.subject)
-              )}
-            >
-              {media.subject}
-            </span>
+            <SubjectTag subject={media.subject} size="sm" />
             {media.grade_level?.map((grade) => (
               <span
                 key={grade}
