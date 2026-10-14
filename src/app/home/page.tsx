@@ -31,6 +31,7 @@ import {
   Loader2,
   X,
 } from 'lucide-react';
+import { FiveGMascot } from '@/components/mascot/FiveGMascot';
 import { FacebookIcon } from '@/components/icons/FacebookIcon';
 import { cn } from '@/lib/utils/cn';
 
@@ -567,9 +568,7 @@ export default function HomePage() {
       </footer>
 
       {/* มาสคอต น้องไฟว์จี มุมขวาล่าง (คลิปพื้นหลังโปร่งใส ไม่บังการกด) */}
-      <div className="fixed bottom-0 right-0 z-40 pointer-events-none select-none w-[280px] sm:w-[420px]" aria-hidden="true">
-        <video src="/mascot/welcome.webm" autoPlay loop muted playsInline preload="auto" className="block w-full h-auto" />
-      </div>
+      <FiveGMascot />
 
       {/* Mobile Filter Drawer */}
       <MobileFilterDrawer
