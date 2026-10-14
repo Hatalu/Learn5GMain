@@ -12,6 +12,7 @@ import { StatCards } from '@/components/dev/StatCards';
 import { MemberManagement } from '@/components/dev/MemberManagement';
 import { DailyGamesAdmin } from '@/components/dev/DailyGamesAdmin';
 import { TrialAccountsAdmin } from '@/components/dev/TrialAccountsAdmin';
+import { IdeasInbox } from '@/components/dev/IdeasInbox';
 import { SiteSettingsAdmin } from '@/components/dev/SiteSettingsAdmin';
 import { AddMediaModal } from '@/components/dev/AddMediaModal';
 import { EditMediaModal } from '@/components/dev/EditMediaModal';
@@ -22,6 +23,7 @@ import {
   Users,
   FlaskConical,
   Settings,
+  Inbox,
   Plus,
   Edit2,
   Trash2,
@@ -41,7 +43,8 @@ export default function DevDashboardPage() {
   const { success, error } = useToast();
   const supabase = createClient();
 
-  const [activeTab, setActiveTab] = useState<'media' | 'members' | 'trial' | 'daily' | 'settings'>('media');
+  const [unreadIdeas, setUnreadIdeas] = useState(0);
+  const [activeTab, setActiveTab] = useState<'media' | 'members' | 'trial' | 'daily' | 'ideas' | 'settings'>('media');
   const [stats, setStats] = useState<SystemStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
 
@@ -267,6 +270,20 @@ export default function DevDashboardPage() {
           >
             <CalendarCheck2 className="w-4 h-4" />
             <span>เกมประจำวัน</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('ideas')}
+            className={cn(
+              'flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 transition-all',
+              activeTab === 'ideas'
+                ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
+                : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'
+            )}
+          >
+            <Inbox className="w-4 h-4" />
+            <span>กล่องไอเดีย</span>
+            {unreadIdeas > 0 && <span className="px-1.5 min-w-[1.25rem] h-5 inline-flex items-center justify-center rounded-full bg-rose-500 text-white text-xs font-bold">{unreadIdeas}</span>}
           </button>
 
           <button
@@ -525,6 +542,7 @@ export default function DevDashboardPage() {
         {/* Tab 2: Member Management */}
         {activeTab === 'members' && <MemberManagement />}
         {activeTab === 'trial' && <TrialAccountsAdmin />}
+        {activeTab === 'ideas' && <IdeasInbox onUnread={setUnreadIdeas} />}
         {activeTab === 'settings' && <SiteSettingsAdmin />}
         {activeTab === 'daily' && <DailyGamesAdmin mediaList={mediaList} />}
       </main>
