@@ -13,7 +13,7 @@ import React, {
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { MediaItem } from '@/types/database';
-import { autoPickDaily, bkkParts, type Hat } from '@/lib/companion';
+import { bkkParts, type Hat } from '@/lib/companion';
 import {
   CompanionState,
   Reward,
@@ -229,10 +229,12 @@ export function CompanionProvider({ children }: { children: React.ReactNode }) {
     (async () => {
       const today = bkkParts().date;
       const { data } = await supabase.from('media').select('*').order('created_at', { ascending: true });
-      const list = ((data || []) as MediaItem[]).filter((m) => m.is_public !== false).map((m) => ({
+      const all = ((data || []) as MediaItem[]).filter((m) => m.is_public !== false).map((m) => ({
         ...m,
         access_tier: (m.access_tier ? String(m.access_tier).toLowerCase().trim() : 'premium') as MediaItem['access_tier'],
       }));
+      // คลังสื่อปกติ (สติกเกอร์ ฯลฯ) ไม่รวมเกมประจำวัน
+      const list = all.filter((m) => !m.is_daily);
       if (off) return;
       setMedia(list);
       setMediaLoaded(true);
@@ -245,15 +247,11 @@ export function CompanionProvider({ children }: { children: React.ReactNode }) {
           .eq('day', today)
           .maybeSingle();
         if (!error && row) {
-          const m = list.find((x) => x.id === row.media_id);
+          const m = all.find((x) => x.id === row.media_id);
           if (m) chosen = { media: m, unlock: row.unlock !== false, source: 'dev', note: row.note ?? null, date: today };
         }
       } catch {
         /* ตารางยังไม่ถูกสร้าง ใช้การเลือกอัตโนมัติ */
-      }
-      if (!chosen) {
-        const m = autoPickDaily(list, today);
-        if (m) chosen = { media: m, unlock: false, source: 'auto', note: null, date: today };
       }
       if (!off) setDaily(chosen);
     })();

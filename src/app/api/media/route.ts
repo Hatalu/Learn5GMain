@@ -19,7 +19,7 @@ export async function GET() {
     }
 
     const mapped = (data || [])
-      .filter((m: any) => m.is_public !== false)
+      .filter((m: any) => m.is_public !== false && !m.is_daily)
       .map((m: any) => ({
         ...m,
         access_tier: m.access_tier ? String(m.access_tier).toLowerCase().trim() : 'premium',

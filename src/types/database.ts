@@ -43,6 +43,8 @@ export interface MediaItem {
   media_type: MediaType;
   access_tier: AccessTier;
   is_public?: boolean;
+  /** เกมในคลังเกมประจำวัน (ไม่ขึ้นในคลังสื่อปกติ) */
+  is_daily?: boolean;
   game_url: string;
   view_count: number;
   created_by: string | null;

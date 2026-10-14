@@ -44,7 +44,17 @@ export function DailyGameCard({ onSelect }: { onSelect: (m: MediaItem) => void }
   if (!mediaLoaded) {
     return <div className="h-56 rounded-[2rem] bg-gray-200/70 dark:bg-gray-800/70 animate-pulse" />;
   }
-  if (!daily) return null;
+  if (!daily) {
+    return (
+      <section aria-labelledby="daily-h" className="relative isolate overflow-hidden rounded-[2rem] border-2 border-dashed border-amber-300/70 dark:border-amber-700/60 bg-amber-50/70 dark:bg-amber-950/20 px-5 py-5 sm:px-7 flex flex-wrap items-center gap-4">
+        <span id="daily-h" className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-amber-400/25 text-amber-900 dark:text-amber-200 text-sm font-bold">
+          <CalendarCheck2 className="w-4 h-4" /> เกมประจำวัน
+        </span>
+        <p className="font-display text-lg sm:text-xl text-amber-900 dark:text-amber-100">วันนี้ยังไม่มีเกมประจำวัน</p>
+        <p className="text-sm text-amber-800/80 dark:text-amber-200/70 sm:ml-auto">แวะมาดูใหม่พรุ่งนี้นะ</p>
+      </section>
+    );
+  }
   const m = daily.media;
   const freeToday = daily.unlock;
 

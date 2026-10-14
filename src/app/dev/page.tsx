@@ -51,6 +51,7 @@ export default function DevDashboardPage() {
   const [statsLoading, setStatsLoading] = useState(true);
 
   const [mediaList, setMediaList] = useState<MediaItem[]>([]);
+  const [dailyLibrary, setDailyLibrary] = useState<MediaItem[]>([]);
   const [mediaLoading, setMediaLoading] = useState(true);
   const [visibilityFilter, setVisibilityFilter] = useState<'all' | 'public' | 'private'>('all');
   const [updatingVisibilityId, setUpdatingVisibilityId] = useState<string | null>(null);
@@ -108,7 +109,8 @@ export default function DevDashboardPage() {
         access_tier: m.access_tier ? String(m.access_tier).toLowerCase().trim() : 'premium',
         is_public: m.is_public !== false,
       }));
-      setMediaList(mapped as MediaItem[]);
+      setMediaList((mapped as MediaItem[]).filter((m) => !m.is_daily));
+      setDailyLibrary((mapped as MediaItem[]).filter((m) => m.is_daily));
     } catch (err) {
       console.error('Error fetching media:', err);
     } finally {
@@ -560,7 +562,7 @@ export default function DevDashboardPage() {
         {activeTab === 'ideas' && <IdeasInbox onUnread={setUnreadIdeas} />}
         {activeTab === 'payments' && <PaymentsAdmin />}
         {activeTab === 'settings' && <SiteSettingsAdmin />}
-        {activeTab === 'daily' && <DailyGamesAdmin mediaList={mediaList} />}
+        {activeTab === 'daily' && <DailyGamesAdmin library={dailyLibrary} onMediaChanged={handleMediaChanged} />}
       </main>
 
       {/* Modals */}
