@@ -98,8 +98,11 @@ export default function BuddyPage() {
                 </p>
               )}
               <div className="mt-5 flex flex-col gap-2.5">
-                <a href={FB_URL} target="_blank" rel="noopener noreferrer" className="btn-primary-grad btn-jelly inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-display text-lg">
-                  <FacebookIcon className="w-5 h-5" /> ติดต่อเพจสมัครสมาชิก
+                <Link href="/membership" className="btn-primary-grad btn-jelly inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-display text-lg">
+                  <Crown className="w-5 h-5" /> ดูแพลนสมาชิก
+                </Link>
+                <a href={FB_URL} target="_blank" rel="noopener noreferrer" className="btn-jelly inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-2xl border-2 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 font-semibold">
+                  <FacebookIcon className="w-4 h-4" /> สอบถามทางเพจ
                 </a>
                 {!loggedIn && (
                   <Link href="/login" className="btn-jelly inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl border-2 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-200 font-semibold">

@@ -9,15 +9,17 @@ import { ThemeToggle } from './ThemeToggle';
 import { SoundToggle } from './SoundToggle';
 import { useCompanionOptional } from '@/components/companion/CompanionProvider';
 import { UserMenu } from './UserMenu';
-import { ShieldCheck, Home, LogIn, UserX, Sparkles, Lock } from 'lucide-react';
+import { ShieldCheck, Home, LogIn, UserX, Sparkles, Lock, Crown } from 'lucide-react';
 import { FacebookIcon } from '@/components/icons/FacebookIcon';
+import { hasMembership } from '@/lib/membership';
 
 export function Navbar() {
-  const { user, isDev } = useAuth();
+  const { user, profile, isDev } = useAuth();
   const companion = useCompanionOptional();
   const buddyLocked = !!companion && companion.ready && !companion.entitled;
   const pathname = usePathname();
   const isDevPage = pathname.startsWith('/dev');
+  const showJoin = !isDev && !(user && hasMembership(profile)) && !pathname.startsWith('/membership');
 
   return (
     <header className="sticky top-0 z-40 w-full border-b-2 border-indigo-100 dark:border-indigo-950 bg-white/80 dark:bg-gray-950/75 backdrop-blur-xl transition-colors duration-200">
@@ -52,6 +54,17 @@ export function Navbar() {
 
         {/* Right: Actions */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {showJoin && (
+            <Link
+              href="/membership"
+              className="btn-jelly inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-sun-400 to-orange-400 text-indigo-950 text-xs sm:text-sm font-bold shadow-md ring-2 ring-white/70 dark:ring-gray-900"
+              title="สมัครสมาชิก"
+            >
+              <Crown className="w-4 h-4" />
+              <span className="hidden min-[400px]:inline">สมัครสมาชิก</span>
+            </Link>
+          )}
+
           {/* Facebook Page Contact Button */}
           <a
             href="https://www.facebook.com/profile.php?id=61594556657667"

@@ -29,6 +29,9 @@ import {
   setHat,
 } from '../src/lib/companion-store';
 import { hasMembership } from '../src/lib/membership';
+import { crc16, promptPayKind, promptPayPayload, maskPromptPay } from '../src/lib/promptpay';
+import { extendUntil, maskedMatch, nameMatch, receiverMatches } from '../src/lib/server/payments';
+import { PLANS, perDay, savePercent } from '../src/lib/plans';
 import { TRIAL_GRACE_SECONDS, TRIAL_SECONDS, signTrialToken, trialPublicJwk, verifyTrialToken } from '../src/lib/server/trial';
 
 let passed = 0;
@@ -378,6 +381,73 @@ t('กุญแจสาธารณะเป็น EC P-256 และไม่�
   assert.equal(k.kty, 'EC');
   assert.equal(k.crv, 'P-256');
   assert.equal(k.d, undefined);
+});
+
+console.log('\nชำระเงิน');
+t('CRC16-CCITT ตามมาตรฐาน', () => {
+  assert.equal(crc16('123456789'), '29B1');
+});
+
+t('QR พร้อมเพย์: เบอร์มือถือ/เลขบัตร ระบุยอด และ CRC ถูก', () => {
+  const q = promptPayPayload('081-234-5678', 59);
+  assert.ok(q.startsWith('000201010212'));
+  assert.ok(q.includes('0016A000000677010111' + '01130066812345678'));
+  assert.ok(q.includes('5303764'));
+  assert.ok(q.includes('540559.00'));
+  assert.ok(q.includes('5802TH'));
+  assert.equal(q.slice(-4), crc16(q.slice(0, -4)));
+  const id = promptPayPayload('1234567890123', 99);
+  assert.ok(id.includes('02131234567890123'));
+  assert.ok(id.includes('540599.00'));
+  assert.equal(promptPayKind('0812345678'), 'phone');
+  assert.equal(promptPayKind('12345'), null);
+  assert.throws(() => promptPayPayload('123', 39));
+  assert.throws(() => promptPayPayload('0812345678', 0));
+  assert.equal(maskPromptPay('0812345678'), '081-xxx-5678');
+});
+
+t('เทียบเลขบัญชีที่ถูกปิดบางส่วน', () => {
+  assert.equal(maskedMatch('xxx-x-x5678-x', '123-4-55678-9'), true);
+  assert.equal(maskedMatch('xxx-x-x5679-x', '123-4-55678-9'), false);
+  assert.equal(maskedMatch('xxx-x-x5678-9', '123-4-55678-9'), true);
+  assert.equal(maskedMatch('xxx-xxx-5678', '0812345678'), true);
+  assert.equal(maskedMatch('xxx-xxx-5679', '0812345678'), false);
+  assert.equal(maskedMatch('xxx-xxx-xx78', '0812345678'), null); // เห็นเลขน้อยเกิน
+  assert.equal(maskedMatch(undefined, '0812345678'), null);
+});
+
+t('เทียบชื่อผู้รับ (ชื่อในสลิปมักถูกตัด)', () => {
+  assert.equal(nameMatch('นาย สมชาย ใ', 'นาย สมชาย ใจดี'), true);
+  assert.equal(nameMatch('MR. SOMCHAI J', 'Somchai Jaidee'), true);
+  assert.equal(nameMatch('นาง สมศรี', 'นาย สมชาย ใจดี'), false);
+  assert.equal(nameMatch('นาย', 'นาย สมชาย'), false);
+});
+
+t('ผู้รับต้องตรงเลขบัญชี/พร้อมเพย์ที่ตั้งไว้ (ชื่อตรงอย่างเดียวไม่ผ่าน)', () => {
+  const cfg = { enabled: true, promptpay_id: '0812345678', account_name: 'นาย สมชาย ใจดี', bank_name: 'กสิกรไทย', bank_account: '1234555678' };
+  const r = (bank?: string, proxy?: string, th?: string) => ({ account: { name: { th }, bank: bank ? { account: bank } : undefined, proxy: proxy ? { account: proxy } : undefined } });
+  assert.equal(receiverMatches(r('xxx-x-x5567-8'), null, cfg), true);
+  assert.equal(receiverMatches(r('xxx-x-x5567-8', 'xxx-xxx-9999'), null, cfg), false); // ข้อมูลขัดกัน
+  assert.equal(receiverMatches(r(undefined, 'xxx-xxx-5678'), null, cfg), true);
+  assert.equal(receiverMatches(r('xxx-x-x9999-9', undefined, 'นาย สมชาย ใ'), null, cfg), false);
+  assert.equal(receiverMatches(r(undefined, undefined, 'นาย สมชาย ใ'), null, cfg), false); // ชื่ออย่างเดียวไม่พอ
+  assert.equal(receiverMatches(r(undefined, undefined, 'นาย ประยุทธ'), null, cfg), false);
+  assert.equal(receiverMatches(r('xxx-x-x9999-9'), { bankNumber: 'x' }, cfg), true);
+});
+
+t('ต่ออายุสมาชิก: ต่อจากวันเดิมถ้ายังไม่หมด', () => {
+  const now = Date.UTC(2026, 9, 15);
+  const day = 86400000;
+  assert.equal(extendUntil(null, 7, now), new Date(now + 7 * day).toISOString());
+  assert.equal(extendUntil(new Date(now - day).toISOString(), 7, now), new Date(now + 7 * day).toISOString());
+  assert.equal(extendUntil(new Date(now + 3 * day).toISOString(), 30, now), new Date(now + 33 * day).toISOString());
+});
+
+t('แพลนและราคา', () => {
+  assert.deepEqual(PLANS.map((p) => [p.days, p.price]), [[7, 39], [14, 59], [30, 99]]);
+  assert.equal(perDay(PLANS[2]), 3.3);
+  assert.equal(savePercent(PLANS[0]), 0);
+  assert.equal(savePercent(PLANS[2]), 41);
 });
 
 console.log(`\n${passed} tests passed`);

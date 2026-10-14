@@ -92,7 +92,7 @@ export function MediaDetailModal({
       if (!user) {
         error('คุณยังไม่ได้เข้าสู่ระบบ กรุณาเข้าสู่ระบบก่อนใช้งานสื่อ');
       } else {
-        error('ต้องเป็นสมาชิกก่อน ติดต่อได้ทางเพจ สื่อการสอน 5G (หรือกดทดลองเล่นได้เลย)');
+        error('ต้องเป็นสมาชิกก่อน สมัครออนไลน์ได้เลย เริ่ม 39 บาท (หรือกดทดลองเล่นได้เลย)');
       }
       return;
     }
@@ -318,11 +318,19 @@ export function MediaDetailModal({
                         ต้องเป็นสมาชิกก่อน ติดต่อได้ทางเพจ สื่อการสอน 5G
                       </p>
                       <p className="text-xs text-amber-800 dark:text-amber-300 mt-1 leading-relaxed">
-                        บัญชีของคุณยังไม่มีสิทธิ์สมาชิกหรือหมดอายุแล้ว ติดต่อแอดมินทางเพจเฟซบุ๊กเพื่อเปิดสิทธิ์ ระหว่างนี้กด "ทดลองเล่น" ลองเกมก่อนได้
+                        บัญชีของคุณยังไม่มีสิทธิ์สมาชิกหรือหมดอายุแล้ว สมัครหรือต่ออายุได้ที่หน้าแพลนสมาชิก ระหว่างนี้กด "ทดลองเล่น" ลองเกมก่อนได้
                       </p>
                     </div>
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <Link
+                      href="/membership"
+                      onClick={onClose}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold shadow-sm active:scale-95 transition-all"
+                    >
+                      <Crown className="w-3.5 h-3.5" />
+                      <span>ดูแพลนสมาชิก</span>
+                    </Link>
                     <a
                       href={CONTACT_PAGE_URL}
                       target="_blank"

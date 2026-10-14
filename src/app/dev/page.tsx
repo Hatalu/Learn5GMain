@@ -12,6 +12,7 @@ import { StatCards } from '@/components/dev/StatCards';
 import { MemberManagement } from '@/components/dev/MemberManagement';
 import { DailyGamesAdmin } from '@/components/dev/DailyGamesAdmin';
 import { TrialAccountsAdmin } from '@/components/dev/TrialAccountsAdmin';
+import { PaymentsAdmin } from '@/components/dev/PaymentsAdmin';
 import { IdeasInbox } from '@/components/dev/IdeasInbox';
 import { SiteSettingsAdmin } from '@/components/dev/SiteSettingsAdmin';
 import { AddMediaModal } from '@/components/dev/AddMediaModal';
@@ -24,6 +25,7 @@ import {
   FlaskConical,
   Settings,
   Inbox,
+  Wallet,
   Plus,
   Edit2,
   Trash2,
@@ -44,7 +46,7 @@ export default function DevDashboardPage() {
   const supabase = createClient();
 
   const [unreadIdeas, setUnreadIdeas] = useState(0);
-  const [activeTab, setActiveTab] = useState<'media' | 'members' | 'trial' | 'daily' | 'ideas' | 'settings'>('media');
+  const [activeTab, setActiveTab] = useState<'media' | 'members' | 'trial' | 'daily' | 'ideas' | 'payments' | 'settings'>('media');
   const [stats, setStats] = useState<SystemStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
 
@@ -284,6 +286,19 @@ export default function DevDashboardPage() {
             <Inbox className="w-4 h-4" />
             <span>กล่องไอเดีย</span>
             {unreadIdeas > 0 && <span className="px-1.5 min-w-[1.25rem] h-5 inline-flex items-center justify-center rounded-full bg-rose-500 text-white text-xs font-bold">{unreadIdeas}</span>}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('payments')}
+            className={cn(
+              'flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 transition-all',
+              activeTab === 'payments'
+                ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
+                : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'
+            )}
+          >
+            <Wallet className="w-4 h-4" />
+            <span>การชำระเงิน</span>
           </button>
 
           <button
@@ -543,6 +558,7 @@ export default function DevDashboardPage() {
         {activeTab === 'members' && <MemberManagement />}
         {activeTab === 'trial' && <TrialAccountsAdmin />}
         {activeTab === 'ideas' && <IdeasInbox onUnread={setUnreadIdeas} />}
+        {activeTab === 'payments' && <PaymentsAdmin />}
         {activeTab === 'settings' && <SiteSettingsAdmin />}
         {activeTab === 'daily' && <DailyGamesAdmin mediaList={mediaList} />}
       </main>

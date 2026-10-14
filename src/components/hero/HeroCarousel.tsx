@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { ALL_SUBJECTS, MediaItem, Subject } from '@/types/database';
@@ -429,10 +430,10 @@ export function HeroCarousel({
                 เลือกเกมเลย
               </button>
             ) : (
-              <a href={FACEBOOK_URL} target="_blank" rel="noopener noreferrer" className={cn(ctaCls, 'bg-sun-400 text-indigo-950')}>
-                <FacebookIcon className="w-5 h-5" />
-                สมัครผ่านเพจ
-              </a>
+              <Link href="/membership" className={cn(ctaCls, 'bg-sun-400 text-indigo-950')}>
+                <Crown className="w-5 h-5" />
+                ดูแพลนสมาชิก
+              </Link>
             )}
           </div>
         </Rise>
