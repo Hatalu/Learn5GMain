@@ -566,25 +566,9 @@ export default function HomePage() {
         </div>
       </footer>
 
-      {/* Floating Action Button (FAB) for Facebook Contact */}
-      <div className="fixed bottom-6 right-6 z-40">
-        <a
-          href="https://www.facebook.com/profile.php?id=61594556657667"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn-jelly flex items-center gap-2.5 p-3.5 sm:px-4 sm:py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full shadow-lg shadow-blue-600/30 ring-2 ring-white/70 dark:ring-gray-900 group"
-          aria-label="ติดต่อเพจ Facebook สื่อการสอน 5G"
-          title="ติดต่อเพจ Facebook สื่อการสอน 5G"
-        >
-          <div className="relative">
-            <FacebookIcon className="w-5 h-5" />
-            <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-            </span>
-          </div>
-          <span className="hidden sm:inline text-sm font-semibold tracking-wide pr-1">ติดต่อเพจ</span>
-        </a>
+      {/* มาสคอต น้องไฟว์จี มุมขวาล่าง (คลิปพื้นหลังโปร่งใส ไม่บังการกด) */}
+      <div className="fixed bottom-0 right-0 z-40 pointer-events-none select-none w-[280px] sm:w-[420px]" aria-hidden="true">
+        <video src="/mascot/welcome.webm" autoPlay loop muted playsInline preload="auto" className="block w-full h-auto" />
       </div>
 
       {/* Mobile Filter Drawer */}
