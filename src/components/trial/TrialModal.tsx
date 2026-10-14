@@ -175,6 +175,37 @@ export function TrialModal({ media, onClose }: { media: MediaItem; onClose: () =
             <Play className="w-3.5 h-3.5 fill-current" /> ทดลองเล่น
           </span>
           <p className="flex-1 min-w-0 truncate font-display text-sm sm:text-base">{media.title}</p>
+      {/* ตัวจับเวลา อยู่ข้างปุ่มปิด ไม่บังจอเกม */}
+  {phase !== 'error' && (
+    <div
+      className={cn(
+        'shrink-0 flex items-center gap-2 pl-2 pr-3.5 py-1 rounded-full border text-white transition-colors',
+        urgent ? 'bg-rose-600/90 border-rose-300 animate-pulse' : 'bg-gray-950/75 border-white/25'
+      )}
+      role="timer"
+      aria-live="off"
+      aria-label={left === null ? 'กำลังเตรียมเวลา' : `เหลือเวลา ${fmt(left)}`}
+    >
+      <span className="relative w-7 h-7" aria-hidden="true">
+        <svg viewBox="0 0 36 36" className="w-7 h-7 -rotate-90">
+          <circle cx="18" cy="18" r="15" fill="none" stroke="rgba(255,255,255,.25)" strokeWidth="4" />
+          <circle
+            cx="18"
+            cy="18"
+            r="15"
+            fill="none"
+            stroke={urgent ? '#fff' : '#ffd25e'}
+            strokeWidth="4"
+            strokeLinecap="round"
+            strokeDasharray={94.25}
+            strokeDashoffset={94.25 * (1 - pct / 100)}
+          />
+        </svg>
+        <Timer className="absolute inset-0 m-auto w-3.5 h-3.5" />
+      </span>
+      <span className="font-mono text-base font-bold tabular-nums">{left === null ? '2:00' : fmt(left)}</span>
+    </div>
+  )}
           <button
             type="button"
             onClick={onClose}
@@ -221,38 +252,6 @@ export function TrialModal({ media, onClose }: { media: MediaItem; onClose: () =
                 <p className="text-white/80 mb-5">{error}</p>
                 <button onClick={onClose} className="btn-primary-grad btn-jelly px-6 py-3 rounded-2xl font-display">ปิด</button>
               </div>
-            </div>
-          )}
-
-          {/* ตัวจับเวลา มุมบนขวาของจอเกม */}
-          {phase !== 'error' && (
-            <div
-              className={cn(
-                'absolute top-3 right-3 z-20 flex items-center gap-2 pl-2 pr-3.5 py-1.5 rounded-full shadow-lg backdrop-blur-md border text-white transition-colors',
-                urgent ? 'bg-rose-600/90 border-rose-300 animate-pulse' : 'bg-gray-950/75 border-white/25'
-              )}
-              role="timer"
-              aria-live="off"
-              aria-label={left === null ? 'กำลังเตรียมเวลา' : `เหลือเวลา ${fmt(left)}`}
-            >
-              <span className="relative w-7 h-7" aria-hidden="true">
-                <svg viewBox="0 0 36 36" className="w-7 h-7 -rotate-90">
-                  <circle cx="18" cy="18" r="15" fill="none" stroke="rgba(255,255,255,.25)" strokeWidth="4" />
-                  <circle
-                    cx="18"
-                    cy="18"
-                    r="15"
-                    fill="none"
-                    stroke={urgent ? '#fff' : '#ffd25e'}
-                    strokeWidth="4"
-                    strokeLinecap="round"
-                    strokeDasharray={94.25}
-                    strokeDashoffset={94.25 * (1 - pct / 100)}
-                  />
-                </svg>
-                <Timer className="absolute inset-0 m-auto w-3.5 h-3.5" />
-              </span>
-              <span className="font-mono text-base font-bold tabular-nums">{left === null ? '2:00' : fmt(left)}</span>
             </div>
           )}
 
