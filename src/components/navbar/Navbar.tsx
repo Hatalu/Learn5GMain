@@ -81,6 +81,21 @@ export function Navbar() {
             </Link>
           )}
 
+          {/* ปุ่มกลับหน้าหลัก (จอใหญ่/ไอแพด): อยู่ซ้ายปุ่มเพจ */}
+          {!isDevPage && !pathname.startsWith('/home') && (
+            <Link
+              href="/home"
+              className={cn(fx.shine, 'btn-jelly hidden sm:inline-flex items-center gap-2 pl-1.5 pr-1.5 lg:pr-3.5 py-1.5 rounded-2xl text-white text-sm font-bold bg-gradient-to-r from-sky-500 to-indigo-600 border-2 border-white/40 dark:border-white/15 shadow-[0_3px_0_0_rgba(49,46,129,0.5)] whitespace-nowrap')}
+              aria-label="กลับหน้าหลัก"
+              title="กลับหน้าหลัก"
+            >
+              <span className="w-7 h-7 rounded-xl bg-white/95 text-indigo-600 flex items-center justify-center">
+                <Home className="w-4 h-4" />
+              </span>
+              <span className="hidden lg:inline">หน้าหลัก</span>
+            </Link>
+          )}
+
           {/* Facebook Page Contact Button */}
           <a
             href="https://www.facebook.com/profile.php?id=61594556657667"
@@ -92,7 +107,7 @@ export function Navbar() {
             <span className="w-7 h-7 rounded-xl bg-white flex items-center justify-center shrink-0 group-hover:rotate-[-8deg] transition-transform">
               <FacebookIcon className="w-4 h-4 text-[#1877f2]" />
             </span>
-            <span className="hidden md:inline text-sm font-bold [text-shadow:0_1px_1px_rgba(0,0,0,0.25)]">เพจ Facebook</span>
+            <span className="hidden lg:inline text-sm font-bold [text-shadow:0_1px_1px_rgba(0,0,0,0.25)]">เพจ Facebook</span>
           </a>
 
           {/* Dev Button - ONLY rendered if user has dev role! */}
@@ -128,7 +143,7 @@ export function Navbar() {
               <span className="w-7 h-7 rounded-xl bg-white/95 flex items-center justify-center shrink-0 text-fuchsia-600">
                 {buddyLocked ? <Lock className="w-4 h-4" /> : <Sparkles className={cn('w-4 h-4', fx.twinkle)} />}
               </span>
-              <span className="hidden md:inline [text-shadow:0_1px_1px_rgba(0,0,0,0.25)]">คู่หูของฉัน</span>
+              <span className="hidden lg:inline [text-shadow:0_1px_1px_rgba(0,0,0,0.25)]">คู่หูของฉัน</span>
             </Link>
           )}
 
@@ -141,7 +156,7 @@ export function Navbar() {
             <UserMenu />
           ) : (
             <div className="flex items-center gap-2">
-              <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs sm:text-xs font-medium bg-gray-100 dark:bg-gray-800/80 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
+              <span className="hidden lg:inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs sm:text-xs font-medium bg-gray-100 dark:bg-gray-800/80 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
                 <UserX className="w-3.5 h-3.5 text-gray-400" />
                 <span>ยังไม่ได้เข้าสู่ระบบ</span>
               </span>
