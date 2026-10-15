@@ -10,8 +10,10 @@ import {
   MediaType,
   Subject,
 } from '@/types/database';
-import { Filter, RotateCcw, Check, BookOpen, GraduationCap, Layers } from 'lucide-react';
+import { Filter, RotateCcw, Check, BookOpen, GraduationCap, Layers, Calculator, FlaskConical, Languages } from 'lucide-react';
+import { SUBJECT_STYLE } from '@/lib/utils/subject';
 import { cn } from '@/lib/utils/cn';
+import s from '@/components/ui/fancy.module.css';
 
 interface FilterSidebarProps {
   filters: FilterState;
@@ -20,191 +22,189 @@ interface FilterSidebarProps {
   totalFilteredCount?: number;
 }
 
-export function FilterSidebar({
-  filters,
-  onFilterChange,
-  onReset,
-  totalFilteredCount,
-}: FilterSidebarProps) {
+const SUBJECT_ICON: Record<Subject, React.ComponentType<{ className?: string }>> = {
+  คณิตศาสตร์: Calculator,
+  วิทยาศาสตร์: FlaskConical,
+  ภาษาอังกฤษ: Languages,
+};
+
+function SectionTitle({ icon: Icon, children, tone }: { icon: React.ComponentType<{ className?: string }>; children: React.ReactNode; tone: string }) {
+  return (
+    <div className="flex items-center gap-2 mb-3">
+      <span className={cn('w-7 h-7 rounded-xl bg-gradient-to-br flex items-center justify-center text-white shadow-md', tone)}>
+        <Icon className="w-3.5 h-3.5" />
+      </span>
+      <h3 className="font-display text-sm text-gray-800 dark:text-gray-100 tracking-wide">{children}</h3>
+      <span className="flex-1 h-px bg-gradient-to-r from-indigo-200/70 to-transparent dark:from-indigo-800/60" />
+    </div>
+  );
+}
+
+export function FilterSidebar({ filters, onFilterChange, onReset, totalFilteredCount }: FilterSidebarProps) {
   const toggleSubject = (subject: Subject) => {
-    const next = filters.subjects.includes(subject)
-      ? filters.subjects.filter((s) => s !== subject)
-      : [...filters.subjects, subject];
+    const next = filters.subjects.includes(subject) ? filters.subjects.filter((x) => x !== subject) : [...filters.subjects, subject];
     onFilterChange({ ...filters, subjects: next });
   };
-
   const toggleGrade = (grade: GradeLevel) => {
-    const next = filters.grades.includes(grade)
-      ? filters.grades.filter((g) => g !== grade)
-      : [...filters.grades, grade];
+    const next = filters.grades.includes(grade) ? filters.grades.filter((g) => g !== grade) : [...filters.grades, grade];
     onFilterChange({ ...filters, grades: next });
   };
-
   const toggleMediaType = (type: MediaType) => {
-    const next = filters.mediaTypes.includes(type)
-      ? filters.mediaTypes.filter((t) => t !== type)
-      : [...filters.mediaTypes, type];
+    const next = filters.mediaTypes.includes(type) ? filters.mediaTypes.filter((t) => t !== type) : [...filters.mediaTypes, type];
     onFilterChange({ ...filters, mediaTypes: next });
   };
 
-  const hasActiveFilters =
-    filters.subjects.length > 0 ||
-    filters.grades.length > 0 ||
-    filters.mediaTypes.length > 0;
+  const activeCount = filters.subjects.length + filters.grades.length + filters.mediaTypes.length;
+  const hasActiveFilters = activeCount > 0;
 
   return (
-    <aside className="w-full flex flex-col gap-6 p-5 rounded-3xl bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-800 shadow-toy sticky top-20">
-      {/* Filter Header */}
-      <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-800">
-        <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-          <span className="font-bold text-sm text-gray-900 dark:text-white">ตัวกรองสื่อ</span>
-          {typeof totalFilteredCount === 'number' && (
-            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300">
-              {totalFilteredCount} รายการ
-            </span>
-          )}
-        </div>
+    <aside className="relative w-full flex flex-col gap-6 p-5 rounded-[1.75rem] bg-white dark:bg-gray-900 border-[3px] border-indigo-200/80 dark:border-indigo-500/35 shadow-toy sticky top-20 overflow-hidden">
+      <span aria-hidden="true" className="pointer-events-none absolute -top-16 -right-16 w-44 h-44 rounded-full bg-gradient-to-br from-violet-400/25 to-pink-400/20 blur-2xl" />
 
+      {/* หัวตัวกรอง */}
+      <div className="relative flex items-center justify-between gap-2 pb-4 border-b-2 border-dashed border-indigo-100 dark:border-indigo-900/70">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="relative w-9 h-9 shrink-0 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/30">
+            <Filter className="w-4.5 h-4.5" />
+            {hasActiveFilters && (
+              <span className="absolute -top-1.5 -right-1.5 min-w-[1.15rem] h-[1.15rem] px-1 rounded-full bg-pink-500 text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-white dark:ring-gray-900">
+                {activeCount}
+              </span>
+            )}
+          </span>
+          <div className="min-w-0">
+            <p className="font-display text-base leading-tight text-gray-900 dark:text-white whitespace-nowrap">ตัวกรองสื่อ</p>
+            {typeof totalFilteredCount === 'number' && <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-300 whitespace-nowrap">พบ {totalFilteredCount} รายการ</p>}
+          </div>
+        </div>
         {hasActiveFilters && (
           <button
             type="button"
             onClick={onReset}
-            className="flex items-center gap-1 text-xs text-rose-600 dark:text-rose-400 hover:underline font-medium"
+            className="chip shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold text-rose-600 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900"
             title="ล้างตัวกรองทั้งหมด"
           >
-            <RotateCcw className="w-3 h-3" />
-            <span>ล้าง</span>
+            <RotateCcw className="w-3 h-3" /> ล้าง
           </button>
         )}
       </div>
 
-      {/* 1. Subject Filter */}
-      <div>
-        <div className="flex items-center gap-2 mb-2.5">
-          <BookOpen className="w-3.5 h-3.5 text-indigo-500" />
-          <h3 className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-            วิชา
-          </h3>
-        </div>
-        <div className="space-y-1.5">
+      {/* วิชา */}
+      <section className="relative">
+        <SectionTitle icon={BookOpen} tone="from-emerald-400 to-teal-500">
+          วิชา
+        </SectionTitle>
+        <div className="space-y-2">
           {ALL_SUBJECTS.map((sub) => {
-            const isChecked = filters.subjects.includes(sub);
+            const on = filters.subjects.includes(sub);
+            const Icon = SUBJECT_ICON[sub];
+            const st = SUBJECT_STYLE[sub];
             return (
               <button
                 key={sub}
                 type="button"
                 role="checkbox"
-                aria-checked={isChecked}
+                aria-checked={on}
                 onClick={() => toggleSubject(sub)}
                 className={cn(
-                  'w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-sm text-left transition-all duration-150',
-                  isChecked
-                    ? 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-900 dark:text-indigo-200 font-semibold'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/60'
+                  s.row,
+                  'w-full flex items-center gap-3 pl-1.5 pr-3 py-1.5 rounded-2xl border-2 text-left',
+                  on
+                    ? cn('bg-gradient-to-r text-white border-white/30 shadow-lg ring-2', st.gradient, st.ring)
+                    : 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700/70 hover:border-indigo-300 dark:hover:border-indigo-500/60 text-gray-800 dark:text-gray-100'
                 )}
               >
-                <span>{sub}</span>
-                <div
+                <span
                   className={cn(
-                    'w-4 h-4 rounded-md border flex items-center justify-center transition-colors',
-                    isChecked
-                      ? 'bg-indigo-600 border-indigo-600 text-white'
-                      : 'border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800'
+                    'w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors',
+                    on ? 'bg-white/90 text-gray-800' : cn('bg-gradient-to-br text-white', st.gradient)
                   )}
                 >
-                  {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
-                </div>
+                  <Icon className="w-4.5 h-4.5" />
+                </span>
+                <span className="flex-1 min-w-0">
+                  <span className={cn('block text-sm font-bold leading-tight', on && '[text-shadow:0_1px_1px_rgba(0,0,0,0.25)]')}>{sub}</span>
+                  <span className={cn('block text-[11px] truncate', on ? 'text-white/85' : 'text-gray-500 dark:text-gray-400')}>{st.label}</span>
+                </span>
+                <span className={cn('w-6 h-6 rounded-full flex items-center justify-center shrink-0 border-2', on ? 'bg-white text-emerald-600 border-white' : 'border-gray-300 dark:border-gray-600')}>
+                  {on && <Check className={cn('w-3.5 h-3.5 stroke-[3.5]', s.tick)} />}
+                </span>
               </button>
             );
           })}
         </div>
-      </div>
+      </section>
 
-      {/* 2. Grade Filter */}
-      <div>
-        <div className="flex items-center gap-2 mb-2.5">
-          <GraduationCap className="w-3.5 h-3.5 text-indigo-500" />
-          <h3 className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-            ระดับชั้น
-          </h3>
-        </div>
-        <div className="grid grid-cols-2 gap-1.5">
+      {/* ระดับชั้น */}
+      <section className="relative">
+        <SectionTitle icon={GraduationCap} tone="from-sky-400 to-indigo-500">
+          ระดับชั้น
+        </SectionTitle>
+        <div className="grid grid-cols-3 gap-2">
           {ALL_GRADES.map((grade) => {
-            const isChecked = filters.grades.includes(grade);
+            const on = filters.grades.includes(grade);
             return (
               <button
                 key={grade}
                 type="button"
                 role="checkbox"
-                aria-checked={isChecked}
+                aria-checked={on}
                 onClick={() => toggleGrade(grade)}
                 className={cn(
-                  'flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs text-left border transition-all duration-150',
-                  isChecked
-                    ? 'bg-indigo-50 dark:bg-indigo-950/70 border-indigo-200 dark:border-indigo-800 text-indigo-900 dark:text-indigo-200 font-semibold'
-                    : 'border-gray-200/80 dark:border-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/60'
+                  s.chip,
+                  on && s.chipOn,
+                  'py-2.5 rounded-2xl border-2 font-display text-base',
+                  on
+                    ? 'bg-gradient-to-br from-indigo-500 to-violet-600 border-white/30 text-white shadow-[0_4px_0_0_rgba(76,29,149,0.45)]'
+                    : 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700/70 text-gray-700 dark:text-gray-200 hover:border-indigo-300 dark:hover:border-indigo-500/60'
                 )}
               >
-                <span>{grade}</span>
-                {isChecked && <Check className="w-3 h-3 text-indigo-600 dark:text-indigo-400 stroke-[3]" />}
+                {grade}
               </button>
             );
           })}
         </div>
-      </div>
+      </section>
 
-      {/* 3. Media Type Filter */}
-      <div>
-        <div className="flex items-center gap-2 mb-2.5">
-          <Layers className="w-3.5 h-3.5 text-indigo-500" />
-          <h3 className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-            ประเภทสื่อ
-          </h3>
-        </div>
-        <div className="space-y-1.5">
+      {/* ประเภทสื่อ */}
+      <section className="relative">
+        <SectionTitle icon={Layers} tone="from-pink-400 to-fuchsia-500">
+          ประเภทสื่อ
+        </SectionTitle>
+        <div className="flex flex-wrap gap-2">
           {ALL_MEDIA_TYPES.map((type) => {
-            const isChecked = filters.mediaTypes.includes(type);
+            const on = filters.mediaTypes.includes(type);
             return (
               <button
                 key={type}
                 type="button"
                 role="checkbox"
-                aria-checked={isChecked}
+                aria-checked={on}
                 onClick={() => toggleMediaType(type)}
                 className={cn(
-                  'w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-sm text-left transition-all duration-150',
-                  isChecked
-                    ? 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-900 dark:text-indigo-200 font-semibold'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/60'
+                  s.chip,
+                  on && s.chipOn,
+                  'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border-2 text-sm font-bold',
+                  on
+                    ? 'bg-gradient-to-r from-pink-500 to-fuchsia-500 border-white/30 text-white shadow-[0_4px_0_0_rgba(157,23,77,0.4)]'
+                    : 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700/70 text-gray-700 dark:text-gray-200 hover:border-pink-300 dark:hover:border-pink-500/60'
                 )}
               >
-                <span>{type}</span>
-                <div
-                  className={cn(
-                    'w-4 h-4 rounded-md border flex items-center justify-center transition-colors',
-                    isChecked
-                      ? 'bg-indigo-600 border-indigo-600 text-white'
-                      : 'border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800'
-                  )}
-                >
-                  {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
-                </div>
+                {on && <Check className={cn('w-3.5 h-3.5 stroke-[3.5]', s.tick)} />}
+                {type}
               </button>
             );
           })}
         </div>
-      </div>
+      </section>
 
-      {/* Clear Button */}
       {hasActiveFilters && (
         <button
           type="button"
           onClick={onReset}
-          className="w-full py-2.5 px-3 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 text-xs font-medium transition-colors flex items-center justify-center gap-1.5"
+          className="chip w-full py-2.5 rounded-2xl border-2 border-dashed border-rose-300 dark:border-rose-800 text-rose-600 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/30 text-sm font-bold flex items-center justify-center gap-1.5"
         >
-          <RotateCcw className="w-3.5 h-3.5" />
-          <span>ล้างตัวกรอง</span>
+          <RotateCcw className="w-4 h-4" /> ล้างตัวกรองทั้งหมด
         </button>
       )}
     </aside>

@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Music2, Volume2, VolumeX } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { getPrefs, initPrefs, setPrefs, subscribePrefs } from '@/lib/sound';
+import fx from '@/components/ui/fancy.module.css';
 
 const SERVER = { sfx: true, bgm: false };
 
@@ -48,9 +49,14 @@ export function SoundToggle() {
         aria-expanded={open}
         aria-label="ตั้งค่าเสียง"
         title="ตั้งค่าเสียง"
-        className="p-2 rounded-xl text-gray-600 dark:text-gray-300 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800/80 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700/60 shadow-sm transition-all"
+        className={cn(
+          'btn-jelly relative w-10 h-10 rounded-2xl flex items-center justify-center border-2 transition-colors',
+          anyOn
+            ? 'text-white bg-gradient-to-br from-teal-400 to-emerald-500 border-white/40 dark:border-white/15 shadow-[0_3px_0_0_rgba(5,150,105,0.45)]'
+            : 'text-gray-500 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-[0_3px_0_0_rgba(107,114,128,0.3)]'
+        )}
       >
-        {anyOn ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+        {anyOn ? <Volume2 className={cn('w-5 h-5', fx.wave)} /> : <VolumeX className="w-5 h-5" />}
       </button>
       {open && (
         <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-white dark:bg-gray-900 border-2 border-indigo-100 dark:border-indigo-900 shadow-toy-lg p-2 z-50 animate-scale-up">

@@ -1,0 +1,130 @@
+/* สไตล์ปุ่ม/ชิป/แผงตัวกรอง ที่ใช้ร่วมกัน: แสงวิ่ง ประกาย เด้ง */
+.shine {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.shine::after {
+  content: '';
+  position: absolute;
+  top: -40%;
+  bottom: -40%;
+  left: -60%;
+  width: 40%;
+  transform: skewX(-20deg);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  animation: sweep 3.6s ease-in-out infinite;
+  z-index: -1;
+  pointer-events: none;
+}
+@keyframes sweep {
+  0%,
+  60% {
+    left: -60%;
+  }
+  100% {
+    left: 130%;
+  }
+}
+
+.twinkle {
+  animation: twinkle 2.4s ease-in-out infinite;
+}
+@keyframes twinkle {
+  0%,
+  100% {
+    transform: scale(1) rotate(0);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.22) rotate(14deg);
+    opacity: 0.8;
+  }
+}
+
+.wave {
+  animation: wave 1.6s ease-in-out infinite;
+  transform-origin: left center;
+}
+@keyframes wave {
+  50% {
+    transform: scale(1.12);
+  }
+}
+
+.spinSlow {
+  animation: spin 14s linear infinite;
+}
+.spinHover:hover {
+  transform: rotate(60deg) scale(1.1);
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ชิปตัวกรอง (ระดับชั้น) */
+.chip {
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.18s, background 0.2s;
+}
+.chip:hover {
+  transform: translateY(-2px);
+}
+.chip:active {
+  transform: translateY(1px) scale(0.96);
+}
+.chipOn {
+  animation: pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes pop {
+  0% {
+    transform: scale(0.88);
+  }
+  60% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* แถวตัวกรอง */
+.row {
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s, border-color 0.2s;
+}
+.row:hover {
+  transform: translateX(3px);
+}
+.tick {
+  animation: tick 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes tick {
+  from {
+    transform: scale(0) rotate(-40deg);
+  }
+}
+
+/* เมนูเรียงลำดับ */
+.menu {
+  transform-origin: top right;
+  animation: menuIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes menuIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.94);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shine::after,
+  .twinkle,
+  .wave,
+  .spinSlow,
+  .chipOn,
+  .tick,
+  .menu {
+    animation: none !important;
+  }
+}

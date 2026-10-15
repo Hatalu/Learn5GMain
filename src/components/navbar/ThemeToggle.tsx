@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import { useTheme } from 'next-themes';
 import { Sun, Moon } from 'lucide-react';
+import { cn } from '@/lib/utils/cn';
+import fx from '@/components/ui/fancy.module.css';
 
 export function ThemeToggle() {
   const { theme, setTheme, resolvedTheme } = useTheme();
@@ -14,7 +16,7 @@ export function ThemeToggle() {
 
   if (!mounted) {
     return (
-      <div className="w-9 h-9 rounded-xl border border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50" />
+      <div className="w-10 h-10 rounded-2xl border-2 border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50" />
     );
   }
 
@@ -23,14 +25,19 @@ export function ThemeToggle() {
   return (
     <button
       onClick={() => setTheme(isDark ? 'light' : 'dark')}
-      className="relative p-2 rounded-xl text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-gray-100 hover:bg-gray-200 dark:bg-gray-800/80 dark:hover:bg-gray-700 transition-all border border-gray-200 dark:border-gray-700/60 shadow-sm"
+      className={cn(
+        'btn-jelly relative w-10 h-10 rounded-2xl flex items-center justify-center border-2 transition-colors',
+        isDark
+          ? 'bg-gradient-to-br from-amber-300 to-orange-400 border-white/40 shadow-[0_3px_0_0_rgba(194,65,12,0.45)]'
+          : 'bg-gradient-to-br from-indigo-500 to-violet-600 border-white/40 shadow-[0_3px_0_0_rgba(76,29,149,0.45)]'
+      )}
       aria-label={isDark ? 'เปลี่ยนเป็นโหมดสว่าง' : 'เปลี่ยนเป็นโหมดมืด'}
       title={isDark ? 'เปลี่ยนเป็นโหมดสว่าง' : 'เปลี่ยนเป็นโหมดมืด'}
     >
       {isDark ? (
-        <Sun className="w-4 h-4 text-amber-400 transition-transform rotate-0 hover:rotate-45" />
+        <Sun className={cn('w-5 h-5 text-white', fx.spinSlow)} />
       ) : (
-        <Moon className="w-4 h-4 text-indigo-600 transition-transform -rotate-12 hover:rotate-0" />
+        <Moon className="w-5 h-5 text-white -rotate-12 transition-transform hover:rotate-0" />
       )}
     </button>
   );

@@ -11,6 +11,8 @@ import { useCompanionOptional } from '@/components/companion/CompanionProvider';
 import { UserMenu } from './UserMenu';
 import { ShieldCheck, Home, LogIn, UserX, Sparkles, Lock, Crown } from 'lucide-react';
 import { FacebookIcon } from '@/components/icons/FacebookIcon';
+import { cn } from '@/lib/utils/cn';
+import fx from '@/components/ui/fancy.module.css';
 import { hasMembership } from '@/lib/membership';
 
 export function Navbar() {
@@ -57,7 +59,7 @@ export function Navbar() {
           {showJoin && (
             <Link
               href="/membership"
-              className="btn-jelly inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-sun-400 to-orange-400 text-indigo-950 text-xs sm:text-sm font-bold shadow-md ring-2 ring-white/70 dark:ring-gray-900"
+              className="btn-jelly inline-flex items-center gap-1.5 px-3 py-1.5 whitespace-nowrap rounded-xl bg-gradient-to-r from-sun-400 to-orange-400 text-indigo-950 text-xs sm:text-sm font-bold shadow-md ring-2 ring-white/70 dark:ring-gray-900"
               title="สมัครสมาชิก"
             >
               <Crown className="w-4 h-4" />
@@ -70,11 +72,13 @@ export function Navbar() {
             href="https://www.facebook.com/profile.php?id=61594556657667"
             target="_blank"
             rel="noopener noreferrer"
-            className="hidden sm:inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/80 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/60 transition-all shadow-sm group"
+            className={cn(fx.shine, 'btn-jelly hidden sm:inline-flex items-center gap-2 pl-1.5 pr-3 py-1.5 whitespace-nowrap rounded-2xl bg-gradient-to-r from-[#1877f2] to-[#4f6bff] text-white border-2 border-white/40 dark:border-white/15 shadow-[0_3px_0_0_rgba(24,119,242,0.45)] group')}
             title="ติดต่อเพจ Facebook สื่อการสอน 5G"
           >
-            <FacebookIcon className="w-4 h-4 group-hover:scale-110 transition-transform text-blue-600 dark:text-blue-400" />
-            <span className="hidden md:inline text-xs font-semibold">เพจ Facebook</span>
+            <span className="w-7 h-7 rounded-xl bg-white flex items-center justify-center shrink-0 group-hover:rotate-[-8deg] transition-transform">
+              <FacebookIcon className="w-4 h-4 text-[#1877f2]" />
+            </span>
+            <span className="hidden md:inline text-sm font-bold [text-shadow:0_1px_1px_rgba(0,0,0,0.25)]">เพจ Facebook</span>
           </a>
 
           {/* Dev Button - ONLY rendered if user has dev role! */}
@@ -104,11 +108,13 @@ export function Navbar() {
           {!isDevPage && (
             <Link
               href="/buddy"
-              className="btn-jelly inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 text-sm font-bold rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-200 border-2 border-indigo-200 dark:border-indigo-800 whitespace-nowrap"
+              className={cn(fx.shine, 'btn-jelly inline-flex items-center gap-2 pl-1.5 pr-3 py-1.5 text-sm font-bold rounded-2xl text-white bg-gradient-to-r from-violet-600 via-fuchsia-500 to-pink-500 border-2 border-white/40 dark:border-white/15 shadow-[0_3px_0_0_rgba(126,34,206,0.5)] whitespace-nowrap')}
               title="ห้องของคู่หูและสมุดสะสมสติกเกอร์"
             >
-              {buddyLocked ? <Lock className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
-              <span className="hidden md:inline">คู่หูของฉัน</span>
+              <span className="w-7 h-7 rounded-xl bg-white/95 flex items-center justify-center shrink-0 text-fuchsia-600">
+                {buddyLocked ? <Lock className="w-4 h-4" /> : <Sparkles className={cn('w-4 h-4', fx.twinkle)} />}
+              </span>
+              <span className="hidden md:inline [text-shadow:0_1px_1px_rgba(0,0,0,0.25)]">คู่หูของฉัน</span>
             </Link>
           )}
 
