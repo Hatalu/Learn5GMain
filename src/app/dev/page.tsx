@@ -13,6 +13,7 @@ import { MemberManagement } from '@/components/dev/MemberManagement';
 import { DailyGamesAdmin } from '@/components/dev/DailyGamesAdmin';
 import { TrialAccountsAdmin } from '@/components/dev/TrialAccountsAdmin';
 import { PaymentsAdmin } from '@/components/dev/PaymentsAdmin';
+import { VisitStats } from '@/components/dev/VisitStats';
 import { MediaStatsModal } from '@/components/dev/MediaStatsModal';
 import { IdeasInbox } from '@/components/dev/IdeasInbox';
 import { SiteSettingsAdmin } from '@/components/dev/SiteSettingsAdmin';
@@ -224,6 +225,7 @@ export default function DevDashboardPage() {
 
         {/* 1. Stat Cards */}
         <StatCards stats={stats} isLoading={statsLoading} />
+        <VisitStats />
 
         {/* 2. Navigation Tabs */}
         <div className="flex items-center gap-2 border-b border-gray-200 dark:border-gray-800 mb-6">
