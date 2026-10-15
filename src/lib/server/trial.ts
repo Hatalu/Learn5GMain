@@ -12,7 +12,7 @@ import crypto from 'crypto';
 
 export const TRIAL_SECONDS = 300;
 /** เผื่อเวลาโหลดเกม: โทเคนหมดอายุหลังจากเวลาทดลองจริงอีกเท่านี้ */
-export const TRIAL_GRACE_SECONDS = 45;
+export const TRIAL_GRACE_SECONDS = 180;
 
 function seedScalar(): Buffer {
   const base = process.env.TRIAL_SIGNING_SEED || process.env.SUPABASE_SERVICE_ROLE_KEY || '';

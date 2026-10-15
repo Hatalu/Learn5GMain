@@ -191,7 +191,7 @@ export default function HomePage() {
   // Toggle favorite
   const handleToggleFavorite = async (mediaId: string, currentFav: boolean) => {
     if (!user) {
-      error('คุณยังไม่ได้เข้าสู่ระบบ กรุณาเข้าสู่ระบบเพื่อบันทึกรายการโปรด');
+      error('เข้าสู่ระบบก่อน ถึงจะปักหมุดเกมได้');
       return;
     }
 
@@ -214,7 +214,7 @@ export default function HomePage() {
           .eq('media_id', mediaId);
 
         if (delError) throw delError;
-        success('นำออกจากรายการโปรดแล้ว');
+        success('เลิกปักหมุดแล้ว');
       } else {
         // Add to favorites
         const { error: insError } = await supabase
@@ -225,7 +225,7 @@ export default function HomePage() {
           });
 
         if (insError) throw insError;
-        success('เพิ่มลงในรายการโปรดแล้ว');
+        success('ปักหมุดไว้ด้านบนแล้ว');
       }
     } catch (err: unknown) {
       // Revert optimistic update
@@ -303,8 +303,15 @@ export default function HomePage() {
       return 0;
     });
 
+    // เกมที่ปักหมุด (กดหัวใจ) ขึ้นก่อน ส่วนที่เหลือเรียงตามที่เลือก
+    if (user && favoriteIds.size > 0) {
+      const pinned = result.filter((m) => favoriteIds.has(m.id));
+      const rest = result.filter((m) => !favoriteIds.has(m.id));
+      result = [...pinned, ...rest];
+    }
+
     return result;
-  }, [allMedia, filters, sortOption]);
+  }, [allMedia, filters, sortOption, favoriteIds, user]);
 
   // Netflix Rail items: latest items
   const latestMediaList = useMemo(() => {

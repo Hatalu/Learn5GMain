@@ -99,35 +99,32 @@
     return n;
   }
 
-  /** เริ่มโหมดทดลอง: ซ่อนป้ายผู้ใช้/ปุ่มออกจากระบบ + แสดงป้ายเวลา + ล็อกเกมเมื่อหมดเวลา */
+  /** เริ่มโหมดทดลอง: ซ่อนป้ายผู้ใช้/ปุ่มออกจากระบบ + ล็อกเกมเมื่อหมดเวลา (เวลาแสดงที่หน้าเว็บหลัก ไม่บังจอเกม) */
   function begin(info) {
-    // ทดลองเล่นจริง 300 วินาทีนับจากเริ่มเกม (โทเคนเผื่อเวลาโหลดไว้อีกเล็กน้อย)
-    var exp = Math.min(info.exp * 1000, Date.now() + 300000);
+    // ทดลองเล่นจริง 300 วินาที นับตั้งแต่ผู้เล่นแตะ/กดในเกมครั้งแรก (ไม่นับช่วงโหลดและหน้าเริ่มเกม)
+    // โทเคนมีอายุจำกัดเสมอ จึงเปิดค้างไว้เฉยๆ ไม่ได้
+    var exp = info.exp * 1000;
+    var started = false;
     document.documentElement.classList.add('l5g-trial');
     ['userBadge', 'user-auth-badge', 'user-auth-badge-hud', 'auth-gate-modal'].forEach(function (id) {
       var n = document.getElementById(id);
       if (n && id !== 'auth-gate-modal') n.style.display = 'none';
     });
 
-    var pill = el(
-      'div',
-      'position:fixed;left:50%;bottom:10px;transform:translateX(-50%);z-index:2147483000;pointer-events:none;' +
-        'padding:6px 14px;white-space:nowrap;max-width:92vw;border-radius:999px;background:rgba(20,16,50,.78);color:#fff;font:600 13px/1.2 system-ui,sans-serif;' +
-        'box-shadow:0 4px 14px rgba(0,0,0,.35);backdrop-filter:blur(6px)'
-    );
-    document.body.appendChild(pill);
-
-    function fmt(ms) {
-      var s = Math.max(0, Math.ceil(ms / 1000));
-      return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
-    }
     function tick() {
       var left = exp - Date.now();
       if (left <= 0) { lock(); return; }
-      pill.textContent = 'โหมดทดลองเล่น  เหลือ ' + fmt(left);
-      pill.style.background = left < 15000 ? 'rgba(190,30,60,.88)' : 'rgba(20,16,50,.78)';
-      setTimeout(tick, 500);
+      setTimeout(tick, started ? 500 : 1000);
     }
+
+    function startNow() {
+      if (started) return;
+      started = true;
+      ['pointerdown', 'mousedown', 'touchstart', 'keydown'].forEach(function (ev) { global.removeEventListener(ev, startNow, true); });
+      exp = Math.min(info.exp * 1000, Date.now() + 300000);
+      tell({ type: 'l5g:trial-started', seconds: Math.max(1, Math.ceil((exp - Date.now()) / 1000)) });
+    }
+    ['pointerdown', 'mousedown', 'touchstart', 'keydown'].forEach(function (ev) { global.addEventListener(ev, startNow, true); });
 
     function lock() {
       try { global.sessionStorage.removeItem(SS_KEY); } catch (e) {}
@@ -158,7 +155,7 @@
       } catch (e) {}
     }
     tick();
-    tell({ type: 'l5g:trial-ready', exp: info.exp });
+    tell({ type: 'l5g:trial-ready', exp: info.exp, waitStart: true });
   }
 
   global.L5GTrial = {

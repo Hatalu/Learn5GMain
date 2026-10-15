@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
 import { MediaItem } from '@/types/database';
-import { Heart, Play, Eye, Layers, Unlock, Lock, PlayCircle } from 'lucide-react';
+import { Heart, Pin, Play, Eye, Layers, Unlock, Lock, PlayCircle } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { SubjectTag } from '@/components/media/SubjectTag';
 import { useCompanionOptional } from '@/components/companion/CompanionProvider';
@@ -43,7 +43,12 @@ export function MediaCard({
   return (
     <article
       onClick={openDetail}
-      className="group relative flex flex-col h-full bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-800 hover:border-indigo-400 dark:hover:border-indigo-500 rounded-3xl overflow-hidden shadow-toy hover:shadow-toy-lg media-card-hover cursor-pointer"
+      className={cn(
+        'group relative flex flex-col h-full bg-white dark:bg-gray-900 border-[3px] rounded-3xl overflow-hidden shadow-toy hover:shadow-toy-lg media-card-hover cursor-pointer',
+        isFavorite
+          ? 'border-amber-400 dark:border-amber-400/80 ring-2 ring-amber-300/40'
+          : 'border-indigo-300/80 dark:border-indigo-400/55 hover:border-indigo-500 dark:hover:border-indigo-300 ring-1 ring-white/50 dark:ring-white/5'
+      )}
     >
       {/* 1:1 Thumbnail */}
       <div className="relative aspect-square w-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
@@ -91,19 +96,23 @@ export function MediaCard({
           type="button"
           onClick={(e) => {
             e.stopPropagation();
+            if (!user) return; // ยังไม่ได้เข้าสู่ระบบ: ปักหมุดไม่ได้
             onToggleFavorite(media.id, isFavorite);
           }}
+          disabled={!user}
           className={cn(
             'fav-btn btn-jelly absolute top-3 right-3 p-2.5 rounded-full backdrop-blur-md shadow-md z-10 ring-2 ring-white/60',
-            isFavorite
-              ? 'bg-violet-500 text-white'
-              : 'bg-black/40 text-white/90 hover:text-white hover:bg-black/60'
+            !user
+              ? 'bg-black/30 text-white/50 cursor-not-allowed'
+              : isFavorite
+                ? 'bg-amber-500 text-white'
+                : 'bg-black/40 text-white/90 hover:text-white hover:bg-black/60'
           )}
-          aria-label={isFavorite ? 'นำออกจากรายการโปรด' : 'เพิ่มลงรายการโปรด'}
+          aria-label={!user ? 'เข้าสู่ระบบเพื่อปักหมุดเกม' : isFavorite ? 'เลิกปักหมุด' : 'ปักหมุดเกมนี้ไว้ด้านบน'}
           aria-pressed={isFavorite}
-          title={isFavorite ? 'นำออกจากรายการโปรด' : 'เพิ่มลงรายการโปรด'}
+          title={!user ? 'เข้าสู่ระบบเพื่อปักหมุดเกม' : isFavorite ? 'เลิกปักหมุด' : 'ปักหมุดเกมนี้ไว้ด้านบน'}
         >
-          <Heart className={cn('w-4 h-4', isFavorite && 'fill-current')} />
+          {isFavorite ? <Pin className="w-4 h-4 fill-current" /> : <Heart className="w-4 h-4" />}
         </button>
 
         {/* Views */}

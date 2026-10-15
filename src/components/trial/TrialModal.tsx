@@ -12,7 +12,7 @@ import { getTurnstileToken } from '@/lib/turnstile';
 import { MediaItem } from '@/types/database';
 import { cn } from '@/lib/utils/cn';
 
-type Phase = 'loading' | 'playing' | 'ended' | 'error';
+type Phase = 'loading' | 'waiting' | 'playing' | 'ended' | 'error';
 
 const fmt = (ms: number) => {
   const s = Math.max(0, Math.ceil(ms / 1000));
@@ -38,6 +38,7 @@ export function TrialModal({ media, onClose }: { media: MediaItem; onClose: () =
 
   const startedAt = useRef<number | null>(null);
   const loadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const armedRef = useRef(false); // เกมพร้อมแล้วและรอผู้เล่นแตะเกมก่อนเริ่มนับ
   const accountRef = useRef<string>('');
   const cleanedRef = useRef(false);
 
@@ -100,13 +101,27 @@ export function TrialModal({ media, onClose }: { media: MediaItem; onClose: () =
     }
     const onMsg = (ev: MessageEvent) => {
       if (ev.origin !== gameOrigin) return;
-      const t = (ev.data as { type?: string } | null)?.type;
-      if (t === 'l5g:trial-ready') startTimer();
-      if (t === 'l5g:trial-ended') setPhase('ended');
+      const d = (ev.data || {}) as { type?: string; waitStart?: boolean; seconds?: number };
+      if (d.type === 'l5g:trial-ready') {
+        if (d.waitStart && !startedAt.current) {
+          // เกมรุ่นใหม่: ยังไม่นับเวลา จนกว่าผู้เล่นจะแตะเข้าเกมเอง
+          armedRef.current = true;
+          setPhase('waiting');
+        } else {
+          startTimer(); // เกมรุ่นเก่าไม่มีโหมดรอ: นับทันทีเหมือนเดิม
+        }
+      }
+      if (d.type === 'l5g:trial-started') {
+        if (typeof d.seconds === 'number' && d.seconds > 0) setTotal((t) => Math.min(t, d.seconds as number));
+        startTimer();
+      }
+      if (d.type === 'l5g:trial-ended') setPhase('ended');
     };
     window.addEventListener('message', onMsg);
-    // กันกรณีเกมไม่ส่งสัญญาณ: เริ่มนับเองหลังโหลดนานสุด 12 วินาที
-    loadTimer.current = setTimeout(startTimer, 12000);
+    // กันกรณีเกมไม่ส่งสัญญาณเลย (เกมที่ยังไม่มีระบบทดลอง): เริ่มนับเองหลังโหลดนานสุด 20 วินาที
+    loadTimer.current = setTimeout(() => {
+      if (!armedRef.current) startTimer();
+    }, 20000);
     return () => {
       window.removeEventListener('message', onMsg);
       if (loadTimer.current) clearTimeout(loadTimer.current);
@@ -175,7 +190,11 @@ export function TrialModal({ media, onClose }: { media: MediaItem; onClose: () =
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sun-400 text-indigo-950 text-sm font-bold">
             <Play className="w-3.5 h-3.5 fill-current" /> ทดลองเล่น
           </span>
-          <p className="flex-1 min-w-0 truncate font-display text-sm sm:text-base">{media.title}</p>
+          {phase === 'waiting' ? (
+            <p className="flex-1 min-w-0 truncate font-display text-sm sm:text-base text-sun-300">แตะเล่นในเกมเพื่อเริ่มนับเวลา</p>
+          ) : (
+            <p className="flex-1 min-w-0 truncate font-display text-sm sm:text-base">{media.title}</p>
+          )}
       {/* ตัวจับเวลา อยู่ข้างปุ่มปิด ไม่บังจอเกม */}
   {phase !== 'error' && (
     <div
@@ -204,7 +223,7 @@ export function TrialModal({ media, onClose }: { media: MediaItem; onClose: () =
         </svg>
         <Timer className="absolute inset-0 m-auto w-3.5 h-3.5" />
       </span>
-      <span className="font-mono text-base font-bold tabular-nums">{left === null ? '5:00' : fmt(left)}</span>
+      <span className="font-mono text-base font-bold tabular-nums">{left === null ? fmt(total * 1000) : fmt(left)}</span>
     </div>
   )}
           <button
@@ -224,8 +243,10 @@ export function TrialModal({ media, onClose }: { media: MediaItem; onClose: () =
               src={url}
               title={`ทดลองเล่น ${media.title}`}
               onLoad={() => {
-                // เกมที่ไม่ได้ส่งสัญญาณ: เริ่มนับหลังโหลดเสร็จเล็กน้อย
-                setTimeout(startTimer, 1500);
+                // เกมที่ไม่ได้ส่งสัญญาณ: เริ่มนับหลังโหลดเสร็จ (ถ้าเกมรอผู้เล่นแตะอยู่ จะไม่นับ)
+                setTimeout(() => {
+                  if (!armedRef.current) startTimer();
+                }, 8000);
               }}
               className={cn(
                 'absolute inset-0 w-full h-full border-0 transition-all duration-[1400ms] ease-out',

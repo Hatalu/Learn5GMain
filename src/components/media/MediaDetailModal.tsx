@@ -11,6 +11,7 @@ import {
   ExternalLink,
   Eye,
   Heart,
+  Pin,
   Crown,
   Sparkles,
   Lock,
@@ -191,26 +192,24 @@ export function MediaDetailModal({
             {/* Favorite Button (Full Width in Left Col) */}
             <button
               onClick={() => {
-                if (!user) {
-                  error('คุณยังไม่ได้เข้าสู่ระบบ กรุณาเข้าสู่ระบบเพื่อบันทึกรายการโปรด');
-                  return;
-                }
+                if (!user) return;
                 onToggleFavorite(media.id, isFavorite);
               }}
+              disabled={!user}
               className={cn(
+                !user && 'opacity-50 cursor-not-allowed',
                 'w-full py-2.5 px-4 rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 border transition-all duration-200 shadow-sm active:scale-98',
                 isFavorite
-                  ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400'
+                  ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-300'
                   : 'bg-gray-50 dark:bg-gray-800/60 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
               )}
             >
-              <Heart
-                className={cn(
-                  'w-4 h-4 transition-transform active:scale-75',
-                  isFavorite && 'fill-current text-rose-500'
-                )}
-              />
-              <span>{isFavorite ? 'อยู่ในรายการโปรดแล้ว' : 'เพิ่มในรายการโปรด'}</span>
+              {isFavorite ? (
+                <Pin className="w-4 h-4 fill-current text-amber-500" />
+              ) : (
+                <Heart className="w-4 h-4 transition-transform active:scale-75" />
+              )}
+              <span>{!user ? 'เข้าสู่ระบบเพื่อปักหมุดเกม' : isFavorite ? 'ปักหมุดไว้ด้านบนแล้ว' : 'ปักหมุดเกมนี้ไว้ด้านบน'}</span>
             </button>
           </div>
 
@@ -274,48 +273,10 @@ export function MediaDetailModal({
                     </p>
                   </div>
                 </div>
-              ) : !user ? (
-                /* Case 2: ยังไม่ได้ล็อกอิน */
-                <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60">
-                  <div className="flex items-start gap-2.5">
-                    <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
-                    <div>
-                      <p className="text-xs font-bold text-amber-900 dark:text-amber-200">
-                        ยังไม่ได้เข้าสู่ระบบ
-                      </p>
-                      <p className="text-xs text-amber-800 dark:text-amber-300 mt-0.5 leading-relaxed">
-                        สื่อนี้สำหรับสมาชิก เข้าสู่ระบบด้วยบัญชีสมาชิกเพื่อเล่นเต็มรูปแบบ หรือกด "ทดลองเล่น" ด้านล่างเพื่อลองเล่นฟรี 5 นาที
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-2.5 pt-2 border-t border-amber-200/60 dark:border-amber-900/60 flex items-center justify-between">
-                    <span className="text-xs text-amber-700 dark:text-amber-400">
-                      มีบัญชีสมาชิกอยู่แล้ว?
-                    </span>
-                    <Link
-                      href="/login"
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
-                    >
-                      <LogIn className="w-3.5 h-3.5" />
-                      <span>ไปที่หน้าเข้าสู่ระบบ</span>
-                    </Link>
-                  </div>
-                </div>
-              ) : !isMemberActive ? (
+              ) : !user ? null /* ยังไม่ได้ล็อกอิน: ไม่มีกล่องข้อความ ใช้ปุ่มด้านล่างแทน */ : !isMemberActive ? (
                 /* Case 3: ล็อกอินแล้วแต่ยังไม่มีสิทธิ์/สิทธิ์หมดอายุ */
-                <div className="p-3.5 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/50 dark:to-orange-950/40 border border-amber-300 dark:border-amber-800/80">
-                  <div className="flex items-start gap-2.5">
-                    <Crown className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
-                    <div>
-                      <p className="text-xs sm:text-sm font-bold text-amber-900 dark:text-amber-200">
-                        ต้องเป็นสมาชิกก่อน ติดต่อได้ทางเพจ สื่อการสอน 5G
-                      </p>
-                      <p className="text-xs text-amber-800 dark:text-amber-300 mt-1 leading-relaxed">
-                        บัญชีของคุณยังไม่มีสิทธิ์สมาชิกหรือหมดอายุแล้ว สมัครหรือต่ออายุได้ที่หน้าแพลนสมาชิก ระหว่างนี้กด "ทดลองเล่น" ลองเกมก่อนได้
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
                     <Link
                       href="/membership"
                       onClick={onClose}
@@ -397,7 +358,6 @@ export function MediaDetailModal({
               >
                 <Play className="w-5 h-5 fill-current" />
                 <span>ทดลองเล่น 5 นาที</span>
-                <span className="text-xs font-medium opacity-80">(ไม่ต้องใส่รหัส)</span>
               </button>
             </div>
           </div>
