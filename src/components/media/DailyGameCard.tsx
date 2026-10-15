@@ -46,12 +46,55 @@ export function DailyGameCard({ onSelect }: { onSelect: (m: MediaItem) => void }
   }
   if (!daily) {
     return (
-      <section aria-labelledby="daily-h" className="relative isolate overflow-hidden rounded-[2rem] border-2 border-dashed border-amber-300/70 dark:border-amber-700/60 bg-amber-50/70 dark:bg-amber-950/20 px-5 py-5 sm:px-7 flex flex-wrap items-center gap-4">
-        <span id="daily-h" className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-amber-400/25 text-amber-900 dark:text-amber-200 text-sm font-bold">
-          <CalendarCheck2 className="w-4 h-4" /> เกมประจำวัน
-        </span>
-        <p className="font-display text-lg sm:text-xl text-amber-900 dark:text-amber-100">วันนี้ยังไม่มีเกมประจำวัน</p>
-        <p className="text-sm text-amber-800/80 dark:text-amber-200/70 sm:ml-auto">แวะมาดูใหม่พรุ่งนี้นะ</p>
+      <section aria-labelledby="daily-h" className="relative isolate overflow-hidden rounded-[2rem] border-2 border-white/20 shadow-toy-lg bg-gradient-to-br from-slate-700 via-indigo-800 to-purple-900 dark:from-slate-800 dark:via-indigo-950 dark:to-purple-950 p-5 sm:p-7 text-white">
+        <div className="pointer-events-none absolute inset-0 -z-10 opacity-[0.12]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, #fff 1.2px, transparent 0)', backgroundSize: '24px 24px' }} />
+        <div className="pointer-events-none absolute -right-10 -top-10 w-56 h-56 rounded-full bg-fuchsia-400/20 blur-3xl -z-10" />
+        <div className="pointer-events-none absolute -left-10 -bottom-12 w-56 h-56 rounded-full bg-sky-400/15 blur-3xl -z-10" />
+
+        <div className="grid sm:grid-cols-[auto_1fr] gap-5 sm:gap-8 items-center">
+          {/* ภาพปฏิทินกำลังพักผ่อน */}
+          <div className="relative mx-auto sm:mx-0 w-44 h-44 sm:w-52 sm:h-52 rotate-[-4deg] rounded-[1.75rem] ring-4 ring-white/30 shadow-2xl bg-gradient-to-br from-indigo-400/50 via-violet-400/40 to-fuchsia-400/40 overflow-hidden animate-float-slow">
+            <svg viewBox="0 0 200 200" className="absolute inset-0 w-full h-full" aria-hidden="true">
+              <g className="animate-twinkle" style={{ transformOrigin: '40px 40px' }}>
+                <path d="M40 24 L45 36 L58 40 L45 44 L40 56 L35 44 L22 40 L35 36 Z" fill="#ffe27a" />
+              </g>
+              <g className="animate-twinkle" style={{ transformOrigin: '164px 58px', animationDelay: '0.8s' }}>
+                <path d="M164 46 L168 55 L178 58 L168 61 L164 70 L160 61 L150 58 L160 55 Z" fill="#ff9fd2" />
+              </g>
+              <circle cx="168" cy="150" r="3.5" fill="#bfe3ff" className="animate-twinkle" />
+              <circle cx="30" cy="140" r="3" fill="#ffe27a" className="animate-twinkle" style={{ animationDelay: '1.2s' }} />
+              {/* ปฏิทิน */}
+              <rect x="42" y="56" width="116" height="104" rx="18" fill="#fff8ec" stroke="#2a2350" strokeWidth="5" />
+              <path d="M42 74 a18 18 0 0 1 18 -18 h80 a18 18 0 0 1 18 18 v14 h-116 z" fill="#ff7a8c" stroke="#2a2350" strokeWidth="5" strokeLinejoin="round" />
+              <rect x="70" y="42" width="10" height="26" rx="5" fill="#2a2350" />
+              <rect x="120" y="42" width="10" height="26" rx="5" fill="#2a2350" />
+              {/* หน้าตาง่วง */}
+              <path d="M72 118 q9 8 18 0" fill="none" stroke="#2a2350" strokeWidth="5" strokeLinecap="round" />
+              <path d="M110 118 q9 8 18 0" fill="none" stroke="#2a2350" strokeWidth="5" strokeLinecap="round" />
+              <path d="M92 138 q8 6 16 0" fill="none" stroke="#2a2350" strokeWidth="5" strokeLinecap="round" />
+              <circle cx="66" cy="134" r="7" fill="#ffb3c1" opacity="0.8" />
+              <circle cx="134" cy="134" r="7" fill="#ffb3c1" opacity="0.8" />
+              {/* Zzz */}
+              <text x="140" y="44" fontSize="20" fontWeight="800" fill="#fff" className="animate-pulse">z</text>
+              <text x="154" y="30" fontSize="26" fontWeight="800" fill="#fff" className="animate-pulse" style={{ animationDelay: '0.5s' }}>Z</text>
+            </svg>
+          </div>
+
+          <div className="min-w-0 text-center sm:text-left">
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+              <span id="daily-h" className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/20 backdrop-blur border border-white/30 text-sm font-bold">
+                <CalendarCheck2 className="w-4 h-4" /> เกมประจำวัน
+              </span>
+            </div>
+            <h2 className="mt-3 text-2xl sm:text-4xl font-medium leading-tight">วันนี้ยังไม่มีเกมประจำวัน</h2>
+            <p className="mt-1.5 text-white/85 max-w-xl mx-auto sm:mx-0">เกมเล่นง่ายๆ จบไว กำลังเตรียมมาให้ แวะมาดูใหม่เร็วๆ นี้นะ</p>
+            <div className="mt-4 flex flex-wrap items-center justify-center sm:justify-start gap-3">
+              <span className="inline-flex items-center gap-2 text-sm font-semibold">
+                <Timer className="w-4 h-4" /> วันใหม่เริ่มใน <Countdown />
+              </span>
+            </div>
+          </div>
+        </div>
       </section>
     );
   }

@@ -25,7 +25,7 @@ export function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b-2 border-indigo-100 dark:border-indigo-950 bg-white/80 dark:bg-gray-950/75 backdrop-blur-xl transition-colors duration-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-4">
         {/* Left: Brand with Glowing Logo */}
         <Link
           href="/home"
@@ -54,8 +54,22 @@ export function Navbar() {
           </div>
         </Link>
 
+        {/* ปุ่มกลับหน้าหลัก: เห็นชัดบนมือถือ (หน้า Dev มีปุ่มของตัวเองอยู่แล้ว) */}
+        {!isDevPage && !pathname.startsWith('/home') && (
+          <Link
+            href="/home"
+            className={cn(fx.shine, 'btn-jelly sm:hidden shrink-0 inline-flex items-center gap-1.5 pl-1.5 pr-2.5 py-1.5 rounded-2xl text-white text-sm font-bold bg-gradient-to-r from-sky-500 to-indigo-600 border-2 border-white/40 dark:border-white/15 shadow-[0_3px_0_0_rgba(49,46,129,0.5)] whitespace-nowrap')}
+            aria-label="กลับหน้าหลัก"
+          >
+            <span className="w-7 h-7 rounded-xl bg-white/95 text-indigo-600 flex items-center justify-center">
+              <Home className="w-4 h-4" />
+            </span>
+            <span className="max-[340px]:hidden">หน้าหลัก</span>
+          </Link>
+        )}
+
         {/* Right: Actions */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-3">
           {showJoin && (
             <Link
               href="/membership"
@@ -105,7 +119,7 @@ export function Navbar() {
           )}
 
           {/* คู่หู + สมุดสะสม */}
-          {!isDevPage && (
+          {!isDevPage && !pathname.startsWith('/buddy') && (
             <Link
               href="/buddy"
               className={cn(fx.shine, 'btn-jelly inline-flex items-center gap-2 pl-1.5 pr-3 py-1.5 text-sm font-bold rounded-2xl text-white bg-gradient-to-r from-violet-600 via-fuchsia-500 to-pink-500 border-2 border-white/40 dark:border-white/15 shadow-[0_3px_0_0_rgba(126,34,206,0.5)] whitespace-nowrap')}
