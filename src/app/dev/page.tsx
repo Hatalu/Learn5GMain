@@ -13,6 +13,7 @@ import { MemberManagement } from '@/components/dev/MemberManagement';
 import { DailyGamesAdmin } from '@/components/dev/DailyGamesAdmin';
 import { TrialAccountsAdmin } from '@/components/dev/TrialAccountsAdmin';
 import { PaymentsAdmin } from '@/components/dev/PaymentsAdmin';
+import { MediaStatsModal } from '@/components/dev/MediaStatsModal';
 import { IdeasInbox } from '@/components/dev/IdeasInbox';
 import { SiteSettingsAdmin } from '@/components/dev/SiteSettingsAdmin';
 import { AddMediaModal } from '@/components/dev/AddMediaModal';
@@ -29,6 +30,7 @@ import {
   Plus,
   Edit2,
   Trash2,
+  BarChart3,
   Eye,
   ExternalLink,
   Loader2,
@@ -60,6 +62,7 @@ export default function DevDashboardPage() {
   const [isAddMediaOpen, setIsAddMediaOpen] = useState(false);
   const [editingMedia, setEditingMedia] = useState<MediaItem | null>(null);
   const [deletingMedia, setDeletingMedia] = useState<MediaItem | null>(null);
+  const [statsMedia, setStatsMedia] = useState<MediaItem | null>(null);
 
   // Guard: ตรวจสิทธิ์ Dev (ไม่เด้งทันที: ถ้ามี session แต่โปรไฟล์ยังไม่มา ลองโหลดซ้ำก่อนตัดสิน)
   const retried = useRef(false);
@@ -531,6 +534,15 @@ export default function DevDashboardPage() {
                           <div className="flex items-center justify-end gap-1.5">
                             <button
                               type="button"
+                              onClick={() => setStatsMedia(m)}
+                              className="p-1.5 rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors"
+                              title="ดูสถิติ (กดเล่น / ทดลองเล่น)"
+                              aria-label="ดูสถิติ"
+                            >
+                              <BarChart3 className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
                               onClick={() => setEditingMedia(m)}
                               className="p-1.5 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                               title="แก้ไขสื่อ"
@@ -578,6 +590,8 @@ export default function DevDashboardPage() {
         onClose={() => setEditingMedia(null)}
         onSuccess={handleMediaChanged}
       />
+
+      <MediaStatsModal media={statsMedia} onClose={() => setStatsMedia(null)} />
 
       <DeleteConfirmModal
         media={deletingMedia}
