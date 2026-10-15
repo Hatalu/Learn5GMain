@@ -11,7 +11,6 @@ import {
   ExternalLink,
   Eye,
   Heart,
-  Pin,
   Crown,
   Sparkles,
   Lock,
@@ -200,16 +199,12 @@ export function MediaDetailModal({
                 !user && 'opacity-50 cursor-not-allowed',
                 'w-full py-2.5 px-4 rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 border transition-all duration-200 shadow-sm active:scale-98',
                 isFavorite
-                  ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-300'
+                  ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400'
                   : 'bg-gray-50 dark:bg-gray-800/60 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
               )}
             >
-              {isFavorite ? (
-                <Pin className="w-4 h-4 fill-current text-amber-500" />
-              ) : (
-                <Heart className="w-4 h-4 transition-transform active:scale-75" />
-              )}
-              <span>{!user ? 'เข้าสู่ระบบเพื่อปักหมุดเกม' : isFavorite ? 'ปักหมุดไว้ด้านบนแล้ว' : 'ปักหมุดเกมนี้ไว้ด้านบน'}</span>
+              <Heart className={cn('w-4 h-4 transition-transform active:scale-75', isFavorite && 'fill-current text-rose-500')} />
+              <span>{!user ? 'เข้าสู่ระบบเพื่อกดถูกใจ' : isFavorite ? 'ถูกใจแล้ว' : 'ถูกใจเกมนี้'}</span>
             </button>
           </div>
 

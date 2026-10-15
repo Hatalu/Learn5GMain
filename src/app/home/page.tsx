@@ -38,12 +38,14 @@ import { cn } from '@/lib/utils/cn';
 export default function HomePage() {
   const { user, isDev, isLoading: authLoading } = useAuth();
   const router = useRouter();
-  const { success, error } = useToast();
+  const { error } = useToast();
   const supabase = createClient();
 
   // Media and favorites state
   const [allMedia, setAllMedia] = useState<MediaItem[]>([]);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+  // รายการที่ถูกใจ ณ ตอนโหลดหน้า ใช้จัดให้ขึ้นก่อน (ไม่สลับตำแหน่งตอนกดหัวใจ จอจะได้ไม่กระโดด)
+  const [pinnedAtLoad, setPinnedAtLoad] = useState<Set<string>>(new Set());
   const [isLoadingMedia, setIsLoadingMedia] = useState(true);
 
   // Filters state
@@ -147,6 +149,7 @@ export default function HomePage() {
       if (favError) throw favError;
       const favSet = new Set((data || []).map((f) => f.media_id));
       setFavoriteIds(favSet);
+      setPinnedAtLoad(favSet);
     } catch (err) {
       console.error('Error fetching favorites:', err);
     }
@@ -185,6 +188,7 @@ export default function HomePage() {
       fetchFavorites();
     } else {
       setFavoriteIds(new Set());
+      setPinnedAtLoad(new Set());
     }
   }, [user, fetchFavorites]);
 
@@ -214,7 +218,7 @@ export default function HomePage() {
           .eq('media_id', mediaId);
 
         if (delError) throw delError;
-        success('เลิกปักหมุดแล้ว');
+        // ไม่แสดงข้อความแจ้งเตือน
       } else {
         // Add to favorites
         const { error: insError } = await supabase
@@ -225,7 +229,7 @@ export default function HomePage() {
           });
 
         if (insError) throw insError;
-        success('ปักหมุดไว้ด้านบนแล้ว');
+        // ไม่แสดงข้อความแจ้งเตือน
       }
     } catch (err: unknown) {
       // Revert optimistic update
@@ -303,15 +307,15 @@ export default function HomePage() {
       return 0;
     });
 
-    // เกมที่ปักหมุด (กดหัวใจ) ขึ้นก่อน ส่วนที่เหลือเรียงตามที่เลือก
-    if (user && favoriteIds.size > 0) {
-      const pinned = result.filter((m) => favoriteIds.has(m.id));
-      const rest = result.filter((m) => !favoriteIds.has(m.id));
+    // เกมที่ถูกใจ (กดหัวใจไว้ก่อนเข้าหน้านี้) ขึ้นก่อน ส่วนที่เหลือเรียงตามที่เลือก
+    if (user && pinnedAtLoad.size > 0) {
+      const pinned = result.filter((m) => pinnedAtLoad.has(m.id));
+      const rest = result.filter((m) => !pinnedAtLoad.has(m.id));
       result = [...pinned, ...rest];
     }
 
     return result;
-  }, [allMedia, filters, sortOption, favoriteIds, user]);
+  }, [allMedia, filters, sortOption, pinnedAtLoad, user]);
 
   // Netflix Rail items: latest items
   const latestMediaList = useMemo(() => {

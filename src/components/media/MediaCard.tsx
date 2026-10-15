@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
 import { MediaItem } from '@/types/database';
-import { Heart, Pin, Play, Eye, Layers, Unlock, Lock, PlayCircle } from 'lucide-react';
+import { Heart, Play, Eye, Layers, Unlock, Lock, PlayCircle } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { SubjectTag } from '@/components/media/SubjectTag';
 import { useCompanionOptional } from '@/components/companion/CompanionProvider';
@@ -46,7 +46,7 @@ export function MediaCard({
       className={cn(
         'group relative flex flex-col h-full bg-white dark:bg-gray-900 border-[3px] rounded-3xl overflow-hidden shadow-toy hover:shadow-toy-lg media-card-hover cursor-pointer',
         isFavorite
-          ? 'border-amber-400 dark:border-amber-400/80 ring-2 ring-amber-300/40'
+          ? 'border-rose-400 dark:border-rose-400/80 ring-2 ring-rose-300/40'
           : 'border-indigo-300/80 dark:border-indigo-400/55 hover:border-indigo-500 dark:hover:border-indigo-300 ring-1 ring-white/50 dark:ring-white/5'
       )}
     >
@@ -105,14 +105,14 @@ export function MediaCard({
             !user
               ? 'bg-black/30 text-white/50 cursor-not-allowed'
               : isFavorite
-                ? 'bg-amber-500 text-white'
+                ? 'bg-violet-500 text-white'
                 : 'bg-black/40 text-white/90 hover:text-white hover:bg-black/60'
           )}
-          aria-label={!user ? 'เข้าสู่ระบบเพื่อปักหมุดเกม' : isFavorite ? 'เลิกปักหมุด' : 'ปักหมุดเกมนี้ไว้ด้านบน'}
+          aria-label={!user ? 'เข้าสู่ระบบเพื่อกดถูกใจ' : isFavorite ? 'เลิกถูกใจ' : 'ถูกใจเกมนี้'}
           aria-pressed={isFavorite}
-          title={!user ? 'เข้าสู่ระบบเพื่อปักหมุดเกม' : isFavorite ? 'เลิกปักหมุด' : 'ปักหมุดเกมนี้ไว้ด้านบน'}
+          title={!user ? 'เข้าสู่ระบบเพื่อกดถูกใจ' : isFavorite ? 'เลิกถูกใจ' : 'ถูกใจเกมนี้'}
         >
-          {isFavorite ? <Pin className="w-4 h-4 fill-current" /> : <Heart className="w-4 h-4" />}
+          <Heart className={cn('w-4 h-4', isFavorite && 'fill-current')} />
         </button>
 
         {/* Views */}
