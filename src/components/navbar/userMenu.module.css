@@ -1,0 +1,112 @@
+/* เมนูผู้ใช้: แอนิเมชันเปิด/ไล่ทีละแถว/วงแหวนหมุน/แสงวิ่งบนปุ่ม */
+.panel {
+  transform-origin: top right;
+  animation: panelIn 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes panelIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.row {
+  animation: rowIn 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes rowIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* วงแหวนไล่สีรอบรูปโปรไฟล์ */
+.ring {
+  position: absolute;
+  inset: -3px;
+  border-radius: 9999px;
+  background: conic-gradient(from 0deg, #8660fb, #f53d9b, #ffcf3f, #3fd6a8, #4fb3ff, #8660fb);
+  animation: spin 6s linear infinite;
+}
+.ringDev {
+  background: conic-gradient(from 0deg, #ffcf3f, #ff9a3d, #ff6b7a, #ffcf3f);
+}
+.ringOff {
+  background: conic-gradient(from 0deg, #9ca3af, #6b7280, #9ca3af);
+  animation: none;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* แสงวิ่งผ่านปุ่มต่ออายุ */
+.shine {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.shine::after {
+  content: '';
+  position: absolute;
+  inset: -40% auto -40% -60%;
+  width: 45%;
+  transform: skewX(-20deg);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.65), transparent);
+  animation: sweep 2.8s ease-in-out infinite;
+  z-index: -1;
+}
+@keyframes sweep {
+  0%,
+  55% {
+    left: -60%;
+  }
+  100% {
+    left: 130%;
+  }
+}
+
+/* แถบความคืบหน้าวันสมาชิก */
+.bar {
+  transform-origin: left;
+  animation: grow 0.9s 0.25s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+.dots {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.35) 1.2px, transparent 1.6px);
+  background-size: 16px 16px;
+}
+
+.float {
+  animation: float 3.4s ease-in-out infinite;
+}
+@keyframes float {
+  50% {
+    transform: translateY(-5px) rotate(-3deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel,
+  .row,
+  .ring,
+  .shine::after,
+  .bar,
+  .float {
+    animation: none !important;
+  }
+}
