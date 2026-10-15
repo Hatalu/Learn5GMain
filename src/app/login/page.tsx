@@ -21,6 +21,9 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // กันเดารหัสรัวๆ จากหน้าเว็บ: ผิดหลายครั้งต้องรอ (ด่านจริงอยู่ที่ Supabase Auth rate limit)
+  const [fails, setFails] = useState(0);
+  const [lockUntil, setLockUntil] = useState(0);
 
   const { signIn, user, isLoading } = useAuth();
   const router = useRouter();
@@ -46,12 +49,21 @@ export default function LoginPage() {
       return;
     }
 
+    if (Date.now() < lockUntil) {
+      setErrorMsg(`ลองผิดหลายครั้ง กรุณารอ ${Math.ceil((lockUntil - Date.now()) / 1000)} วินาทีแล้วลองใหม่`);
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const res = await signIn(username, password);
       if (!res.success) {
+        const n = fails + 1;
+        setFails(n);
+        if (n >= 5) setLockUntil(Date.now() + Math.min(300, 30 * 2 ** (n - 5)) * 1000);
         setErrorMsg(res.error || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
       } else {
+        setFails(0);
         router.push(redirectTarget());
       }
     } catch {

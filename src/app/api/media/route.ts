@@ -15,7 +15,7 @@ export async function GET() {
 
     if (error) {
       console.error('API /api/media error:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: 'error' }, { status: 500 });
     }
 
     const mapped = (data || [])
@@ -39,7 +39,7 @@ export async function GET() {
   } catch (err: any) {
     console.error('API /api/media unexpected error:', err);
     return NextResponse.json(
-      { error: err.message || 'Internal Server Error' },
+      { error: 'Internal Server Error' },
       { status: 500 }
     );
   }

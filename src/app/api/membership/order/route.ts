@@ -5,7 +5,8 @@ import { getAdminClient } from '@/lib/supabase/admin';
 import { planById } from '@/lib/plans';
 import { maskPromptPay, promptPayKind, promptPayPayload } from '@/lib/promptpay';
 import { ORDER_PAY_MINUTES, easySlipConfigured, getPaymentSettings } from '@/lib/server/payments';
-import { clientIp, isSameOrigin, rateLimit } from '@/lib/server/rate-limit';
+import { clientIp, isSameOrigin, limit } from '@/lib/server/rate-limit';
+import { verifyTurnstile } from '@/lib/server/turnstile';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,16 +14,20 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
   if (!isSameOrigin(req)) return NextResponse.json({ error: 'คำขอไม่ถูกต้อง' }, { status: 403 });
   const ip = clientIp(req);
-  if (!rateLimit(`order:${ip}`, 12, 10 * 60 * 1000)) {
+  if (!(await limit(`order:${ip}`, 10, 10 * 60 * 1000)) || !(await limit(`order-day:${ip}`, 40, 24 * 3600 * 1000))) {
     return NextResponse.json({ error: 'สร้างคำสั่งซื้อบ่อยเกินไป รอสักครู่แล้วลองใหม่นะ' }, { status: 429 });
   }
 
   let planId = '';
+  let cf = '';
   try {
-    planId = String((await req.json())?.plan || '');
+    const b = await req.json();
+    planId = String(b?.plan || '');
+    cf = String(b?.cf || '');
   } catch {
     /* ว่าง */
   }
+  if (!(await verifyTurnstile(cf, ip))) return NextResponse.json({ error: 'ยืนยันว่าไม่ใช่บอทไม่สำเร็จ รีเฟรชหน้าแล้วลองใหม่นะ' }, { status: 403 });
   const plan = planById(planId);
   if (!plan) return NextResponse.json({ error: 'ไม่พบแพลนนี้' }, { status: 400 });
 

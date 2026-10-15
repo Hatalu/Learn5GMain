@@ -9,7 +9,8 @@ import {
   slipErrorText,
   verifySlip,
 } from '@/lib/server/payments';
-import { clientIp, isSameOrigin, rateLimit } from '@/lib/server/rate-limit';
+import { clientIp, isSameOrigin, limit } from '@/lib/server/rate-limit';
+import { verifyTurnstile } from '@/lib/server/turnstile';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -29,7 +30,7 @@ const fail = (error: string, status = 400) => NextResponse.json({ ok: false, err
 export async function POST(req: NextRequest) {
   if (!isSameOrigin(req)) return fail('คำขอไม่ถูกต้อง', 403);
   const ip = clientIp(req);
-  if (!rateLimit(`verify:${ip}`, 10, 10 * 60 * 1000)) return fail('ส่งสลิปบ่อยเกินไป รอสักครู่แล้วลองใหม่นะ', 429);
+  if (!(await limit(`verify:${ip}`, 8, 10 * 60 * 1000)) || !(await limit(`verify-day:${ip}`, 40, 24 * 3600 * 1000))) return fail('ส่งสลิปบ่อยเกินไป รอสักครู่แล้วลองใหม่นะ', 429);
 
   let form: FormData;
   try {
@@ -42,6 +43,7 @@ export async function POST(req: NextRequest) {
   const newUsername = String(form.get('username') || '').trim();
   const newPassword = String(form.get('password') || '');
   if (!UUID.test(orderId)) return fail('ไม่พบคำสั่งซื้อ');
+  if (!(await verifyTurnstile(String(form.get('cf') || ''), ip))) return fail('ยืนยันว่าไม่ใช่บอทไม่สำเร็จ รีเฟรชหน้าแล้วลองใหม่นะ', 403);
   if (!(file instanceof Blob) || file.size === 0) return fail('แนบรูปสลิปก่อนนะ');
   if (file.size > MAX_BYTES) return fail('รูปใหญ่เกิน 4MB');
   if (!IMAGE_TYPES.includes(file.type)) return fail('รองรับเฉพาะรูป JPG PNG WEBP');

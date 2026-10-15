@@ -9,6 +9,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Plan } from '@/lib/plans';
 import { CONTACT_PAGE_URL } from '@/lib/membership';
 import { FacebookIcon } from '@/components/icons/FacebookIcon';
+import { getTurnstileToken } from '@/lib/turnstile';
 import s from '@/app/membership/membership.module.css';
 
 interface Order {
@@ -56,7 +57,7 @@ export function CheckoutModal({ plan, onClose }: { plan: Plan; onClose: () => vo
       const res = await fetch('/api/membership/order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: plan.id }),
+        body: JSON.stringify({ plan: plan.id, cf: await getTurnstileToken('order') }),
       });
       const j = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -127,6 +128,7 @@ export function CheckoutModal({ plan, onClose }: { plan: Plan; onClose: () => vo
     const fd = new FormData();
     fd.append('orderId', order.orderId);
     fd.append('slip', file);
+    fd.append('cf', (await getTurnstileToken('verify')) || '');
     if (guest) {
       fd.append('username', username.trim());
       fd.append('password', password);

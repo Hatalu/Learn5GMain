@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase/admin';
+import { clientIp, isSameOrigin, limit } from '@/lib/server/rate-limit';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -12,7 +13,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: 'Invalid media id' }, { status: 400 });
   }
 
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+  if (!isSameOrigin(req)) return NextResponse.json({ success: true, counted: false });
+  const ip = clientIp(req);
   const key = `${ip}:${mediaId}`;
   const now = Date.now();
   if (now - (seen.get(key) || 0) < 60_000) {
@@ -20,6 +22,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   }
   seen.set(key, now);
   if (seen.size > 5000) seen.clear();
+  // กันปั่นยอด: 1 ครั้ง/สื่อ/10 นาที และไม่เกิน 120 ครั้ง/ชั่วโมงต่อ IP (ใช้ร่วมทุกเครื่อง)
+  if (!(await limit(`view:${key}`, 1, 10 * 60 * 1000)) || !(await limit(`view-ip:${ip}`, 120, 3600 * 1000))) {
+    return NextResponse.json({ success: true, counted: false });
+  }
 
   try {
     // ฟังก์ชันนับยอดถูกจำกัดให้เรียกได้เฉพาะฝั่งเซิร์ฟเวอร์ (migration 004)
@@ -27,7 +33,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     if (error) throw error;
     return NextResponse.json({ success: true, counted: true });
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Error incrementing view';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    console.error('view count error', err);
+    return NextResponse.json({ error: 'error' }, { status: 500 });
   }
 }

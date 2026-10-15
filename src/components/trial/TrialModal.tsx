@@ -8,6 +8,7 @@ import { useCompanion } from '@/components/companion/CompanionProvider';
 import { FacebookIcon } from '@/components/icons/FacebookIcon';
 import { Buddy } from '@/components/companion/Buddy';
 import { CONTACT_PAGE_URL, hasMembership } from '@/lib/membership';
+import { getTurnstileToken } from '@/lib/turnstile';
 import { MediaItem } from '@/types/database';
 import { cn } from '@/lib/utils/cn';
 
@@ -58,7 +59,7 @@ export function TrialModal({ media, onClose }: { media: MediaItem; onClose: () =
         const res = await fetch('/api/trial/start', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ mediaId: media.id }),
+          body: JSON.stringify({ mediaId: media.id, cf: await getTurnstileToken('trial') }),
         });
         const json = await res.json().catch(() => ({}));
         if (off) return;
