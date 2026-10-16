@@ -6,6 +6,7 @@ import { ChevronDown, ChevronUp, LogOut, Trophy } from 'lucide-react';
 import { Avatar } from '../Avatar';
 import { Banana, Bolt, Flag } from './art';
 import { QuestionPad } from './QuestionPad';
+import { CoachArrow, useCoach } from './Coach';
 import type { GameProps } from './types';
 import type { LiveOutcome, Rival } from '@/lib/game-creator/live-client';
 import { gsfx } from '@/lib/game-creator/gsound';
@@ -38,7 +39,7 @@ export function RaceTrack({ racers, goal, meId, big = false }: { racers: (Rival 
             <div className="rc-lane-road">
               <div className="rc-runner" style={{ left: `calc(${pct}% * 0.9)` }} data-boost={!!r.boost} data-slip={!!r.slip}>
                 <span className="rc-runner-body">
-                  <Avatar id={r.avatar} size={big ? 46 : 38} mood={r.slip ? 'sad' : r.finished ? 'wow' : 'happy'} />
+                  <Avatar id={r.avatar} gear={r.gear} size={big ? 46 : 38} mood={r.slip ? 'sad' : r.finished ? 'wow' : 'happy'} />
                 </span>
                 <span className="rc-runner-name">{me ? 'ฉัน' : r.nickname}</span>
                 {r.finished && <Trophy className="rc-runner-cup w-4 h-4" />}
@@ -65,6 +66,7 @@ export function RaceGame({ engine, goal, me, preview, live, onLeave }: GameProps
   const [fx, setFx] = useState<{ kind: 'boost' | 'slip' | 'step' | 'banana'; text: string; at: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const lastSlip = useRef<string | null>(live?.slipAt || null);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   const progress = live ? live.progress : localProgress;
   const power = live ? live.power : localPower;
@@ -98,8 +100,17 @@ export function RaceGame({ engine, goal, me, preview, live, onLeave }: GameProps
     return () => clearTimeout(t);
   }, [fx]);
 
+  // สอนเล่น: ตอบถูก = ก้าว / มีไอเท็มให้กดใช้ (1 รอบ)
+  const coach = useCoach(
+    [
+      { id: 'answer', target: ['.rc-pad-in .l5g-qp-choices', '.rc-pad-open'], text: 'ตอบถูก = วิ่งไปข้างหน้า 1 ก้าว' },
+      { id: 'power', target: '.rc-power', text: 'ได้ไอเท็มแล้ว! กดใช้เลย', when: () => !!power, optional: true },
+    ],
+    { loops: 1, active: !finished }
+  );
+
   const racers = useMemo(() => {
-    const mine: Rival = { id: myId, nickname: me.nickname, avatar: me.avatar, progress, finished };
+    const mine: Rival = { id: myId, nickname: me.nickname, avatar: me.avatar, gear: me.gear, progress, finished };
     const list = live ? live.rivals.map((r) => (r.id === myId ? { ...r, progress, finished } : r)) : [mine, ...bots];
     if (!list.some((r) => r.id === myId)) list.push(mine);
     return list
@@ -112,6 +123,7 @@ export function RaceGame({ engine, goal, me, preview, live, onLeave }: GameProps
   const players = live ? live.players : racers.length;
 
   const onAnswered = (o: LiveOutcome) => {
+    if (o.correct) coach.hit('answer');
     if (live) {
       live.onOutcome?.(o);
       if (o.correct) {
@@ -133,6 +145,7 @@ export function RaceGame({ engine, goal, me, preview, live, onLeave }: GameProps
 
   const usePower = async () => {
     if (!power || busy) return;
+    coach.hit('power');
     setBusy(true);
     if (live) {
       const r = await live.usePower().catch(() => ({ ok: false, reason: '' }) as { ok: boolean; reason?: string; target?: string; power?: string });
@@ -161,7 +174,8 @@ export function RaceGame({ engine, goal, me, preview, live, onLeave }: GameProps
   };
 
   return (
-    <div className="rc">
+    <div className="rc" ref={rootRef}>
+      <CoachArrow coach={coach} root={rootRef} />
       <RaceTrack racers={racers} goal={goal} meId={myId} />
 
       <div className="rc-hud">

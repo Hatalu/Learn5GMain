@@ -1,0 +1,104 @@
+/* ลูกศรสอนเล่น (ลอยเหนือทุกอย่าง ไม่บังการกด) */
+.cx-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 85;
+  pointer-events: none;
+}
+.cx-ring {
+  position: fixed;
+  border-radius: 22px;
+  border: 4px dashed #ffd84a;
+  box-shadow: 0 0 0 4px rgba(42, 35, 80, 0.35), 0 0 24px rgba(255, 216, 74, 0.7);
+  animation: cxRing 1.2s ease-in-out infinite;
+}
+@keyframes cxRing {
+  50% {
+    transform: scale(1.04);
+    opacity: 0.75;
+  }
+}
+.cx-arrow {
+  position: fixed;
+  filter: drop-shadow(0 4px 0 rgba(42, 35, 80, 0.35));
+}
+.cx-arrow[data-dir='down'] {
+  transform: translate(-50%, -100%);
+  animation: cxPopDown 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.cx-arrow[data-dir='down'] svg {
+  animation: cxBobDown 0.8s ease-in-out infinite;
+}
+.cx-arrow[data-dir='up'] {
+  transform: translate(-50%, 0);
+  animation: cxPopUp 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.cx-arrow[data-dir='up'] svg {
+  transform: rotate(180deg);
+  animation: cxBobUp 0.8s ease-in-out infinite;
+}
+@keyframes cxBobDown {
+  50% {
+    transform: translateY(-12px) scale(1.04, 0.96);
+  }
+}
+@keyframes cxBobUp {
+  0%,
+  100% {
+    transform: rotate(180deg);
+  }
+  50% {
+    transform: rotate(180deg) translateY(-12px) scale(1.04, 0.96);
+  }
+}
+@keyframes cxPopDown {
+  from {
+    transform: translate(-50%, -160%) scale(0.4);
+    opacity: 0;
+  }
+}
+@keyframes cxPopUp {
+  from {
+    transform: translate(-50%, 60%) scale(0.4);
+    opacity: 0;
+  }
+}
+.cx-bubble {
+  position: fixed;
+  width: 220px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 30px 8px 14px;
+  border-radius: 18px;
+  border: 3px solid #2a2350;
+  background: #fff8ec;
+  color: #2a2350;
+  box-shadow: 0 5px 0 #2a2350;
+  font-family: var(--font-mitr), sans-serif;
+  font-size: 0.98rem;
+  line-height: 1.2;
+  text-align: center;
+  pointer-events: auto;
+  animation: l5gPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.cx-x {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(42, 35, 80, 0.08);
+  color: #2a2350;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cx-arrow svg,
+  .cx-ring {
+    animation: none !important;
+  }
+}

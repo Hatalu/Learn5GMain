@@ -2,8 +2,9 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Check, CircleAlert, Clock3, Flag, Gamepad2, Loader2, MonitorPlay, Rocket, Shuffle } from 'lucide-react';
+import { ArrowLeft, Check, CircleAlert, Clock3, Eye, Flag, Gamepad2, Loader2, MonitorPlay, Rocket, Shuffle } from 'lucide-react';
 import { PaperModal } from './PaperModal';
+import { MusicPicker } from './live/MusicPicker';
 import { ModeArt } from './games/ModeArt';
 import { cleanNickname, NICK_MAX } from '@/lib/game-creator/templates';
 import { MODES, fmtDuration, modeById, modeFit, type GameMode } from '@/lib/game-creator/modes';
@@ -102,6 +103,9 @@ export function OpenGameModal({ gameId, title, username, onClose }: { gameId: st
   const [mode, setMode] = useState<RoomMode>('watch');
   const [shuffleQuestions, setSQ] = useState(false);
   const [shuffleChoices, setSC] = useState(false);
+  const [revealAnswer, setRA] = useState(true);
+  const [music, setMusicSetting] = useState('auto');
+  const [musicPlayers, setMP] = useState(true);
   const [duration, setDuration] = useState(0);
   const [goal, setGoal] = useState(0);
   const [nick, setNick] = useState(cleanNickname(username) || 'เจ้าของห้อง');
@@ -135,7 +139,7 @@ export function OpenGameModal({ gameId, title, username, onClose }: { gameId: st
       const r = await fetch('/api/live/rooms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gameId, game, mode, nickname: nick, settings: { shuffleQuestions, shuffleChoices, duration, goal }, background: lastBackground() }),
+        body: JSON.stringify({ gameId, game, mode, nickname: nick, settings: { shuffleQuestions, shuffleChoices, revealAnswer, music, musicPlayers, duration, goal }, background: lastBackground() }),
       });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || 'เปิดห้องไม่สำเร็จ');
@@ -227,17 +231,36 @@ export function OpenGameModal({ gameId, title, username, onClose }: { gameId: st
             </div>
           )}
 
-          {game === 'quiz' && (
-            <div className="mt-4 grid gap-2">
-              <label className="l5g-switch">
-                <input type="checkbox" checked={shuffleQuestions} onChange={(e) => setSQ(e.target.checked)} />
+          <div className="mt-4 grid gap-2">
+            {game === 'quiz' && (
+              <>
+                <label className="l5g-switch">
+                  <input type="checkbox" checked={shuffleQuestions} onChange={(e) => setSQ(e.target.checked)} />
+                  <span className="l5g-switch-ui" />
+                  <Shuffle className="w-4 h-4" /> สลับลำดับคำถามของแต่ละคน
+                </label>
+                <label className="l5g-switch">
+                  <input type="checkbox" checked={shuffleChoices} onChange={(e) => setSC(e.target.checked)} />
+                  <span className="l5g-switch-ui" />
+                  <Shuffle className="w-4 h-4" /> สลับตำแหน่งตัวเลือก
+                </label>
+              </>
+            )}
+            <label className="l5g-switch">
+              <input type="checkbox" checked={revealAnswer} onChange={(e) => setRA(e.target.checked)} />
+              <span className="l5g-switch-ui" />
+              <Eye className="w-4 h-4" /> เฉลยเมื่อตอบผิด
+            </label>
+          </div>
+
+          {game && (
+            <div className="mt-4">
+              <p className="l5g-qset-label">เพลงประกอบ (กดปุ่มเล่นเพื่อฟังตัวอย่าง)</p>
+              <MusicPicker value={music} mode={game} onPick={setMusicSetting} />
+              <label className="l5g-switch mt-2">
+                <input type="checkbox" checked={musicPlayers} onChange={(e) => setMP(e.target.checked)} />
                 <span className="l5g-switch-ui" />
-                <Shuffle className="w-4 h-4" /> สลับลำดับคำถามของแต่ละคน
-              </label>
-              <label className="l5g-switch">
-                <input type="checkbox" checked={shuffleChoices} onChange={(e) => setSC(e.target.checked)} />
-                <span className="l5g-switch-ui" />
-                <Shuffle className="w-4 h-4" /> สลับตำแหน่งตัวเลือก
+                เปิดเพลงในเครื่องผู้เล่นด้วย
               </label>
             </div>
           )}

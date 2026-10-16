@@ -6,6 +6,7 @@ import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { hasMembership } from '@/lib/membership';
 import { QuizEditor } from '@/components/creator/quiz/QuizEditor';
+import { NightSky } from '@/components/fx/NightSky';
 import '@/components/creator/creator.css';
 import '@/components/creator/creator-pages.css';
 
@@ -39,6 +40,7 @@ function EditInner() {
 export default function EditPage() {
   return (
     <main className="l5g-world l5g-world-edit min-h-screen">
+      <NightSky />
       <Suspense fallback={null}>
         <EditInner />
       </Suspense>

@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils/cn';
 import { getPrefs, initPrefs, setPrefs, subscribePrefs } from '@/lib/sound';
 import fx from '@/components/ui/fancy.module.css';
 
-const SERVER = { sfx: true, bgm: false };
+const SERVER = { sfx: true, bgm: true };
 
 /** ปุ่มเสียง: เปิด/ปิดเสียงเอฟเฟกต์ และเพลงพื้นหลัง (จำค่าไว้ในเครื่อง) */
 export function SoundToggle() {

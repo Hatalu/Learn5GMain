@@ -16,6 +16,16 @@
   background: linear-gradient(180deg, #4fb3ff 0%, #9ad8ff 45%, #d9f1ff 100%);
 }
 
+/* โหมดมืด: ท้องฟ้ากลางคืน (ดาว/พระจันทร์มาจาก NightSky) */
+:global(.dark) .world {
+  background: linear-gradient(180deg, #0a0a2c 0%, #1b1858 48%, #352c78 100%);
+}
+:global(.dark) .dots {
+  opacity: 0.12;
+}
+:global(.dark) .cloud {
+  opacity: 0.18;
+}
 .dots {
   position: absolute;
   inset: 0;

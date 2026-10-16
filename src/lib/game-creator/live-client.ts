@@ -4,6 +4,7 @@
 import { createClient } from '@/lib/supabase/client';
 import type { PublicQuestion, RoomBackground, RoomStatus, PlayerPublic } from './types';
 import type { GameMode } from './modes';
+import type { Gear } from './gear';
 import type { AnswerOutcome, QuizEngine } from '@/components/creator/quiz/QuizRunner';
 
 export interface PlayerCreds {
@@ -17,8 +18,25 @@ export interface Rival {
   id: string;
   nickname: string;
   avatar: number;
+  gear?: Gear;
   progress: number;
   finished: boolean;
+}
+
+/** ผู้เล่นในห้องรอ */
+export interface RosterEntry {
+  id: string;
+  nickname: string;
+  avatar: number;
+  gear: Gear;
+  isHost: boolean;
+}
+
+/** 3 อันดับแรกตอนจบเกม */
+export interface PodiumEntry extends RosterEntry {
+  score: number;
+  progress: number;
+  correct: number;
 }
 
 export interface PlayerStateRes {
@@ -34,10 +52,14 @@ export interface PlayerStateRes {
     duration: number;
     goal: number;
     startedAt: string | null;
+    music?: string;
+    musicPlayers?: boolean;
   };
   serverNow: number;
   me: PlayerPublic & { rank: number; players: number; pos: number; slipAt: string | null };
   rivals: Rival[];
+  roster: RosterEntry[];
+  podium: PodiumEntry[];
   question: PublicQuestion | null;
 }
 
@@ -75,7 +97,8 @@ type C = Pick<PlayerCreds, 'playerId' | 'token'>;
 
 export const playerApi = {
   check: (code: string) => post<{ ok: true; title: string; status: RoomStatus; background: RoomBackground }>('/api/live/join', { code, check: true }),
-  join: (code: string, nickname: string, avatar: number) => post<{ roomId: string; code: string; playerId: string; token: string }>('/api/live/join', { code, nickname, avatar }),
+  join: (code: string, nickname: string, avatar: number, gear: Gear) => post<{ roomId: string; code: string; playerId: string; token: string }>('/api/live/join', { code, nickname, avatar, gear }),
+  look: (c: C, avatar: number, gear: Gear) => post<{ ok: boolean; avatar: number; gear: Gear }>('/api/live/player', { op: 'look', avatar, gear, ...c }),
   state: (c: C, question = true) => post<{ state: PlayerStateRes }>('/api/live/player', { op: 'state', question, ...c }).then((j) => j.state),
   answer: (c: C, pos: number, picks: string[]) => post<{ result?: LiveOutcome; stale?: boolean; state?: PlayerStateRes }>('/api/live/player', { op: 'answer', pos, picks, ...c }),
   peek: (c: C) => post<{ status: RoomStatus; background: RoomBackground; round: number; serverNow: number; progress: number; slipAt: string | null }>('/api/live/player', { op: 'peek', ...c }),

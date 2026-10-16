@@ -1,3 +1,4 @@
+import type { Gear } from '@/lib/game-creator/gear';
 import type { QuizEngine } from '../quiz/QuizRunner';
 
 /** สิ่งที่ตัวเกม (Café / Tower / Racing) ได้รับจากห้องเล่น */
@@ -9,7 +10,7 @@ export interface GameProps {
   goal: number;
   /** ส่งคะแนนจากเกมให้เซิร์ฟเวอร์ (Café / Tower) */
   sync?: (score: number, stats: Record<string, number>) => void;
-  me: { nickname: string; avatar: number };
+  me: { nickname: string; avatar: number; gear?: Gear };
   /** ทดลองเล่นในหน้าแก้ไข (ไม่มีห้อง) */
   preview?: boolean;
   /** ออกจากห้อง (แสดงปุ่มตอนเกมจบ) */

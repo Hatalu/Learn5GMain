@@ -6,7 +6,7 @@
 import type { QuizContent } from './types';
 import { playableQuiz } from './quiz';
 
-export type GameMode = 'quiz' | 'cafe' | 'tower' | 'racing';
+export type GameMode = 'quiz' | 'cafe' | 'tower' | 'racing' | 'brawl' | 'fishing';
 
 export interface ModeInfo {
   id: GameMode;
@@ -93,6 +93,38 @@ export const MODES: ModeInfo[] = [
     defaultGoal: 15,
     scoreLabel: 'ก้าว',
   },
+  {
+    id: 'brawl',
+    name: 'Monster Brawl',
+    genre: 'แอ็กชันเอาชีวิตรอด (Arcade Survival)',
+    tagline: 'ตอบถูก = เลเวลอัป ปลดล็อกอาวุธเท่ๆ ถล่มฝูงมอนสเตอร์',
+    steps: ['ใช้ปุ่มลูกศร หรือลากนิ้วบนจอ เดินหลบมอนสเตอร์', 'ตอบถูก = เลเวลอัป เลือกอาวุธใหม่ หรืออัปอาวุธเดิม', 'ยิ่งนานมอนสเตอร์ยิ่งเยอะ บอสโผล่ทุก 90 วินาที', 'หมดแรงไม่แพ้ ฟื้นแล้วลุยต่อได้'],
+    color: '#ff6b7a',
+    dark: '#c9354a',
+    soft: '#ffe1e5',
+    minQuestions: 5,
+    noVideo: true,
+    endless: true,
+    durations: [180, 300, 420, 600],
+    defaultDuration: 300,
+    scoreLabel: 'คะแนนศึก',
+  },
+  {
+    id: 'fishing',
+    name: 'Fishing Frenzy',
+    genre: 'ปาร์ตี้เกมแคชชวล (Casual Arcade)',
+    tagline: 'ตอบถูก = ได้เหยื่อ ถูกติดกันเบ็ดยิ่งลึก เจอปลาหายากตัวยักษ์',
+    steps: ['ตอบถูก 1 ข้อ ได้เหยื่อ 1 ชิ้น', 'กดเหวี่ยงเบ็ด ปลากินเบ็ดแล้วกดดึงรัวๆ', 'ถูกติดกัน ตัวคูณความลึกสูงขึ้น เจอปลาตัวหนักกว่า', 'อาจได้ไอเท็ม แม่เหล็กดูดแต้ม หรือเหยื่อปลายักษ์'],
+    color: '#29b6d8',
+    dark: '#13809e',
+    soft: '#dcf5fc',
+    minQuestions: 3,
+    noVideo: true,
+    endless: true,
+    durations: [180, 300, 420, 600],
+    defaultDuration: 300,
+    scoreLabel: 'น้ำหนักปลา (ปอนด์)',
+  },
 ];
 
 export const modeById = (id: unknown): ModeInfo => MODES.find((m) => m.id === id) || MODES[0];
@@ -142,6 +174,9 @@ export function cleanModeSettings(mode: GameMode, input: unknown): { duration: n
 export function scoreCap(mode: GameMode, correct: number): number {
   if (mode === 'cafe') return correct * 260 + 400;
   if (mode === 'tower') return correct * 450 + 1500;
+  if (mode === 'brawl') return correct * 700 + 3000;
+  // ปลาหนักสุด ~40,000 ปอนด์ x แม่เหล็ก 2 เท่า ต่อเหยื่อ 1 ชิ้น (เหยื่อแถมจากหีบสมบัติเผื่อไว้)
+  if (mode === 'fishing') return correct * 90000 + 2000;
   return Number.MAX_SAFE_INTEGER;
 }
 

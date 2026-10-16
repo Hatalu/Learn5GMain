@@ -9,6 +9,7 @@ import {
   Check,
   Crown,
   Expand,
+  Eye,
   Flag,
   Gamepad2,
   Loader2,
@@ -20,6 +21,7 @@ import {
   RotateCcw,
   Shrink,
   Shuffle,
+  Trophy,
   Users,
   VolumeX,
   X,
@@ -29,7 +31,8 @@ import { RoomBackdrop, bgIsLight } from '@/components/creator/RoomBackdrop';
 import { Avatar } from '@/components/creator/Avatar';
 import { PaperModal } from '@/components/creator/PaperModal';
 import { BackgroundPicker } from '@/components/creator/live/BackgroundPicker';
-import { Confetti, Medal, PlayerSession } from '@/components/creator/live/PlayerSession';
+import { Confetti, Medal, PlayerSession, podiumValue } from '@/components/creator/live/PlayerSession';
+import { PodiumShow } from '@/components/creator/live/PodiumShow';
 import { rememberBackground } from '@/components/creator/OpenGameModal';
 import { subscribeRoom, type PlayerCreds } from '@/lib/game-creator/live-client';
 import { DEFAULT_BG } from '@/lib/game-creator/backgrounds';
@@ -37,7 +40,10 @@ import type { PlayerPublic, RoomBackground, RoomMode, RoomSettings, RoomStatus }
 import { modeById, type GameMode } from '@/lib/game-creator/modes';
 import { RaceTrack } from '@/components/creator/games/RaceGame';
 import { ModeSteps } from '@/components/creator/OpenGameModal';
-import { gsfx, isGameMuted, setGameMuted, startLobbyMusic, stopLobbyMusic } from '@/lib/game-creator/gsound';
+import { gsfx, isGameMuted, setGameMuted } from '@/lib/game-creator/gsound';
+import { releaseMusic, setMusic as playRoomMusic } from '@/lib/music';
+import { roomTrack } from '@/lib/music-tracks';
+import { MusicPicker, musicLabel } from '@/components/creator/live/MusicPicker';
 import '@/components/creator/creator.css';
 import '@/components/creator/creator-pages.css';
 
@@ -77,13 +83,14 @@ function CodeTiles({ code, small }: { code: string; small?: boolean }) {
 
 /** ค่าที่แสดงบนกระดานตามโหมด */
 function boardValue(game: GameMode, p: PlayerPublic, goal: number) {
-  if (game === 'racing') return `${p.progress}/${goal}`;
-  return p.score.toLocaleString('th-TH');
+  return podiumValue(game, p, goal);
 }
 function boardSub(game: GameMode, p: PlayerPublic) {
   if (game === 'cafe') return `เสิร์ฟ ${p.stats.served || 0} จาน · ตอบถูก ${p.correct}`;
   if (game === 'tower') return `ผ่าน ${p.stats.waves || 0} เวฟ · ตอบถูก ${p.correct}`;
   if (game === 'racing') return `ตอบถูก ${p.correct} ข้อ`;
+  if (game === 'brawl') return `เลเวล ${p.stats.level || 1} · ปราบ ${p.stats.kills || 0} ตัว`;
+  if (game === 'fishing') return `ได้ปลา ${p.stats.fish || 0} ตัว · ตอบถูก ${p.correct}`;
   return '';
 }
 
@@ -94,7 +101,7 @@ function Leaderboard({ players, total, onKick, game = 'quiz', goal = 0 }: { play
       {shown.map((p, i) => (
         <div key={p.id} className="l5g-board-row" style={{ transform: `translateY(${i * ROW}px)` }} data-top={i < 3}>
           <span className="l5g-board-rank">{i + 1}</span>
-          <Avatar id={p.avatar} size={40} />
+          <Avatar id={p.avatar} gear={p.gear} size={40} />
           <span className="l5g-board-name">
             <b>{p.nickname}</b>
             {p.isHost && <span className="l5g-board-host">เจ้าของห้อง</span>}
@@ -137,7 +144,7 @@ function Podium({ players, game = 'quiz', goal = 0 }: { players: PlayerPublic[];
         return (
           <div key={p.id} className="l5g-podium-col" data-place={idx + 1} style={{ animationDelay: `${(2 - idx) * 0.45}s` }}>
             {idx === 0 && <Crown className="l5g-podium-crown w-9 h-9" />}
-            <Avatar id={p.avatar} size={idx === 0 ? 96 : 76} mood="wow" />
+            <Avatar id={p.avatar} gear={p.gear} size={idx === 0 ? 96 : 76} mood="wow" />
             <b className="l5g-podium-name">{p.nickname}</b>
             <span className="l5g-podium-score">{boardValue(game, p, goal)}</span>
             <div className="l5g-podium-block">
@@ -167,11 +174,14 @@ function HostInner() {
   const [kick, setKick] = useState<PlayerPublic | null>(null);
   const [acting, setActing] = useState(false);
   const [music, setMusic] = useState(true);
+  const [musicOpen, setMusicOpen] = useState(false);
   const [muted, setMuted] = useState(false);
   const [full, setFull] = useState(false);
   const [tab, setTab] = useState<'rank' | 'stats'>('rank');
   const [live, setLive] = useState(false);
   const [bgLocal, setBgLocal] = useState<RoomBackground | null>(null);
+  /** คัตซีนประกาศผล (เลขรอบที่กำลังโชว์) */
+  const [show, setShow] = useState<number | null>(null);
   const prevCount = useRef(0);
   const prevStatus = useRef<RoomStatus | null>(null);
 
@@ -231,7 +241,7 @@ function HostInner() {
     return subscribeRoom(
       roomId,
       (e) => {
-        if (e.event === 'join') load();
+        if (e.event === 'join' || e.event === 'kick') load();
       },
       setLive
     );
@@ -245,9 +255,12 @@ function HostInner() {
     prevCount.current = n;
     if (prevStatus.current && prevStatus.current !== st.room.status) {
       if (st.room.status === 'ended') {
-        gsfx.drum();
-        setTimeout(() => gsfx.fanfare(), 1150);
-        load(true);
+        // รอคะแนนสุดท้ายของทุกคนเข้ามาก่อน แล้วค่อยเริ่มคัตซีน 3 -> 2 -> 1
+        const round = st.room.round;
+        setTimeout(async () => {
+          await load(true);
+          setShow(round);
+        }, 1200);
       }
     }
     prevStatus.current = st.room.status;
@@ -255,10 +268,11 @@ function HostInner() {
 
   // เพลงห้องรอ
   useEffect(() => {
-    if (status === 'lobby' && music && !muted && view === 'host') startLobbyMusic();
-    else stopLobbyMusic();
-    return () => stopLobbyMusic();
-  }, [status, music, muted, view]);
+    // เพลงของห้องดังที่จอหลักตอนรอและตอนเล่น (จบเกมให้คัตซีนเล่นเสียงของมันเอง)
+    const track = st ? roomTrack(st.room.settings.music, st.room.game) : null;
+    playRoomMusic('room', (status === 'lobby' || status === 'playing') && music && track ? track : null);
+  }, [status, music, st?.room.settings.music, st?.room.game]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => releaseMusic('room'), []);
 
   // เจ้าของห้องเล่นด้วย: ขอโทเคนผู้เล่นของครู
   useEffect(() => {
@@ -305,7 +319,6 @@ function HostInner() {
 
   const start = async () => {
     gsfx.start();
-    stopLobbyMusic();
     await act('start');
     if (st?.room.mode === 'play') setView('play');
   };
@@ -463,16 +476,19 @@ function HostInner() {
           type="button"
           className="l5g-icon-btn"
           onClick={() => {
-            if (room.status === 'lobby') setMusic(!music);
-            else {
-              setGameMuted(!muted);
-              setMuted(!muted);
-            }
+            // ปิด = ปิดทั้งเพลงและเสียงเอฟเฟกต์
+            const on = !(music && !muted);
+            setMusic(on);
+            setGameMuted(!on);
+            setMuted(!on);
           }}
-          title={room.status === 'lobby' ? 'เพลง' : 'เสียง'}
+          title={music && !muted ? 'ปิดเสียง' : 'เปิดเสียง'}
           aria-label="เปิดปิดเสียง"
         >
-          {(room.status === 'lobby' ? music && !muted : !muted) ? <Music className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+          {music && !muted ? <Music className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+        </button>
+        <button type="button" className="l5g-btn l5g-btn-ghost l5g-btn-sm l5g-musicbtn" onClick={() => (gsfx.tap(), setMusicOpen(true))} title="เลือกเพลงประกอบ">
+          <Music className="w-4 h-4" /> <span className="hidden md:inline">{musicLabel(room.settings.music, room.game)}</span>
         </button>
         <button type="button" className="l5g-icon-btn hidden sm:inline-flex" onClick={toggleFull} title="เต็มจอ" aria-label="เต็มจอ">
           {full ? <Shrink className="w-5 h-5" /> : <Expand className="w-5 h-5" />}
@@ -530,7 +546,7 @@ function HostInner() {
               ) : (
                 players.map((p) => (
                   <button key={p.id} type="button" className="l5g-bubble" onClick={() => !p.isHost && setKick(p)} title={p.isHost ? 'คุณ' : 'แตะเพื่อเชิญออก'}>
-                    <Avatar id={p.avatar} size={42} />
+                    <Avatar id={p.avatar} gear={p.gear} size={42} />
                     <span>{p.nickname}</span>
                     {p.isHost && <em>เจ้าของห้อง</em>}
                   </button>
@@ -561,6 +577,11 @@ function HostInner() {
                 <Shuffle className="w-4 h-4" /> สลับตัวเลือก
               </label>
               )}
+              <label className="l5g-switch l5g-switch-light">
+                <input type="checkbox" checked={room.settings.revealAnswer !== false} disabled={acting} onChange={(e) => act('settings', { settings: { ...room.settings, revealAnswer: e.target.checked } })} />
+                <span className="l5g-switch-ui" />
+                <Eye className="w-4 h-4" /> เฉลยเมื่อตอบผิด
+              </label>
               <button type="button" className="l5g-btn l5g-btn-go l5g-btn-xl l5g-startbtn" disabled={acting || players.length === 0} onClick={start}>
                 {acting ? <Loader2 className="w-6 h-6 animate-spin" /> : <Play className="w-6 h-6" />} เริ่มเกม
               </button>
@@ -624,7 +645,7 @@ function HostInner() {
                   <div className="l5g-board-scroll">
                     {room.game === 'racing' && (
                       <div className="mb-3">
-                        <RaceTrack big goal={room.settings.goal} racers={players.map((p) => ({ id: p.id, nickname: p.nickname, avatar: p.avatar, progress: p.progress, finished: p.finished }))} />
+                        <RaceTrack big goal={room.settings.goal} racers={players.map((p) => ({ id: p.id, nickname: p.nickname, avatar: p.avatar, gear: p.gear, progress: p.progress, finished: p.finished }))} />
                       </div>
                     )}
                     <Leaderboard players={players} total={total} game={room.game} goal={room.settings.goal} onKick={room.status === 'playing' ? setKick : undefined} />
@@ -661,15 +682,49 @@ function HostInner() {
                     <Flag className="w-6 h-6" /> จบเกม &amp; ประกาศผล
                   </button>
                 ) : (
-                  <button type="button" className="l5g-btn l5g-btn-mint l5g-btn-xl w-full" onClick={() => act('reset')} disabled={acting}>
-                    <RotateCcw className="w-6 h-6" /> เล่นอีกรอบ
-                  </button>
+                  <>
+                    {players.length > 0 && (
+                      <button type="button" className="l5g-btn l5g-btn-go w-full" onClick={() => (gsfx.tap(), setShow(room.round))}>
+                        <Trophy className="w-5 h-5" /> ดูประกาศผลอีกครั้ง
+                      </button>
+                    )}
+                    <button type="button" className="l5g-btn l5g-btn-mint l5g-btn-xl w-full" onClick={() => act('reset')} disabled={acting}>
+                      <RotateCcw className="w-6 h-6" /> เล่นอีกรอบ
+                    </button>
+                  </>
                 )}
               </div>
             </div>
           </div>
         )}
       </div>
+
+      {show !== null && show === room.round && room.status === 'ended' && players.length > 0 && (
+        <PodiumShow
+          key={show}
+          top={players.slice(0, 3).map((p) => ({ id: p.id, nickname: p.nickname, avatar: p.avatar, gear: p.gear, value: boardValue(room.game, p, room.settings.goal) }))}
+          label={modeById(room.game).scoreLabel}
+          doneText="ดูอันดับทั้งหมด"
+          onDone={() => setShow(null)}
+        />
+      )}
+
+      {musicOpen && (
+        <PaperModal title="เพลงประกอบ" icon={<Music className="w-5 h-5" />} iconBg="#9b6cf0" onClose={() => setMusicOpen(false)} width={640}>
+          <MusicPicker value={room.settings.music || 'auto'} mode={room.game} onPick={(v) => act('music', { music: v })} />
+          <label className="l5g-switch mt-3">
+            <input type="checkbox" checked={room.settings.musicPlayers !== false} disabled={acting} onChange={(e) => act('music', { music: room.settings.music, musicPlayers: e.target.checked })} />
+            <span className="l5g-switch-ui" />
+            เปิดเพลงในเครื่องผู้เล่นด้วย
+          </label>
+          <div className="l5g-math-foot">
+            <span className="flex-1" />
+            <button type="button" className="l5g-btn l5g-btn-go" onClick={() => setMusicOpen(false)}>
+              เรียบร้อย
+            </button>
+          </div>
+        </PaperModal>
+      )}
 
       {bgOpen && user && <BackgroundPicker value={bg} userId={user.id} onPick={changeBg} onClose={() => setBgOpen(false)} />}
 

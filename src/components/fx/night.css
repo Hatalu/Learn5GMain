@@ -1,0 +1,131 @@
+/* ท้องฟ้ากลางคืน: โชว์เฉพาะตอนเปิดโหมดมืด (คลาส .dark ที่ <html>) */
+.nsky {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+.dark .nsky {
+  display: block;
+}
+.nsky-aurora {
+  position: absolute;
+  left: -10%;
+  right: -10%;
+  top: 6%;
+  height: 34%;
+  background: radial-gradient(ellipse at 30% 50%, rgba(63, 214, 168, 0.22), transparent 60%), radial-gradient(ellipse at 72% 40%, rgba(155, 108, 240, 0.28), transparent 62%);
+  filter: blur(18px);
+  animation: nskyAurora 14s ease-in-out infinite alternate;
+}
+@keyframes nskyAurora {
+  to {
+    transform: translateX(4%) scaleY(1.15);
+    opacity: 0.7;
+  }
+}
+.nsky-star {
+  position: absolute;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.9);
+  animation: nskyTwinkle ease-in-out infinite;
+}
+@keyframes nskyTwinkle {
+  50% {
+    opacity: 0.25;
+    transform: scale(0.6);
+  }
+}
+.nsky-shoot {
+  position: absolute;
+  width: 120px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0));
+  transform: rotate(-24deg);
+  opacity: 0;
+  animation: nskyShoot 11s ease-in infinite;
+}
+@keyframes nskyShoot {
+  0%,
+  86% {
+    opacity: 0;
+    transform: rotate(-24deg) translateX(0);
+  }
+  88% {
+    opacity: 1;
+  }
+  96%,
+  100% {
+    opacity: 0;
+    transform: rotate(-24deg) translateX(-340px);
+  }
+}
+.nsky-moon {
+  position: absolute;
+  right: 6%;
+  top: 5%;
+  width: clamp(76px, 10vw, 120px);
+  height: auto;
+  animation: nskyBob 6s ease-in-out infinite;
+}
+.nsky-hills {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 120px;
+}
+.nsky-fly {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fff6a8;
+  box-shadow: 0 0 10px 3px rgba(255, 230, 120, 0.7);
+  animation: nskyFly 5s ease-in-out infinite;
+}
+@keyframes nskyFly {
+  0%,
+  100% {
+    transform: translate(0, 0);
+    opacity: 0.2;
+  }
+  50% {
+    transform: translate(14px, -18px);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nsky * {
+    animation: none !important;
+  }
+}
+
+/* ---------- หน้าสร้างเกม ---------- */
+.dark .l5g-world,
+.dark .l5g-world-edit {
+  background: linear-gradient(180deg, #0a0a2c 0%, #1b1858 48%, #352c78 100%);
+}
+.dark .l5g-world-edit {
+  background-attachment: fixed;
+}
+.dark .l5g-world::before {
+  opacity: 0.12;
+}
+.dark .l5g-world > .l5g-bg-cloud,
+.dark .l5g-world-edit > .l5g-bg-cloud {
+  opacity: 0.18;
+}
+.dark .l5g-hero-sub {
+  color: rgba(255, 248, 236, 0.85);
+}
+@keyframes nskyBob {
+  50% {
+    transform: translateY(-10px);
+  }
+}

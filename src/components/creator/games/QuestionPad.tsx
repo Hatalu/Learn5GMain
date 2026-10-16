@@ -223,7 +223,7 @@ export function QuestionPad({
       )}
       {show && (
         <div className="l5g-qp-flash" data-kind={res!.correct ? 'ok' : 'no'}>
-          {res!.correct ? (rewardText ? rewardText(res!) : 'ถูกต้อง!') : lockMs && lockLeft > 0 ? `สะดุด! รอ ${lockLeft}` : 'ดูข้อที่ถูกนะ'}
+          {res!.correct ? (rewardText ? rewardText(res!) : 'ถูกต้อง!') : lockMs && lockLeft > 0 ? `สะดุด! รอ ${lockLeft}` : res!.correctIds.length ? 'ดูข้อที่ถูกนะ' : 'ยังไม่ถูก ลองข้อต่อไปนะ'}
         </div>
       )}
       {err && phase === 'question' && <p className="l5g-err text-center">{err}</p>}

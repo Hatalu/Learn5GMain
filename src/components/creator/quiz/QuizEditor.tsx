@@ -55,6 +55,10 @@ import { QuizRunner, type QuizEngine } from './QuizRunner';
 import { CafeGame } from '../games/CafeGame';
 import { TowerGame } from '../games/TowerGame';
 import { RaceGame } from '../games/RaceGame';
+import { BrawlGame } from '../games/BrawlGame';
+import { releaseMusic, setMusic } from '@/lib/music';
+import { MODE_MUSIC } from '@/lib/music-tracks';
+import { FishGame } from '../games/FishGame';
 import { ModePicker, ModeSteps } from '../OpenGameModal';
 import { modeById, modeQuiz, type GameMode } from '@/lib/game-creator/modes';
 import { localEngine } from './localEngine';
@@ -105,6 +109,13 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
   const [draftOffer, setDraftOffer] = useState<{ title: string; content: QuizContent } | null>(null);
   const [dragFrom, setDragFrom] = useState<number | null>(null);
   const [previewDone, setPreviewDone] = useState<number | null>(null);
+  // ทดลองเล่น: เปิดเพลงของรูปแบบนั้น
+  const previewMode = preview?.mode;
+  useEffect(() => {
+    if (previewMode) setMusic('room', MODE_MUSIC[previewMode]);
+    else releaseMusic('room');
+  }, [previewMode]);
+  useEffect(() => () => releaseMusic('room'), []);
   const imgInput = useRef<HTMLInputElement>(null);
   const vidInput = useRef<HTMLInputElement>(null);
   const pickTarget = useRef<Target | null>(null);
@@ -950,6 +961,10 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
               <CafeGame key={preview.key} engine={preview.engine} deadline={preview.deadline} goal={0} me={{ nickname: 'ทดลอง', avatar: 0 }} preview />
             ) : preview.mode === 'tower' ? (
               <TowerGame key={preview.key} engine={preview.engine} deadline={preview.deadline} goal={0} me={{ nickname: 'ทดลอง', avatar: 0 }} preview />
+            ) : preview.mode === 'brawl' ? (
+              <BrawlGame key={preview.key} engine={preview.engine} deadline={preview.deadline} goal={0} me={{ nickname: 'ทดลอง', avatar: 5 }} preview />
+            ) : preview.mode === 'fishing' ? (
+              <FishGame key={preview.key} engine={preview.engine} deadline={preview.deadline} goal={0} me={{ nickname: 'ทดลอง', avatar: 7 }} preview />
             ) : preview.mode === 'racing' ? (
               <RaceGame key={preview.key} engine={preview.engine} deadline={null} goal={10} me={{ nickname: 'ฉัน', avatar: 0 }} preview />
             ) : (
@@ -971,7 +986,7 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
 
       {pickPreview && (
         <PaperModal title="ทดลองเล่นแบบไหนดี" icon={<Play className="w-5 h-5" />} iconBg="#3fd6a8" onClose={() => setPickPreview(false)} width={860}>
-          <p className="font-semibold opacity-75 -mt-1 mb-3 text-sm">ลองเล่นในเครื่องนี้ ไม่ต้องเปิดห้อง (Café / ป้อมปราการ ทดลอง 2 นาที วิ่งแข่งกับบอท)</p>
+          <p className="font-semibold opacity-75 -mt-1 mb-3 text-sm">ลองเล่นในเครื่องนี้ ไม่ต้องเปิดห้อง (โหมดจับเวลาทดลอง 2 นาที วิ่งแข่งกับบอท)</p>
           <ModePicker content={content} value={pickMode} onPick={setPickMode} />
           {pickMode && <ModeSteps mode={pickMode} />}
           <div className="l5g-math-foot">

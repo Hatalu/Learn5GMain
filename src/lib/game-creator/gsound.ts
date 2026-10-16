@@ -176,6 +176,55 @@ export const gsfx = {
   whoosh() {
     play((c, t) => noise(c, t, 0.35, 0.06, 900));
   },
+  /** เปิดตัวอันดับบนแท่นรับรางวัล (1 = ใหญ่สุด) */
+  reveal(place = 3) {
+    play((c, t) => {
+      noise(c, t, 0.3, 0.05, 700);
+      tone(c, 90, t, 0.35, { type: 'sine', gain: 0.22, slideTo: 45 });
+      const base = place === 1 ? [523, 659, 784, 1047] : place === 2 ? [440, 554, 659] : [392, 494];
+      base.forEach((f, i) => tone(c, f, t + 0.08 + i * 0.09, 0.4, { type: 'triangle', gain: 0.12 }));
+      if (place === 1) noise(c, t + 0.1, 1.1, 0.06, 3200);
+    });
+  },
+  /** เลเวลอัป (Monster Brawl) */
+  levelUp() {
+    play((c, t) => {
+      [523, 659, 784, 1047, 1319].forEach((f, i) => tone(c, f, t + i * 0.06, 0.22, { type: 'square', gain: 0.05 }));
+      tone(c, 1568, t + 0.32, 0.5, { type: 'triangle', gain: 0.08 });
+    });
+  },
+  /** ค้อนทุบพื้น / ระเบิด */
+  boom() {
+    play((c, t) => {
+      tone(c, 120, t, 0.3, { type: 'sine', gain: 0.25, slideTo: 40 });
+      noise(c, t, 0.25, 0.07, 400);
+    });
+  },
+  /** เหวี่ยงเบ็ด */
+  cast() {
+    play((c, t) => {
+      noise(c, t, 0.4, 0.05, 2500);
+      tone(c, 700, t, 0.4, { type: 'sine', gain: 0.05, slideTo: 1600 });
+    });
+  },
+  /** ตกน้ำ */
+  plop() {
+    play((c, t) => {
+      tone(c, 900, t, 0.12, { type: 'sine', gain: 0.12, slideTo: 260 });
+      noise(c, t + 0.03, 0.18, 0.04, 1800);
+    });
+  },
+  /** ปลากินเบ็ด */
+  bite() {
+    play((c, t) => {
+      tone(c, 1200, t, 0.08, { type: 'square', gain: 0.06 });
+      tone(c, 1200, t + 0.14, 0.08, { type: 'square', gain: 0.06 });
+    });
+  },
+  /** หมุนรอกดึงปลา */
+  reel() {
+    play((c, t) => tone(c, 380 + Math.random() * 60, t, 0.05, { type: 'square', gain: 0.025 }));
+  },
   /** ระยิบระยับตอนจบชุดคำถาม */
   sparkleish() {
     play((c, t) => [1568, 2093, 2637].forEach((f, i) => tone(c, f, t + i * 0.06, 0.25, { gain: 0.07 })));
@@ -242,28 +291,3 @@ export const gsfx = {
     play((c, t) => tone(c, 520, t, 0.07, { type: 'triangle', gain: 0.07, slideTo: 780 }));
   },
 };
-
-/* ------------------------------ BGM ห้องรอ ------------------------------ */
-let bgmTimer: ReturnType<typeof setInterval> | null = null;
-let step = 0;
-const MELODY = [523, 659, 784, 659, 587, 698, 880, 698, 523, 659, 784, 1047, 988, 784, 659, 587];
-const BASS = [131, 131, 175, 175, 147, 147, 196, 196];
-
-export function startLobbyMusic() {
-  if (bgmTimer) return;
-  step = 0;
-  bgmTimer = setInterval(() => {
-    play((c, t) => {
-      const n = MELODY[step % MELODY.length];
-      if (step % 2 === 0 || Math.random() < 0.5) tone(c, n, t, 0.22, { type: 'triangle', gain: 0.045 });
-      if (step % 2 === 0) tone(c, BASS[(step / 2) % BASS.length], t, 0.4, { type: 'sine', gain: 0.06 });
-      if (step % 4 === 2) noise(c, t, 0.05, 0.02, 6000);
-    });
-    step++;
-  }, 260);
-}
-
-export function stopLobbyMusic() {
-  if (bgmTimer) clearInterval(bgmTimer);
-  bgmTimer = null;
-}

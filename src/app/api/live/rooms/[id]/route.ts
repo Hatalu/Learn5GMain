@@ -79,7 +79,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   });
 }
 
-/** คำสั่งของครู: เริ่ม / จบ / เล่นใหม่ / ปิดห้อง / เตะผู้เล่น / เปลี่ยนพื้นหลัง / ตั้งค่า */
+/** คำสั่งของเจ้าของห้อง: เริ่ม / จบ / เล่นใหม่ / ปิดห้อง / เตะผู้เล่น / เปลี่ยนพื้นหลัง / ตั้งค่า / เพลง */
 export async function POST(req: NextRequest, { params }: Ctx) {
   if (!isSameOrigin(req)) return NextResponse.json({ error: 'คำขอไม่ถูกต้อง' }, { status: 403 });
   const r = await hostRoom(params.id);
@@ -132,6 +132,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
       if (!isUuid(body.playerId)) return NextResponse.json({ error: 'ไม่พบผู้เล่น' }, { status: 400 });
       await db.from('room_players').update({ kicked: true }).eq('id', body.playerId).eq('room_id', room.id).eq('is_host', false);
       await broadcast(room.id, 'kick', { playerId: body.playerId });
+      if (room.status === 'lobby') await broadcast(room.id, 'join', { left: body.playerId });
       return NextResponse.json({ ok: true });
     }
     case 'background': {
@@ -144,6 +145,13 @@ export async function POST(req: NextRequest, { params }: Ctx) {
       if (room.status !== 'lobby') return NextResponse.json({ error: 'เปลี่ยนได้ก่อนเริ่มเกมเท่านั้น' }, { status: 409 });
       const settings = cleanSettings(body.settings, room.game);
       await db.from('game_rooms').update({ settings }).eq('id', room.id);
+      return NextResponse.json({ ok: true, settings });
+    }
+    case 'music': {
+      // เปลี่ยนเพลงได้ทุกช่วง (ผู้เล่นได้สัญญาณแล้วเปลี่ยนตามทันที)
+      const settings = cleanSettings({ ...room.settings, music: body.music, musicPlayers: body.musicPlayers ?? room.settings.musicPlayers }, room.game);
+      await db.from('game_rooms').update({ settings }).eq('id', room.id);
+      await broadcast(room.id, 'music', { music: settings.music, musicPlayers: settings.musicPlayers });
       return NextResponse.json({ ok: true, settings });
     }
     case 'hostToken': {

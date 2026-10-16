@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Crown, Loader2, Play, Timer, X } from 'lucide-react';
+import { Crown, Loader2, Maximize2, Minimize2, Play, Timer, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useCompanion } from '@/components/companion/CompanionProvider';
 import { FacebookIcon } from '@/components/icons/FacebookIcon';
@@ -13,6 +13,10 @@ import { MediaItem } from '@/types/database';
 import { cn } from '@/lib/utils/cn';
 
 type Phase = 'loading' | 'waiting' | 'playing' | 'ended' | 'error';
+
+type FsDoc = Document & { webkitFullscreenElement?: Element | null; webkitExitFullscreen?: () => Promise<void> | void };
+type FsEl = HTMLElement & { webkitRequestFullscreen?: () => Promise<void> | void };
+const fsElement = () => (document as FsDoc).fullscreenElement || (document as FsDoc).webkitFullscreenElement || null;
 
 const fmt = (ms: number) => {
   const s = Math.max(0, Math.ceil(ms / 1000));
@@ -39,6 +43,11 @@ export function TrialModal({ media, onClose, mode = 'trial' }: { media: MediaIte
   const [frameGone, setFrameGone] = useState(false);
   /** เพิ่มค่า = ขอโทเคนใหม่แล้วเปิดเกมใหม่ (เล่นเต็มนานเกิน 4 ชั่วโมง) */
   const [gen, setGen] = useState(0);
+
+  /** เต็มจอ: ใช้ Fullscreen API ถ้าเบราว์เซอร์รองรับ ไม่งั้นขยายเต็มหน้าต่างแทน (เช่น iPhone) */
+  const [max, setMax] = useState(false);
+  const boxRef = useRef<HTMLDivElement>(null);
+  const fsExitAt = useRef(0);
 
   const startedAt = useRef<number | null>(null);
   const loadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -176,10 +185,66 @@ export function TrialModal({ media, onClose, mode = 'trial' }: { media: MediaIte
     return () => clearTimeout(t);
   }, [phase, cleanup]);
 
-  // Esc ปิด + ล็อก scroll พื้นหลัง
+  // เต็มจอ / ย่อจอ
+  const exitFs = useCallback(() => {
+    const d = document as FsDoc;
+    if (!fsElement()) return;
+    try {
+      const r = d.exitFullscreen ? d.exitFullscreen() : d.webkitExitFullscreen?.();
+      if (r && typeof (r as Promise<void>).catch === 'function') (r as Promise<void>).catch(() => null);
+    } catch {
+      /* ไม่เป็นไร */
+    }
+  }, []);
+  const toggleMax = async () => {
+    if (max) {
+      exitFs();
+      setMax(false);
+      return;
+    }
+    setMax(true);
+    const el = boxRef.current as FsEl | null;
+    if (!el) return;
+    try {
+      if (el.requestFullscreen) await el.requestFullscreen({ navigationUI: 'hide' });
+      else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
+    } catch {
+      /* เบราว์เซอร์ไม่ให้เต็มจอจริง: ขยายเต็มหน้าต่างแทน */
+    }
+  };
+  useEffect(() => {
+    const onFs = () => {
+      // ออกจากเต็มจอด้วยปุ่ม Esc / ท่าทางของเบราว์เซอร์: ย่อกลับเป็นหน้าต่างปกติ
+      if (!fsElement()) {
+        fsExitAt.current = Date.now();
+        setMax(false);
+      }
+    };
+    document.addEventListener('fullscreenchange', onFs);
+    document.addEventListener('webkitfullscreenchange', onFs);
+    return () => {
+      document.removeEventListener('fullscreenchange', onFs);
+      document.removeEventListener('webkitfullscreenchange', onFs);
+      exitFs();
+    };
+  }, [exitFs]);
+  const close = useCallback(() => {
+    exitFs();
+    onClose();
+  }, [exitFs, onClose]);
+
+  // Esc ปิด (ถ้าเต็มจออยู่ = ย่อจอก่อน) + ล็อก scroll พื้นหลัง
+  const maxRef = useRef(max);
+  maxRef.current = max;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key !== 'Escape') return;
+      if (fsElement() || Date.now() - fsExitAt.current < 600) return;
+      if (maxRef.current) {
+        setMax(false);
+        return;
+      }
+      onClose();
     };
     document.addEventListener('keydown', onKey);
     const prev = document.body.style.overflow;
@@ -197,20 +262,24 @@ export function TrialModal({ media, onClose, mode = 'trial' }: { media: MediaIte
   const playFull = () => {
     recordPlay(media);
     window.open(media.game_url, '_blank', 'noopener,noreferrer');
-    onClose();
+    close();
   };
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center p-2 sm:p-5 bg-indigo-950/75 backdrop-blur-md animate-fade-in"
-      onMouseDown={onClose}
+      className={cn('fixed inset-0 z-[70] flex items-center justify-center bg-indigo-950/75 backdrop-blur-md animate-fade-in', max ? 'p-0' : 'p-2 sm:p-5')}
+      onMouseDown={close}
     >
       <div
+        ref={boxRef}
         role="dialog"
         aria-modal="true"
         aria-label={`${full ? 'เล่น' : 'ทดลองเล่น'} ${media.title}`}
         onMouseDown={(e) => e.stopPropagation()}
-        className="relative flex flex-col w-[min(98vw,1280px)] h-[min(94vh,860px)] rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden bg-gray-950 border-2 border-indigo-300/60 dark:border-indigo-700 shadow-toy-lg animate-pop-in"
+        className={cn(
+          'relative flex flex-col overflow-hidden bg-gray-950 shadow-toy-lg',
+          max ? 'w-screen h-[100dvh] rounded-none border-0' : 'w-[min(98vw,1280px)] h-[min(94vh,860px)] rounded-[1.5rem] sm:rounded-[2rem] border-2 border-indigo-300/60 dark:border-indigo-700 animate-pop-in'
+        )}
       >
         {/* แถบหัว */}
         <div className="shrink-0 flex items-center gap-3 px-3 sm:px-5 py-2.5 bg-gray-900 text-white border-b border-white/10">
@@ -255,7 +324,17 @@ export function TrialModal({ media, onClose, mode = 'trial' }: { media: MediaIte
   )}
           <button
             type="button"
-            onClick={onClose}
+            onClick={toggleMax}
+            aria-label={max ? 'ย่อจอเกม' : 'ขยายเต็มจอ'}
+            title={max ? 'ย่อจอเกม' : 'ขยายเต็มจอ'}
+            className="btn-jelly inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-sm font-semibold"
+          >
+            {max ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            <span className="hidden sm:inline">{max ? 'ย่อจอ' : 'เต็มจอ'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={close}
             aria-label={full ? 'ปิดเกม' : 'ปิดจอทดลองเล่น'}
             className="btn-jelly inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-sm font-semibold"
           >
@@ -300,7 +379,7 @@ export function TrialModal({ media, onClose, mode = 'trial' }: { media: MediaIte
               <div className="max-w-sm">
                 <p className="font-display text-xl mb-2">{full ? 'เปิดเกมไม่ได้' : 'เปิดโหมดทดลองไม่ได้'}</p>
                 <p className="text-white/80 mb-5">{error}</p>
-                <button onClick={onClose} className="btn-primary-grad btn-jelly px-6 py-3 rounded-2xl font-display">ปิด</button>
+                <button onClick={close} className="btn-primary-grad btn-jelly px-6 py-3 rounded-2xl font-display">ปิด</button>
               </div>
             </div>
           )}
@@ -315,7 +394,7 @@ export function TrialModal({ media, onClose, mode = 'trial' }: { media: MediaIte
                   <button type="button" onClick={renew} className="btn-primary-grad btn-jelly inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-display text-lg">
                     <Play className="w-5 h-5 fill-current" /> เล่นต่อ
                   </button>
-                  <button type="button" onClick={onClose} className="btn-jelly px-6 py-2.5 rounded-2xl text-gray-600 dark:text-gray-300 font-semibold">
+                  <button type="button" onClick={close} className="btn-jelly px-6 py-2.5 rounded-2xl text-gray-600 dark:text-gray-300 font-semibold">
                     ปิดเกม
                   </button>
                 </div>
@@ -363,7 +442,7 @@ export function TrialModal({ media, onClose, mode = 'trial' }: { media: MediaIte
                       )}
                     </>
                   )}
-                  <button type="button" onClick={onClose} className="btn-jelly px-6 py-2.5 rounded-2xl text-gray-600 dark:text-gray-300 font-semibold">
+                  <button type="button" onClick={close} className="btn-jelly px-6 py-2.5 rounded-2xl text-gray-600 dark:text-gray-300 font-semibold">
                     ปิดหน้าต่าง
                   </button>
                 </div>

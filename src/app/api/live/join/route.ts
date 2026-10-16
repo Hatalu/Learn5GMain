@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clientIp, isSameOrigin, limit } from '@/lib/server/rate-limit';
 import { AVATAR_COUNT, NICK_MAX, cleanNickname, isRoomCode } from '@/lib/game-creator/templates';
-import { MAX_PLAYERS, ROOM_COLS, type RoomRow, admin, broadcast, hashToken, isExpired, newToken } from '@/lib/server/live';
+import { cleanGear } from '@/lib/game-creator/gear';
+import { MAX_PLAYERS, ROOM_COLS, type RoomRow, admin, broadcast, hashToken, isExpired, newToken, rosterEntry } from '@/lib/server/live';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,6 +41,7 @@ export async function POST(req: NextRequest) {
   if (!nickname) return NextResponse.json({ error: 'ตั้งชื่อเล่นก่อนนะ' }, { status: 400 });
   if (nickname.length > NICK_MAX) return NextResponse.json({ error: 'ชื่อยาวเกินไป' }, { status: 400 });
   const avatar = Number.isInteger(body.avatar) && (body.avatar as number) >= 0 && (body.avatar as number) < AVATAR_COUNT ? (body.avatar as number) : 0;
+  const gear = cleanGear(body.gear);
 
   const { count } = await db.from('room_players').select('id', { count: 'exact', head: true }).eq('room_id', room.id).eq('kicked', false);
   if ((count || 0) >= MAX_PLAYERS) return NextResponse.json({ error: 'ห้องนี้เต็มแล้ว' }, { status: 409 });
@@ -47,13 +49,15 @@ export async function POST(req: NextRequest) {
   const token = newToken();
   const { data: p, error: insErr } = await db
     .from('room_players')
-    .insert({ room_id: room.id, nickname, avatar, token_hash: hashToken(token) })
+    .insert({ room_id: room.id, nickname, avatar, gear, token_hash: hashToken(token) })
     .select('id')
     .single();
   if (insErr || !p) {
     if (insErr?.code === '23505') return NextResponse.json({ error: 'ชื่อนี้มีเพื่อนใช้แล้ว ลองชื่ออื่นนะ' }, { status: 409 });
+    if (insErr?.code === '42703' || insErr?.code === 'PGRST204') return NextResponse.json({ error: 'ระบบห้องเกมกำลังอัปเดต (migration 018) ลองใหม่อีกครั้งนะ' }, { status: 503 });
     return NextResponse.json({ error: 'เข้าห้องไม่สำเร็จ ลองใหม่อีกครั้ง' }, { status: 500 });
   }
-  await broadcast(room.id, 'join', { nickname });
+  // ส่งข้อมูลคนที่เข้ามาไปกับสัญญาณเลย ทุกเครื่องในห้องรอจะได้ไม่ต้องขอรายชื่อใหม่
+  await broadcast(room.id, 'join', { player: rosterEntry({ id: p.id, nickname, avatar, gear, is_host: false }) });
   return NextResponse.json({ ok: true, roomId: room.id, code: room.code, playerId: p.id, token });
 }

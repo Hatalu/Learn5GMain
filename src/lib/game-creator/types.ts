@@ -3,6 +3,8 @@
  * เนื้อหาเกมเก็บเป็น jsonb ในตาราง user_games.content (ตรวจ/ทำความสะอาดด้วย sanitizeQuiz ก่อนใช้ทุกครั้ง)
  */
 
+import type { Gear } from './gear';
+
 /** ข้อความผสมสูตรคณิต: ส่วนข้อความธรรมดา (x) กับส่วนสูตร LaTeX (m) */
 export type Seg = { t: 'x'; v: string } | { t: 'm'; v: string };
 export type Rich = Seg[];
@@ -80,6 +82,12 @@ export type RoomBackground =
 export interface RoomSettings {
   shuffleQuestions: boolean;
   shuffleChoices: boolean;
+  /** ตอบผิดแล้วโชว์ข้อที่ถูก (ค่าเริ่มต้นเปิด) */
+  revealAnswer: boolean;
+  /** เพลงประกอบ: 'auto' = ตามรูปแบบการเล่น, 'off' = ไม่มีเพลง หรือ id เพลงใน music-tracks.ts */
+  music: string;
+  /** เปิดเพลงในเครื่องผู้เล่นด้วย (ไม่งั้นดังแค่จอหลัก) */
+  musicPlayers: boolean;
   /** เวลาเล่น (วินาที) โหมด Café/Tower */
   duration: number;
   /** จำนวนก้าวถึงเส้นชัย โหมด Racing */
@@ -115,6 +123,7 @@ export interface PlayerPublic {
   id: string;
   nickname: string;
   avatar: number;
+  gear: Gear;
   isHost: boolean;
   score: number;
   correct: number;

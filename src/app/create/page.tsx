@@ -2,6 +2,7 @@
 
 import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { NightSky } from '@/components/fx/NightSky';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Check, Compass, Copy, Crown, DoorOpen, FolderHeart, Globe, Loader2, Lock, LogIn, MoreVertical, Pencil, Play, Plus, Rocket, Search, Sparkles, Trash2, Wand2 } from 'lucide-react';
 import { Navbar } from '@/components/navbar/Navbar';
@@ -247,6 +248,7 @@ function CreateHub() {
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className="l5g-world flex-1">
+        <NightSky />
         <span className="l5g-bg-cloud" style={{ top: '7%', animationDelay: '-20s' }} />
         <span className="l5g-bg-cloud" style={{ top: '40%', animationDelay: '-55s', ['--s' as string]: 0.7 }} />
 
@@ -257,9 +259,9 @@ function CreateHub() {
           <h1 className="l5g-hero-title">
             สร้างชุดคำถามของคุณเอง
             <br />
-            <span>เล่นได้ 4 แบบ ทั้งห้องสนุก</span>
+            <span>เล่นได้ 6 แบบ ทั้งห้องสนุก</span>
           </h1>
-          <p className="l5g-hero-sub">ควิซ ร้านคาเฟ่ ป้อมปราการ วิ่งแข่ง ใช้ชุดคำถามเดียวกัน เปิดห้องด้วยเลข 6 หลัก</p>
+          <p className="l5g-hero-sub">ควิซ ร้านคาเฟ่ ป้อมปราการ วิ่งแข่ง ศึกมอนสเตอร์ ตกปลา ใช้ชุดคำถามเดียวกัน เปิดห้องด้วยเลข 6 หลัก</p>
         </section>
 
         {isLoading ? (

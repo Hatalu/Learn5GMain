@@ -1,9 +1,11 @@
 /**
  * เสียงทั้งหมดสังเคราะห์ด้วย Web Audio (ไม่ต้องโหลดไฟล์) พร้อม graceful fallback
  * - SFX: ป๊อปฟองสบู่ / ประกาย / ระฆังแก้ว / เฉลิมฉลอง
- * - BGM: ทำนองเพนทาโทนิกเบาๆ วนลูป (ปิดเป็นค่าเริ่มต้น)
+ * - BGM: เพลง "บ้านสดใส" จากเครื่องเล่นเพลงกลาง (lib/music.ts) เปิดเป็นค่าเริ่มต้น ปิดได้ที่ปุ่มเสียงบนแถบเมนู
  * เบราว์เซอร์ต้องมีการแตะ/คลิกก่อนจึงจะเล่นเสียงได้ จึงสร้าง AudioContext ตอนมี gesture แรก
  */
+
+import { releaseMusic, setMusic } from './music';
 
 const PREF_KEY = 'l5g_sound_v1';
 
@@ -12,11 +14,9 @@ export interface SoundPrefs {
   bgm: boolean;
 }
 
-let prefs: SoundPrefs = { sfx: true, bgm: false };
+let prefs: SoundPrefs = { sfx: true, bgm: true };
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
-let bgmTimer: ReturnType<typeof setInterval> | null = null;
-let bgmStep = 0;
 const listeners = new Set<() => void>();
 
 export function loadPrefs(): SoundPrefs {
@@ -24,7 +24,8 @@ export function loadPrefs(): SoundPrefs {
     const raw = window.localStorage.getItem(PREF_KEY);
     if (raw) {
       const p = JSON.parse(raw);
-      prefs = { sfx: p.sfx !== false, bgm: p.bgm === true };
+      // ค่าที่บันทึกก่อนมีเพลงจริง (bgm ปิดเป็นค่าเริ่มต้น) ให้เปิดใหม่หนึ่งครั้ง
+      prefs = { sfx: p.sfx !== false, bgm: p.v === 2 ? p.bgm !== false : true };
     }
   } catch {
     /* ใช้ค่าเริ่มต้น */
@@ -40,7 +41,7 @@ export const subscribePrefs = (l: () => void) => {
 
 function savePrefs() {
   try {
-    window.localStorage.setItem(PREF_KEY, JSON.stringify(prefs));
+    window.localStorage.setItem(PREF_KEY, JSON.stringify({ ...prefs, v: 2 }));
   } catch {
     /* ไม่เป็นไร */
   }
@@ -124,44 +125,19 @@ export const sfx = {
 };
 
 /* ------------------------------ BGM ------------------------------ */
-// C เมเจอร์เพนทาโทนิก: C D E G A (หลายอ็อกเทฟ) ฟังสบาย ไม่ขัดกัน
-const SCALE = [261.63, 293.66, 329.63, 392.0, 440.0, 523.25, 587.33, 659.25, 783.99];
-const PAD_CHORDS = [
-  [130.81, 196.0, 329.63],
-  [110.0, 164.81, 261.63],
-  [87.31, 130.81, 220.0],
-  [98.0, 146.83, 246.94],
-];
-
-function bgmTick() {
-  const c = ctx;
-  if (!c || !master || !prefs.bgm || c.state !== 'running') return;
-  const t = c.currentTime + 0.05;
-  if (bgmStep % 8 === 0) {
-    const chord = PAD_CHORDS[(bgmStep / 8) % PAD_CHORDS.length];
-    chord.forEach((f) => tone(f, t, 5.2, { gain: 0.022, attack: 1.2 }));
-  }
-  if (Math.random() < 0.62) {
-    const f = SCALE[Math.floor(Math.random() * SCALE.length)];
-    tone(f, t, 1.4, { type: 'triangle', gain: 0.03, attack: 0.03 });
-  }
-  bgmStep++;
-}
-
+// เพลงหน้าเว็บอยู่ชั้นล่างสุด หน้าเกมที่มีเพลงของตัวเองจะเล่นทับ แล้วกลับมาเล่นต่อเมื่อออกจากหน้านั้น
 export function startBgm() {
-  if (bgmTimer || !ensureCtx()) return;
-  bgmTick();
-  bgmTimer = setInterval(bgmTick, 650);
+  setMusic('site', 'home');
 }
 
 export function stopBgm() {
-  if (bgmTimer) clearInterval(bgmTimer);
-  bgmTimer = null;
+  releaseMusic('site');
 }
 
-/** โหลดค่าที่จำไว้แล้วแจ้ง UI (ไม่เริ่มเสียง) */
+/** โหลดค่าที่จำไว้แล้วแจ้ง UI (เพลงจะดังหลังผู้ใช้แตะหน้าจอครั้งแรก) */
 export function initPrefs() {
   loadPrefs();
+  if (prefs.bgm) startBgm();
   listeners.forEach((l) => l());
 }
 

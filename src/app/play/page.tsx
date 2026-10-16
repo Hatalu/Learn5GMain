@@ -3,11 +3,13 @@
 import React, { Suspense, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ArrowLeft, ArrowRight, DoorOpen, Home, Loader2, Shuffle, Volume2, VolumeX } from 'lucide-react';
+import { ArrowLeft, ArrowRight, DoorOpen, Home, Loader2, Volume2, VolumeX } from 'lucide-react';
 import { RoomBackdrop, bgIsLight } from '@/components/creator/RoomBackdrop';
 import { CodeInput } from '@/components/creator/CodeInput';
 import { Avatar, CRITTERS } from '@/components/creator/Avatar';
 import { PlayerSession } from '@/components/creator/live/PlayerSession';
+import { LookPicker } from '@/components/creator/live/LookPicker';
+import { NO_GEAR, cleanGear, type Gear } from '@/lib/game-creator/gear';
 import { DEFAULT_BG } from '@/lib/game-creator/backgrounds';
 import { NICK_MAX, cleanNickname, isRoomCode } from '@/lib/game-creator/templates';
 import { LiveError, clearCreds, loadCreds, playerApi, saveCreds, type PlayerCreds } from '@/lib/game-creator/live-client';
@@ -18,6 +20,8 @@ import '@/components/creator/creator-pages.css';
 
 type Step = 'code' | 'name' | 'room' | 'bye';
 const NICK_KEY = 'l5g_nick';
+/** ตัวละคร + เครื่องประดับที่เลือกล่าสุดในเครื่องนี้ */
+const LOOK_KEY = 'l5g_look';
 
 const BYE: Record<string, { t: string; d: string }> = {
   closed: { t: 'ปิดห้องแล้ว', d: 'ขอบคุณที่มาเล่นด้วยกันนะ' },
@@ -34,6 +38,7 @@ function PlayInner() {
   const [title, setTitle] = useState('');
   const [nick, setNick] = useState('');
   const [avatar, setAvatar] = useState(() => Math.floor(Math.random() * CRITTERS.length));
+  const [gear, setGear] = useState<Gear>(NO_GEAR);
   const [bg, setBg] = useState<RoomBackground>(DEFAULT_BG);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -44,6 +49,11 @@ function PlayInner() {
   useEffect(() => {
     try {
       setNick(localStorage.getItem(NICK_KEY) || '');
+      const look = JSON.parse(localStorage.getItem(LOOK_KEY) || 'null');
+      if (look && Number.isInteger(look.avatar) && look.avatar >= 0 && look.avatar < CRITTERS.length) {
+        setAvatar(look.avatar);
+        setGear(cleanGear(look.gear));
+      }
     } catch {
       /* ignore */
     }
@@ -101,11 +111,12 @@ function PlayInner() {
     setErr('');
     gsfx.tap();
     try {
-      const r = await playerApi.join(code, n, avatar);
+      const r = await playerApi.join(code, n, avatar, gear);
       const c: PlayerCreds = { playerId: r.playerId, token: r.token, roomId: r.roomId, code: r.code };
       saveCreds(c);
       try {
         localStorage.setItem(NICK_KEY, n);
+        localStorage.setItem(LOOK_KEY, JSON.stringify({ avatar, gear }));
       } catch {
         /* ignore */
       }
@@ -188,19 +199,14 @@ function PlayInner() {
           <div className="l5g-join">
             <p className="l5g-join-room">{title}</p>
             <div className="l5g-card l5g-join-card">
-              <div className="l5g-pick-preview">
-                <Avatar id={avatar} size={110} />
-                <button type="button" className="l5g-icon-btn l5g-pick-dice" onClick={() => (gsfx.pick(), setAvatar(Math.floor(Math.random() * CRITTERS.length)))} aria-label="สุ่มตัวละคร">
-                  <Shuffle className="w-5 h-5" />
-                </button>
-              </div>
-              <div className="l5g-pick-grid" role="radiogroup" aria-label="เลือกตัวละคร">
-                {CRITTERS.map((c, i) => (
-                  <button key={i} type="button" role="radio" aria-checked={avatar === i} aria-label={c.name} data-on={avatar === i} onClick={() => (gsfx.tap(), setAvatar(i))}>
-                    <Avatar id={i} size={44} />
-                  </button>
-                ))}
-              </div>
+              <LookPicker
+                avatar={avatar}
+                gear={gear}
+                onChange={(a, g) => {
+                  setAvatar(a);
+                  setGear(g);
+                }}
+              />
               <label className="block mt-4">
                 <span className="font-bold">ชื่อเล่นของฉัน</span>
                 <input
@@ -221,12 +227,28 @@ function PlayInner() {
           </div>
         )}
 
-        {step === 'room' && creds && <PlayerSession creds={creds} onExit={exit} onBackground={setBg} />}
+        {step === 'room' && creds && (
+          <PlayerSession
+            creds={creds}
+            onExit={exit}
+            onBackground={setBg}
+            muted={muted}
+            onLook={(a, g) => {
+              setAvatar(a);
+              setGear(g);
+              try {
+                localStorage.setItem(LOOK_KEY, JSON.stringify({ avatar: a, gear: g }));
+              } catch {
+                /* ignore */
+              }
+            }}
+          />
+        )}
 
         {step === 'bye' && (
           <div className="l5g-join">
             <div className="l5g-card l5g-join-card text-center">
-              <Avatar id={avatar} size={96} mood={bye === 'kicked' ? 'sad' : 'happy'} />
+              <Avatar id={avatar} gear={gear} size={96} mood={bye === 'kicked' ? 'sad' : 'happy'} />
               <h2 className="font-display text-2xl mt-2">{BYE[bye]?.t}</h2>
               <p className="font-semibold opacity-75">{BYE[bye]?.d}</p>
               <div className="flex flex-wrap gap-2 justify-center mt-4">

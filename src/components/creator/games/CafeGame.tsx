@@ -6,6 +6,7 @@ import { ArrowUpCircle, LogOut, PackagePlus, Store, X } from 'lucide-react';
 import { Avatar, CRITTERS } from '../Avatar';
 import { Coin, Clock, Food, type FoodId } from './art';
 import { QuestionDock } from './QuestionPad';
+import { CoachArrow, DOCK_CHOICES, useCoach } from './Coach';
 import type { GameProps } from './types';
 import { gsfx } from '@/lib/game-creator/gsound';
 
@@ -112,6 +113,16 @@ export function CafeGame({ engine, deadline, sync, me, preview, onLeave }: GameP
   const synced = useRef(-1);
   const popSeq = useRef(1);
   const avatars = useMemo(() => CRITTERS.map((_, i) => i).filter((i) => i !== me.avatar), [me.avatar]);
+  const rootRef = useRef<HTMLDivElement>(null);
+  // สอนเล่น: เติมของ -> ตอบถูก -> เสิร์ฟลูกค้า (2 รอบ)
+  const coach = useCoach(
+    [
+      { id: 'ask', target: '.cf-restock', text: 'กดเติมของ แล้วตอบคำถาม', doneIf: () => ask },
+      { id: 'answer', target: DOCK_CHOICES, text: 'ตอบให้ถูก ได้วัตถุดิบเข้าครัว' },
+      { id: 'serve', target: ['.cf-cust[data-state="wait"]:has(.cf-tag)', '.cf-cust[data-state="wait"]'], text: 'แตะลูกค้าเพื่อเสิร์ฟ รับเงิน' },
+    ],
+    { loops: 2, active: !over }
+  );
 
   const render = () => setTick((t) => t + 1);
   const pop = (slot: number, text: string, kind: 'cash' | 'stock') => {
@@ -211,6 +222,7 @@ export function CafeGame({ engine, deadline, sync, me, preview, onLeave }: GameP
   const onAnswered = (o: { correct: boolean; streak: number }) => {
     setStreak(o.streak);
     if (!o.correct) return;
+    coach.hit('answer');
     const s = sh.current;
     const f = neededFood(s);
     const n = unitsPerCorrect(s) + (o.streak >= 3 ? 1 : 0);
@@ -244,6 +256,7 @@ export function CafeGame({ engine, deadline, sync, me, preview, onLeave }: GameP
       return;
     }
     s.stock[c.food]--;
+    coach.hit('serve');
     c.state = 'cook';
     c.cook = PREP[s.up.oven];
     c.stateAt = Date.now();
@@ -271,7 +284,8 @@ export function CafeGame({ engine, deadline, sync, me, preview, onLeave }: GameP
   const canBuy = UPGRADES.some((u) => u.costs[s.up[u.id]] !== undefined && s.cash >= u.costs[s.up[u.id]]);
 
   return (
-    <div className="cf gm-root" data-over={over} data-dock={ask}>
+    <div className="cf gm-root" ref={rootRef} data-over={over} data-dock={ask}>
+      <CoachArrow coach={coach} root={rootRef} />
      <div className="gm-main">
       {/* HUD */}
       <div className="cf-hud">

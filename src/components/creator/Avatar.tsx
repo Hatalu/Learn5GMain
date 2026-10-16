@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useId } from 'react';
+import { HatArt, ItemArt, MaskArt, OutfitBack, OutfitFront, type FaceAnchor } from './AvatarGear';
+import type { Gear, GearSlot } from '@/lib/game-creator/gear';
 
 /**
  * ตัวละครผู้เล่น 12 แบบ วาดด้วย SVG (ห้ามใช้อิโมจิ)
@@ -35,18 +37,34 @@ export const CRITTERS: Critter[] = [
 const INK = '#2a2350';
 const SW = 2.6;
 
+/** ตำแหน่งหัว/ตา/ปาก/มือของแต่ละตัว (ใช้วางเครื่องประดับ) */
+function anchorOf(ear: Ear): FaceAnchor {
+  if (ear === 'frog') return { hat: [50, 20, 0.95], eyes: [33, 67], eyeY: 30, eyeR: 10, mouthY: 52, hand: [86, 70] };
+  if (ear === 'owl') return { hat: [50, 30, 1.32], eyes: [36, 64], eyeY: 54, eyeR: 12, mouthY: 67, hand: [86, 70] };
+  if (ear === 'robot') return { hat: [50, 27, 1.4], eyes: [39, 61], eyeY: 56, eyeR: 8, mouthY: 75, hand: [87, 63] };
+  if (ear === 'bunny') return { hat: [50, 30, 1.2], eyes: [37, 63], eyeY: 55, eyeR: 9, mouthY: 67, hand: [86, 70] };
+  return { hat: [50, 30, 1.36], eyes: [37, 63], eyeY: 55, eyeR: 9, mouthY: 67, hand: [86, 70] };
+}
+
+/** กรอบภาพเฉพาะส่วน (ใช้ในตัวเลือกเครื่องประดับ) */
+const CROP: Record<GearSlot, string> = { h: '4 -32 92 76', o: '2 48 96 54', m: '12 22 76 50', i: '42 0 74 84' };
+
 export function Avatar({
   id,
   size = 56,
   className,
   mood = 'happy',
   wave = false,
+  gear,
+  crop,
 }: {
   id: number;
   size?: number;
   className?: string;
   mood?: 'happy' | 'wow' | 'sad';
   wave?: boolean;
+  gear?: Gear | null;
+  crop?: GearSlot;
 }) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
   const c = CRITTERS[((id % CRITTERS.length) + CRITTERS.length) % CRITTERS.length];
@@ -60,6 +78,8 @@ export function Avatar({
   const frog = c.ear === 'frog';
   const owl = c.ear === 'owl';
   const beak = c.ear === 'chick' || owl || penguin;
+  const g0 = gear || null;
+  const an = anchorOf(c.ear);
 
   /* ---------- หู/ของบนหัว (วาดก่อนลำตัว) ---------- */
   const ears = (() => {
@@ -220,7 +240,7 @@ export function Avatar({
   );
 
   return (
-    <svg viewBox="0 0 100 100" width={size} height={size} className={className} role="img" aria-label={c.name} style={{ overflow: 'visible' }}>
+    <svg viewBox={crop ? CROP[crop] : '0 0 100 100'} width={size} height={size} className={className} role="img" aria-label={c.name} style={{ overflow: 'visible' }}>
       <defs>
         <radialGradient id={g} cx="38%" cy="30%" r="75%">
           <stop offset="0%" stopColor={c.light} />
@@ -231,6 +251,8 @@ export function Avatar({
 
       {/* เงาที่พื้น */}
       <ellipse cx="50" cy="96" rx="26" ry="3.5" fill={INK} opacity="0.15" />
+
+      {g0 && <OutfitBack id={g0.o} />}
 
       {/* เท้า */}
       <ellipse cx="38" cy="91" rx="8" ry="5" fill={penguin ? '#ff9a3d' : c.dark} {...s} />
@@ -258,6 +280,8 @@ export function Avatar({
       {!robot && !penguin && <ellipse cx="50" cy="80" rx="20" ry="10" fill={c.belly} opacity="0.85" />}
       {(c.ear === 'bear' || c.ear === 'fox') && <ellipse cx="50" cy="69" rx="11" ry="7.5" fill={c.belly} />}
 
+      {g0 && <OutfitFront id={g0.o} robot={robot} />}
+
       {/* ประกายบนหัว */}
       {!robot && <ellipse cx="36" cy="34" rx="7" ry="3.5" fill="#fff" opacity="0.45" transform="rotate(-20 36 34)" />}
 
@@ -272,6 +296,14 @@ export function Avatar({
       )}
 
       {mouth}
+
+      {g0 && <MaskArt id={g0.m} a={an} />}
+      {g0 && <HatArt id={g0.h} a={an} />}
+      {g0 && g0.i > 0 && (
+        <g className={wave ? 'l5g-av-wave' : undefined} style={{ transformOrigin: '84px 66px' }}>
+          <ItemArt id={g0.i} a={an} />
+        </g>
+      )}
     </svg>
   );
 }

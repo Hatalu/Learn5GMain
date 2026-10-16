@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isSameOrigin, rateLimit } from '@/lib/server/rate-limit';
 import { checkAnswer, correctIds, isTimeout, scoreFor } from '@/lib/game-creator/quiz';
 import { modeById, scoreCap } from '@/lib/game-creator/modes';
+import { cleanGear } from '@/lib/game-creator/gear';
+import { AVATAR_COUNT } from '@/lib/game-creator/templates';
 import {
   PLAYER_COLS,
   type PlayerRow,
@@ -16,6 +18,7 @@ import {
   playerState,
   questionAt,
   rankOf,
+  rosterEntry,
 } from '@/lib/server/live';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -47,6 +50,7 @@ async function maybeFinishRace(db: SupabaseClient, room: RoomRow) {
  *     'sync'   (Café/Tower) ส่งคะแนนจากตัวเกม เซิร์ฟเวอร์จำกัดเพดานตามจำนวนข้อที่ตอบถูก
  *     'power'  (Racing) ใช้ไอเท็มที่ถืออยู่
  *     'leave'  ออกจากห้อง (ระหว่างรอเริ่มจะลบชื่อออก)
+ *     'look'   เปลี่ยนตัวละคร/เครื่องประดับ (ระหว่างรอเริ่ม)
  */
 export async function POST(req: NextRequest) {
   if (!isSameOrigin(req)) return NextResponse.json({ error: 'คำขอไม่ถูกต้อง' }, { status: 403 });
@@ -74,14 +78,24 @@ export async function POST(req: NextRequest) {
   if (op === 'leave') {
     if (room.status === 'lobby' && !p.is_host) {
       await db.from('room_players').delete().eq('id', p.id);
-      await broadcast(room.id, 'join', {});
+      await broadcast(room.id, 'join', { left: p.id });
     }
     return NextResponse.json({ ok: true });
   }
 
-  /* ---------- Café / Tower: ส่งคะแนนจากเกม ---------- */
+  /* ---------- แต่งตัวในห้องรอ ---------- */
+  if (op === 'look') {
+    if (room.status !== 'lobby') return NextResponse.json({ error: 'แต่งตัวได้ระหว่างรอเริ่มเกมเท่านั้น' }, { status: 409 });
+    const avatar = Number.isInteger(body.avatar) && (body.avatar as number) >= 0 && (body.avatar as number) < AVATAR_COUNT ? (body.avatar as number) : p.avatar;
+    const gear = cleanGear(body.gear);
+    await db.from('room_players').update({ avatar, gear }).eq('id', p.id);
+    await broadcast(room.id, 'join', { player: rosterEntry({ ...p, avatar, gear }) });
+    return NextResponse.json({ ok: true, avatar, gear });
+  }
+
+  /* ---------- Café / Tower / Brawl / Fishing: ส่งคะแนนจากเกม ---------- */
   if (op === 'sync') {
-    if (room.game !== 'cafe' && room.game !== 'tower') return NextResponse.json({ error: 'โหมดนี้ไม่ใช้' }, { status: 400 });
+    if (room.game !== 'cafe' && room.game !== 'tower' && room.game !== 'brawl' && room.game !== 'fishing') return NextResponse.json({ error: 'โหมดนี้ไม่ใช้' }, { status: 400 });
     if (room.status !== 'playing' || isTimeUp(room, 15)) return NextResponse.json({ ok: true, status: room.status, score: p.score });
     const want = Math.max(0, Math.round(Number(body.score) || 0));
     const score = Math.max(p.score, Math.min(want, scoreCap(room.game, p.correct)));
@@ -212,7 +226,7 @@ export async function POST(req: NextRequest) {
     } else if (room.game === 'quiz') {
       const [, r] = await Promise.all([saveAnswer, rankOf(db, room, me)]);
       ({ rank, players } = r);
-    } else await saveAnswer; // Café / Tower ไม่ได้ใช้อันดับระหว่างเล่น
+    } else await saveAnswer; // Café / Tower / Brawl / Fishing ไม่ได้ใช้อันดับระหว่างเล่น
 
     const nq = quizDone || finished ? null : nextQuestion(room, me, next, 0);
     return NextResponse.json({
@@ -220,7 +234,8 @@ export async function POST(req: NextRequest) {
         correct,
         timeout,
         points,
-        correctIds: correctIds(q),
+        // ปิด "เฉลยเมื่อตอบผิด": ตอบผิดจะไม่บอกข้อที่ถูก
+        correctIds: correct || room.settings.revealAnswer ? correctIds(q) : [],
         score: me.score,
         streak,
         rank,

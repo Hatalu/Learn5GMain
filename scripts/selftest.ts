@@ -49,6 +49,9 @@ import {
 } from '../src/lib/game-creator/quiz';
 import { cleanBackground } from '../src/lib/game-creator/backgrounds';
 import { cleanNickname, isRoomCode } from '../src/lib/game-creator/templates';
+import { GEAR_SLOTS, cleanGear, gearCount, randomGear, sameGear } from '../src/lib/game-creator/gear';
+import { MODE_MUSIC, TRACKS, cleanMusicSetting, roomTrack } from '../src/lib/music-tracks';
+import { MODES } from '../src/lib/game-creator/modes';
 
 let passed = 0;
 const t = (name: string, fn: () => void) => {
@@ -640,6 +643,46 @@ t('เพดานคะแนนจากเกมในเครื่อง �
   assert.ok(scoreCap('cafe', 10) < scoreCap('cafe', 11));
   assert.ok(scoreCap('tower', 5) >= 5 * 450);
   assert.equal(scoreCap('quiz', 3), Number.MAX_SAFE_INTEGER);
+  assert.ok(scoreCap('brawl', 0) >= 3000 && scoreCap('brawl', 10) > scoreCap('brawl', 9));
+  assert.ok(scoreCap('fishing', 1) >= 80000, 'ปลาตัวหนักสุด x แม่เหล็ก ต้องไม่ถูกตัด');
+  assert.ok(scoreCap('fishing', 0) < 40000, 'ยังไม่ตอบถูกเลย ต้องได้ปลาตัวใหญ่ไม่ได้');
+});
+
+t('รูปแบบใหม่ Monster Brawl / Fishing Frenzy: ข้อขั้นต่ำและไม่รองรับคลิป', () => {
+  assert.equal(modeFit(QS(4), 'brawl').ok, false);
+  assert.equal(modeFit(QS(5), 'brawl').ok, true);
+  assert.equal(modeFit(QS(2), 'fishing').ok, false);
+  assert.equal(modeFit(QS(3), 'fishing').ok, true);
+  assert.equal(modeQuiz(QS(6, [0]), 'fishing').questions.length, 5);
+  assert.deepEqual(cleanModeSettings('brawl', { duration: 600 }), { duration: 600, goal: 0 });
+  assert.deepEqual(cleanModeSettings('fishing', { duration: 1 }), { duration: 300, goal: 0 });
+});
+
+t('เครื่องประดับ: รับเฉพาะเลขที่มีจริง ค่าอื่นกลายเป็น "ไม่ใส่"', () => {
+  assert.deepEqual(cleanGear(null), { h: 0, o: 0, m: 0, i: 0 });
+  assert.deepEqual(cleanGear({ h: 3, o: 1, m: 2, i: 4 }), { h: 3, o: 1, m: 2, i: 4 });
+  assert.deepEqual(cleanGear({ h: 999, o: -1, m: 1.5, i: '2', x: 5 }), { h: 0, o: 0, m: 0, i: 0 });
+  assert.deepEqual(cleanGear({ h: gearCount('h') - 1 }).h, gearCount('h') - 1);
+  assert.equal(cleanGear({ h: gearCount('h') }).h, 0);
+  for (const s of GEAR_SLOTS) assert.ok(s.items.length >= 8, `หมวด${s.name}ต้องมีของให้เลือกพอ`);
+  for (let k = 0; k < 50; k++) {
+    const g = randomGear();
+    assert.deepEqual(cleanGear(g), g);
+  }
+  assert.ok(sameGear({ h: 1, o: 0, m: 0, i: 0 }, { h: 1 } as never));
+});
+
+t('เพลงประกอบ: ค่าที่ตั้งได้ และเพลงเริ่มต้นของทุกรูปแบบมีจริง', () => {
+  assert.equal(cleanMusicSetting('off'), 'off');
+  assert.equal(cleanMusicSetting('boss'), 'boss');
+  assert.equal(cleanMusicSetting('../../etc'), 'auto');
+  assert.equal(cleanMusicSetting(undefined), 'auto');
+  for (const m of MODES) assert.ok(TRACKS.some((t) => t.id === MODE_MUSIC[m.id]), `เพลงของ ${m.id}`);
+  assert.equal(roomTrack('off', 'quiz'), null);
+  assert.equal(roomTrack('auto', 'brawl'), 'boss');
+  assert.equal(roomTrack('lofi', 'brawl'), 'lofi');
+  assert.equal(new Set(TRACKS.map((t) => t.id)).size, TRACKS.length);
+  for (const tr of TRACKS) assert.match(tr.id, /^[a-z]+$/);
 });
 
 console.log(`\n${passed} tests passed`);

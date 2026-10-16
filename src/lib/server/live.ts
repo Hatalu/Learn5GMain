@@ -14,6 +14,8 @@ import { mediaPrefix } from '@/lib/game-creator/prefix';
 import { cleanBackground } from '@/lib/game-creator/backgrounds';
 import { endlessIndex, publicQuestion, questionOrder, sanitizeQuiz } from '@/lib/game-creator/quiz';
 import { cleanModeSettings, isGameMode, modeById, type GameMode } from '@/lib/game-creator/modes';
+import { cleanGear, type Gear } from '@/lib/game-creator/gear';
+import { cleanMusicSetting } from '@/lib/music-tracks';
 import type { PlayerPublic, PublicQuestion, QuizContent, QuizQuestion, RoomBackground, RoomSettings, RoomStatus } from '@/lib/game-creator/types';
 
 export const MAX_PLAYERS = 150;
@@ -62,11 +64,12 @@ export interface PlayerRow {
   power: string | null;
   slip_at: string | null;
   stats: Record<string, number> | null;
+  gear: Gear | null;
 }
 
 export const ROOM_COLS = 'id, code, game_id, host_id, title, template, game, content, mode, status, background, settings, round, created_at, started_at, ended_at';
 export const PLAYER_COLS =
-  'id, room_id, nickname, avatar, token_hash, is_host, score, correct, answered, streak, best_streak, last_correct, q_pos, q_started_at, finished_at, kicked, progress, power, slip_at, stats';
+  'id, room_id, nickname, avatar, token_hash, is_host, score, correct, answered, streak, best_streak, last_correct, q_pos, q_started_at, finished_at, kicked, progress, power, slip_at, stats, gear';
 
 export const admin = () => getAdminClient();
 
@@ -113,7 +116,8 @@ export const isUuid = (s: unknown): s is string => typeof s === 'string' && /^[0
 
 export function cleanSettings(input: unknown, game: GameMode = 'quiz'): RoomSettings {
   const s = input && typeof input === 'object' ? (input as Record<string, unknown>) : {};
-  return { shuffleQuestions: s.shuffleQuestions === true, shuffleChoices: s.shuffleChoices === true, ...cleanModeSettings(game, s) };
+  // เฉลยเมื่อตอบผิด: ค่าเริ่มต้นเปิด (ห้องเก่าที่ไม่มีค่านี้ก็ถือว่าเปิด)
+  return { shuffleQuestions: s.shuffleQuestions === true, shuffleChoices: s.shuffleChoices === true, revealAnswer: s.revealAnswer !== false, music: cleanMusicSetting(s.music), musicPlayers: s.musicPlayers !== false, ...cleanModeSettings(game, s) };
 }
 
 export function normalizeRoom(r: RoomRow): RoomRow {
@@ -218,6 +222,7 @@ export const toPublicPlayer = (p: PlayerRow): PlayerPublic => ({
   id: p.id,
   nickname: p.nickname,
   avatar: p.avatar,
+  gear: cleanGear(p.gear),
   isHost: p.is_host,
   score: p.score,
   correct: p.correct,
@@ -264,29 +269,71 @@ export interface Rival {
   id: string;
   nickname: string;
   avatar: number;
+  gear: Gear;
   progress: number;
   finished: boolean;
 }
 
-/** อันดับของผู้เล่น (1 = ที่หนึ่ง) จำนวนผู้เล่น และคู่แข่งใกล้ๆ (Racing) */
-export async function rankOf(db: SupabaseClient, room: RoomRow, p: PlayerRow): Promise<{ rank: number; players: number; rivals: Rival[] }> {
-  const { data } = await db.from('room_players').select('id, nickname, avatar, score, correct, progress, finished_at').eq('room_id', room.id).eq('kicked', false).limit(400);
-  const rows = ((data || []) as { id: string; nickname: string; avatar: number; score: number; correct: number; progress: number; finished_at: string | null }[]).map((r) => ({
+/** ผู้เล่นในห้อง (โชว์ในห้องรอให้ทุกคนเห็นกัน) */
+export interface RosterEntry {
+  id: string;
+  nickname: string;
+  avatar: number;
+  gear: Gear;
+  isHost: boolean;
+}
+
+/** 3 อันดับแรกตอนจบเกม (คัตซีนประกาศผล) */
+export interface PodiumEntry {
+  id: string;
+  nickname: string;
+  avatar: number;
+  gear: Gear;
+  isHost: boolean;
+  score: number;
+  progress: number;
+  correct: number;
+}
+
+type RankRow = { id: string; nickname: string; avatar: number; gear: Gear | null; is_host: boolean; score: number; correct: number; progress: number; finished_at: string | null };
+
+/** อันดับของผู้เล่น (1 = ที่หนึ่ง) จำนวนผู้เล่น คู่แข่งใกล้ๆ (Racing) และ 3 อันดับแรก (เมื่อจบเกม) */
+export async function rankOf(db: SupabaseClient, room: RoomRow, p: PlayerRow): Promise<{ rank: number; players: number; rivals: Rival[]; podium: PodiumEntry[] }> {
+  const { data } = await db.from('room_players').select('id, nickname, avatar, gear, is_host, score, correct, progress, finished_at').eq('room_id', room.id).eq('kicked', false).limit(400);
+  const rows = ((data || []) as RankRow[]).map((r) => ({
     ...r,
     progress: r.progress || 0,
     finishedAt: r.finished_at,
   }));
-  const me = rows.find((r) => r.id === p.id) || { id: p.id, nickname: p.nickname, avatar: p.avatar, score: p.score, correct: p.correct, progress: p.progress || 0, finishedAt: p.finished_at, finished_at: p.finished_at };
+  const me = rows.find((r) => r.id === p.id) || { id: p.id, nickname: p.nickname, avatar: p.avatar, gear: p.gear, is_host: p.is_host, score: p.score, correct: p.correct, progress: p.progress || 0, finishedAt: p.finished_at, finished_at: p.finished_at };
   const sorted = rows.slice().sort(compareRank(room.game));
   const idx = sorted.findIndex((r) => r.id === p.id);
   const rank = idx >= 0 ? idx + 1 : sorted.filter((r) => compareRank(room.game)(r, me) < 0).length + 1;
   let rivals: Rival[] = [];
   if (room.game === 'racing') {
     const near = sorted.slice(Math.max(0, idx - 3), Math.max(0, idx - 3) + 7);
-    rivals = near.map((r) => ({ id: r.id, nickname: r.nickname, avatar: r.avatar, progress: r.progress, finished: !!r.finishedAt }));
+    rivals = near.map((r) => ({ id: r.id, nickname: r.nickname, avatar: r.avatar, gear: cleanGear(r.gear), progress: r.progress, finished: !!r.finishedAt }));
   }
-  return { rank, players: rows.length, rivals };
+  const podium: PodiumEntry[] =
+    room.status === 'ended'
+      ? sorted.slice(0, 3).map((r) => ({ id: r.id, nickname: r.nickname, avatar: r.avatar, gear: cleanGear(r.gear), isHost: r.is_host, score: r.score, progress: r.progress, correct: r.correct }))
+      : [];
+  return { rank, players: rows.length, rivals, podium };
 }
+
+/** รายชื่อผู้เล่นในห้องรอ */
+export async function rosterOf(db: SupabaseClient, roomId: string): Promise<RosterEntry[]> {
+  const { data } = await db.from('room_players').select('id, nickname, avatar, gear, is_host').eq('room_id', roomId).eq('kicked', false).order('joined_at', { ascending: true }).limit(200);
+  return ((data || []) as { id: string; nickname: string; avatar: number; gear: Gear | null; is_host: boolean }[]).map(rosterEntry);
+}
+
+export const rosterEntry = (p: { id: string; nickname: string; avatar: number; gear: Gear | null; is_host: boolean }): RosterEntry => ({
+  id: p.id,
+  nickname: p.nickname,
+  avatar: p.avatar,
+  gear: cleanGear(p.gear),
+  isHost: p.is_host,
+});
 
 export interface PlayerState {
   room: {
@@ -301,10 +348,16 @@ export interface PlayerState {
     duration: number;
     goal: number;
     startedAt: string | null;
+    music: string;
+    musicPlayers: boolean;
   };
   serverNow: number;
   me: PlayerPublic & { rank: number; players: number; pos: number; slipAt: string | null };
   rivals: Rival[];
+  /** ห้องรอ: ทุกคนในห้อง */
+  roster: RosterEntry[];
+  /** จบเกม: 3 อันดับแรก */
+  podium: PodiumEntry[];
   question: PublicQuestion | null;
   kicked?: boolean;
 }
@@ -332,7 +385,8 @@ export async function playerState(db: SupabaseClient, room: RoomRow, p0: PlayerR
   let question: PublicQuestion | null = null;
   const done = room.game === 'quiz' ? !!p.finished_at : room.game === 'racing' && !!p.finished_at;
   const showRank = room.status !== 'lobby';
-  const ranking = showRank ? rankOf(db, room, p) : Promise.resolve({ rank: 0, players: 0, rivals: [] as Rival[] });
+  const ranking = showRank ? rankOf(db, room, p) : Promise.resolve({ rank: 0, players: 0, rivals: [] as Rival[], podium: [] as PodiumEntry[] });
+  const roster = room.status === 'lobby' ? rosterOf(db, room.id) : Promise.resolve([] as RosterEntry[]);
   if ((opts.withQuestion ?? true) && room.status === 'playing' && !done) {
     let started = p.q_started_at;
     if (!started && questionAt(room, p, p.q_pos)) {
@@ -350,7 +404,7 @@ export async function playerState(db: SupabaseClient, room: RoomRow, p0: PlayerR
     }
     if (started) question = nextQuestion(room, p, p.q_pos, Date.now() - new Date(started).getTime());
   }
-  const r = await ranking;
+  const [r, people] = await Promise.all([ranking, roster]);
   return {
     room: {
       id: room.id,
@@ -364,10 +418,14 @@ export async function playerState(db: SupabaseClient, room: RoomRow, p0: PlayerR
       duration: room.settings.duration,
       goal: room.settings.goal,
       startedAt: room.started_at,
+      music: room.settings.music,
+      musicPlayers: room.settings.musicPlayers,
     },
     serverNow: Date.now(),
     me: { ...toPublicPlayer(p), rank: r.rank, players: r.players, pos: p.q_pos, slipAt: p.slip_at },
     rivals: r.rivals,
+    roster: people,
+    podium: r.podium,
     question,
   };
 }

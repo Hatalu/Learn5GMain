@@ -11,6 +11,7 @@ import { PLANS, Plan, perDay, savePercent } from '@/lib/plans';
 import { FacebookIcon } from '@/components/icons/FacebookIcon';
 import { CheckoutModal } from '@/components/membership/CheckoutModal';
 import s from './membership.module.css';
+import { NightSky } from '@/components/fx/NightSky';
 
 const FLAG_COLORS = ['#ff6b7a', '#ffcf3f', '#3fd6a8', '#4a7bf0', '#9b6cf0', '#ff9a3d'];
 
@@ -42,6 +43,7 @@ export default function MembershipPage() {
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className={`${s.world} flex-1`}>
+        <NightSky />
         <div className={s.dots} />
         <span className={s.cloud} style={{ top: '9%', animationDelay: '-12s' }} />
         <span className={s.cloud} style={{ top: '34%', animationDelay: '-40s', ['--s' as string]: 0.7 }} />
@@ -63,7 +65,7 @@ export default function MembershipPage() {
             <br />
             <span className="text-[#ffcf3f]">ปลดล็อกทุกเกมในคลัง</span>
           </h1>
-          <p className="mt-3 text-base sm:text-lg font-semibold text-[#2a2350]/85 max-w-xl mx-auto">
+          <p className="mt-3 text-base sm:text-lg font-semibold text-[#2a2350]/85 dark:text-[#fff8ec]/85 max-w-xl mx-auto">
             สแกนจ่ายพร้อมเพย์ ส่งสลิป ระบบเปิดสิทธิ์ให้ทันที ไม่ต้องรอแอดมิน
           </p>
 
@@ -71,7 +73,7 @@ export default function MembershipPage() {
           <div className="mt-6 flex items-end justify-center gap-2 sm:gap-6">
             {PLANS.map((p, i) => (
               <React.Fragment key={p.id}>
-                {i > 0 && <ArrowRight className="mb-10 w-6 h-6 sm:w-8 sm:h-8 text-[#2a2350] shrink-0" strokeWidth={3} />}
+                {i > 0 && <ArrowRight className="mb-10 w-6 h-6 sm:w-8 sm:h-8 text-[#2a2350] dark:text-[#fff8ec] shrink-0" strokeWidth={3} />}
                 <div className="flex flex-col items-center">
                   <div className={`relative ${s.bob}`} style={{ animationDelay: `${i * 0.4}s`, width: [70, 92, 120][i], height: [100, 122, 160][i] }}>
                     <Image src={p.image} alt={p.stage} fill sizes="160px" className="object-contain drop-shadow-[0_6px_0_rgba(42,35,80,.25)]" priority />
@@ -247,7 +249,7 @@ export default function MembershipPage() {
               </details>
             ))}
           </div>
-          <p className="mt-8 text-center text-sm font-bold text-[#2a2350]/80">
+          <p className="mt-8 text-center text-sm font-bold text-[#2a2350]/80 dark:text-[#fff8ec]/80">
             ยังไม่แน่ใจ?{' '}
             <Link href="/home" className="underline decoration-2 underline-offset-4">
               ลองเล่นฟรี 5 นาทีได้ทุกเกม

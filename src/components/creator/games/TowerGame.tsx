@@ -5,6 +5,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowUpCircle, Coins, LogOut, Swords, Undo2, X } from 'lucide-react';
 import { Coin, Clock, Flag, Heart } from './art';
 import { QuestionDock } from './QuestionPad';
+import { CoachArrow, DOCK_CHOICES, useCoach } from './Coach';
 import type { GameProps } from './types';
 import { gsfx } from '@/lib/game-creator/gsound';
 import { CHARS, RARITY, STARTERS, charDef, charImg, charUri, preloadChars, rollChar, type CharDef, type CharKind } from './towerChars';
@@ -818,6 +819,18 @@ export function TowerGame({ engine, deadline, sync, preview, onLeave }: GameProp
   const synced = useRef(-1);
   const toastT = useRef<ReturnType<typeof setTimeout> | null>(null);
   const shootAt = useRef(0);
+  // สอนเล่น: ลากตัวละครไปวาง -> ตอบคำถามรับเหรียญ -> สุ่มตัวละคร (1 รอบ)
+  const coach = useCoach(
+    [
+      { id: 'drag', target: '.td-slot[data-empty="false"]', text: 'ลากตัวละครจากกระเป๋า ไปวางบนวงกลม', when: () => !!world.current?.bag.some(Boolean), optional: true },
+      { id: 'ask', target: '.td-askbtn', text: 'ตอบคำถามรับเหรียญ', doneIf: () => ask },
+      { id: 'answer', target: DOCK_CHOICES, text: 'ตอบถูก ได้ 40 เหรียญ' },
+      { id: 'roll', target: '.td-roll', text: 'มีเหรียญพอแล้ว กดสุ่มตัวละครใหม่', when: () => hud.coins >= ROLL_COST, optional: true },
+    ],
+    { loops: 1, active: !over }
+  );
+  const coachHit = useRef(coach.hit);
+  coachHit.current = coach.hit;
 
   const rerender = () => setBump((b) => b + 1);
   const flash = (t: string) => {
@@ -1327,6 +1340,7 @@ export function TowerGame({ engine, deadline, sync, preview, onLeave }: GameProp
       if (d.src.from === 'bag') {
         w.bag[d.src.idx] = null;
         w.towers.push({ uid: d.uid, kind: d.kind, lv: d.lv, spot, cool: 0.2, shot: 0, pop: 0.8 });
+        coachHit.current('drag');
       } else {
         const tw = w.towers.find((t) => t.uid === d.uid);
         if (tw) tw.spot = spot;
@@ -1358,6 +1372,7 @@ export function TowerGame({ engine, deadline, sync, preview, onLeave }: GameProp
     if (w.coins < ROLL_COST) return flash('เหรียญไม่พอ ตอบคำถามรับเหรียญก่อนนะ'), gsfx.wrong(), setAsk(true);
     if (free < 0) return flash('กระเป๋าเต็ม ลากตัวละครไปวางก่อนนะ'), gsfx.wrong();
     w.coins -= ROLL_COST;
+    coach.hit('roll');
     const kind = rollChar(w.dry >= 4);
     w.dry = charDef(kind).rarity === 'common' ? w.dry + 1 : 0;
     w.bag[free] = newUnit(kind);
@@ -1399,6 +1414,7 @@ export function TowerGame({ engine, deadline, sync, preview, onLeave }: GameProp
     setStreak(o.streak);
     const w = world.current;
     if (!w || !o.correct) return;
+    coach.hit('answer');
     const n = COIN_PER_CORRECT + STREAK_BONUS * Math.min(3, Math.max(0, o.streak - 1));
     w.coins += n;
     gsfx.coin();
@@ -1414,6 +1430,7 @@ export function TowerGame({ engine, deadline, sync, preview, onLeave }: GameProp
 
   return (
     <div className="td gm-root" ref={root} data-over={over} data-dock={ask}>
+      <CoachArrow coach={coach} root={root} />
       <div className="gm-main">
         <div className="td-hud">
           <span className="cf-chip cf-cash" data-bump={coinPop ? coinPop.at : undefined} key={coinPop?.at || 0}>
@@ -1498,7 +1515,7 @@ export function TowerGame({ engine, deadline, sync, preview, onLeave }: GameProp
               </div>
             )}
             {toast && <div className="cf-hint td-toast">{toast}</div>}
-            {hud.phase === 'prep' && placed === 0 && !drag && <div className="td-tip">ลากตัวละครจากกระเป๋าด้านล่าง มาวางบนวงกลม</div>}
+            {hud.phase === 'prep' && placed === 0 && !drag && !coach.step && <div className="td-tip">ลากตัวละครจากกระเป๋าด้านล่าง มาวางบนวงกลม</div>}
 
             {reveal && (
               <button type="button" className="td-reveal" key={reveal.at} onClick={() => setReveal(null)} style={{ ['--rc' as string]: RARITY[charDef(reveal.kind).rarity].color }}>

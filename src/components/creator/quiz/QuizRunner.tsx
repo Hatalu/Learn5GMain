@@ -9,6 +9,7 @@ import { ChoiceShape, choiceStyle } from '../ChoiceShape';
 import { gsfx } from '@/lib/game-creator/gsound';
 import { richLength } from '@/lib/game-creator/quiz';
 import { MineTag, choiceState } from '../games/QuestionPad';
+import { CoachArrow, useCoach } from '../games/Coach';
 
 export type AnswerOutcome = AnswerResult & { rank?: number; players?: number; finished: boolean };
 
@@ -83,6 +84,11 @@ export function QuizRunner({
   const qRef = useRef<PublicQuestion | null>(null);
   const picksRef = useRef<string[]>([]);
   picksRef.current = picks;
+  const runRef = useRef<HTMLDivElement>(null);
+  // สอนเล่น: แตะคำตอบ (ข้อแรกข้อเดียว)
+  const coach = useCoach([{ id: 'answer', target: '.l5g-choices', text: 'แตะคำตอบที่ถูก ยิ่งไวยิ่งได้คะแนนเยอะ' }], { loops: 1 });
+  const coachHit = useRef(coach.hit);
+  coachHit.current = coach.hit;
 
   const load = useCallback(async () => {
     setErr('');
@@ -143,6 +149,7 @@ export function QuizRunner({
       setPicks(chosen);
       setPhase('sending');
       try {
+        coachHit.current('answer');
         const r = await engine.answer(cur, chosen);
         if (!r) {
           // ข้อมูลไม่ตรงกับเซิร์ฟเวอร์ (เช่นรีเฟรช/ตอบซ้ำ) โหลดข้อปัจจุบันใหม่
@@ -250,7 +257,8 @@ export function QuizRunner({
   const urgent = q.time > 0 && secs <= 5;
 
   return (
-    <div className="l5g-run" data-phase={phase}>
+    <div className="l5g-run" data-phase={phase} ref={runRef}>
+      <CoachArrow coach={coach} root={runRef} />
       {/* แถบบน */}
       <div className="l5g-run-top">
         <span className="l5g-pill">
@@ -357,7 +365,7 @@ export function QuizRunner({
                 +<Rolling to={res!.points} ms={600} />
               </span>
             )}
-            {!res!.correct && <span className="l5g-feedback-sub">ดูคำตอบที่ถูกได้ด้านล่าง ข้อหน้าเอาใหม่</span>}
+            {!res!.correct && <span className="l5g-feedback-sub">{res!.correctIds.length ? 'ดูคำตอบที่ถูกได้ด้านล่าง ข้อหน้าเอาใหม่' : 'ไม่เป็นไร ข้อหน้าเอาใหม่นะ'}</span>}
             {res!.rank ? (
               <span className="l5g-feedback-rank">
                 อันดับ {res!.rank} จาก {res!.players}
