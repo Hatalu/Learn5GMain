@@ -4,7 +4,11 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Hourglass, Loader2, LogOut, Trophy } from 'lucide-react';
 import { Avatar } from '../Avatar';
 import { QuizRunner } from '../quiz/QuizRunner';
-import { LiveError, liveEngine, playerApi, subscribeRoom, type PlayerCreds, type PlayerStateRes } from '@/lib/game-creator/live-client';
+import { CafeGame } from '../games/CafeGame';
+import { TowerGame } from '../games/TowerGame';
+import { RaceGame } from '../games/RaceGame';
+import { LiveError, liveEngine, playerApi, subscribeRoom, type LiveOutcome, type PlayerCreds, type PlayerStateRes } from '@/lib/game-creator/live-client';
+import { modeById } from '@/lib/game-creator/modes';
 import type { RoomBackground } from '@/lib/game-creator/types';
 import { gsfx } from '@/lib/game-creator/gsound';
 
@@ -56,11 +60,15 @@ export function PlayerSession({
   const stRef = useRef<PlayerStateRes | null>(null);
   const runningRef = useRef(false);
   runningRef.current = running;
+  /** นาฬิกาเซิร์ฟเวอร์ - นาฬิกาเครื่องนี้ (ใช้คำนวณเวลาจบเกม) */
+  const clockOffset = useRef(0);
+  const raceRefreshAt = useRef(0);
   const c = useMemo(() => ({ playerId: creds.playerId, token: creds.token }), [creds.playerId, creds.token]);
 
   const apply = useCallback(
     (s: PlayerStateRes) => {
       const prev = stRef.current;
+      if (s.serverNow) clockOffset.current = s.serverNow - Date.now();
       stRef.current = s;
       setSt(s);
       onBackground?.(s.room.background);
@@ -100,6 +108,11 @@ export function PlayerSession({
       const p = await playerApi.peek(c);
       const cur = stRef.current;
       onBackground?.(p.background);
+      if (cur && cur.room.game === 'racing' && (p.progress !== cur.me.progress || p.slipAt !== cur.me.slipAt)) {
+        const nx = { ...cur, me: { ...cur.me, progress: p.progress, slipAt: p.slipAt } };
+        stRef.current = nx;
+        setSt(nx);
+      }
       if (!cur || p.status !== cur.room.status || p.round !== cur.room.round) {
         if (runningRef.current && p.status === 'playing' && cur && p.round === cur.room.round) return;
         setRunning(false);
@@ -121,31 +134,87 @@ export function PlayerSession({
       (e) => {
         if (e.event === 'kick' && e.payload.playerId === creds.playerId) onExit('kicked');
         else if (e.event === 'bg' && e.payload.background) onBackground?.(e.payload.background as RoomBackground);
-        else if (e.event === 'status') {
+        else if ((e.event === 'race' || e.event === 'banana') && stRef.current?.room.game === 'racing') {
+          // ขอสถานะใหม่ (ไม่เอาคำถาม) แต่ไม่ถี่เกินไป
+          const now = Date.now();
+          if (e.event === 'banana' || now - raceRefreshAt.current > 1200) {
+            raceRefreshAt.current = now;
+            playerApi
+              .state(c, false)
+              .then((s) => {
+                if (s.room.status === stRef.current?.room.status) {
+                  stRef.current = s;
+                  setSt(s);
+                } else apply(s);
+              })
+              .catch(() => null);
+          }
+        } else if (e.event === 'status') {
           if (e.payload.status !== 'playing') setRunning(false);
           refresh();
         }
       },
       setLive
     );
-  }, [creds.roomId, creds.playerId, refresh, onExit, onBackground]);
+  }, [creds.roomId, creds.playerId, refresh, onExit, onBackground, c, apply]);
 
   // ถามสถานะเป็นระยะ (ถี่ขึ้นถ้า Realtime ใช้ไม่ได้)
   const status = st?.room.status;
-  const finished = !!st?.me.finished;
+  const game = st?.room.game || 'quiz';
+  const finished = game === 'quiz' ? !!st?.me.finished : false;
   useEffect(() => {
     if (!status) return;
-    const ms = live ? (status === 'playing' && finished ? 6000 : 15000) : status === 'playing' && !finished ? 8000 : 3500;
+    const racing = game === 'racing' && status === 'playing';
+    const ms = racing ? (live ? 5000 : 2500) : live ? (status === 'playing' && finished ? 6000 : 15000) : status === 'playing' && !finished ? 8000 : 3500;
     const iv = setInterval(() => (runningRef.current ? peek() : refresh()), ms);
     return () => clearInterval(iv);
-  }, [status, finished, live, peek, refresh]);
+  }, [status, finished, live, peek, refresh, game]);
 
   useEffect(() => {
     if (status === 'playing' && !finished) setRunning(true);
     if (status !== 'playing') setRunning(false);
   }, [status, finished]);
 
-  const engine = useMemo(() => liveEngine(c, (s) => (stRef.current = s, setSt(s), onBackground?.(s.room.background))), [c, onBackground]);
+  const engine = useMemo(
+    () =>
+      liveEngine(
+        c,
+        (s) => {
+          if (s.serverNow) clockOffset.current = s.serverNow - Date.now();
+          stRef.current = s;
+          setSt(s);
+          onBackground?.(s.room.background);
+        },
+        (o: LiveOutcome) => {
+          // Racing: อัปเดตระยะทาง ไอเท็ม และคู่แข่งทันทีหลังตอบ
+          const cur = stRef.current;
+          if (!cur || cur.room.game !== 'racing') return;
+          const nx = {
+            ...cur,
+            me: { ...cur.me, progress: o.progress ?? cur.me.progress, power: o.power ?? null, rank: o.rank ?? cur.me.rank, players: o.players ?? cur.me.players, finished: !!o.finished || cur.me.finished },
+            rivals: o.rivals ?? cur.rivals,
+          };
+          stRef.current = nx;
+          setSt(nx);
+        }
+      ),
+    [c, onBackground]
+  );
+
+  const sync = useCallback((score: number, stats: Record<string, number>) => {
+    playerApi.sync(c, score, stats).catch(() => null);
+  }, [c]);
+
+  const usePower = useCallback(async () => {
+    const r = await playerApi.power(c);
+    const cur = stRef.current;
+    if (cur && r.ok) {
+      const nx = { ...cur, me: { ...cur.me, power: null, progress: r.progress ?? cur.me.progress } };
+      stRef.current = nx;
+      setSt(nx);
+    }
+    return r;
+  }, [c]);
 
   const leave = async () => {
     gsfx.tap();
@@ -171,6 +240,20 @@ export function PlayerSession({
   }
 
   const me = st.me;
+
+  if (st.room.status === 'playing' && running && st.room.game !== 'quiz') {
+    const deadline = st.room.duration && st.room.startedAt ? new Date(st.room.startedAt).getTime() + st.room.duration * 1000 - clockOffset.current : null;
+    const props = { engine, deadline, goal: st.room.goal || 15, sync, me: { nickname: me.nickname, avatar: me.avatar } };
+    if (st.room.game === 'cafe') return <CafeGame key={st.room.round} {...props} />;
+    if (st.room.game === 'tower') return <TowerGame key={st.room.round} {...props} />;
+    return (
+      <RaceGame
+        key={st.room.round}
+        {...props}
+        live={{ myId: me.id, progress: me.progress, rivals: st.rivals, power: me.power, slipAt: me.slipAt, rank: me.rank, players: me.players, usePower }}
+      />
+    );
+  }
 
   if (st.room.status === 'playing' && running) {
     return (
@@ -204,6 +287,9 @@ export function PlayerSession({
             <p className="text-sm font-semibold opacity-70">{st.room.title}</p>
           </div>
         </div>
+        <div className="l5g-modechip" style={{ ['--mc' as string]: modeById(st.room.game).color }}>
+          เกม: <b>{modeById(st.room.game).name}</b>
+        </div>
         {!hostMode && (
           <button type="button" className="l5g-btn l5g-btn-ghost l5g-btn-sm mt-2" onClick={leave}>
             <LogOut className="w-4 h-4" /> ออกจากห้อง
@@ -234,12 +320,11 @@ export function PlayerSession({
           </div>
           <div className="l5g-result-stats">
             <span>
-              <b>{me.score.toLocaleString('th-TH')}</b>คะแนน
+              <b>{(st.room.game === 'racing' ? me.progress : me.score).toLocaleString('th-TH')}</b>
+              {modeById(st.room.game).scoreLabel}
             </span>
             <span>
-              <b>
-                {me.correct}/{st.room.total}
-              </b>
+              <b>{st.room.total ? `${me.correct}/${st.room.total}` : me.correct}</b>
               ข้อที่ถูก
             </span>
           </div>

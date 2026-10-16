@@ -3,6 +3,7 @@
 /** ฝั่งเบราว์เซอร์ของห้องเล่นสด: เรียก API + ฟังสัญญาณ Realtime */
 import { createClient } from '@/lib/supabase/client';
 import type { PublicQuestion, RoomBackground, RoomStatus, PlayerPublic } from './types';
+import type { GameMode } from './modes';
 import type { AnswerOutcome, QuizEngine } from '@/components/creator/quiz/QuizRunner';
 
 export interface PlayerCreds {
@@ -12,11 +13,36 @@ export interface PlayerCreds {
   code: string;
 }
 
+export interface Rival {
+  id: string;
+  nickname: string;
+  avatar: number;
+  progress: number;
+  finished: boolean;
+}
+
 export interface PlayerStateRes {
-  room: { id: string; code: string; title: string; status: RoomStatus; background: RoomBackground; total: number; round: number };
-  me: PlayerPublic & { rank: number; players: number; pos: number };
+  room: {
+    id: string;
+    code: string;
+    title: string;
+    status: RoomStatus;
+    background: RoomBackground;
+    total: number;
+    round: number;
+    game: GameMode;
+    duration: number;
+    goal: number;
+    startedAt: string | null;
+  };
+  serverNow: number;
+  me: PlayerPublic & { rank: number; players: number; pos: number; slipAt: string | null };
+  rivals: Rival[];
   question: PublicQuestion | null;
 }
+
+/** ผลการตอบ (รวมข้อมูลโหมดเกม) */
+export type LiveOutcome = AnswerOutcome & { progress?: number; power?: string | null; gotPower?: string | null; rivals?: Rival[] };
 
 export class LiveError extends Error {
   constructor(
@@ -45,18 +71,21 @@ async function post<T>(url: string, body: unknown): Promise<T> {
   return j as T;
 }
 
+type C = Pick<PlayerCreds, 'playerId' | 'token'>;
+
 export const playerApi = {
   check: (code: string) => post<{ ok: true; title: string; status: RoomStatus; background: RoomBackground }>('/api/live/join', { code, check: true }),
   join: (code: string, nickname: string, avatar: number) => post<{ roomId: string; code: string; playerId: string; token: string }>('/api/live/join', { code, nickname, avatar }),
-  state: (c: Pick<PlayerCreds, 'playerId' | 'token'>) => post<{ state: PlayerStateRes }>('/api/live/player', { op: 'state', ...c }).then((j) => j.state),
-  answer: (c: Pick<PlayerCreds, 'playerId' | 'token'>, pos: number, picks: string[]) =>
-    post<{ result?: AnswerOutcome & { rank: number; players: number }; stale?: boolean; state?: PlayerStateRes }>('/api/live/player', { op: 'answer', pos, picks, ...c }),
-  peek: (c: Pick<PlayerCreds, 'playerId' | 'token'>) => post<{ status: RoomStatus; background: RoomBackground; round: number }>('/api/live/player', { op: 'peek', ...c }),
-  leave: (c: Pick<PlayerCreds, 'playerId' | 'token'>) => post('/api/live/player', { op: 'leave', ...c }).catch(() => null),
+  state: (c: C, question = true) => post<{ state: PlayerStateRes }>('/api/live/player', { op: 'state', question, ...c }).then((j) => j.state),
+  answer: (c: C, pos: number, picks: string[]) => post<{ result?: LiveOutcome; stale?: boolean; state?: PlayerStateRes }>('/api/live/player', { op: 'answer', pos, picks, ...c }),
+  peek: (c: C) => post<{ status: RoomStatus; background: RoomBackground; round: number; serverNow: number; progress: number; slipAt: string | null }>('/api/live/player', { op: 'peek', ...c }),
+  sync: (c: C, score: number, stats: Record<string, number>) => post<{ ok: boolean; status: RoomStatus; score: number }>('/api/live/player', { op: 'sync', score, stats, ...c }),
+  power: (c: C) => post<{ ok: boolean; power?: string; progress?: number; target?: string; reason?: string }>('/api/live/player', { op: 'power', ...c }),
+  leave: (c: C) => post('/api/live/player', { op: 'leave', ...c }).catch(() => null),
 };
 
 /** ตัวเล่นที่คุยกับเซิร์ฟเวอร์ (ตรวจคำตอบและจับเวลาที่เซิร์ฟเวอร์) */
-export function liveEngine(c: Pick<PlayerCreds, 'playerId' | 'token'>, onState?: (s: PlayerStateRes) => void): QuizEngine {
+export function liveEngine(c: C, onState?: (s: PlayerStateRes) => void, onOutcome?: (o: LiveOutcome) => void): QuizEngine {
   return {
     async next() {
       const s = await playerApi.state(c);
@@ -68,6 +97,7 @@ export function liveEngine(c: Pick<PlayerCreds, 'playerId' | 'token'>, onState?:
       const r = await playerApi.answer(c, q.index, picks);
       if (r.state) onState?.(r.state);
       if (r.stale || !r.result) return null;
+      onOutcome?.(r.result);
       return r.result;
     },
   };

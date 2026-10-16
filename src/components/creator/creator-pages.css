@@ -716,6 +716,7 @@
 }
 .l5g-qlist-wrap {
   grid-area: list;
+  min-width: 0; /* ไม่ให้แถบคำถามแนวนอนดันหน้ากว้างเกินจอมือถือ */
 }
 @media (min-width: 820px) {
   .l5g-qlist-wrap {

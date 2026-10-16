@@ -6,9 +6,11 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Check, Compass, Copy, Crown, DoorOpen, FolderHeart, Globe, Loader2, Lock, LogIn, MoreVertical, Pencil, Play, Plus, Rocket, Search, Sparkles, Trash2, Wand2 } from 'lucide-react';
 import { Navbar } from '@/components/navbar/Navbar';
 import { useAuth } from '@/context/AuthContext';
+import { ShieldCheck } from 'lucide-react';
 import { hasMembership } from '@/lib/membership';
 import { createClient } from '@/lib/supabase/client';
-import { TEMPLATES } from '@/lib/game-creator/templates';
+import { MODES } from '@/lib/game-creator/modes';
+import { ModeArt } from '@/components/creator/games/ModeArt';
 import { cleanTitle, mediaPaths, sanitizeQuiz } from '@/lib/game-creator/quiz';
 import { mediaPrefix, removeMedia } from '@/lib/game-creator/media';
 import type { UserGameSummary } from '@/lib/game-creator/types';
@@ -50,41 +52,8 @@ function GameCover({ game }: { game: UserGameSummary }) {
   );
 }
 
-function TemplateArt({ id, color }: { id: string; color: string }) {
-  if (id === 'quiz') {
-    return (
-      <div className="l5g-tart">
-        <div className="l5g-tart-q">
-          <span>
-            <svg viewBox="0 0 40 30" width="40" height="30" aria-hidden="true">
-              <text x="4" y="12" fontSize="11" fontWeight="700" fill="#2a2350">3</text>
-              <line x1="2" y1="15" x2="14" y2="15" stroke="#2a2350" strokeWidth="2" />
-              <text x="4" y="27" fontSize="11" fontWeight="700" fill="#2a2350">4</text>
-              <text x="19" y="21" fontSize="12" fontWeight="700" fill="#2a2350">= ?</text>
-            </svg>
-          </span>
-        </div>
-        <div className="l5g-tart-grid">
-          {[0, 1, 2, 3].map((i) => (
-            <span key={i} style={{ background: choiceStyle(i).color, animationDelay: `${i * 0.15}s` }}>
-              <ChoiceShape i={i} size={18} />
-            </span>
-          ))}
-        </div>
-      </div>
-    );
-  }
-  return (
-    <div className="l5g-tart l5g-tart-soon" style={{ ['--c' as string]: color }}>
-      {[0, 1, 2].map((i) => (
-        <span key={i} className="l5g-tart-block" style={{ animationDelay: `${i * 0.2}s` }} />
-      ))}
-    </div>
-  );
-}
-
 function CreateHub() {
-  const { user, profile, isLoading } = useAuth();
+  const { user, profile, isLoading, isDev } = useAuth();
   const member = !!user && hasMembership(profile) && !String(profile?.username || '').startsWith('trial_');
   const router = useRouter();
   const sp = useSearchParams();
@@ -106,6 +75,7 @@ function CreateHub() {
   const [dMore, setDMore] = useState(false);
   const [dLoading, setDLoading] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
+  const [devAll, setDevAll] = useState(false);
 
   const load = useCallback(async () => {
     if (!member || !user) return;
@@ -142,10 +112,11 @@ function CreateHub() {
       let query = createClient()
         .from('user_games')
         .select(GAME_COLS)
-        .eq('is_public', true)
         .order(dSort === 'popular' ? 'play_count' : 'updated_at', { ascending: false })
         .range(from, from + PAGE - 1);
       const term = dTerm.replace(/[,()%*\\"]/g, ' ').replace(/\s+/g, ' ').trim();
+      // Dev เปิดดูทั้งหมดได้ (รวม Private) เพื่อดูแล/ลบ
+      if (!(isDev && devAll)) query = query.eq('is_public', true);
       if (term) query = query.or(`title.ilike."%${term}%",owner_name.ilike."%${term}%"`);
       const { data, error } = await query;
       setDLoading(false);
@@ -158,7 +129,7 @@ function CreateHub() {
       setDMore(rows.length === PAGE);
       setDGames((old) => (from && old ? [...old, ...rows] : rows));
     },
-    [member, dTerm, dSort]
+    [member, dTerm, dSort, isDev, devAll]
   );
 
   useEffect(() => {
@@ -199,7 +170,10 @@ function CreateHub() {
   };
 
   useEffect(() => {
-    const close = () => setMenu(null);
+    // React ผูกคลิกไว้ที่ document เหมือนกัน stopPropagation จึงกันไม่ได้: ปิดเมนูเฉพาะเมื่อคลิกนอกปุ่ม/เมนู
+    const close = (e: MouseEvent) => {
+      if (!(e.target as Element | null)?.closest?.('[data-menu-root]')) setMenu(null);
+    };
     document.addEventListener('click', close);
     return () => document.removeEventListener('click', close);
   }, []);
@@ -264,6 +238,7 @@ function CreateHub() {
     setBusy(false);
     setDel(null);
     load();
+    if (tab === 'discover') loadDiscover(0);
   };
 
   const roomOf = (id: string) => rooms.find((r) => r.game_id === id);
@@ -280,11 +255,11 @@ function CreateHub() {
             <Wand2 className="w-4 h-4" /> ระบบสร้างเกม
           </span>
           <h1 className="l5g-hero-title">
-            สร้างเกมของคุณเอง
+            สร้างชุดคำถามของคุณเอง
             <br />
-            <span>แล้วชวนทั้งห้องมาเล่น</span>
+            <span>เล่นได้ 4 แบบ ทั้งห้องสนุก</span>
           </h1>
-          <p className="l5g-hero-sub">เลือก Template ใส่คำถาม สูตรคณิต รูป และคลิป แล้วเปิดห้องด้วยเลข 6 หลัก</p>
+          <p className="l5g-hero-sub">ควิซ ร้านคาเฟ่ ป้อมปราการ วิ่งแข่ง ใช้ชุดคำถามเดียวกัน เปิดห้องด้วยเลข 6 หลัก</p>
         </section>
 
         {isLoading ? (
@@ -305,7 +280,7 @@ function CreateHub() {
                 </span>
               </div>
               <h2 className="font-display text-2xl sm:text-3xl">ต้องสมัครสมาชิกก่อน</h2>
-              <p className="font-semibold opacity-80 mt-1">สมาชิกสร้างเกม เก็บในคลัง และเปิดห้องให้คนอื่นเล่นได้ไม่จำกัด</p>
+              <p className="font-semibold opacity-80 mt-1">สมาชิกสร้างชุดคำถาม เก็บในคลัง และเปิดห้องให้คนอื่นเล่นได้ไม่จำกัด</p>
               <div className="mt-5 flex flex-wrap justify-center gap-3">
                 <Link href="/membership" className="l5g-btn l5g-btn-go">
                   <Crown className="w-5 h-5" /> สมัครสมาชิก
@@ -324,13 +299,13 @@ function CreateHub() {
             <div className="max-w-6xl mx-auto px-4">
               <div className="l5g-seg" role="tablist">
                 <button type="button" role="tab" aria-selected={tab === 'new'} data-on={tab === 'new'} onClick={() => switchTab('new')}>
-                  <Sparkles className="w-5 h-5" /> สร้างเกมใหม่
+                  <Sparkles className="w-5 h-5" /> สร้างชุดคำถาม
                 </button>
                 <button type="button" role="tab" aria-selected={tab === 'discover'} data-on={tab === 'discover'} data-kind="discover" onClick={() => switchTab('discover')}>
                   <Compass className="w-5 h-5" /> Discover
                 </button>
                 <button type="button" role="tab" aria-selected={tab === 'library'} data-on={tab === 'library'} onClick={() => switchTab('library')}>
-                  <FolderHeart className="w-5 h-5" /> คลังเกมของฉัน
+                  <FolderHeart className="w-5 h-5" /> คลังของฉัน
                   {games && games.length > 0 && <span className="l5g-seg-count">{games.length}</span>}
                 </button>
               </div>
@@ -344,45 +319,60 @@ function CreateHub() {
 
             {tab === 'new' ? (
               <section className="max-w-6xl mx-auto px-4 pt-6 pb-10">
-                <h2 className="l5g-sec-title">เลือก Template</h2>
-                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 mt-4">
-                  {TEMPLATES.map((t, i) => (
-                    <article key={t.id} className="l5g-tcard" data-soon={!t.available} style={{ ['--a' as string]: t.color, ['--soft' as string]: t.soft, animationDelay: `${i * 80}ms` }}>
-                      {!t.available && <span className="l5g-ribbon">เร็วๆ นี้</span>}
+                <div className="l5g-newset">
+                  <div className="l5g-newset-text">
+                    <span className="l5g-sec-sub">ขั้นที่ 1</span>
+                    <h2 className="font-display text-3xl mt-2">สร้างชุดคำถาม</h2>
+                    <p className="font-semibold opacity-80 mt-1">ใส่คำถาม ตัวเลือก สูตรคณิต รูป และคลิปได้อิสระ ชุดเดียวเล่นได้ทุกรูปแบบ</p>
+                    <button
+                      type="button"
+                      className="l5g-btn l5g-btn-go l5g-btn-xl mt-4"
+                      disabled={dbMissing}
+                      onClick={() => {
+                        gsfx.pick();
+                        router.push('/create/edit');
+                      }}
+                    >
+                      <Plus className="w-6 h-6" strokeWidth={3} /> สร้างชุดคำถามใหม่
+                    </button>
+                  </div>
+                  <div className="l5g-newset-art" aria-hidden="true">
+                    <ModeArt mode="quiz" />
+                  </div>
+                </div>
+
+                <h2 className="l5g-sec-title mt-8">ขั้นที่ 2 เลือกรูปแบบการเล่นตอนเปิดห้อง</h2>
+                <p className="l5g-sec-note">กด เปิดใช้งาน ที่ชุดคำถามในคลัง แล้วเลือกได้เลยว่าจะเล่นแบบไหน</p>
+                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4 mt-4">
+                  {MODES.map((m, i) => (
+                    <article key={m.id} className="l5g-tcard" style={{ ['--a' as string]: m.color, ['--soft' as string]: m.soft, animationDelay: `${i * 80}ms` }}>
                       <div className="l5g-tcard-art">
-                        <TemplateArt id={t.id} color={t.color} />
+                        <ModeArt mode={m.id} />
                       </div>
-                      <div className="p-5 pt-4 flex flex-col flex-1">
-                        <p className="text-xs font-extrabold tracking-wider uppercase" style={{ color: t.color }}>
-                          {t.tagline}
+                      <div className="p-4 pt-3 flex flex-col flex-1">
+                        <p className="text-xs font-extrabold tracking-wider" style={{ color: m.dark }}>
+                          {m.genre}
                         </p>
-                        <h3 className="font-display text-2xl">{t.name}</h3>
-                        <ul className="mt-2 space-y-1 text-sm font-semibold">
-                          {t.points.map((p) => (
-                            <li key={p} className="flex items-center gap-2">
-                              <span className="l5g-dot" style={{ background: t.color }} />
-                              {p}
+                        <h3 className="font-display text-xl">{m.name}</h3>
+                        <p className="text-sm font-semibold opacity-80 mt-1">{m.tagline}</p>
+                        <ul className="mt-2 space-y-1 text-xs font-bold">
+                          <li className="flex items-center gap-2">
+                            <span className="l5g-dot" style={{ background: m.color }} />
+                            ต้องมีอย่างน้อย {m.minQuestions} ข้อ
+                          </li>
+                          {m.noVideo && (
+                            <li className="flex items-center gap-2">
+                              <span className="l5g-dot" style={{ background: m.color }} />
+                              ข้อที่มีคลิปจะถูกข้าม
                             </li>
-                          ))}
-                        </ul>
-                        <div className="flex-1" />
-                        <button
-                          type="button"
-                          className="l5g-btn l5g-btn-go mt-5 w-full"
-                          disabled={!t.available || dbMissing}
-                          onClick={() => {
-                            gsfx.pick();
-                            router.push(`/create/edit?template=${t.id}`);
-                          }}
-                        >
-                          {t.available ? (
-                            <>
-                              <Plus className="w-5 h-5" strokeWidth={3} /> เริ่มสร้าง
-                            </>
-                          ) : (
-                            'กำลังพัฒนา'
                           )}
-                        </button>
+                          {m.endless && (
+                            <li className="flex items-center gap-2">
+                              <span className="l5g-dot" style={{ background: m.color }} />
+                              คำถามวนซ้ำได้
+                            </li>
+                          )}
+                        </ul>
                       </div>
                     </article>
                   ))}
@@ -392,8 +382,13 @@ function CreateHub() {
               <section className="max-w-6xl mx-auto px-4 pt-6 pb-10">
                 <div className="flex flex-wrap items-center gap-3">
                   <h2 className="l5g-sec-title">Discover</h2>
-                  <span className="l5g-sec-sub">เกมที่คุณครูเปิด Public</span>
+                  <span className="l5g-sec-sub">ชุดคำถามที่คุณครูเปิด Public</span>
                   <span className="flex-1" />
+                  {isDev && (
+                    <button type="button" className="l5g-chipbtn l5g-devchip" data-on={devAll} onClick={() => (gsfx.tap(), setDevAll(!devAll))} title="Dev: แสดงชุดคำถามทั้งหมดรวม Private">
+                      <ShieldCheck className="w-4 h-4 inline -mt-0.5" /> Dev: ทั้งหมด
+                    </button>
+                  )}
                   <div className="l5g-chips">
                     <button type="button" className="l5g-chipbtn" data-on={dSort === 'new'} onClick={() => (gsfx.tap(), setDSort('new'))}>
                       ใหม่ล่าสุด
@@ -405,7 +400,7 @@ function CreateHub() {
                 </div>
                 <label className="l5g-search l5g-search-wide mt-4">
                   <Search className="w-5 h-5" />
-                  <input value={dQ} onChange={(e) => setDQ(e.target.value)} placeholder="ค้นหาชื่อเกม หรือชื่อคุณครู" aria-label="ค้นหาเกมใน Discover" />
+                  <input value={dQ} onChange={(e) => setDQ(e.target.value)} placeholder="ค้นหาชื่อชุดคำถาม หรือชื่อคุณครู" aria-label="ค้นหาใน Discover" />
                   {dQ && (
                     <button type="button" onClick={() => setDQ('')} aria-label="ล้างคำค้นหา">
                       &times;
@@ -428,8 +423,8 @@ function CreateHub() {
                         </span>
                       ))}
                     </div>
-                    <h3 className="font-display text-2xl">{dTerm ? 'ไม่พบเกมที่ค้นหา' : 'ยังไม่มีเกม Public'}</h3>
-                    <p className="font-semibold opacity-75">{dTerm ? 'ลองคำอื่น หรือชื่อคุณครูที่สร้างเกม' : 'สร้างเกมแล้วตั้งเป็น Public เกมจะมาโชว์ที่นี่'}</p>
+                    <h3 className="font-display text-2xl">{dTerm ? 'ไม่พบชุดคำถามที่ค้นหา' : 'ยังไม่มีชุดคำถาม Public'}</h3>
+                    <p className="font-semibold opacity-75">{dTerm ? 'ลองคำอื่น หรือชื่อคุณครูที่สร้าง' : 'สร้างชุดคำถามแล้วตั้งเป็น Public จะมาโชว์ที่นี่'}</p>
                   </div>
                 ) : (
                   <>
@@ -451,7 +446,8 @@ function CreateHub() {
                               <h3 className="font-display text-lg leading-snug break-words">{g.title}</h3>
                               <p className="l5g-owner">
                                 <span className="l5g-owner-dot">{(g.owner_name || '?').slice(0, 1).toUpperCase()}</span>
-                                <span className="truncate">{mine ? 'เกมของฉัน' : g.owner_name || 'คุณครู'}</span>
+                                <span className="truncate">{mine ? 'ชุดคำถามของฉัน' : g.owner_name || 'คุณครู'}</span>
+                                {!g.is_public && <span className="l5g-privtag">Private</span>}
                               </p>
                               <div className="flex-1" />
                               <div className="flex gap-2 mt-3">
@@ -459,13 +455,18 @@ function CreateHub() {
                                   <Rocket className="w-5 h-5" /> เปิดใช้งาน
                                 </button>
                                 {mine ? (
-                                  <Link href={`/create/edit?id=${g.id}`} className="l5g-btn l5g-btn-ghost" aria-label="แก้ไขเกม">
+                                  <Link href={`/create/edit?id=${g.id}`} className="l5g-btn l5g-btn-ghost" aria-label="แก้ไขชุดคำถาม">
                                     <Pencil className="w-5 h-5" />
                                   </Link>
                                 ) : (
                                   <button type="button" className="l5g-btn l5g-btn-ghost" disabled={busy || copied === g.id} onClick={() => copyToLibrary(g)} title="ทำสำเนาไปแก้ไขในคลังของฉัน">
                                     {copied === g.id ? <Check className="w-5 h-5" strokeWidth={4} /> : <Copy className="w-5 h-5" />}
                                     <span className="hidden min-[400px]:inline">{copied === g.id ? 'ได้แล้ว' : 'ทำสำเนา'}</span>
+                                  </button>
+                                )}
+                                {isDev && !mine && (
+                                  <button type="button" className="l5g-btn l5g-btn-coral" onClick={() => setDel(g)} title="Dev: ลบชุดคำถามนี้" aria-label="ลบชุดคำถามนี้">
+                                    <Trash2 className="w-5 h-5" />
                                   </button>
                                 )}
                               </div>
@@ -487,16 +488,16 @@ function CreateHub() {
             ) : (
               <section className="max-w-6xl mx-auto px-4 pt-6 pb-10">
                 <div className="flex flex-wrap items-center gap-3">
-                  <h2 className="l5g-sec-title">คลังเกมของฉัน</h2>
+                  <h2 className="l5g-sec-title">คลังชุดคำถามของฉัน</h2>
                   <span className="flex-1" />
                   {games && games.length > 3 && (
                     <label className="l5g-search">
                       <Search className="w-4 h-4" />
-                      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="ค้นหาชื่อเกม" aria-label="ค้นหาชื่อเกม" />
+                      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="ค้นหาชื่อชุดคำถาม" aria-label="ค้นหาชื่อชุดคำถาม" />
                     </label>
                   )}
                   <button type="button" className="l5g-btn l5g-btn-violet l5g-btn-sm" onClick={() => switchTab('new')}>
-                    <Plus className="w-4 h-4" strokeWidth={3} /> เกมใหม่
+                    <Plus className="w-4 h-4" strokeWidth={3} /> ชุดใหม่
                   </button>
                 </div>
 
@@ -515,10 +516,10 @@ function CreateHub() {
                         </span>
                       ))}
                     </div>
-                    <h3 className="font-display text-2xl">ยังไม่มีเกมในคลัง</h3>
-                    <p className="font-semibold opacity-75">สร้างเกมแรก แล้วกดบันทึก เกมจะมาอยู่ที่นี่</p>
+                    <h3 className="font-display text-2xl">ยังไม่มีชุดคำถามในคลัง</h3>
+                    <p className="font-semibold opacity-75">สร้างชุดคำถามแรก แล้วกดบันทึก จะมาอยู่ที่นี่</p>
                     <button type="button" className="l5g-btn l5g-btn-go mt-4" onClick={() => switchTab('new')}>
-                      <Sparkles className="w-5 h-5" /> สร้างเกมแรก
+                      <Sparkles className="w-5 h-5" /> สร้างชุดคำถามแรก
                     </button>
                   </div>
                 ) : (
@@ -526,7 +527,7 @@ function CreateHub() {
                     {shown.map((g, i) => {
                       const live = roomOf(g.id);
                       return (
-                        <article key={g.id} className="l5g-gcard" style={{ animationDelay: `${Math.min(i, 8) * 50}ms` }}>
+                        <article key={g.id} className="l5g-gcard" data-menu={menu === g.id} style={{ animationDelay: `${Math.min(i, 8) * 50}ms` }}>
                           <div className="l5g-gcover">
                             <GameCover game={g} />
                             <span className="l5g-gcover-count">{g.question_count} ข้อ</span>
@@ -543,7 +544,7 @@ function CreateHub() {
                           <div className="p-4 flex flex-col gap-1 flex-1">
                             <div className="flex items-start gap-2">
                               <h3 className="font-display text-lg leading-snug flex-1 min-w-0 break-words">{g.title}</h3>
-                              <div className="relative">
+                              <div className="relative" data-menu-root>
                                 <button
                                   type="button"
                                   className="l5g-icon-btn"
@@ -565,7 +566,7 @@ function CreateHub() {
                                       <Copy className="w-4 h-4" /> ทำสำเนา
                                     </button>
                                     <button type="button" className="l5g-menu-danger" onClick={() => (setMenu(null), setDel(g))}>
-                                      <Trash2 className="w-4 h-4" /> ลบเกม
+                                      <Trash2 className="w-4 h-4" /> ลบชุดคำถาม
                                     </button>
                                   </div>
                                 )}
@@ -586,7 +587,7 @@ function CreateHub() {
                                   <Rocket className="w-5 h-5" /> เปิดใช้งาน
                                 </button>
                               )}
-                              <Link href={`/create/edit?id=${g.id}`} className="l5g-btn l5g-btn-ghost" aria-label="แก้ไขเกม">
+                              <Link href={`/create/edit?id=${g.id}`} className="l5g-btn l5g-btn-ghost" aria-label="แก้ไขชุดคำถาม">
                                 <Pencil className="w-5 h-5" />
                                 <span className="hidden min-[400px]:inline">แก้ไข</span>
                               </Link>
@@ -606,7 +607,7 @@ function CreateHub() {
       {openGame && profile && <OpenGameModal gameId={openGame.id} title={openGame.title} username={profile.username} onClose={() => setOpenGame(null)} />}
 
       {rename && (
-        <PaperModal title="เปลี่ยนชื่อเกม" icon={<Pencil className="w-5 h-5" />} onClose={() => setRename(null)} busy={busy}>
+        <PaperModal title="เปลี่ยนชื่อชุดคำถาม" icon={<Pencil className="w-5 h-5" />} onClose={() => setRename(null)} busy={busy}>
           <input className="l5g-input" value={renameVal} maxLength={80} autoFocus onChange={(e) => setRenameVal(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && doRename()} />
           <div className="l5g-math-foot">
             <span className="flex-1" />
@@ -621,9 +622,9 @@ function CreateHub() {
       )}
 
       {del && (
-        <PaperModal title="ลบเกมนี้?" icon={<Trash2 className="w-5 h-5" />} iconBg="#ff6b7a" onClose={() => setDel(null)} busy={busy}>
+        <PaperModal title="ลบชุดคำถามนี้?" icon={<Trash2 className="w-5 h-5" />} iconBg="#ff6b7a" onClose={() => setDel(null)} busy={busy}>
           <p className="font-semibold">
-            &quot;{del.title}&quot; จะหายจากคลังถาวร รวมถึงรูปและคลิปที่ใช้เฉพาะเกมนี้
+            &quot;{del.title}&quot; จะถูกลบถาวร (ห้องที่เปิดเล่นอยู่ยังเล่นต่อได้จนปิดห้อง)
           </p>
           <div className="l5g-math-foot">
             <span className="flex-1" />

@@ -34,6 +34,9 @@ import { rememberBackground } from '@/components/creator/OpenGameModal';
 import { subscribeRoom, type PlayerCreds } from '@/lib/game-creator/live-client';
 import { DEFAULT_BG } from '@/lib/game-creator/backgrounds';
 import type { PlayerPublic, RoomBackground, RoomMode, RoomSettings, RoomStatus } from '@/lib/game-creator/types';
+import { modeById, type GameMode } from '@/lib/game-creator/modes';
+import { RaceTrack } from '@/components/creator/games/RaceGame';
+import { ModeSteps } from '@/components/creator/OpenGameModal';
 import { gsfx, isGameMuted, setGameMuted, startLobbyMusic, stopLobbyMusic } from '@/lib/game-creator/gsound';
 import '@/components/creator/creator.css';
 import '@/components/creator/creator-pages.css';
@@ -49,7 +52,10 @@ interface HostState {
     settings: RoomSettings;
     round: number;
     total: number;
+    game: GameMode;
+    startedAt: string | null;
   };
+  serverNow?: number;
   players: PlayerPublic[];
   hostPlayerId: string | null;
   stats: { i: number; label: string; answered: number; correct: number }[] | null;
@@ -69,7 +75,19 @@ function CodeTiles({ code, small }: { code: string; small?: boolean }) {
   );
 }
 
-function Leaderboard({ players, total, onKick }: { players: PlayerPublic[]; total: number; onKick?: (p: PlayerPublic) => void }) {
+/** ค่าที่แสดงบนกระดานตามโหมด */
+function boardValue(game: GameMode, p: PlayerPublic, goal: number) {
+  if (game === 'racing') return `${p.progress}/${goal}`;
+  return p.score.toLocaleString('th-TH');
+}
+function boardSub(game: GameMode, p: PlayerPublic) {
+  if (game === 'cafe') return `เสิร์ฟ ${p.stats.served || 0} จาน · ตอบถูก ${p.correct}`;
+  if (game === 'tower') return `ผ่าน ${p.stats.waves || 0} เวฟ · ตอบถูก ${p.correct}`;
+  if (game === 'racing') return `ตอบถูก ${p.correct} ข้อ`;
+  return '';
+}
+
+function Leaderboard({ players, total, onKick, game = 'quiz', goal = 0 }: { players: PlayerPublic[]; total: number; onKick?: (p: PlayerPublic) => void; game?: GameMode; goal?: number }) {
   const shown = players.slice(0, 60);
   return (
     <div className="l5g-board" style={{ height: Math.max(1, shown.length) * ROW }}>
@@ -80,9 +98,13 @@ function Leaderboard({ players, total, onKick }: { players: PlayerPublic[]; tota
           <span className="l5g-board-name">
             <b>{p.nickname}</b>
             {p.isHost && <span className="l5g-board-host">ครู</span>}
-            <span className="l5g-board-prog">
-              <i style={{ width: `${total ? (p.answered / total) * 100 : 0}%` }} />
-            </span>
+            {game === 'quiz' || game === 'racing' ? (
+              <span className="l5g-board-prog">
+                <i style={{ width: `${game === 'racing' ? (goal ? (p.progress / goal) * 100 : 0) : total ? (p.answered / total) * 100 : 0}%` }} />
+              </span>
+            ) : (
+              <small className="l5g-board-sub">{boardSub(game, p)}</small>
+            )}
           </span>
           {p.finished ? (
             <span className="l5g-board-done" title="ทำครบแล้ว">
@@ -93,7 +115,7 @@ function Leaderboard({ players, total, onKick }: { players: PlayerPublic[]; tota
               {p.lastCorrect ? <Check className="w-4 h-4" strokeWidth={4} /> : <X className="w-4 h-4" strokeWidth={4} />}
             </span>
           ) : null}
-          <span className="l5g-board-score">{p.score.toLocaleString('th-TH')}</span>
+          <span className="l5g-board-score">{boardValue(game, p, goal)}</span>
           {onKick && !p.isHost && (
             <button type="button" className="l5g-board-kick" onClick={() => onKick(p)} aria-label={`เชิญ ${p.nickname} ออก`}>
               <X className="w-3.5 h-3.5" strokeWidth={3} />
@@ -105,7 +127,7 @@ function Leaderboard({ players, total, onKick }: { players: PlayerPublic[]; tota
   );
 }
 
-function Podium({ players }: { players: PlayerPublic[] }) {
+function Podium({ players, game = 'quiz', goal = 0 }: { players: PlayerPublic[]; game?: GameMode; goal?: number }) {
   const order = [1, 0, 2];
   return (
     <div className="l5g-podium">
@@ -117,7 +139,7 @@ function Podium({ players }: { players: PlayerPublic[] }) {
             {idx === 0 && <Crown className="l5g-podium-crown w-9 h-9" />}
             <Avatar id={p.avatar} size={idx === 0 ? 96 : 76} mood="wow" />
             <b className="l5g-podium-name">{p.nickname}</b>
-            <span className="l5g-podium-score">{p.score.toLocaleString('th-TH')}</span>
+            <span className="l5g-podium-score">{boardValue(game, p, goal)}</span>
             <div className="l5g-podium-block">
               <Medal rank={idx + 1} size={idx === 0 ? 62 : 52} />
             </div>
@@ -309,6 +331,32 @@ function HostInner() {
     else document.documentElement.requestFullscreen?.().catch(() => null);
   };
 
+  const [nowTick, setNowTick] = useState(Date.now());
+  const offset = useRef(0);
+  const autoEnded = useRef(false);
+  useEffect(() => {
+    if (st?.serverNow) offset.current = st.serverNow - Date.now();
+  }, [st?.serverNow]);
+  const duration = st?.room.settings.duration || 0;
+  const timed = !!st && !!modeById(st.room.game).durations && st.room.status === 'playing' && !!st.room.startedAt && duration > 0;
+  const timeLeft = timed ? new Date(st!.room.startedAt!).getTime() + duration * 1000 - (nowTick + offset.current) : 0;
+  useEffect(() => {
+    if (!timed) return;
+    const iv = setInterval(() => setNowTick(Date.now()), 250);
+    return () => clearInterval(iv);
+  }, [timed]);
+  useEffect(() => {
+    if (!timed) {
+      autoEnded.current = false;
+      return;
+    }
+    if (timeLeft <= -1500 && !autoEnded.current) {
+      autoEnded.current = true;
+      act('end');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timed, timeLeft]);
+
   const players = st?.players || [];
   const total = st?.room.total || 0;
   const finishedCount = players.filter((p) => p.finished).length;
@@ -386,6 +434,14 @@ function HostInner() {
           <span className="l5g-pill">{room.status === 'lobby' ? 'รอผู้เล่น' : room.status === 'playing' ? 'กำลังเล่น' : 'จบเกม'}</span>
           <b className="truncate">{room.title}</b>
         </div>
+        <span className="l5g-modechip l5g-modechip-sm" style={{ ['--mc' as string]: modeById(room.game).color }}>
+          {modeById(room.game).name}
+        </span>
+        {timed && (
+          <span className="l5g-pill l5g-timepill" data-urgent={timeLeft < 30000}>
+            {Math.floor(Math.max(0, timeLeft) / 60000)}:{String(Math.floor((Math.max(0, timeLeft) % 60000) / 1000)).padStart(2, '0')}
+          </span>
+        )}
         <span className="l5g-pill" title="จำนวนผู้เล่น">
           <Users className="w-4 h-4" /> {players.length}
         </span>
@@ -482,17 +538,29 @@ function HostInner() {
               )}
             </div>
 
+            {room.game !== 'quiz' && (
+              <div className="l5g-card l5g-lobby-how">
+                <b>วิธีเล่น {modeById(room.game).name}</b>
+                <ModeSteps mode={room.game} />
+              </div>
+            )}
+
             <div className="l5g-lobby-actions">
+              {room.game === 'quiz' && (
+
               <label className="l5g-switch l5g-switch-light">
                 <input type="checkbox" checked={room.settings.shuffleQuestions} disabled={acting} onChange={(e) => act('settings', { settings: { ...room.settings, shuffleQuestions: e.target.checked } })} />
                 <span className="l5g-switch-ui" />
                 <Shuffle className="w-4 h-4" /> สลับคำถาม
               </label>
+              )}
+              {room.game === 'quiz' && (
               <label className="l5g-switch l5g-switch-light">
                 <input type="checkbox" checked={room.settings.shuffleChoices} disabled={acting} onChange={(e) => act('settings', { settings: { ...room.settings, shuffleChoices: e.target.checked } })} />
                 <span className="l5g-switch-ui" />
                 <Shuffle className="w-4 h-4" /> สลับตัวเลือก
               </label>
+              )}
               <button type="button" className="l5g-btn l5g-btn-go l5g-btn-xl l5g-startbtn" disabled={acting || players.length === 0} onClick={start}>
                 {acting ? <Loader2 className="w-6 h-6 animate-spin" /> : <Play className="w-6 h-6" />} เริ่มเกม
               </button>
@@ -504,7 +572,7 @@ function HostInner() {
             {room.status === 'ended' && players.length > 0 && (
               <>
                 <Confetti key={room.round} />
-                <Podium players={players} />
+                <Podium players={players} game={room.game} goal={room.settings.goal} />
               </>
             )}
 
@@ -532,7 +600,7 @@ function HostInner() {
                     <h2 className="font-display text-xl">กระดานคะแนนสด</h2>
                   )}
                   <span className="flex-1" />
-                  <span className="text-sm font-bold opacity-70">{total} ข้อ</span>
+                  <span className="text-sm font-bold opacity-70">{room.game === 'racing' ? `เส้นชัย ${room.settings.goal} ก้าว` : total ? `${total} ข้อ` : modeById(room.game).scoreLabel}</span>
                 </div>
                 {tab === 'stats' && room.status === 'ended' ? (
                   <div className="l5g-qstats">
@@ -554,7 +622,12 @@ function HostInner() {
                   </div>
                 ) : players.length ? (
                   <div className="l5g-board-scroll">
-                    <Leaderboard players={players} total={total} onKick={room.status === 'playing' ? setKick : undefined} />
+                    {room.game === 'racing' && (
+                      <div className="mb-3">
+                        <RaceTrack big goal={room.settings.goal} racers={players.map((p) => ({ id: p.id, nickname: p.nickname, avatar: p.avatar, progress: p.progress, finished: p.finished }))} />
+                      </div>
+                    )}
+                    <Leaderboard players={players} total={total} game={room.game} goal={room.settings.goal} onKick={room.status === 'playing' ? setKick : undefined} />
                   </div>
                 ) : (
                   <p className="font-bold opacity-60 py-6 text-center">ยังไม่มีผู้เล่น</p>

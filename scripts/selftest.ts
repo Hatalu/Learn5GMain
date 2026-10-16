@@ -33,6 +33,8 @@ import { crc16, promptPayKind, promptPayPayload, maskPromptPay } from '../src/li
 import { extendUntil, maskedMatch, nameMatch, receiverMatches } from '../src/lib/server/payments';
 import { PLANS, perDay, savePercent } from '../src/lib/plans';
 import { TRIAL_GRACE_SECONDS, TRIAL_SECONDS, signTrialToken, trialPublicJwk, verifyTrialToken } from '../src/lib/server/trial';
+import { cleanModeSettings, modeFit, modeQuiz, scoreCap } from '../src/lib/game-creator/modes';
+import { endlessIndex } from '../src/lib/game-creator/quiz';
 import {
   checkAnswer,
   isTimeout,
@@ -576,6 +578,50 @@ t('พื้นหลังห้อง/ชื่อเล่น/เลขห้
   assert.equal(isRoomCode('123456'), true);
   assert.equal(isRoomCode('12345a'), false);
   assert.equal(isRoomCode(123456), false);
+});
+
+console.log('\nรูปแบบการเล่น');
+const vid = { kind: 'video', url: `${PFX}${UID}/v.mp4`, path: `${UID}/v.mp4`, start: 0, end: 4 };
+const QS = (n: number, videoAt: number[] = []) =>
+  sanitizeQuiz({ questions: Array.from({ length: n }, (_, i) => Q({ id: `qq${i}aa`, media: videoAt.includes(i) ? vid : null })) }, PFX);
+
+t('ข้อจำกัดของแต่ละรูปแบบ: จำนวนข้อขั้นต่ำ + ข้ามข้อที่มีคลิป', () => {
+  assert.equal(modeFit(QS(1), 'quiz').ok, true);
+  assert.equal(modeFit(QS(2), 'cafe').ok, false);
+  assert.equal(modeFit(QS(3), 'cafe').ok, true);
+  assert.equal(modeFit(QS(4), 'tower').ok, false);
+  assert.equal(modeFit(QS(5), 'racing').ok, true);
+  const mixed = QS(6, [0, 1]);
+  assert.equal(modeQuiz(mixed, 'quiz').questions.length, 6); // ควิซใช้คลิปได้
+  assert.equal(modeQuiz(mixed, 'racing').questions.length, 4);
+  const fit = modeFit(mixed, 'racing');
+  assert.equal(fit.ok, false); // เหลือ 4 ข้อ ไม่ถึง 5
+  assert.equal(fit.skippedVideo, 2);
+});
+
+t('คำถามวนซ้ำ: ครบทุกข้อในแต่ละรอบ และไม่ซ้ำติดกันตอนขึ้นรอบใหม่', () => {
+  for (const n of [1, 2, 3, 7]) {
+    for (let cyc = 0; cyc < 4; cyc++) {
+      const round = Array.from({ length: n }, (_, i) => endlessIndex(n, cyc * n + i, 'seedX'));
+      assert.deepEqual(round.slice().sort(), Array.from({ length: n }, (_, i) => i));
+      if (cyc > 0 && n > 1) assert.notEqual(endlessIndex(n, cyc * n, 'seedX'), endlessIndex(n, cyc * n - 1, 'seedX'));
+    }
+  }
+});
+
+t('ตั้งค่าห้อง: เวลา/เส้นชัย ต้องเป็นค่าที่อนุญาต', () => {
+  assert.deepEqual(cleanModeSettings('cafe', { duration: 300 }), { duration: 300, goal: 0 });
+  assert.deepEqual(cleanModeSettings('cafe', { duration: 99999 }), { duration: 300, goal: 0 });
+  assert.deepEqual(cleanModeSettings('racing', { goal: 20 }), { duration: 0, goal: 20 });
+  assert.deepEqual(cleanModeSettings('racing', { goal: -5 }), { duration: 0, goal: 15 });
+  assert.deepEqual(cleanModeSettings('quiz', { duration: 300, goal: 20 }), { duration: 0, goal: 0 });
+});
+
+t('เพดานคะแนนจากเกมในเครื่อง ขึ้นกับจำนวนข้อที่ตอบถูก', () => {
+  assert.equal(scoreCap('cafe', 0), 400);
+  assert.ok(scoreCap('cafe', 10) < scoreCap('cafe', 11));
+  assert.ok(scoreCap('tower', 5) >= 5 * 450);
+  assert.equal(scoreCap('quiz', 3), Number.MAX_SAFE_INTEGER);
 });
 
 console.log(`\n${passed} tests passed`);

@@ -176,6 +176,71 @@ export const gsfx = {
   whoosh() {
     play((c, t) => noise(c, t, 0.35, 0.06, 900));
   },
+  /** ระยิบระยับตอนจบชุดคำถาม */
+  sparkleish() {
+    play((c, t) => [1568, 2093, 2637].forEach((f, i) => tone(c, f, t + i * 0.06, 0.25, { gain: 0.07 })));
+  },
+  coin() {
+    play((c, t) => {
+      tone(c, 988, t, 0.08, { type: 'square', gain: 0.05 });
+      tone(c, 1319, t + 0.07, 0.22, { type: 'square', gain: 0.05 });
+    });
+  },
+  cash() {
+    play((c, t) => {
+      noise(c, t, 0.08, 0.05, 5000);
+      [1319, 1568, 2093].forEach((f, i) => tone(c, f, t + 0.05 + i * 0.05, 0.2, { type: 'triangle', gain: 0.09 }));
+    });
+  },
+  cook() {
+    play((c, t) => noise(c, t, 0.25, 0.035, 2200));
+  },
+  door() {
+    play((c, t) => {
+      tone(c, 1760, t, 0.5, { gain: 0.05 });
+      tone(c, 2217, t + 0.12, 0.5, { gain: 0.04 });
+    });
+  },
+  sad() {
+    play((c, t) => tone(c, 330, t, 0.3, { type: 'triangle', gain: 0.07, slideTo: 247 }));
+  },
+  build() {
+    play((c, t) => {
+      tone(c, 196, t, 0.12, { type: 'square', gain: 0.06 });
+      tone(c, 392, t + 0.1, 0.18, { type: 'triangle', gain: 0.1 });
+      noise(c, t, 0.15, 0.05, 600);
+    });
+  },
+  shoot(kind = 0) {
+    play((c, t) => {
+      if (kind === 2) noise(c, t, 0.18, 0.025, 800);
+      else tone(c, kind === 1 ? 1200 : 900, t, 0.05, { type: 'square', gain: 0.018, slideTo: kind === 1 ? 700 : 500 });
+    });
+  },
+  splat() {
+    play((c, t) => {
+      tone(c, 260, t, 0.12, { type: 'sine', gain: 0.1, slideTo: 90 });
+      noise(c, t, 0.08, 0.03, 1500);
+    });
+  },
+  hurt() {
+    play((c, t) => tone(c, 180, t, 0.25, { type: 'sawtooth', gain: 0.05, slideTo: 90 }));
+  },
+  wave() {
+    play((c, t) => [392, 523, 659].forEach((f, i) => tone(c, f, t + i * 0.09, 0.3, { type: 'square', gain: 0.05 })));
+  },
+  boost() {
+    play((c, t) => {
+      tone(c, 300, t, 0.4, { type: 'sawtooth', gain: 0.05, slideTo: 1400 });
+      noise(c, t + 0.1, 0.3, 0.04, 3000);
+    });
+  },
+  slip() {
+    play((c, t) => tone(c, 900, t, 0.45, { type: 'sine', gain: 0.1, slideTo: 150 }));
+  },
+  step() {
+    play((c, t) => tone(c, 520, t, 0.07, { type: 'triangle', gain: 0.07, slideTo: 780 }));
+  },
 };
 
 /* ------------------------------ BGM ห้องรอ ------------------------------ */

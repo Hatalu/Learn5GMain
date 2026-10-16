@@ -3,7 +3,8 @@ import { createClient } from '@/lib/supabase/server';
 import { isSameOrigin, limit } from '@/lib/server/rate-limit';
 import { mediaPrefix } from '@/lib/game-creator/prefix';
 import { cleanBackground } from '@/lib/game-creator/backgrounds';
-import { playableQuiz, sanitizeQuiz } from '@/lib/game-creator/quiz';
+import { sanitizeQuiz } from '@/lib/game-creator/quiz';
+import { isGameMode, modeById, modeFit, modeQuiz, type GameMode } from '@/lib/game-creator/modes';
 import { AVATAR_COUNT, cleanNickname } from '@/lib/game-creator/templates';
 import { MAX_OPEN_ROOMS, admin, cleanSettings, getMember, hashToken, isUuid, newToken, randomCode, sweepRooms } from '@/lib/server/live';
 
@@ -26,6 +27,7 @@ export async function POST(req: NextRequest) {
   }
   if (!isUuid(body.gameId)) return NextResponse.json({ error: 'ไม่พบเกมนี้' }, { status: 400 });
   const mode = body.mode === 'play' ? 'play' : 'watch';
+  const gameMode: GameMode = isGameMode(body.game) ? body.game : 'quiz';
 
   // อ่านเกมด้วยสิทธิ์ของผู้ใช้เอง (RLS: อ่านได้เฉพาะเกมของตัวเอง)
   const supabase = await createClient();
@@ -33,8 +35,10 @@ export async function POST(req: NextRequest) {
   if (!game) return NextResponse.json({ error: 'ไม่พบเกมนี้ในคลังของคุณ' }, { status: 404 });
 
   const prefix = mediaPrefix();
-  const content = playableQuiz(sanitizeQuiz(game.content, prefix));
-  if (!content.questions.length) return NextResponse.json({ error: 'เกมนี้ยังไม่มีคำถามที่พร้อมเล่น' }, { status: 400 });
+  const raw = sanitizeQuiz(game.content, prefix);
+  const fit = modeFit(raw, gameMode);
+  if (!fit.ok) return NextResponse.json({ error: `ชุดคำถามนี้ใช้กับ ${modeById(gameMode).name} ไม่ได้: ต้องมีอย่างน้อย ${modeById(gameMode).minQuestions} ข้อ` }, { status: 400 });
+  const content = modeQuiz(raw, gameMode);
 
   const db = admin();
   if (Math.random() < 0.15) await sweepRooms(db).catch(() => null);
@@ -57,16 +61,17 @@ export async function POST(req: NextRequest) {
         host_id: me.id,
         title: game.title,
         template: game.template,
+        game: gameMode,
         content,
         mode,
         background: cleanBackground(body.background, prefix),
-        settings: cleanSettings(body.settings),
+        settings: cleanSettings(body.settings, gameMode),
       })
       .select('id, code')
       .single();
     if (data) room = data;
     else if (error && error.code !== '23505') {
-      return NextResponse.json({ error: error.code === '42P01' || error.code === 'PGRST205' ? 'ยังไม่ได้ติดตั้งฐานข้อมูลระบบสร้างเกม (migration 015)' : 'เปิดห้องไม่สำเร็จ ลองใหม่อีกครั้ง' }, { status: 500 });
+      return NextResponse.json({ error: error.code === '42P01' || error.code === 'PGRST205' ? 'ยังไม่ได้ติดตั้งฐานข้อมูลระบบสร้างเกม (migration 015)' : error.code === '42703' || error.code === 'PGRST204' ? 'ยังไม่ได้ติดตั้งฐานข้อมูลรูปแบบการเล่น (migration 017)' : 'เปิดห้องไม่สำเร็จ ลองใหม่อีกครั้ง' }, { status: 500 });
     }
   }
   if (!room) return NextResponse.json({ error: 'เลขห้องเต็มชั่วคราว ลองใหม่อีกครั้ง' }, { status: 503 });

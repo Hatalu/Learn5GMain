@@ -80,12 +80,17 @@ export type RoomBackground =
 export interface RoomSettings {
   shuffleQuestions: boolean;
   shuffleChoices: boolean;
+  /** เวลาเล่น (วินาที) โหมด Café/Tower */
+  duration: number;
+  /** จำนวนก้าวถึงเส้นชัย โหมด Racing */
+  goal: number;
 }
 
 /** คำถามที่ส่งให้ผู้เล่น (ไม่มีเฉลย) */
 export interface PublicQuestion {
   id: string;
   index: number; // ลำดับที่ผู้เล่นเห็น (เริ่ม 0)
+  /** จำนวนข้อทั้งหมด (0 = วนไม่จำกัด ในโหมดเกม) */
   total: number;
   text: Rich;
   media: MediaRef | null;
@@ -117,4 +122,9 @@ export interface PlayerPublic {
   streak: number;
   finished: boolean;
   lastCorrect: boolean | null;
+  /** โหมดเกม */
+  progress: number;
+  power: string | null;
+  finishedAt: string | null;
+  stats: Record<string, number>;
 }

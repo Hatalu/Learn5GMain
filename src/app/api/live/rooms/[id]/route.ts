@@ -10,6 +10,7 @@ import {
   admin,
   broadcast,
   cleanSettings,
+  compareRank,
   getUserId,
   hashToken,
   isUuid,
@@ -41,7 +42,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
 
   const { data } = await db.from('room_players').select(PLAYER_COLS).eq('room_id', room.id).eq('kicked', false).order('joined_at', { ascending: true }).limit(400);
   const rows = (data || []) as PlayerRow[];
-  const players = rows.map(toPublicPlayer).sort((a, b) => b.score - a.score || b.correct - a.correct || b.answered - a.answered);
+  const players = rows.map(toPublicPlayer).sort(compareRank(room.game));
 
   let stats: { i: number; label: string; answered: number; correct: number }[] | null = null;
   if (req.nextUrl.searchParams.get('stats') === '1') {
@@ -63,6 +64,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
       title: room.title,
       status: room.status,
       mode: room.mode,
+      game: room.game,
       background: room.background,
       settings: room.settings,
       round: room.round,
@@ -70,6 +72,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
       createdAt: room.created_at,
       startedAt: room.started_at,
     },
+    serverNow: Date.now(),
     players,
     hostPlayerId: rows.find((p) => p.is_host)?.id ?? null,
     stats,
@@ -112,7 +115,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
       await db.from('room_answers').delete().eq('room_id', room.id);
       await db
         .from('room_players')
-        .update({ score: 0, correct: 0, answered: 0, streak: 0, best_streak: 0, last_correct: null, q_pos: 0, q_started_at: null, finished_at: null })
+        .update({ score: 0, correct: 0, answered: 0, streak: 0, best_streak: 0, last_correct: null, q_pos: 0, q_started_at: null, finished_at: null, progress: 0, power: null, slip_at: null, stats: {} })
         .eq('room_id', room.id);
       await db.from('game_rooms').update({ status: 'lobby', round: room.round + 1, started_at: null, ended_at: null }).eq('id', room.id);
       await broadcast(room.id, 'status', { status: 'lobby' });
@@ -139,7 +142,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     }
     case 'settings': {
       if (room.status !== 'lobby') return NextResponse.json({ error: 'เปลี่ยนได้ก่อนเริ่มเกมเท่านั้น' }, { status: 409 });
-      const settings = cleanSettings(body.settings);
+      const settings = cleanSettings(body.settings, room.game);
       await db.from('game_rooms').update({ settings }).eq('id', room.id);
       return NextResponse.json({ ok: true, settings });
     }

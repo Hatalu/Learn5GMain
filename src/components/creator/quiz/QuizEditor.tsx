@@ -51,7 +51,12 @@ import { ChoiceShape, choiceStyle } from '../ChoiceShape';
 import { VideoTrimModal } from '../VideoTrimModal';
 import { PaperModal } from '../PaperModal';
 import { RoomBackdrop } from '../RoomBackdrop';
-import { QuizRunner } from './QuizRunner';
+import { QuizRunner, type QuizEngine } from './QuizRunner';
+import { CafeGame } from '../games/CafeGame';
+import { TowerGame } from '../games/TowerGame';
+import { RaceGame } from '../games/RaceGame';
+import { ModePicker, ModeSteps } from '../OpenGameModal';
+import { modeById, modeQuiz, type GameMode } from '@/lib/game-creator/modes';
 import { localEngine } from './localEngine';
 import { OpenGameModal } from '../OpenGameModal';
 
@@ -92,7 +97,9 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
   const [uploading, setUploading] = useState<string | null>(null);
   const [mediaErr, setMediaErr] = useState('');
   const [video, setVideo] = useState<{ file: File; probe: VideoProbe; target: Target } | null>(null);
-  const [preview, setPreview] = useState<{ content: QuizContent; key: number } | null>(null);
+  const [preview, setPreview] = useState<{ content: QuizContent; key: number; mode: GameMode; engine: QuizEngine; deadline: number | null } | null>(null);
+  const [pickPreview, setPickPreview] = useState(false);
+  const [pickMode, setPickMode] = useState<GameMode | null>(null);
   const [leave, setLeave] = useState(false);
   const [openRoom, setOpenRoom] = useState(false);
   const [draftOffer, setDraftOffer] = useState<{ title: string; content: QuizContent } | null>(null);
@@ -400,6 +407,20 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
     setAskTitle(false);
   };
 
+  const startPreview = (c: QuizContent, mode: GameMode) => {
+    const m = modeById(mode);
+    const playContent = modeQuiz(c, mode);
+    gsfx.start();
+    setPreview({
+      content: playContent,
+      key: Date.now(),
+      mode,
+      engine: localEngine(playContent, { endless: m.endless }),
+      // ทดลองเล่นแบบสั้น 2 นาที
+      deadline: m.durations ? Date.now() + 120000 : null,
+    });
+  };
+
   const back = () => {
     if (dirty) setLeave(true);
     else router.push('/create?tab=library');
@@ -440,13 +461,13 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div className="l5g-ebar-title">
-          <span className="l5g-ebar-tpl">ควิซตอบไว</span>
+          <span className="l5g-ebar-tpl">ชุดคำถาม</span>
           <input
             className="l5g-title-input"
             value={title}
             maxLength={LIMITS.title}
-            placeholder="ตั้งชื่อเกม…"
-            aria-label="ชื่อเกม"
+            placeholder="ตั้งชื่อชุดคำถาม…"
+            aria-label="ชื่อชุดคำถาม"
             onChange={(e) => {
               setTitle(e.target.value);
               setDirty(true);
@@ -466,7 +487,8 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
               return;
             }
             gsfx.start();
-            setPreview({ content, key: Date.now() });
+            setPickMode(null);
+            setPickPreview(true);
           }}
         >
           <Play className="w-4 h-4" /> <span className="hidden sm:inline">ทดลองเล่น</span>
@@ -791,7 +813,7 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
                 disabled={!playableQuiz({ v: 1, questions: [cur] }).questions.length}
                 onClick={() => {
                   gsfx.start();
-                  setPreview({ content: { v: 1, questions: [cur] }, key: Date.now() });
+                  startPreview({ v: 1, questions: [cur] }, 'quiz');
                 }}
               >
                 <Play className="w-4 h-4" /> ทดลองข้อนี้
@@ -799,7 +821,7 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
             </div>
 
             <div className="l5g-card l5g-qset-card">
-              <h3 className="l5g-qset-title">การมองเห็นเกม</h3>
+              <h3 className="l5g-qset-title">การมองเห็น</h3>
               <div className="l5g-vis" role="radiogroup" aria-label="การมองเห็นเกม">
                 <button type="button" role="radio" aria-checked={isPublic} data-on={isPublic} data-kind="public" onClick={() => (gsfx.tap(), setIsPublic(true), setDirty(true), setSaved(false))}>
                   <Globe className="w-5 h-5" />
@@ -840,8 +862,8 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
       )}
 
       {askTitle && (
-        <PaperModal title="ตั้งชื่อเกม" icon={<Save className="w-5 h-5" />} iconBg="#ffcf3f" onClose={() => setAskTitle(false)} busy={saving}>
-          <p className="font-semibold opacity-80 mb-2">ชื่อนี้จะขึ้นในคลังเกมและหน้าห้องเล่น</p>
+        <PaperModal title="ตั้งชื่อชุดคำถาม" icon={<Save className="w-5 h-5" />} iconBg="#ffcf3f" onClose={() => setAskTitle(false)} busy={saving}>
+          <p className="font-semibold opacity-80 mb-2">ชื่อนี้จะขึ้นในคลังและหน้าห้องเล่น</p>
           <input
             className="l5g-input"
             value={titleDraft}
@@ -866,7 +888,7 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
 
       {saved && !dirty && gameId && (
         <PaperModal title="บันทึกลงคลังแล้ว" icon={<FolderHeart className="w-5 h-5" />} iconBg="#3fd6a8" onClose={() => setSaved(false)}>
-          <p className="font-semibold">&quot;{title}&quot; อยู่ในคลังเกมของคุณแล้ว ({playableCount} ข้อพร้อมเล่น)</p>
+          <p className="font-semibold">&quot;{title}&quot; อยู่ในคลังของคุณแล้ว ({playableCount} ข้อพร้อมเล่น)</p>
           <div className="l5g-math-foot">
             <button type="button" className="l5g-btn l5g-btn-ghost" onClick={() => setSaved(false)}>
               แก้ไขต่อ
@@ -917,16 +939,23 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
         <div className="l5g-preview">
           <RoomBackdrop bg={{ kind: 'preset', id: 'sky' }} />
           <div className="l5g-preview-bar">
-            <span className="l5g-pill">ทดลองเล่น (ไม่บันทึกคะแนน)</span>
+            <span className="l5g-pill">ทดลองเล่น {modeById(preview.mode).name} (ไม่บันทึกคะแนน)</span>
             <span className="flex-1" />
             <button type="button" className="l5g-btn l5g-btn-sm l5g-btn-ghost" onClick={() => setPreview(null)}>
               <X className="w-4 h-4" /> ปิด
             </button>
           </div>
-          <div className="l5g-preview-body">
+          <div className="l5g-preview-body" data-game={preview.mode}>
+            {preview.mode === 'cafe' ? (
+              <CafeGame key={preview.key} engine={preview.engine} deadline={preview.deadline} goal={0} me={{ nickname: 'ทดลอง', avatar: 0 }} preview />
+            ) : preview.mode === 'tower' ? (
+              <TowerGame key={preview.key} engine={preview.engine} deadline={preview.deadline} goal={0} me={{ nickname: 'ทดลอง', avatar: 0 }} preview />
+            ) : preview.mode === 'racing' ? (
+              <RaceGame key={preview.key} engine={preview.engine} deadline={null} goal={10} me={{ nickname: 'ฉัน', avatar: 0 }} preview />
+            ) : (
             <QuizRunner
               key={preview.key}
-              engine={localEngine(preview.content)}
+              engine={preview.engine}
               countdown={preview.content.questions.length > 1}
               onFinished={({ score }) => {
                 setPreview(null);
@@ -935,8 +964,35 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
                 setPreviewDone(score);
               }}
             />
+            )}
           </div>
         </div>
+      )}
+
+      {pickPreview && (
+        <PaperModal title="ทดลองเล่นแบบไหนดี" icon={<Play className="w-5 h-5" />} iconBg="#3fd6a8" onClose={() => setPickPreview(false)} width={860}>
+          <p className="font-semibold opacity-75 -mt-1 mb-3 text-sm">ลองเล่นในเครื่องนี้ ไม่ต้องเปิดห้อง (Café / ป้อมปราการ ทดลอง 2 นาที วิ่งแข่งกับบอท)</p>
+          <ModePicker content={content} value={pickMode} onPick={setPickMode} />
+          {pickMode && <ModeSteps mode={pickMode} />}
+          <div className="l5g-math-foot">
+            <span className="flex-1" />
+            <button type="button" className="l5g-btn l5g-btn-ghost" onClick={() => setPickPreview(false)}>
+              ยกเลิก
+            </button>
+            <button
+              type="button"
+              className="l5g-btn l5g-btn-go"
+              disabled={!pickMode}
+              onClick={() => {
+                if (!pickMode) return;
+                setPickPreview(false);
+                startPreview(content, pickMode);
+              }}
+            >
+              <Play className="w-5 h-5" /> เริ่มทดลองเล่น
+            </button>
+          </div>
+        </PaperModal>
       )}
 
       {previewDone !== null && (

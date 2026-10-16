@@ -273,6 +273,24 @@ export function questionOrder(n: number, shuffle: boolean, seed: string): number
   return shuffle ? shuffled(idx, seeded(hashSeed(seed))) : idx;
 }
 
+/**
+ * โหมดเกม: คำถามวนซ้ำไม่จำกัด สลับลำดับใหม่ทุกรอบ (ไม่ให้ข้อเดิมโผล่ติดกันตอนขึ้นรอบใหม่)
+ * คืนลำดับข้อในชุดคำถาม (index) ของคำตอบลำดับที่ pos
+ */
+export function endlessIndex(n: number, pos: number, seed: string): number {
+  if (n <= 0) return 0;
+  const cycle = Math.floor(pos / n);
+  // ไล่สร้างลำดับทีละรอบ (รอบก่อนหน้าอาจถูกสลับมาแล้ว จึงต้องเทียบกับลำดับที่ใช้จริง)
+  let order: number[] = [];
+  let prevLast = -1;
+  for (let c = Math.max(0, cycle - 50); c <= cycle; c++) {
+    order = questionOrder(n, true, `${seed}:c${c}`);
+    if (n > 1 && order[0] === prevLast) [order[0], order[1]] = [order[1], order[0]];
+    prevLast = order[n - 1];
+  }
+  return order[pos % n];
+}
+
 export function publicQuestion(
   q: QuizQuestion,
   index: number,
