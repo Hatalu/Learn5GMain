@@ -2603,3 +2603,116 @@
     animation: none !important;
   }
 }
+
+/* ------------------------------ Discover / การมองเห็นเกม ------------------------------ */
+.l5g-seg button[data-kind='discover'][data-on='true'] {
+  background: var(--l5g-orange);
+}
+.l5g-sec-sub {
+  padding: 2px 12px;
+  border-radius: 999px;
+  border: 2.5px solid var(--l5g-ink);
+  background: var(--l5g-paper);
+  font-weight: 800;
+  font-size: 0.82rem;
+}
+.l5g-search-wide {
+  display: flex;
+  width: 100%;
+  padding: 10px 16px;
+  border-radius: 18px;
+  box-shadow: 0 4px 0 var(--l5g-ink);
+}
+.l5g-search-wide input {
+  flex: 1;
+  width: auto;
+  font-size: 1.05rem;
+}
+.l5g-search-wide button {
+  font-size: 1.5rem;
+  line-height: 1;
+  font-weight: 800;
+  opacity: 0.5;
+}
+.l5g-owner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 0.88rem;
+  opacity: 0.8;
+  min-width: 0;
+}
+.l5g-owner-dot {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2.5px solid var(--l5g-ink);
+  background: var(--l5g-mint);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+.l5g-gcover-plays {
+  background: #fff;
+}
+.l5g-vis-badge {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 2.5px solid var(--l5g-ink);
+  background: #e7e1f6;
+  font-weight: 800;
+  font-size: 0.78rem;
+  transition: transform 0.18s var(--l5g-jelly);
+}
+.l5g-vis-badge[data-public='true'] {
+  background: #c9f5e5;
+}
+.l5g-vis-badge:hover {
+  transform: scale(1.08) rotate(-2deg);
+}
+.l5g-vis {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 10px;
+}
+.l5g-vis button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 6px;
+  border-radius: 16px;
+  border: 3px solid var(--l5g-ink);
+  background: #fff;
+  box-shadow: 0 3px 0 var(--l5g-ink);
+  transition: transform 0.2s var(--l5g-jelly), background 0.15s;
+}
+.l5g-vis button b {
+  font-family: var(--font-mitr), sans-serif;
+}
+.l5g-vis button span {
+  font-size: 0.72rem;
+  font-weight: 700;
+  opacity: 0.7;
+}
+.l5g-vis button[data-on='true'][data-kind='public'] {
+  background: #c9f5e5;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 0 var(--l5g-ink);
+}
+.l5g-vis button[data-on='true'][data-kind='private'] {
+  background: #e3d4ff;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 0 var(--l5g-ink);
+}

@@ -58,6 +58,9 @@ export interface UserGame {
   question_count: number;
   play_count: number;
   cover_url: string | null;
+  /** เปิดให้สมาชิกคนอื่นค้นหาใน Discover (ค่าเริ่มต้น true) */
+  is_public: boolean;
+  owner_name: string | null;
   created_at: string;
   updated_at: string;
 }

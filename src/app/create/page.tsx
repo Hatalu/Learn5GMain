@@ -3,7 +3,7 @@
 import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Copy, Crown, DoorOpen, FolderHeart, LogIn, MoreVertical, Pencil, Plus, Rocket, Search, Sparkles, Trash2, Wand2 } from 'lucide-react';
+import { Check, Compass, Copy, Crown, DoorOpen, FolderHeart, Globe, Loader2, Lock, LogIn, MoreVertical, Pencil, Play, Plus, Rocket, Search, Sparkles, Trash2, Wand2 } from 'lucide-react';
 import { Navbar } from '@/components/navbar/Navbar';
 import { useAuth } from '@/context/AuthContext';
 import { hasMembership } from '@/lib/membership';
@@ -19,7 +19,9 @@ import { PaperModal } from '@/components/creator/PaperModal';
 import '@/components/creator/creator.css';
 import '@/components/creator/creator-pages.css';
 
-type Tab = 'new' | 'library';
+type Tab = 'new' | 'discover' | 'library';
+const GAME_COLS = 'id, owner_id, owner_name, title, template, question_count, play_count, cover_url, is_public, created_at, updated_at';
+const PAGE = 24;
 interface ActiveRoom {
   id: string;
   game_id: string | null;
@@ -86,7 +88,7 @@ function CreateHub() {
   const member = !!user && hasMembership(profile) && !String(profile?.username || '').startsWith('trial_');
   const router = useRouter();
   const sp = useSearchParams();
-  const [tab, setTab] = useState<Tab>(sp.get('tab') === 'library' ? 'library' : 'new');
+  const [tab, setTab] = useState<Tab>(sp.get('tab') === 'library' ? 'library' : sp.get('tab') === 'discover' ? 'discover' : 'new');
   const [games, setGames] = useState<UserGameSummary[] | null>(null);
   const [rooms, setRooms] = useState<ActiveRoom[]>([]);
   const [dbMissing, setDbMissing] = useState(false);
@@ -97,13 +99,21 @@ function CreateHub() {
   const [renameVal, setRenameVal] = useState('');
   const [del, setDel] = useState<UserGameSummary | null>(null);
   const [busy, setBusy] = useState(false);
+  const [dGames, setDGames] = useState<UserGameSummary[] | null>(null);
+  const [dQ, setDQ] = useState('');
+  const [dTerm, setDTerm] = useState('');
+  const [dSort, setDSort] = useState<'new' | 'popular'>('new');
+  const [dMore, setDMore] = useState(false);
+  const [dLoading, setDLoading] = useState(false);
+  const [copied, setCopied] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    if (!member) return;
+    if (!member || !user) return;
     const supabase = createClient();
     const { data, error } = await supabase
       .from('user_games')
-      .select('id, owner_id, title, template, question_count, play_count, cover_url, created_at, updated_at')
+      .select(GAME_COLS)
+      .eq('owner_id', user.id)
       .order('updated_at', { ascending: false });
     if (error) {
       if (error.code === '42P01' || error.code === 'PGRST205') setDbMissing(true);
@@ -113,11 +123,80 @@ function CreateHub() {
     setGames((data || []) as UserGameSummary[]);
     const { data: r } = await supabase.from('game_rooms').select('id, game_id, code, status').neq('status', 'closed').order('created_at', { ascending: false });
     setRooms((r || []) as ActiveRoom[]);
-  }, [member]);
+  }, [member, user]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  /* ---------------- Discover ---------------- */
+  useEffect(() => {
+    const t = setTimeout(() => setDTerm(dQ), 300);
+    return () => clearTimeout(t);
+  }, [dQ]);
+
+  const loadDiscover = useCallback(
+    async (from: number) => {
+      if (!member) return;
+      setDLoading(true);
+      let query = createClient()
+        .from('user_games')
+        .select(GAME_COLS)
+        .eq('is_public', true)
+        .order(dSort === 'popular' ? 'play_count' : 'updated_at', { ascending: false })
+        .range(from, from + PAGE - 1);
+      const term = dTerm.replace(/[,()%*\\"]/g, ' ').replace(/\s+/g, ' ').trim();
+      if (term) query = query.or(`title.ilike."%${term}%",owner_name.ilike."%${term}%"`);
+      const { data, error } = await query;
+      setDLoading(false);
+      if (error) {
+        if (error.code === '42P01' || error.code === 'PGRST205' || error.code === '42703') setDbMissing(true);
+        setDGames((old) => (from ? old : []));
+        return;
+      }
+      const rows = (data || []) as UserGameSummary[];
+      setDMore(rows.length === PAGE);
+      setDGames((old) => (from && old ? [...old, ...rows] : rows));
+    },
+    [member, dTerm, dSort]
+  );
+
+  useEffect(() => {
+    if (tab === 'discover') loadDiscover(0);
+  }, [tab, loadDiscover]);
+
+  const copyToLibrary = async (g: UserGameSummary) => {
+    if (!user || busy) return;
+    setBusy(true);
+    const supabase = createClient();
+    const { data: full } = await supabase.from('user_games').select('content').eq('id', g.id).maybeSingle();
+    if (full) {
+      const { error } = await supabase.from('user_games').insert({
+        owner_id: user.id,
+        title: cleanTitle(`${g.title} (สำเนา)`),
+        template: g.template,
+        content: full.content,
+        question_count: g.question_count,
+        cover_url: g.cover_url,
+        is_public: false, // สำเนาเป็น Private ก่อน ครูแก้เสร็จแล้วค่อยเปิด Public เอง
+      });
+      if (!error) {
+        gsfx.join();
+        setCopied(g.id);
+        setTimeout(() => setCopied(null), 2800);
+        load();
+      }
+    }
+    setBusy(false);
+  };
+
+  const togglePublic = async (g: UserGameSummary) => {
+    gsfx.tap();
+    const next = !g.is_public;
+    setGames((old) => (old ? old.map((x) => (x.id === g.id ? { ...x, is_public: next } : x)) : old));
+    const { error } = await createClient().from('user_games').update({ is_public: next }).eq('id', g.id);
+    if (error) load();
+  };
 
   useEffect(() => {
     const close = () => setMenu(null);
@@ -131,8 +210,8 @@ function CreateHub() {
     gsfx.tap();
     setTab(t);
     const u = new URL(window.location.href);
-    if (t === 'library') u.searchParams.set('tab', 'library');
-    else u.searchParams.delete('tab');
+    if (t === 'new') u.searchParams.delete('tab');
+    else u.searchParams.set('tab', t);
     window.history.replaceState(null, '', u.toString());
   };
 
@@ -150,6 +229,7 @@ function CreateHub() {
         content: full.content,
         question_count: g.question_count,
         cover_url: g.cover_url,
+        is_public: g.is_public,
       });
       if (!error) gsfx.join();
     }
@@ -172,12 +252,12 @@ function CreateHub() {
     if (!del) return;
     setBusy(true);
     const supabase = createClient();
-    const { data: all } = await supabase.from('user_games').select('id, content');
+    const { data: all } = await supabase.from('user_games').select('id, content').eq('owner_id', user?.id || '');
     const prefix = mediaPrefix();
     const mine = (all || []).find((x) => x.id === del.id);
     const { error } = await supabase.from('user_games').delete().eq('id', del.id);
-    if (!error && mine) {
-      // ลบไฟล์ที่ไม่มีเกมอื่นใช้แล้ว (สำเนาเกมใช้ไฟล์ร่วมกัน)
+    if (!error && mine && !del.is_public) {
+      // ลบไฟล์ที่ไม่มีเกมอื่นใช้แล้ว (เกม Public ไม่ลบไฟล์ เพราะคนอื่นอาจทำสำเนาไปใช้อยู่)
       const keep = new Set((all || []).filter((x) => x.id !== del.id).flatMap((x) => mediaPaths(sanitizeQuiz(x.content, prefix))));
       await removeMedia(mediaPaths(sanitizeQuiz(mine.content, prefix)).filter((p) => !keep.has(p)));
     }
@@ -246,6 +326,9 @@ function CreateHub() {
                 <button type="button" role="tab" aria-selected={tab === 'new'} data-on={tab === 'new'} onClick={() => switchTab('new')}>
                   <Sparkles className="w-5 h-5" /> สร้างเกมใหม่
                 </button>
+                <button type="button" role="tab" aria-selected={tab === 'discover'} data-on={tab === 'discover'} data-kind="discover" onClick={() => switchTab('discover')}>
+                  <Compass className="w-5 h-5" /> Discover
+                </button>
                 <button type="button" role="tab" aria-selected={tab === 'library'} data-on={tab === 'library'} onClick={() => switchTab('library')}>
                   <FolderHeart className="w-5 h-5" /> คลังเกมของฉัน
                   {games && games.length > 0 && <span className="l5g-seg-count">{games.length}</span>}
@@ -255,7 +338,7 @@ function CreateHub() {
 
             {dbMissing && (
               <div className="max-w-3xl mx-auto px-4 mt-4">
-                <div className="l5g-card l5g-card-pad text-center font-bold">ระบบสร้างเกมยังไม่พร้อมใช้งาน (ผู้ดูแลต้องติดตั้งฐานข้อมูล migration 015)</div>
+                <div className="l5g-card l5g-card-pad text-center font-bold">ระบบสร้างเกมยังไม่พร้อมใช้งาน (ผู้ดูแลต้องติดตั้งฐานข้อมูล migration 015 และ 016)</div>
               </div>
             )}
 
@@ -305,6 +388,102 @@ function CreateHub() {
                   ))}
                 </div>
               </section>
+            ) : tab === 'discover' ? (
+              <section className="max-w-6xl mx-auto px-4 pt-6 pb-10">
+                <div className="flex flex-wrap items-center gap-3">
+                  <h2 className="l5g-sec-title">Discover</h2>
+                  <span className="l5g-sec-sub">เกมที่คุณครูเปิด Public</span>
+                  <span className="flex-1" />
+                  <div className="l5g-chips">
+                    <button type="button" className="l5g-chipbtn" data-on={dSort === 'new'} onClick={() => (gsfx.tap(), setDSort('new'))}>
+                      ใหม่ล่าสุด
+                    </button>
+                    <button type="button" className="l5g-chipbtn" data-on={dSort === 'popular'} onClick={() => (gsfx.tap(), setDSort('popular'))}>
+                      ยอดนิยม
+                    </button>
+                  </div>
+                </div>
+                <label className="l5g-search l5g-search-wide mt-4">
+                  <Search className="w-5 h-5" />
+                  <input value={dQ} onChange={(e) => setDQ(e.target.value)} placeholder="ค้นหาชื่อเกม หรือชื่อคุณครู" aria-label="ค้นหาเกมใน Discover" />
+                  {dQ && (
+                    <button type="button" onClick={() => setDQ('')} aria-label="ล้างคำค้นหา">
+                      &times;
+                    </button>
+                  )}
+                </label>
+
+                {dGames === null ? (
+                  <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 mt-5">
+                    {[0, 1, 2].map((i) => (
+                      <div key={i} className="l5g-gcard l5g-skel" />
+                    ))}
+                  </div>
+                ) : dGames.length === 0 ? (
+                  <div className="l5g-card l5g-empty mt-5">
+                    <div className="l5g-empty-art" aria-hidden="true">
+                      {[0, 1, 2, 3].map((i) => (
+                        <span key={i} style={{ background: choiceStyle(i).color, animationDelay: `${i * 0.2}s` }}>
+                          <ChoiceShape i={i} size={22} />
+                        </span>
+                      ))}
+                    </div>
+                    <h3 className="font-display text-2xl">{dTerm ? 'ไม่พบเกมที่ค้นหา' : 'ยังไม่มีเกม Public'}</h3>
+                    <p className="font-semibold opacity-75">{dTerm ? 'ลองคำอื่น หรือชื่อคุณครูที่สร้างเกม' : 'สร้างเกมแล้วตั้งเป็น Public เกมจะมาโชว์ที่นี่'}</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 mt-5">
+                      {dGames.map((g, i) => {
+                        const mine = g.owner_id === user?.id;
+                        return (
+                          <article key={g.id} className="l5g-gcard" style={{ animationDelay: `${Math.min(i, 8) * 50}ms` }}>
+                            <div className="l5g-gcover">
+                              <GameCover game={g} />
+                              <span className="l5g-gcover-count">{g.question_count} ข้อ</span>
+                              {g.play_count > 0 && (
+                                <span className="l5g-gcover-live l5g-gcover-plays">
+                                  <Play className="w-3 h-3" /> {g.play_count}
+                                </span>
+                              )}
+                            </div>
+                            <div className="p-4 flex flex-col gap-1 flex-1">
+                              <h3 className="font-display text-lg leading-snug break-words">{g.title}</h3>
+                              <p className="l5g-owner">
+                                <span className="l5g-owner-dot">{(g.owner_name || '?').slice(0, 1).toUpperCase()}</span>
+                                <span className="truncate">{mine ? 'เกมของฉัน' : g.owner_name || 'คุณครู'}</span>
+                              </p>
+                              <div className="flex-1" />
+                              <div className="flex gap-2 mt-3">
+                                <button type="button" className="l5g-btn l5g-btn-go flex-1" disabled={!g.question_count} onClick={() => (gsfx.pick(), setOpenGame(g))}>
+                                  <Rocket className="w-5 h-5" /> เปิดใช้งาน
+                                </button>
+                                {mine ? (
+                                  <Link href={`/create/edit?id=${g.id}`} className="l5g-btn l5g-btn-ghost" aria-label="แก้ไขเกม">
+                                    <Pencil className="w-5 h-5" />
+                                  </Link>
+                                ) : (
+                                  <button type="button" className="l5g-btn l5g-btn-ghost" disabled={busy || copied === g.id} onClick={() => copyToLibrary(g)} title="ทำสำเนาไปแก้ไขในคลังของฉัน">
+                                    {copied === g.id ? <Check className="w-5 h-5" strokeWidth={4} /> : <Copy className="w-5 h-5" />}
+                                    <span className="hidden min-[400px]:inline">{copied === g.id ? 'ได้แล้ว' : 'ทำสำเนา'}</span>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+                    {dMore && (
+                      <div className="flex justify-center mt-6">
+                        <button type="button" className="l5g-btn l5g-btn-violet" disabled={dLoading} onClick={() => loadDiscover(dGames.length)}>
+                          {dLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" strokeWidth={3} />} ดูเพิ่ม
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </section>
             ) : (
               <section className="max-w-6xl mx-auto px-4 pt-6 pb-10">
                 <div className="flex flex-wrap items-center gap-3">
@@ -351,6 +530,10 @@ function CreateHub() {
                           <div className="l5g-gcover">
                             <GameCover game={g} />
                             <span className="l5g-gcover-count">{g.question_count} ข้อ</span>
+                            <button type="button" className="l5g-vis-badge" data-public={g.is_public} onClick={() => togglePublic(g)} title={g.is_public ? 'Public: แตะเพื่อเปลี่ยนเป็น Private' : 'Private: แตะเพื่อเปลี่ยนเป็น Public'}>
+                              {g.is_public ? <Globe className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+                              {g.is_public ? 'Public' : 'Private'}
+                            </button>
                             {live && (
                               <span className="l5g-gcover-live">
                                 <i /> ห้อง {live.code}

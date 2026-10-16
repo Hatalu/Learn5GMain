@@ -12,6 +12,8 @@ import {
   CheckCircle2,
   Clapperboard,
   Copy,
+  Globe,
+  Lock,
   FolderHeart,
   GripVertical,
   ImagePlus,
@@ -76,6 +78,7 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
   const router = useRouter();
   const [gameId, setGameId] = useState<string | null>(initialId);
   const [title, setTitle] = useState('');
+  const [isPublic, setIsPublic] = useState(true);
   const [content, setContent] = useState<QuizContent>(() => emptyQuiz());
   const [sel, setSel] = useState(0);
   const [loading, setLoading] = useState(!!initialId);
@@ -120,7 +123,7 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
       return;
     }
     (async () => {
-      const { data, error } = await createClient().from('user_games').select('id, title, content, updated_at').eq('id', initialId).maybeSingle();
+      const { data, error } = await createClient().from('user_games').select('id, title, content, updated_at, is_public').eq('id', initialId).maybeSingle();
       if (!alive) return;
       if (error || !data) {
         setLoadErr('ไม่พบเกมนี้ในคลังของคุณ');
@@ -128,6 +131,7 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
         return;
       }
       setTitle(data.title);
+      setIsPublic(data.is_public !== false);
       const c = sanitizeQuiz(data.content, prefix);
       setContent(c.questions.length ? c : emptyQuiz());
       const d = readDraft();
@@ -350,6 +354,7 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
       content: clean,
       question_count: playableQuiz(clean).questions.length,
       cover_url: quizCover(clean),
+      is_public: isPublic,
     };
     const supabase = createClient();
     let id = gameId;
@@ -791,6 +796,22 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
               >
                 <Play className="w-4 h-4" /> ทดลองข้อนี้
               </button>
+            </div>
+
+            <div className="l5g-card l5g-qset-card">
+              <h3 className="l5g-qset-title">การมองเห็นเกม</h3>
+              <div className="l5g-vis" role="radiogroup" aria-label="การมองเห็นเกม">
+                <button type="button" role="radio" aria-checked={isPublic} data-on={isPublic} data-kind="public" onClick={() => (gsfx.tap(), setIsPublic(true), setDirty(true), setSaved(false))}>
+                  <Globe className="w-5 h-5" />
+                  <b>Public</b>
+                  <span>แสดงใน Discover</span>
+                </button>
+                <button type="button" role="radio" aria-checked={!isPublic} data-on={!isPublic} data-kind="private" onClick={() => (gsfx.tap(), setIsPublic(false), setDirty(true), setSaved(false))}>
+                  <Lock className="w-5 h-5" />
+                  <b>Private</b>
+                  <span>เห็นเฉพาะฉัน</span>
+                </button>
+              </div>
             </div>
 
             <div className="l5g-card l5g-qset-card l5g-summary">
