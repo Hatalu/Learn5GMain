@@ -8,6 +8,7 @@ import { MediaView } from '../MediaView';
 import { ChoiceShape, choiceStyle } from '../ChoiceShape';
 import { gsfx } from '@/lib/game-creator/gsound';
 import { richLength } from '@/lib/game-creator/quiz';
+import { MineTag, choiceState } from '../games/QuestionPad';
 
 export type AnswerOutcome = AnswerResult & { rank?: number; players?: number; finished: boolean };
 
@@ -84,10 +85,12 @@ export function QuizRunner({
   picksRef.current = picks;
 
   const load = useCallback(async () => {
-    setPhase('loading');
     setErr('');
+    // ข้อถัดไปมักมาพร้อมผลตอบแล้ว ขึ้นวงหมุนเฉพาะตอนที่ต้องรอจริง
+    const slow = setTimeout(() => setPhase('loading'), 220);
     try {
       const nq = await engine.next();
+      clearTimeout(slow);
       if (!nq) {
         onFinished({ score });
         return;
@@ -104,6 +107,7 @@ export function QuizRunner({
       setPhase('question');
       gsfx.whoosh();
     } catch (e) {
+      clearTimeout(slow);
       setErr(e instanceof Error ? e.message : 'โหลดคำถามไม่สำเร็จ');
       setPhase('error');
     }
@@ -136,6 +140,7 @@ export function QuizRunner({
       const cur = qRef.current;
       if (!cur || busy.current) return;
       busy.current = true;
+      setPicks(chosen);
       setPhase('sending');
       try {
         const r = await engine.answer(cur, chosen);
@@ -191,7 +196,6 @@ export function QuizRunner({
     if (phase !== 'question' || !q) return;
     if (!q.multi) {
       gsfx.pick();
-      setPicks([id]);
       submit([id]);
       return;
     }
@@ -293,10 +297,10 @@ export function QuizRunner({
           const st = choiceStyle(i);
           const picked = picks.includes(c.id);
           const isRight = !!showResult && res!.correctIds.includes(c.id);
-          const state = showResult ? (isRight ? 'right' : picked ? 'wrongpick' : 'dim') : picked ? 'picked' : 'idle';
+          const state = choiceState({ show: !!showResult, right: isRight, picked, sending: phase === 'sending' });
           return (
             <button
-              key={c.id}
+              key={`${q.index}-${c.id}`}
               type="button"
               className="l5g-choice"
               data-state={state}
@@ -305,6 +309,7 @@ export function QuizRunner({
               disabled={phase !== 'question'}
               aria-pressed={picked}
             >
+              <MineTag state={state} />
               <span className="l5g-choice-shape">
                 <ChoiceShape i={i} size={26} />
               </span>
@@ -315,6 +320,7 @@ export function QuizRunner({
               )}
               {c.text.length > 0 && <MathText value={c.text} className="l5g-choice-text" />}
               {q.multi && !showResult && <span className="l5g-choice-check">{picked && <Check className="w-4 h-4" strokeWidth={4} />}</span>}
+              {state === 'sent' && <Loader2 className="l5g-choice-wait w-5 h-5 animate-spin" />}
               {showResult && isRight && (
                 <span className="l5g-choice-mark l5g-mark-ok">
                   <Check className="w-5 h-5" strokeWidth={4} />
@@ -335,12 +341,6 @@ export function QuizRunner({
           <button type="button" className="l5g-btn l5g-btn-go l5g-btn-xl" disabled={!picks.length} onClick={() => submit(picks)}>
             <Send className="w-5 h-5" /> ส่งคำตอบ
           </button>
-        </div>
-      )}
-
-      {phase === 'sending' && (
-        <div className="l5g-run-sending">
-          <Loader2 className="w-5 h-5 animate-spin" /> กำลังส่งคำตอบ
         </div>
       )}
 

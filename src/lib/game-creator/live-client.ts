@@ -42,7 +42,7 @@ export interface PlayerStateRes {
 }
 
 /** ผลการตอบ (รวมข้อมูลโหมดเกม) */
-export type LiveOutcome = AnswerOutcome & { progress?: number; power?: string | null; gotPower?: string | null; rivals?: Rival[] };
+export type LiveOutcome = AnswerOutcome & { progress?: number; power?: string | null; gotPower?: string | null; rivals?: Rival[]; next?: PublicQuestion | null };
 
 export class LiveError extends Error {
   constructor(
@@ -86,8 +86,15 @@ export const playerApi = {
 
 /** ตัวเล่นที่คุยกับเซิร์ฟเวอร์ (ตรวจคำตอบและจับเวลาที่เซิร์ฟเวอร์) */
 export function liveEngine(c: C, onState?: (s: PlayerStateRes) => void, onOutcome?: (o: LiveOutcome) => void): QuizEngine {
+  // ข้อถัดไปที่เซิร์ฟเวอร์ส่งมาพร้อมผลตอบ (ไม่ต้องขอใหม่)
+  let queued: PublicQuestion | null = null;
   return {
     async next() {
+      if (queued) {
+        const q = queued;
+        queued = null;
+        return q;
+      }
       const s = await playerApi.state(c);
       onState?.(s);
       if (s.room.status !== 'playing') return null;
@@ -96,7 +103,9 @@ export function liveEngine(c: C, onState?: (s: PlayerStateRes) => void, onOutcom
     async answer(q, picks) {
       const r = await playerApi.answer(c, q.index, picks);
       if (r.state) onState?.(r.state);
+      queued = null;
       if (r.stale || !r.result) return null;
+      queued = r.result.next || null;
       onOutcome?.(r.result);
       return r.result;
     },

@@ -149,7 +149,7 @@ function CreateHub() {
         content: full.content,
         question_count: g.question_count,
         cover_url: g.cover_url,
-        is_public: false, // สำเนาเป็น Private ก่อน ครูแก้เสร็จแล้วค่อยเปิด Public เอง
+        is_public: false, // สำเนาเป็น Private ก่อน เจ้าของแก้เสร็จแล้วค่อยเปิด Public เอง
       });
       if (!error) {
         gsfx.join();
@@ -382,7 +382,7 @@ function CreateHub() {
               <section className="max-w-6xl mx-auto px-4 pt-6 pb-10">
                 <div className="flex flex-wrap items-center gap-3">
                   <h2 className="l5g-sec-title">Discover</h2>
-                  <span className="l5g-sec-sub">ชุดคำถามที่คุณครูเปิด Public</span>
+                  <span className="l5g-sec-sub">ชุดคำถามที่สมาชิกเปิด Public</span>
                   <span className="flex-1" />
                   {isDev && (
                     <button type="button" className="l5g-chipbtn l5g-devchip" data-on={devAll} onClick={() => (gsfx.tap(), setDevAll(!devAll))} title="Dev: แสดงชุดคำถามทั้งหมดรวม Private">
@@ -400,7 +400,7 @@ function CreateHub() {
                 </div>
                 <label className="l5g-search l5g-search-wide mt-4">
                   <Search className="w-5 h-5" />
-                  <input value={dQ} onChange={(e) => setDQ(e.target.value)} placeholder="ค้นหาชื่อชุดคำถาม หรือชื่อคุณครู" aria-label="ค้นหาใน Discover" />
+                  <input value={dQ} onChange={(e) => setDQ(e.target.value)} placeholder="ค้นหาชื่อชุดคำถาม หรือชื่อผู้สร้าง" aria-label="ค้นหาใน Discover" />
                   {dQ && (
                     <button type="button" onClick={() => setDQ('')} aria-label="ล้างคำค้นหา">
                       &times;
@@ -424,7 +424,7 @@ function CreateHub() {
                       ))}
                     </div>
                     <h3 className="font-display text-2xl">{dTerm ? 'ไม่พบชุดคำถามที่ค้นหา' : 'ยังไม่มีชุดคำถาม Public'}</h3>
-                    <p className="font-semibold opacity-75">{dTerm ? 'ลองคำอื่น หรือชื่อคุณครูที่สร้าง' : 'สร้างชุดคำถามแล้วตั้งเป็น Public จะมาโชว์ที่นี่'}</p>
+                    <p className="font-semibold opacity-75">{dTerm ? 'ลองคำอื่น หรือชื่อผู้สร้าง' : 'สร้างชุดคำถามแล้วตั้งเป็น Public จะมาโชว์ที่นี่'}</p>
                   </div>
                 ) : (
                   <>
@@ -446,7 +446,7 @@ function CreateHub() {
                               <h3 className="font-display text-lg leading-snug break-words">{g.title}</h3>
                               <p className="l5g-owner">
                                 <span className="l5g-owner-dot">{(g.owner_name || '?').slice(0, 1).toUpperCase()}</span>
-                                <span className="truncate">{mine ? 'ชุดคำถามของฉัน' : g.owner_name || 'คุณครู'}</span>
+                                <span className="truncate">{mine ? 'ชุดคำถามของฉัน' : g.owner_name || 'สมาชิก'}</span>
                                 {!g.is_public && <span className="l5g-privtag">Private</span>}
                               </p>
                               <div className="flex-1" />

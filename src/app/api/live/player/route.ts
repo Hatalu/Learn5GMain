@@ -7,12 +7,12 @@ import {
   type PlayerRow,
   type RoomRow,
   admin,
-  authPlayer,
+  authPlayerRoom,
   broadcast,
   cleanStats,
   endRoom,
   isTimeUp,
-  loadRoom,
+  nextQuestion,
   playerState,
   questionAt,
   rankOf,
@@ -23,6 +23,8 @@ export const dynamic = 'force-dynamic';
 
 /** Racing: ถูกติดกันกี่ข้อถึงได้ไอเท็ม */
 const POWER_EVERY = 3;
+/** โหมดควิซ: เวลาที่หน้าจอโชว์ผลถูก/ผิด ก่อนข้อถัดไปเริ่มจับเวลา (ต้องตรงกับ QuizRunner) */
+const QUIZ_FEEDBACK_MS = { ok: 2600, no: 3500 };
 
 async function raceStep(db: SupabaseClient, playerId: string, delta: number, goal: number): Promise<number | null> {
   const { data, error } = await db.rpc('room_race_step', { p_player: playerId, p_delta: delta, p_goal: goal });
@@ -55,12 +57,11 @@ export async function POST(req: NextRequest) {
     /* ว่าง */
   }
   const db = admin();
-  const p = await authPlayer(db, body.playerId, body.token);
-  if (!p) return NextResponse.json({ error: 'ไม่พบผู้เล่น', gone: true }, { status: 401 });
-  if (!rateLimit(`player:${p.id}`, 150, 60 * 1000)) return NextResponse.json({ error: 'ช้าลงหน่อยนะ' }, { status: 429 });
+  const auth = await authPlayerRoom(db, body.playerId, body.token);
+  if (!auth) return NextResponse.json({ error: 'ไม่พบผู้เล่น', gone: true }, { status: 401 });
+  const { p, room } = auth;
+  if (!rateLimit(`player:${p.id}`, 200, 60 * 1000)) return NextResponse.json({ error: 'ช้าลงหน่อยนะ' }, { status: 429 });
   if (p.kicked) return NextResponse.json({ error: 'คุณถูกเชิญออกจากห้อง', kicked: true }, { status: 403 });
-
-  const room = await loadRoom(db, p.room_id);
   if (!room) return NextResponse.json({ error: 'ไม่พบห้องนี้', gone: true }, { status: 404 });
 
   const op = String(body.op || 'state');
@@ -98,7 +99,7 @@ export async function POST(req: NextRequest) {
     const goal = room.settings.goal || 15;
     if (power === 'boost') {
       const progress = await raceStep(db, p.id, 2, goal);
-      await broadcast(room.id, 'race', {});
+      await broadcast(room.id, 'race', { id: p.id, progress, finished: progress !== null && progress >= goal });
       if (progress !== null && progress >= goal) await maybeFinishRace(db, room);
       return NextResponse.json({ ok: true, power, progress });
     }
@@ -142,20 +143,15 @@ export async function POST(req: NextRequest) {
     const correct = !timeout && checkAnswer(q, picks);
     const points = room.game === 'quiz' ? scoreFor(q, correct, elapsed, p.streak) : 0;
 
-    const { error: insErr } = await db
-      .from('room_answers')
-      .insert({ room_id: room.id, player_id: p.id, q_index: index, seq: p.q_pos, picks, correct, points, ms: Math.min(elapsed, 2147483647) });
-    if (insErr) {
-      // ตอบข้อนี้ไปแล้ว (กดซ้ำ/เน็ตส่งซ้ำ)
-      const { data: fresh } = await db.from('room_players').select(PLAYER_COLS).eq('id', p.id).maybeSingle();
-      return NextResponse.json({ stale: true, state: await playerState(db, room, (fresh as PlayerRow) || p) });
-    }
-
     const total = room.content.questions.length;
     const streak = correct ? p.streak + 1 : 0;
     const next = p.q_pos + 1;
-    const now = new Date().toISOString();
+    const nowMs = Date.now();
+    const now = new Date(nowMs).toISOString();
     const quizDone = room.game === 'quiz' && next >= total;
+    // ข้อถัดไปเริ่มจับเวลาทันที แล้วส่งไปพร้อมผลตอบ (ไม่ต้องขอใหม่ = ไม่มีหน้าโหลดคั่น)
+    // โหมดควิซเริ่มนับหลังหน้าจอโชว์ผลเสร็จ
+    const nextStart = room.game === 'quiz' ? new Date(nowMs + (correct ? QUIZ_FEEDBACK_MS.ok : QUIZ_FEEDBACK_MS.no)).toISOString() : now;
     const patch: Record<string, unknown> = {
       score: p.score + points,
       correct: p.correct + (correct ? 1 : 0),
@@ -164,7 +160,7 @@ export async function POST(req: NextRequest) {
       best_streak: Math.max(p.best_streak, streak),
       last_correct: correct,
       q_pos: next,
-      q_started_at: null,
+      q_started_at: quizDone ? null : nextStart,
       last_seen_at: now,
     };
     if (room.game === 'quiz') patch.finished_at = quizDone ? now : null;
@@ -173,26 +169,52 @@ export async function POST(req: NextRequest) {
       gotPower = Math.random() < 0.5 ? 'boost' : 'banana';
       patch.power = gotPower;
     }
+    // อัปเดตแบบมีเงื่อนไข q_pos = กันตอบซ้ำ/กดรัว (ใครมาทีหลังได้ stale)
     const { data: upd } = await db.from('room_players').update(patch).eq('id', p.id).eq('q_pos', p.q_pos).select(PLAYER_COLS).maybeSingle();
-    let me = (upd as PlayerRow) || p;
+    if (!upd) {
+      const { data: fresh } = await db.from('room_players').select(PLAYER_COLS).eq('id', p.id).maybeSingle();
+      return NextResponse.json({ stale: true, state: await playerState(db, room, (fresh as PlayerRow) || p) });
+    }
+    let me = upd as PlayerRow;
+    const saveAnswer = db
+      .from('room_answers')
+      .insert({ room_id: room.id, player_id: p.id, q_index: index, seq: p.q_pos, picks, correct, points, ms: Math.min(elapsed, 2147483647) })
+      .then(
+        () => null,
+        () => null
+      );
 
     let progress = me.progress || 0;
     let finished = quizDone;
+    let rank: number | undefined;
+    let players: number | undefined;
+    let rivals: Awaited<ReturnType<typeof rankOf>>['rivals'] | undefined;
     if (room.game === 'racing') {
+      const goal = room.settings.goal || 15;
       if (correct) {
-        const goal = room.settings.goal || 15;
         const np = await raceStep(db, p.id, 1, goal);
         if (np !== null) progress = np;
         finished = progress >= goal;
-        // ใช้ progress เป็นคะแนนบนกระดาน
-        await db.from('room_players').update({ score: progress }).eq('id', p.id);
         me = { ...me, progress, score: progress, finished_at: finished ? me.finished_at || now : me.finished_at };
-        if (finished) await maybeFinishRace(db, room);
       }
-      await broadcast(room.id, 'race', {});
-    }
+      const [, , r] = await Promise.all([
+        saveAnswer,
+        correct
+          ? Promise.all([
+              db.from('room_players').update({ score: progress }).eq('id', p.id), // ใช้ระยะทางเป็นคะแนนบนกระดาน
+              broadcast(room.id, 'race', { id: p.id, progress, finished }),
+            ])
+          : null,
+        rankOf(db, room, me),
+      ]);
+      ({ rank, players, rivals } = r);
+      if (finished) await maybeFinishRace(db, room);
+    } else if (room.game === 'quiz') {
+      const [, r] = await Promise.all([saveAnswer, rankOf(db, room, me)]);
+      ({ rank, players } = r);
+    } else await saveAnswer; // Café / Tower ไม่ได้ใช้อันดับระหว่างเล่น
 
-    const { rank, players, rivals } = await rankOf(db, room, me);
+    const nq = quizDone || finished ? null : nextQuestion(room, me, next, 0);
     return NextResponse.json({
       result: {
         correct,
@@ -208,6 +230,7 @@ export async function POST(req: NextRequest) {
         power: gotPower || me.power,
         gotPower,
         rivals,
+        next: nq,
       },
     });
   }

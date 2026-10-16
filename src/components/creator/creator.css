@@ -888,30 +888,84 @@
   text-align: center;
   padding-top: 14px;
 }
-.l5g-choice:not(:disabled):hover {
+.l5g-choice:not(:disabled):not([data-state='picked']):hover {
   transform: translateY(-3px) scale(1.015, 0.985);
   box-shadow: 0 9px 0 var(--l5g-ink), inset 0 -6px 0 var(--cd);
 }
-.l5g-choice:not(:disabled):active {
+.l5g-choice:not(:disabled):not([data-state='picked']):active {
   transform: translateY(5px) scale(0.97, 1.03);
   box-shadow: 0 1px 0 var(--l5g-ink), inset 0 -3px 0 var(--cd);
 }
-.l5g-choice[data-state='picked'] {
-  transform: translateY(3px);
-  box-shadow: 0 2px 0 var(--l5g-ink), inset 0 0 0 4px #fff, inset 0 -6px 0 var(--cd);
+/* ปุ่มที่เลือก: ยกขึ้น + กรอบขาวหนา + ป้าย "คำตอบของฉัน" ปุ่มอื่นจางลง (เห็นชัดว่ากดข้อไหน) */
+.l5g-choice[data-state='picked'],
+.l5g-choice[data-state='sent'] {
+  transform: translateY(-3px) scale(1.035);
+  box-shadow: 0 0 0 4px #fff, 0 0 0 7px var(--l5g-ink), 0 10px 0 4px var(--l5g-ink), inset 0 -6px 0 var(--cd);
+  z-index: 2;
+}
+.l5g-choice[data-state='sent'] {
+  animation: l5gSent 0.32s var(--l5g-jelly) both;
+}
+@keyframes l5gSent {
+  0% {
+    transform: translateY(4px) scale(0.95);
+  }
+  100% {
+    transform: translateY(-3px) scale(1.035);
+  }
+}
+.l5g-choice[data-state='wait'] {
+  opacity: 0.4;
+  filter: grayscale(0.55);
+  transform: scale(0.96);
 }
 .l5g-choice[data-state='right'] {
   animation: l5gRight 0.6s var(--l5g-jelly) both;
   box-shadow: 0 6px 0 var(--l5g-ink), 0 0 0 5px #fff, 0 0 30px 8px rgba(255, 255, 255, 0.65);
   z-index: 2;
 }
+.l5g-choice[data-state='rightpick'] {
+  animation: l5gRight 0.6s var(--l5g-jelly) both;
+  box-shadow: 0 0 0 4px #fff, 0 0 0 8px #3fd6a8, 0 10px 0 6px var(--l5g-ink), 0 0 34px 12px rgba(63, 214, 168, 0.7);
+  z-index: 3;
+}
 .l5g-choice[data-state='wrongpick'] {
-  filter: saturate(0.6);
   animation: l5gShake 0.45s ease-in-out;
+  box-shadow: 0 0 0 4px #fff, 0 0 0 8px #ff6b7a, 0 10px 0 6px var(--l5g-ink), inset 0 -6px 0 var(--cd);
+  z-index: 3;
 }
 .l5g-choice[data-state='dim'] {
   opacity: 0.35;
   filter: grayscale(0.6);
+}
+.l5g-choice-mine {
+  position: absolute;
+  top: -15px;
+  left: 14px;
+  z-index: 4;
+  padding: 1px 10px;
+  border-radius: 999px;
+  border: 2.5px solid var(--l5g-ink);
+  background: #fff;
+  color: var(--l5g-ink);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.5;
+  white-space: nowrap;
+  text-shadow: none;
+  box-shadow: 0 2px 0 var(--l5g-ink);
+  animation: l5gPop 0.3s var(--l5g-jelly) both;
+}
+.l5g-choice[data-state='rightpick'] .l5g-choice-mine {
+  background: #3fd6a8;
+}
+.l5g-choice[data-state='wrongpick'] .l5g-choice-mine {
+  background: #ff6b7a;
+  color: #fff;
+}
+.l5g-choice-wait {
+  flex: none;
+  margin-left: auto;
 }
 .l5g-choice-shape {
   flex: none;

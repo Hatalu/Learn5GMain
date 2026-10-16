@@ -39,7 +39,7 @@ export function Confetti() {
 }
 
 /**
- * หน้าจอของผู้เล่นหนึ่งคนในห้อง (ใช้ทั้งหน้า /play และครูที่เลือก "เล่นเกมนี้ด้วย")
+ * หน้าจอของผู้เล่นหนึ่งคนในห้อง (ใช้ทั้งหน้า /play และเจ้าของห้องที่เลือก "เล่นเกมนี้ด้วย")
  */
 export function PlayerSession({
   creds,
@@ -135,9 +135,17 @@ export function PlayerSession({
         if (e.event === 'kick' && e.payload.playerId === creds.playerId) onExit('kicked');
         else if (e.event === 'bg' && e.payload.background) onBackground?.(e.payload.background as RoomBackground);
         else if ((e.event === 'race' || e.event === 'banana') && stRef.current?.room.game === 'racing') {
-          // ขอสถานะใหม่ (ไม่เอาคำถาม) แต่ไม่ถี่เกินไป
+          // ขยับคู่แข่งทันทีจากสัญญาณ (ไม่ต้องรอถามเซิร์ฟเวอร์)
+          const cur = stRef.current;
+          const pid = e.payload.id;
+          if (e.event === 'race' && typeof pid === 'string' && typeof e.payload.progress === 'number' && pid !== creds.playerId && cur.rivals.some((r) => r.id === pid)) {
+            const nx = { ...cur, rivals: cur.rivals.map((r) => (r.id === pid ? { ...r, progress: e.payload.progress as number, finished: !!e.payload.finished } : r)) };
+            stRef.current = nx;
+            setSt(nx);
+          }
+          // อันดับ/คู่แข่งชุดใหม่: ขอสถานะ (ไม่เอาคำถาม) แต่ไม่ถี่เกินไป
           const now = Date.now();
-          if (e.event === 'banana' || now - raceRefreshAt.current > 1200) {
+          if (e.event === 'banana' || now - raceRefreshAt.current > 3000) {
             raceRefreshAt.current = now;
             playerApi
               .state(c, false)
@@ -216,11 +224,11 @@ export function PlayerSession({
     return r;
   }, [c]);
 
-  const leave = async () => {
+  const leave = useCallback(async () => {
     gsfx.tap();
     await playerApi.leave(c);
     onExit('left');
-  };
+  }, [c, onExit]);
 
   if (!st) {
     return (
@@ -243,7 +251,7 @@ export function PlayerSession({
 
   if (st.room.status === 'playing' && running && st.room.game !== 'quiz') {
     const deadline = st.room.duration && st.room.startedAt ? new Date(st.room.startedAt).getTime() + st.room.duration * 1000 - clockOffset.current : null;
-    const props = { engine, deadline, goal: st.room.goal || 15, sync, me: { nickname: me.nickname, avatar: me.avatar } };
+    const props = { engine, deadline, goal: st.room.goal || 15, sync, me: { nickname: me.nickname, avatar: me.avatar }, onLeave: hostMode ? undefined : leave };
     if (st.room.game === 'cafe') return <CafeGame key={st.room.round} {...props} />;
     if (st.room.game === 'tower') return <TowerGame key={st.room.round} {...props} />;
     return (
@@ -283,7 +291,7 @@ export function PlayerSession({
         <div className="l5g-card l5g-wait">
           <Hourglass className="w-6 h-6 l5g-spin-slow" />
           <div>
-            <b>{hostMode ? 'กด "เริ่มเกม" เมื่อพร้อม' : 'เข้าห้องแล้ว รอครูเริ่มเกมนะ'}</b>
+            <b>{hostMode ? 'กด "เริ่มเกม" เมื่อพร้อม' : 'เข้าห้องแล้ว รอเจ้าของห้องเริ่มเกมนะ'}</b>
             <p className="text-sm font-semibold opacity-70">{st.room.title}</p>
           </div>
         </div>
@@ -329,7 +337,14 @@ export function PlayerSession({
             </span>
           </div>
         </div>
-        {!hostMode && <p className="text-white font-bold mt-3 drop-shadow">รอครูปิดห้อง หรือเริ่มรอบใหม่</p>}
+        {!hostMode && (
+          <div className="l5g-result-acts">
+            <p className="text-white font-bold drop-shadow">รอเจ้าของห้องเริ่มรอบใหม่ หรือออกได้เลย</p>
+            <button type="button" className="l5g-btn l5g-btn-coral" onClick={leave}>
+              <LogOut className="w-5 h-5" /> ออกจากห้อง
+            </button>
+          </div>
+        )}
       </div>
     );
   }
@@ -361,8 +376,13 @@ export function PlayerSession({
             </span>
           )}
         </div>
-        <p className="text-center font-semibold opacity-70 mt-3">รอเพื่อนๆ ทำให้เสร็จ แล้วครูจะประกาศผล</p>
+        <p className="text-center font-semibold opacity-70 mt-3">รอเพื่อนๆ ทำให้เสร็จ แล้วจะประกาศผล</p>
       </div>
+      {!hostMode && (
+        <button type="button" className="l5g-btn l5g-btn-ghost mt-3" onClick={leave}>
+          <LogOut className="w-5 h-5" /> ออกจากห้อง
+        </button>
+      )}
     </div>
   );
 }

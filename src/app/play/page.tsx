@@ -20,8 +20,8 @@ type Step = 'code' | 'name' | 'room' | 'bye';
 const NICK_KEY = 'l5g_nick';
 
 const BYE: Record<string, { t: string; d: string }> = {
-  closed: { t: 'ครูปิดห้องแล้ว', d: 'ขอบคุณที่มาเล่นด้วยกันนะ' },
-  kicked: { t: 'ออกจากห้องแล้ว', d: 'ครูเชิญออกจากห้องนี้' },
+  closed: { t: 'ปิดห้องแล้ว', d: 'ขอบคุณที่มาเล่นด้วยกันนะ' },
+  kicked: { t: 'ออกจากห้องแล้ว', d: 'เจ้าของห้องเชิญออกจากห้องนี้' },
   gone: { t: 'ไม่พบห้องนี้แล้ว', d: 'ห้องอาจถูกปิดไปแล้ว' },
   left: { t: 'ออกจากห้องแล้ว', d: 'อยากเล่นอีก ใส่เลขห้องใหม่ได้เลย' },
 };
@@ -173,7 +173,7 @@ function PlayInner() {
             </div>
             <h1 className="l5g-join-title">เข้าห้องเกม</h1>
             <div className="l5g-card l5g-join-card">
-              <p className="font-bold text-center mb-3">ใส่เลขห้อง 6 หลักที่ครูให้</p>
+              <p className="font-bold text-center mb-3">ใส่เลขห้อง 6 หลัก</p>
               <CodeInput value={code} onChange={(v) => (setCode(v), setErr(''))} onEnter={() => check(code)} autoFocus={!initCode} />
               {err && <p className="l5g-err text-center mt-3">{err}</p>}
               <button type="button" className="l5g-btn l5g-btn-go l5g-btn-xl w-full mt-4" disabled={code.length !== 6 || busy} onClick={() => check(code)}>

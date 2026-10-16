@@ -12,4 +12,6 @@ export interface GameProps {
   me: { nickname: string; avatar: number };
   /** ทดลองเล่นในหน้าแก้ไข (ไม่มีห้อง) */
   preview?: boolean;
+  /** ออกจากห้อง (แสดงปุ่มตอนเกมจบ) */
+  onLeave?: () => void;
 }

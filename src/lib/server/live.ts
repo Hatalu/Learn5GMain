@@ -151,7 +151,7 @@ export async function broadcast(roomId: string, event: string, payload: Record<s
       method: 'POST',
       headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ messages: [{ topic: roomTopic(roomId), event, payload: { ...payload, at: Date.now() } }] }),
-      signal: AbortSignal.timeout(2500),
+      signal: AbortSignal.timeout(1500),
     });
   } catch {
     /* ผู้เล่นจะถามสถานะเองเป็นระยะ */
@@ -167,17 +167,22 @@ export async function endRoom(db: SupabaseClient, room: RoomRow) {
   if (data && data.length) await broadcast(room.id, 'status', { status: 'ended' });
 }
 
+/** ตรวจห้องหมดอายุ/หมดเวลาเล่น แล้วปิด/จบให้เอง */
+async function prepRoom(db: SupabaseClient, raw: RoomRow): Promise<RoomRow> {
+  const room = normalizeRoom(raw);
+  if (room.status !== 'closed' && isExpired(room)) {
+    await db.from('game_rooms').update({ status: 'closed', closed_at: new Date().toISOString() }).eq('id', room.id);
+    room.status = 'closed';
+  }
+  // หมดเวลาแล้วแต่เจ้าของห้องไม่ได้กดจบ (เช่นปิดหน้าจอไป): เซิร์ฟเวอร์จบเกมให้เอง
+  if (room.status === 'playing' && isTimeUp(room)) await endRoom(db, room);
+  return room;
+}
+
 export async function loadRoom(db: SupabaseClient, id: string): Promise<RoomRow | null> {
   const { data } = await db.from('game_rooms').select(ROOM_COLS).eq('id', id).maybeSingle();
   if (!data) return null;
-  const room = normalizeRoom(data as RoomRow);
-  if (room.status !== 'closed' && isExpired(room)) {
-    await db.from('game_rooms').update({ status: 'closed', closed_at: new Date().toISOString() }).eq('id', id);
-    room.status = 'closed';
-  }
-  // หมดเวลาแล้วแต่ครูไม่ได้กดจบ (เช่นปิดหน้าจอไป): เซิร์ฟเวอร์จบเกมให้เอง
-  if (room.status === 'playing' && isTimeUp(room)) await endRoom(db, room);
-  return room;
+  return prepRoom(db, data as RoomRow);
 }
 
 export async function authPlayer(db: SupabaseClient, playerId: unknown, token: unknown): Promise<PlayerRow | null> {
@@ -185,6 +190,17 @@ export async function authPlayer(db: SupabaseClient, playerId: unknown, token: u
   const { data } = await db.from('room_players').select(PLAYER_COLS).eq('id', playerId).maybeSingle();
   if (!data || !tokenMatches(token, (data as PlayerRow).token_hash)) return null;
   return data as PlayerRow;
+}
+
+/** ตรวจผู้เล่น + โหลดห้องในคำขอเดียว (ลดเวลารอทุกครั้งที่ตอบ) */
+export async function authPlayerRoom(db: SupabaseClient, playerId: unknown, token: unknown): Promise<{ p: PlayerRow; room: RoomRow | null } | null> {
+  if (!isUuid(playerId)) return null;
+  const { data } = await db.from('room_players').select(`${PLAYER_COLS}, room:game_rooms(${ROOM_COLS})`).eq('id', playerId).maybeSingle();
+  if (!data) return null;
+  const { room: raw, ...p } = data as unknown as PlayerRow & { room: RoomRow | RoomRow[] | null };
+  if (!tokenMatches(token, p.token_hash)) return null;
+  const r = Array.isArray(raw) ? raw[0] : raw;
+  return { p: p as PlayerRow, room: r ? await prepRoom(db, r) : null };
 }
 
 export function cleanStats(s: unknown): Record<string, number> {
@@ -293,6 +309,21 @@ export interface PlayerState {
   kicked?: boolean;
 }
 
+/** คำถามที่ส่งให้ผู้เล่น (ไม่มีเฉลย) ของลำดับ pos */
+export function nextQuestion(room: RoomRow, p: PlayerRow, pos: number, elapsedMs = 0): PublicQuestion | null {
+  const at = questionAt(room, p, pos);
+  if (!at) return null;
+  const endless = modeById(room.game).endless;
+  const q = publicQuestion(at.q, pos, endless ? 0 : room.content.questions.length, {
+    shuffleChoices: room.settings.shuffleChoices || endless,
+    seed: `${playerSeed(p, room.round)}:${pos}`,
+    elapsedMs,
+  });
+  // โหมดเกมไม่มีเวลาต่อข้อ (ความกดดันมาจากตัวเกมเอง)
+  if (endless) q.time = 0;
+  return q;
+}
+
 /** สถานะของผู้เล่น: ถ้ากำลังเล่น จะส่งคำถามข้อปัจจุบัน (เริ่มจับเวลาตอนส่งข้อนั้นครั้งแรก) */
 export async function playerState(db: SupabaseClient, room: RoomRow, p0: PlayerRow, opts: { withQuestion?: boolean } = {}): Promise<PlayerState> {
   let p = p0;
@@ -300,34 +331,26 @@ export async function playerState(db: SupabaseClient, room: RoomRow, p0: PlayerR
   const total = endless ? 0 : room.content.questions.length;
   let question: PublicQuestion | null = null;
   const done = room.game === 'quiz' ? !!p.finished_at : room.game === 'racing' && !!p.finished_at;
-  if ((opts.withQuestion ?? true) && room.status === 'playing' && !done) {
-    const at = questionAt(room, p, p.q_pos);
-    if (at) {
-      let started = p.q_started_at;
-      if (!started) {
-        const now = new Date().toISOString();
-        const { data } = await db
-          .from('room_players')
-          .update({ q_started_at: now, last_seen_at: now })
-          .eq('id', p.id)
-          .eq('q_pos', p.q_pos)
-          .is('q_started_at', null)
-          .select(PLAYER_COLS)
-          .maybeSingle();
-        if (data) p = data as PlayerRow;
-        started = p.q_started_at || now;
-      }
-      question = publicQuestion(at.q, p.q_pos, total, {
-        shuffleChoices: room.settings.shuffleChoices || endless,
-        seed: `${playerSeed(p, room.round)}:${p.q_pos}`,
-        elapsedMs: Date.now() - new Date(started).getTime(),
-      });
-      // โหมดเกมไม่มีเวลาต่อข้อ (ความกดดันมาจากตัวเกมเอง)
-      if (endless) question.time = 0;
-    }
-  }
   const showRank = room.status !== 'lobby';
-  const r = showRank ? await rankOf(db, room, p) : { rank: 0, players: 0, rivals: [] };
+  const ranking = showRank ? rankOf(db, room, p) : Promise.resolve({ rank: 0, players: 0, rivals: [] as Rival[] });
+  if ((opts.withQuestion ?? true) && room.status === 'playing' && !done) {
+    let started = p.q_started_at;
+    if (!started && questionAt(room, p, p.q_pos)) {
+      const now = new Date().toISOString();
+      const { data } = await db
+        .from('room_players')
+        .update({ q_started_at: now, last_seen_at: now })
+        .eq('id', p.id)
+        .eq('q_pos', p.q_pos)
+        .is('q_started_at', null)
+        .select(PLAYER_COLS)
+        .maybeSingle();
+      if (data) p = data as PlayerRow;
+      started = p.q_started_at || now;
+    }
+    if (started) question = nextQuestion(room, p, p.q_pos, Date.now() - new Date(started).getTime());
+  }
+  const r = await ranking;
   return {
     room: {
       id: room.id,

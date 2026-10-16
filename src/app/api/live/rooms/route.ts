@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
   let hostPlayer: { id: string; token: string } | null = null;
   if (mode === 'play') {
     const token = newToken();
-    const nickname = cleanNickname(body.nickname) || cleanNickname(me.username) || 'ครู';
+    const nickname = cleanNickname(body.nickname) || cleanNickname(me.username) || 'เจ้าของห้อง';
     const { data: p } = await db
       .from('room_players')
       .insert({ room_id: room.id, nickname, avatar: Math.floor(Math.random() * AVATAR_COUNT), token_hash: hashToken(token), is_host: true })

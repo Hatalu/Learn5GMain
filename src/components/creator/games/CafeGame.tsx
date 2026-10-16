@@ -2,10 +2,10 @@
 
 import './games.css';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowUpCircle, PackagePlus, Store, X } from 'lucide-react';
+import { ArrowUpCircle, LogOut, PackagePlus, Store, X } from 'lucide-react';
 import { Avatar, CRITTERS } from '../Avatar';
 import { Coin, Clock, Food, type FoodId } from './art';
-import { QuizBatch } from './QuestionPad';
+import { QuestionDock } from './QuestionPad';
 import type { GameProps } from './types';
 import { gsfx } from '@/lib/game-creator/gsound';
 
@@ -98,18 +98,17 @@ function neededFood(sh: Shop): FoodId {
   return best;
 }
 
-export function CafeGame({ engine, deadline, sync, me, preview }: GameProps) {
+export function CafeGame({ engine, deadline, sync, me, preview, onLeave }: GameProps) {
   const sh = useRef<Shop>(fresh());
   const [, setTick] = useState(0);
-  const [restock, setRestock] = useState(false);
+  const [ask, setAsk] = useState(false);
+  const [streak, setStreak] = useState(0);
   const [shopOpen, setShopOpen] = useState(false);
   const [pops, setPops] = useState<{ id: number; slot: number; text: string; kind: 'cash' | 'stock' }[]>([]);
   const [hint, setHint] = useState('');
   const [over, setOver] = useState(false);
   const [now, setNow] = useState(Date.now());
   const lastReward = useRef('');
-  const restockRef = useRef(false);
-  restockRef.current = restock;
   const synced = useRef(-1);
   const popSeq = useRef(1);
   const avatars = useMemo(() => CRITTERS.map((_, i) => i).filter((i) => i !== me.avatar), [me.avatar]);
@@ -148,12 +147,11 @@ export function CafeGame({ engine, deadline, sync, me, preview }: GameProps) {
         gsfx.fanfare();
         return;
       }
-      // ลูกค้ารอช้าลงตอนกำลังเติมของ (ให้เวลาคิด)
-      const drain = restockRef.current ? 0.35 : 1;
+      // เกมเดินต่อตลอด แม้กำลังตอบคำถาม
       s.customers.forEach((c) => {
         if (c.state === 'enter' && nowMs - c.stateAt > 600) c.state = 'wait';
         if (c.state === 'wait') {
-          c.patience -= dt * drain;
+          c.patience -= dt;
           if (c.patience <= 0) {
             c.state = 'angry';
             c.stateAt = nowMs;
@@ -209,6 +207,24 @@ export function CafeGame({ engine, deadline, sync, me, preview }: GameProps) {
 
   useEffect(() => () => doSync(true), [doSync]);
 
+  /* ---------- ตอบคำถาม = ของเข้าครัว + ลูกค้าใจเย็นขึ้น ---------- */
+  const onAnswered = (o: { correct: boolean; streak: number }) => {
+    setStreak(o.streak);
+    if (!o.correct) return;
+    const s = sh.current;
+    const f = neededFood(s);
+    const n = unitsPerCorrect(s) + (o.streak >= 3 ? 1 : 0);
+    s.stock[f] += n;
+    // ลูกค้าที่รออยู่ใจเย็นขึ้น (ร้านคึกคัก)
+    s.customers.forEach((c) => {
+      if (c.state === 'wait' || c.state === 'enter') c.patience = Math.min(c.patienceMax, c.patience + c.patienceMax * 0.2);
+    });
+    gsfx.coin();
+    lastReward.current = `ถูก! ${FOODS.find((x) => x.id === f)!.name} +${n}${o.streak >= 3 ? ' (ถูกติดกัน)' : ''}`;
+    pop(-1, `+${n}`, 'stock');
+    render();
+  };
+
   /* ---------- การกระทำ ---------- */
   const serve = (c: Customer) => {
     const s = sh.current;
@@ -255,7 +271,8 @@ export function CafeGame({ engine, deadline, sync, me, preview }: GameProps) {
   const canBuy = UPGRADES.some((u) => u.costs[s.up[u.id]] !== undefined && s.cash >= u.costs[s.up[u.id]]);
 
   return (
-    <div className="cf" data-over={over}>
+    <div className="cf gm-root" data-over={over} data-dock={ask}>
+     <div className="gm-main">
       {/* HUD */}
       <div className="cf-hud">
         <span className="cf-chip cf-cash">
@@ -301,6 +318,13 @@ export function CafeGame({ engine, deadline, sync, me, preview }: GameProps) {
                 <b>{s.stock[f.id]}</b>
               </span>
             ))}
+            {pops
+              .filter((p) => p.slot === -1)
+              .map((p) => (
+                <span key={p.id} className="cf-pop cf-pop-shelf" data-kind="stock">
+                  {p.text}
+                </span>
+              ))}
           </div>
         </div>
 
@@ -361,12 +385,14 @@ export function CafeGame({ engine, deadline, sync, me, preview }: GameProps) {
 
       {/* ปุ่มล่าง */}
       <div className="cf-bar">
-        <button type="button" className="l5g-btn l5g-btn-go l5g-btn-xl cf-restock" disabled={over} onClick={() => (gsfx.tap(), setRestock(true))}>
-          <PackagePlus className="w-6 h-6" />
-          <span>
-            เติมของ<small>ตอบ 3 ข้อ</small>
-          </span>
-        </button>
+        {!ask && (
+          <button type="button" className="l5g-btn l5g-btn-go l5g-btn-xl cf-restock" disabled={over} onClick={() => (gsfx.tap(), setAsk(true))}>
+            <PackagePlus className="w-6 h-6" />
+            <span>
+              เติมของ<small>ตอบถูก = ได้ของ</small>
+            </span>
+          </button>
+        )}
         <button type="button" className="l5g-btn l5g-btn-violet l5g-btn-xl cf-upbtn" data-ready={canBuy} disabled={over} onClick={() => (gsfx.tap(), setShopOpen(true))}>
           <ArrowUpCircle className="w-6 h-6" />
           <span>
@@ -375,26 +401,20 @@ export function CafeGame({ engine, deadline, sync, me, preview }: GameProps) {
         </button>
       </div>
 
-      {restock && (
-        <QuizBatch
-          engine={engine}
-          count={3}
-          title="เติมของเข้าครัว"
-          icon={<PackagePlus className="w-5 h-5" />}
-          color="#ff9a3d"
-          rewardText={() => lastReward.current}
-          onAnswered={(o) => {
-            if (!o.correct) return;
-            const f = neededFood(sh.current);
-            const n = unitsPerCorrect(sh.current);
-            sh.current.stock[f] += n;
-            lastReward.current = `ถูก! ${FOODS.find((x) => x.id === f)!.name} +${n}`;
-            render();
-          }}
-          summary={(ok) => (ok ? `ได้ของเข้าครัวแล้ว ${ok * unitsPerCorrect(sh.current)} ชิ้น ไปเสิร์ฟกันเลย!` : 'รอบนี้ยังไม่ได้ของ ลองเติมอีกรอบนะ')}
-          onDone={() => setRestock(false)}
-        />
-      )}
+     </div>
+
+      <QuestionDock
+        engine={engine}
+        open={ask && !over}
+        title="เติมของเข้าครัว"
+        hint="ตอบถูก = ได้ของ + ลูกค้าใจเย็นขึ้น"
+        icon={<PackagePlus className="w-5 h-5" />}
+        color="#ff9a3d"
+        streak={streak}
+        rewardText={() => lastReward.current}
+        onAnswered={onAnswered}
+        onClose={() => setAsk(false)}
+      />
 
       {shopOpen && (
         <div className="l5g-batch-back" onMouseDown={(e) => e.target === e.currentTarget && setShopOpen(false)}>
@@ -463,7 +483,12 @@ export function CafeGame({ engine, deadline, sync, me, preview }: GameProps) {
                 <b>{s.lost}</b>ลูกค้ารอไม่ไหว
               </span>
             </div>
-            <p className="gm-over-wait">{preview ? 'นี่คือการทดลองเล่น' : 'รอครูประกาศผลนะ'}</p>
+            <p className="gm-over-wait">{preview ? 'นี่คือการทดลองเล่น' : 'กำลังรวมคะแนน รอประกาศผลนะ'}</p>
+            {onLeave && (
+              <button type="button" className="l5g-btn l5g-btn-ghost l5g-btn-sm mt-3" onClick={onLeave}>
+                <LogOut className="w-4 h-4" /> ออกจากห้อง
+              </button>
+            )}
           </div>
         </div>
       )}

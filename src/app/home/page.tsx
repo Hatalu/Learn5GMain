@@ -352,7 +352,7 @@ export default function HomePage() {
           <DailyGameCard onSelect={handleSelectMedia} />
         </Reveal>
 
-        {/* เข้าร่วมเกมที่ครู/สมาชิกสร้างด้วยเลขห้อง 6 หลัก */}
+        {/* เข้าร่วมเกมที่สมาชิกสร้างด้วยเลขห้อง 6 หลัก */}
         <Reveal className="mt-6 sm:mt-8">
           <JoinRoomBanner />
         </Reveal>

@@ -104,7 +104,7 @@ export function OpenGameModal({ gameId, title, username, onClose }: { gameId: st
   const [shuffleChoices, setSC] = useState(false);
   const [duration, setDuration] = useState(0);
   const [goal, setGoal] = useState(0);
-  const [nick, setNick] = useState(cleanNickname(username) || 'ครู');
+  const [nick, setNick] = useState(cleanNickname(username) || 'เจ้าของห้อง');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 

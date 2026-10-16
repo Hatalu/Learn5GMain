@@ -148,7 +148,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     }
     case 'hostToken': {
       // ครูที่เลือก "เล่นเกมนี้ด้วย": ออกโทเคนผู้เล่นใหม่ให้เครื่องที่เปิดอยู่ (ใช้ได้แม้เปลี่ยนเครื่อง)
-      if (room.mode !== 'play') return NextResponse.json({ error: 'ห้องนี้ครูดูอย่างเดียว' }, { status: 400 });
+      if (room.mode !== 'play') return NextResponse.json({ error: 'ห้องนี้เจ้าของห้องดูอย่างเดียว' }, { status: 400 });
       const token = newToken();
       const { data: hp } = await db.from('room_players').select('id').eq('room_id', room.id).eq('is_host', true).maybeSingle();
       if (hp) {
@@ -157,7 +157,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
       }
       const { data: np } = await db
         .from('room_players')
-        .insert({ room_id: room.id, nickname: 'ครู', avatar: Math.floor(Math.random() * AVATAR_COUNT), token_hash: hashToken(token), is_host: true })
+        .insert({ room_id: room.id, nickname: 'เจ้าของห้อง', avatar: Math.floor(Math.random() * AVATAR_COUNT), token_hash: hashToken(token), is_host: true })
         .select('id')
         .single();
       if (!np) return NextResponse.json({ error: 'เข้าร่วมไม่สำเร็จ' }, { status: 500 });

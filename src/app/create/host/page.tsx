@@ -97,7 +97,7 @@ function Leaderboard({ players, total, onKick, game = 'quiz', goal = 0 }: { play
           <Avatar id={p.avatar} size={40} />
           <span className="l5g-board-name">
             <b>{p.nickname}</b>
-            {p.isHost && <span className="l5g-board-host">ครู</span>}
+            {p.isHost && <span className="l5g-board-host">เจ้าของห้อง</span>}
             {game === 'quiz' || game === 'racing' ? (
               <span className="l5g-board-prog">
                 <i style={{ width: `${game === 'racing' ? (goal ? (p.progress / goal) * 100 : 0) : total ? (p.answered / total) * 100 : 0}%` }} />
@@ -260,7 +260,7 @@ function HostInner() {
     return () => stopLobbyMusic();
   }, [status, music, muted, view]);
 
-  // ครูเล่นด้วย: ขอโทเคนผู้เล่นของครู
+  // เจ้าของห้องเล่นด้วย: ขอโทเคนผู้เล่นของครู
   useEffect(() => {
     if (!st || st.room.mode !== 'play' || hostCreds) return;
     let saved: { id: string; token: string } | null = null;
@@ -448,7 +448,7 @@ function HostInner() {
         {room.mode === 'play' && (
           <div className="l5g-viewseg">
             <button type="button" data-on={view === 'host'} onClick={() => (gsfx.tap(), setView('host'))}>
-              <MonitorPlay className="w-4 h-4" /> <span>จอครู</span>
+              <MonitorPlay className="w-4 h-4" /> <span>จอหลัก</span>
             </button>
             <button type="button" data-on={view === 'play'} onClick={() => (gsfx.tap(), setView('play'))} disabled={!hostCreds}>
               <Gamepad2 className="w-4 h-4" /> <span>เล่นเกม</span>
@@ -504,7 +504,7 @@ function HostInner() {
                 <p className="l5g-joinpanel-step">
                   <span>1</span> เข้าเว็บ
                 </p>
-                <p className="l5g-joinpanel-url">{joinHost}/play</p>
+                <p className="l5g-joinpanel-url">{joinHost}</p>
                 <p className="l5g-joinpanel-step mt-3">
                   <span>2</span> ใส่เลขห้อง
                 </p>
@@ -532,7 +532,7 @@ function HostInner() {
                   <button key={p.id} type="button" className="l5g-bubble" onClick={() => !p.isHost && setKick(p)} title={p.isHost ? 'คุณ' : 'แตะเพื่อเชิญออก'}>
                     <Avatar id={p.avatar} size={42} />
                     <span>{p.nickname}</span>
-                    {p.isHost && <em>ครู</em>}
+                    {p.isHost && <em>เจ้าของห้อง</em>}
                   </button>
                 ))
               )}

@@ -63,7 +63,7 @@ export function JoinRoomBanner() {
       timer.current = setTimeout(() => router.push(`/play?code=${code}`), 650);
     } catch (e) {
       const m = e instanceof LiveError ? e.message : '';
-      setMsg(/ไม่พบห้อง/.test(m) || !m ? 'ไม่พบเลขห้องนี้ ลองเช็กเลขกับครูอีกครั้งนะ' : m);
+      setMsg(/ไม่พบห้อง/.test(m) || !m ? 'ไม่พบเลขห้องนี้ ลองเช็กเลขห้องอีกครั้งนะ' : m);
       setState('error');
       setShake((n) => n + 1);
       gsfx.wrong();
@@ -111,7 +111,7 @@ export function JoinRoomBanner() {
           <Ticket className="w-4 h-4" /> บัตรเข้าห้องเกม
         </span>
         <h2 className="l5g-jb-title">
-          เล่นเกมที่ครูสร้าง<span>ใส่เลขห้องได้เลย</span>
+          เล่นเกมห้องสดด้วยกัน<span>ใส่เลขห้องได้เลย</span>
         </h2>
         <div className="l5g-jb-line" aria-hidden="true" />
         <div className="l5g-jb-form">
@@ -124,7 +124,7 @@ export function JoinRoomBanner() {
           </button>
         </div>
         <p className={`l5g-jb-msg ${state === 'error' ? 'l5g-jb-msg-err' : ''}`} role={state === 'error' ? 'alert' : undefined}>
-          {state === 'error' ? msg : 'เลข 6 หลักจากหน้าจอครู ไม่ต้องเข้าสู่ระบบ'}
+          {state === 'error' ? msg : 'เลข 6 หลักจากหน้าจอเจ้าของห้อง ไม่ต้องเข้าสู่ระบบ'}
         </p>
       </div>
     </section>

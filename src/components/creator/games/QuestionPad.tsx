@@ -1,9 +1,9 @@
 'use client';
 
 import './games.css';
+import './games-live.css';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { Check, Loader2, Send, X } from 'lucide-react';
+import { Check, Flame, Loader2, Send, X } from 'lucide-react';
 import type { PublicQuestion } from '@/lib/game-creator/types';
 import type { LiveOutcome } from '@/lib/game-creator/live-client';
 import { MathText } from '../math/MathText';
@@ -13,29 +13,38 @@ import type { QuizEngine } from '../quiz/QuizRunner';
 import { gsfx } from '@/lib/game-creator/gsound';
 import { richLength } from '@/lib/game-creator/quiz';
 
-type Phase = 'loading' | 'question' | 'sending' | 'feedback' | 'locked' | 'idle' | 'error';
+type Phase = 'loading' | 'question' | 'sending' | 'feedback' | 'idle' | 'error';
+
+/** สถานะของปุ่มคำตอบ (ใช้ทั้งในเกมและควิซ) ให้เห็นชัดว่าเรากดข้อไหน */
+export function choiceState(o: { show: boolean; right: boolean; picked: boolean; sending: boolean }) {
+  if (o.show) return o.right ? (o.picked ? 'rightpick' : 'right') : o.picked ? 'wrongpick' : 'dim';
+  if (o.sending) return o.picked ? 'sent' : 'wait';
+  return o.picked ? 'picked' : 'idle';
+}
+
+/** ป้าย "คำตอบของฉัน" บนปุ่มที่เลือก */
+export function MineTag({ state }: { state: string }) {
+  if (state !== 'sent' && state !== 'rightpick' && state !== 'wrongpick') return null;
+  return <span className="l5g-choice-mine">คำตอบของฉัน</span>;
+}
 
 /**
- * ตอบคำถามทีละข้อ (ใช้ในโหมดเกม): โหลดข้อถัดไปเอง แสดงผลถูก/ผิดสั้นๆ แล้วแจ้งผลกลับให้ตัวเกม
- * - continueAfter(o) คืน false = หยุดหลังข้อนี้ (เช่น ครบ 3 ข้อแล้ว)
+ * ตอบคำถามต่อเนื่องไม่จำกัดจำนวน (ใช้ในโหมดเกม): โหลดข้อถัดไปเอง แสดงผลถูก/ผิดสั้นๆ แล้วแจ้งผลกลับให้ตัวเกมทันที
  * - lockMs ตอบผิดแล้วต้องรอ (สะดุด) ก่อนข้อถัดไป
+ * - เกมไม่หยุดระหว่างตอบ
  */
 export function QuestionPad({
   engine,
   onAnswered,
-  continueAfter,
   rewardText,
   lockMs = 0,
   compact = false,
-  paused = false,
 }: {
   engine: QuizEngine;
   onAnswered: (o: LiveOutcome, q: PublicQuestion) => void;
-  continueAfter?: (o: LiveOutcome) => boolean;
   rewardText?: (o: LiveOutcome) => string;
   lockMs?: number;
   compact?: boolean;
-  paused?: boolean;
 }) {
   const [phase, setPhase] = useState<Phase>('loading');
   const [q, setQ] = useState<PublicQuestion | null>(null);
@@ -46,14 +55,16 @@ export function QuestionPad({
   const busy = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const alive = useRef(true);
-  const cb = useRef({ onAnswered, continueAfter });
-  cb.current = { onAnswered, continueAfter };
+  const cb = useRef({ onAnswered, rewardText });
+  cb.current = { onAnswered, rewardText };
 
   const load = useCallback(async () => {
-    setPhase('loading');
     setErr('');
+    // ข้อถัดไปมักมาพร้อมผลตอบแล้ว (ทันที) ขึ้นวงหมุนเฉพาะตอนที่ต้องรอจริง
+    const slow = setTimeout(() => alive.current && setPhase('loading'), 220);
     try {
       const nq = await engine.next();
+      clearTimeout(slow);
       if (!alive.current) return;
       if (!nq) {
         setPhase('idle');
@@ -65,6 +76,7 @@ export function QuestionPad({
       busy.current = false;
       setPhase('question');
     } catch (e) {
+      clearTimeout(slow);
       if (!alive.current) return;
       setErr(e instanceof Error ? e.message : 'โหลดคำถามไม่สำเร็จ');
       setPhase('error');
@@ -81,8 +93,9 @@ export function QuestionPad({
   }, [load]);
 
   const submit = async (chosen: string[]) => {
-    if (!q || busy.current || paused) return;
+    if (!q || busy.current) return;
     busy.current = true;
+    setPicks(chosen);
     setPhase('sending');
     try {
       const r = (await engine.answer(q, chosen)) as LiveOutcome | null;
@@ -96,23 +109,18 @@ export function QuestionPad({
       if (r.correct) gsfx.correct();
       else gsfx.wrong();
       cb.current.onAnswered(r, q);
-      const go = cb.current.continueAfter ? cb.current.continueAfter(r) : true;
-      const wait = r.correct ? 750 : Math.max(1500, lockMs);
+      const wait = r.correct ? 650 : Math.max(1400, lockMs);
       if (!r.correct && lockMs > 0) {
         const until = Date.now() + wait;
         setLockLeft(Math.ceil(wait / 1000));
         const tick = () => {
           const ms = until - Date.now();
           setLockLeft(Math.max(0, Math.ceil(ms / 1000)));
-          if (ms > 0 && alive.current) timer.current = setTimeout(tick, 200);
+          if (ms > 0 && alive.current) setTimeout(tick, 200);
         };
         tick();
       }
-      timer.current = setTimeout(() => {
-        if (!alive.current) return;
-        if (go) load();
-        else setPhase('idle');
-      }, wait);
+      timer.current = setTimeout(() => alive.current && load(), wait);
     } catch (e) {
       busy.current = false;
       setErr(e instanceof Error ? e.message : 'ส่งคำตอบไม่สำเร็จ');
@@ -121,10 +129,9 @@ export function QuestionPad({
   };
 
   const tap = (id: string) => {
-    if (phase !== 'question' || !q || paused) return;
+    if (phase !== 'question' || !q) return;
     if (!q.multi) {
       gsfx.pick();
-      setPicks([id]);
       submit([id]);
       return;
     }
@@ -142,7 +149,7 @@ export function QuestionPad({
       </div>
     );
   }
-  if (!q || phase === 'loading') {
+  if (!q || phase === 'loading' || phase === 'idle') {
     return (
       <div className="l5g-qp l5g-qp-center">
         <Loader2 className="w-8 h-8 animate-spin" />
@@ -150,7 +157,7 @@ export function QuestionPad({
     );
   }
 
-  const show = phase === 'feedback' && res;
+  const show = phase === 'feedback' && !!res;
   const longest = Math.max(...q.choices.map((c) => richLength(c.text)));
   const media = q.choices.some((c) => c.media);
   const one = q.choices.length <= 2 || (longest > 30 && !media);
@@ -170,18 +177,20 @@ export function QuestionPad({
         {q.choices.map((c, i) => {
           const st = choiceStyle(i);
           const picked = picks.includes(c.id);
-          const right = !!show && res!.correctIds.includes(c.id);
-          const state = show ? (right ? 'right' : picked ? 'wrongpick' : 'dim') : picked ? 'picked' : 'idle';
+          const right = show && res!.correctIds.includes(c.id);
+          const state = choiceState({ show, right, picked, sending: phase === 'sending' });
           return (
             <button
-              key={c.id}
+              key={`${q.index}-${c.id}`}
               type="button"
               className="l5g-choice l5g-qp-choice"
               data-state={state}
               style={{ ['--c' as string]: st.color, ['--cd' as string]: st.dark, animationDelay: `${i * 40}ms` }}
               onClick={() => tap(c.id)}
-              disabled={phase !== 'question' || paused}
+              disabled={phase !== 'question'}
+              aria-pressed={picked}
             >
+              <MineTag state={state} />
               <span className="l5g-choice-shape">
                 <ChoiceShape i={i} size={20} />
               </span>
@@ -191,6 +200,8 @@ export function QuestionPad({
                 </span>
               )}
               {c.text.length > 0 && <MathText value={c.text} className="l5g-choice-text" />}
+              {q.multi && !show && <span className="l5g-choice-check">{picked && <Check className="w-4 h-4" strokeWidth={4} />}</span>}
+              {state === 'sent' && <Loader2 className="l5g-choice-wait w-5 h-5 animate-spin" />}
               {show && right && (
                 <span className="l5g-choice-mark l5g-mark-ok">
                   <Check className="w-4 h-4" strokeWidth={4} />
@@ -210,11 +221,6 @@ export function QuestionPad({
           <Send className="w-4 h-4" /> ส่งคำตอบ
         </button>
       )}
-      {phase === 'sending' && (
-        <div className="l5g-qp-flash" data-kind="wait">
-          <Loader2 className="w-5 h-5 animate-spin" />
-        </div>
-      )}
       {show && (
         <div className="l5g-qp-flash" data-kind={res!.correct ? 'ok' : 'no'}>
           {res!.correct ? (rewardText ? rewardText(res!) : 'ถูกต้อง!') : lockMs && lockLeft > 0 ? `สะดุด! รอ ${lockLeft}` : 'ดูข้อที่ถูกนะ'}
@@ -225,83 +231,60 @@ export function QuestionPad({
   );
 }
 
-/** หน้าต่างตอบคำถามเป็นชุด (เช่น 3 ข้อ) แล้วสรุปผล ใช้ใน Café / Tower */
-export function QuizBatch({
+/**
+ * แผงตอบคำถามข้างเกม (ไม่บังคับจำนวนข้อ ปิดได้ เกมเดินต่อระหว่างตอบ)
+ * จอกว้าง = แถบขวา / จอแนวตั้ง = แผ่นล่าง
+ */
+export function QuestionDock({
   engine,
-  count = 3,
+  open,
   title,
   icon,
-  color = '#ffcf3f',
+  color = '#3fd6a8',
+  streak = 0,
+  hint,
   rewardText,
-  summary,
   onAnswered,
-  onDone,
+  onClose,
 }: {
   engine: QuizEngine;
-  count?: number;
+  open: boolean;
   title: string;
   icon?: React.ReactNode;
   color?: string;
+  streak?: number;
+  hint?: string;
   rewardText?: (o: LiveOutcome) => string;
-  summary: (correct: number) => string;
-  onAnswered: (o: LiveOutcome) => void;
-  onDone: (correct: number) => void;
+  onAnswered: (o: LiveOutcome, q: PublicQuestion) => void;
+  onClose: () => void;
 }) {
-  const [done, setDone] = useState(0);
-  const [ok, setOk] = useState(0);
-  const [results, setResults] = useState<boolean[]>([]);
-  const [finished, setFinished] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  const counted = useRef({ done: 0, ok: 0 });
-  useEffect(() => setMounted(true), []);
-
+  // เปิดครั้งแรกแล้วค้างไว้ (ปิด = ซ่อน) จะได้ไม่ต้องโหลดคำถามใหม่ทุกครั้ง
+  const [mounted, setMounted] = useState(open);
+  useEffect(() => {
+    if (open) setMounted(true);
+  }, [open]);
   if (!mounted) return null;
-  return createPortal(
-    <div className="l5g-batch-back">
-      <div className="l5g-batch" style={{ ['--bc' as string]: color }}>
-        <div className="l5g-batch-head">
-          <span className="l5g-batch-icon">{icon}</span>
+  return (
+    <aside className="gm-dock" data-open={open} style={{ ['--bc' as string]: color }} aria-hidden={!open}>
+      <div className="gm-dock-head">
+        <span className="l5g-batch-icon">{icon}</span>
+        <div className="min-w-0">
           <b>{title}</b>
-          <span className="flex-1" />
-          <span className="l5g-batch-dots">
-            {Array.from({ length: count }).map((_, i) => (
-              <i key={i} data-state={i < results.length ? (results[i] ? 'ok' : 'no') : i === results.length ? 'now' : 'todo'} />
-            ))}
-          </span>
+          {hint && <small>{hint}</small>}
         </div>
-        {!finished ? (
-          <QuestionPad
-            engine={engine}
-            compact
-            rewardText={rewardText}
-            onAnswered={(o) => {
-              counted.current.done += 1;
-              if (o.correct) counted.current.ok += 1;
-              setDone(counted.current.done);
-              setOk(counted.current.ok);
-              setResults((r) => [...r, o.correct]);
-              onAnswered(o);
-            }}
-            continueAfter={() => {
-              const more = counted.current.done < count;
-              if (!more) setTimeout(() => (setFinished(true), gsfx.sparkleish()), 800);
-              return more;
-            }}
-          />
-        ) : (
-          <div className="l5g-batch-sum">
-            <div className="l5g-batch-score">
-              {ok}
-              <small>/{done}</small>
-            </div>
-            <p>{summary(ok)}</p>
-            <button type="button" className="l5g-btn l5g-btn-go l5g-btn-xl" onClick={() => (gsfx.tap(), onDone(ok))}>
-              กลับไปเล่นต่อ
-            </button>
-          </div>
+        <span className="flex-1" />
+        {streak >= 2 && (
+          <span className="gm-dock-streak" title="ตอบถูกติดกัน">
+            <Flame className="w-4 h-4" /> {streak}
+          </span>
         )}
+        <button type="button" className="gm-dock-x" onClick={() => (gsfx.tap(), onClose())} aria-label="ปิดคำถาม">
+          <X className="w-5 h-5" strokeWidth={3} />
+        </button>
       </div>
-    </div>,
-    document.body
+      <div className="gm-dock-body">
+        <QuestionPad engine={engine} compact rewardText={rewardText} onAnswered={onAnswered} />
+      </div>
+    </aside>
   );
 }

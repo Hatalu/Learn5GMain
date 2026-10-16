@@ -2,7 +2,7 @@
 
 import './games.css';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Trophy } from 'lucide-react';
+import { ChevronDown, ChevronUp, LogOut, Trophy } from 'lucide-react';
 import { Avatar } from '../Avatar';
 import { Banana, Bolt, Flag } from './art';
 import { QuestionPad } from './QuestionPad';
@@ -24,7 +24,7 @@ export interface RaceLive {
 
 const BOT_NAMES = ['จรวดน้อย', 'สายฟ้า', 'ลมกรด', 'เต่าซิ่ง'];
 
-/** ลู่วิ่ง: แต่ละเลนคือผู้เล่นหนึ่งคน (ใช้ทั้งจอผู้เล่นและจอครู) */
+/** ลู่วิ่ง: แต่ละเลนคือผู้เล่นหนึ่งคน (ใช้ทั้งจอผู้เล่นและจอหลัก) */
 export function RaceTrack({ racers, goal, meId, big = false }: { racers: (Rival & { boost?: boolean; slip?: boolean })[]; goal: number; meId?: string; big?: boolean }) {
   return (
     <div className="rc-track" data-big={big}>
@@ -54,7 +54,8 @@ export function RaceTrack({ racers, goal, meId, big = false }: { racers: (Rival 
   );
 }
 
-export function RaceGame({ engine, goal, me, preview, live }: GameProps & { live?: RaceLive }) {
+export function RaceGame({ engine, goal, me, preview, live, onLeave }: GameProps & { live?: RaceLive }) {
+  const [hidePad, setHidePad] = useState(false);
   const myId = live?.myId || 'me';
   // ---------- ทดลองเล่น: วิ่งกับบอท ----------
   const [bots, setBots] = useState<Rival[]>(() => BOT_NAMES.map((n, i) => ({ id: `bot${i}`, nickname: n, avatar: (i * 3 + 2) % 12, progress: 0, finished: false })));
@@ -179,10 +180,25 @@ export function RaceGame({ engine, goal, me, preview, live }: GameProps & { live
         ) : (
           <span className="rc-power-hint">ถูกติดกัน 3 ข้อ ได้ไอเท็ม</span>
         )}
+        {!finished && (
+          <button type="button" className="rc-padtoggle" onClick={() => (gsfx.tap(), setHidePad((h) => !h))} aria-expanded={!hidePad}>
+            {hidePad ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            {hidePad ? 'ตอบคำถาม' : 'ซ่อนคำถาม'}
+          </button>
+        )}
       </div>
 
       {!finished ? (
-        <QuestionPad engine={engine} onAnswered={onAnswered} lockMs={2000} rewardText={() => 'ถูก! วิ่งไปข้างหน้า'} />
+        <div className="rc-pad" data-hidden={hidePad}>
+          {hidePad ? (
+            <button type="button" className="l5g-btn l5g-btn-go l5g-btn-xl rc-pad-open" onClick={() => (gsfx.tap(), setHidePad(false))}>
+              <ChevronUp className="w-6 h-6" /> ตอบคำถามเพื่อวิ่งต่อ
+            </button>
+          ) : null}
+          <div className="rc-pad-in" hidden={hidePad}>
+            <QuestionPad engine={engine} onAnswered={onAnswered} lockMs={1500} rewardText={() => 'ถูก! วิ่งไปข้างหน้า'} />
+          </div>
+        </div>
       ) : (
         <div className="rc-done">
           <div className="rc-done-cup">
@@ -191,6 +207,11 @@ export function RaceGame({ engine, goal, me, preview, live }: GameProps & { live
           <b>เข้าเส้นชัยแล้ว!</b>
           <p>อันดับ {rank} จาก {players} คน</p>
           <p className="gm-over-wait">{preview ? 'นี่คือการทดลองเล่น' : 'รอเพื่อนๆ วิ่งให้ถึงเส้นชัยนะ'}</p>
+          {onLeave && (
+            <button type="button" className="l5g-btn l5g-btn-ghost l5g-btn-sm mt-2" onClick={onLeave}>
+              <LogOut className="w-4 h-4" /> ออกจากห้อง
+            </button>
+          )}
         </div>
       )}
 
