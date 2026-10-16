@@ -99,8 +99,8 @@ export function CompanionWidget() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, visit, mediaLoaded]);
 
-  // หน้าเล่นเกม/จอครู/ตัวแก้ไขเกมใช้เต็มจอ ไม่ให้ปุ๋งมาบัง
-  if (path.startsWith('/dev') || path.startsWith('/play') || path.startsWith('/create/') || hidden || !ready) return null;
+  // แสดงเฉพาะหน้าหลัก
+  if (path !== '/home' || hidden || !ready) return null;
 
   const onTap = () => {
     if (lines) {

@@ -8,7 +8,6 @@ import { CompanionProvider } from '@/components/companion/CompanionProvider';
 import { CompanionWidget } from '@/components/companion/CompanionWidget';
 import { RewardModal } from '@/components/companion/RewardModal';
 import { AmbientSky } from '@/components/fx/AmbientSky';
-import { StarTrail } from '@/components/fx/StarTrail';
 import { RouteCurtain } from '@/components/fx/RouteCurtain';
 import { VisitTracker } from '@/components/analytics/VisitTracker';
 import { IdeaButton } from '@/components/ideas/IdeaButton';
@@ -26,7 +25,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
               <CompanionWidget />
               <RewardModal />
               <RouteCurtain />
-              <StarTrail />
               <IdeaButton />
               <VisitTracker />
             </TrialProvider>

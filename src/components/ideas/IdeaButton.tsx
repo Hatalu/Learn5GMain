@@ -40,7 +40,7 @@ export function IdeaButton() {
     };
   }, [open]);
 
-  if (!user || !hasMembership(profile) || pathname.startsWith('/login') || pathname.startsWith('/dev') || pathname.startsWith('/play') || pathname.startsWith('/create/')) return null;
+  if (!user || !hasMembership(profile) || pathname !== '/home') return null;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
