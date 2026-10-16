@@ -48,8 +48,8 @@ export function MediaDetailModal({
   onMediaOpened,
 }: MediaDetailModalProps) {
   const { user, profile, isDev } = useAuth();
-  const { dailyUnlockedId, recordPlay } = useCompanion();
-  const { openTrial } = useTrial();
+  const { dailyUnlockedId } = useCompanion();
+  const { openTrial, openPlay } = useTrial();
   const { success, error } = useToast();
   const [copiedPage, setCopiedPage] = useState(false);
   const [hasClickedRecently, setHasClickedRecently] = useState(false);
@@ -97,30 +97,28 @@ export function MediaDetailModal({
       return;
     }
 
-    // ให้ดาว/สติกเกอร์แก่คู่หูทันที (ไม่รอเครือข่ายของการนับยอดวิว)
-    recordPlay(media);
+    // (ดาว/สติกเกอร์ของคู่หูจะให้ตอนปิดเกม ดู TrialProvider)
 
     // Debounce view count increment
     if (!hasClickedRecently) {
       setHasClickedRecently(true);
       setLocalViews((v) => v + 1);
 
-      try {
-        await fetch(`/api/media/${media.id}/view`, { method: 'POST' });
-        if (onMediaOpened) onMediaOpened(media.id);
-      } catch (err) {
-        console.error('Failed to increment view count:', err);
-      }
+      // นับยอดวิวเบื้องหลัง ไม่ต้องรอ (เกมเปิดทันที)
+      fetch(`/api/media/${media.id}/view`, { method: 'POST' })
+        .then(() => onMediaOpened?.(media.id))
+        .catch((err) => console.error('Failed to increment view count:', err));
 
       setTimeout(() => {
         setHasClickedRecently(false);
       }, 5000);
     }
 
-    // เปิดเกมในแท็บใหม่
-    window.open(media.game_url, '_blank', 'noopener,noreferrer');
-    // ปิดป๊อปอัปเพื่อให้หน้าฉลองรางวัลของคู่หูขึ้นเด่นเมื่อกลับมา
+    // เปิดเกมบนหน้าเดิมเหมือนทดลองเล่น (ไม่ต้องใส่รหัส ระบบล็อกอินเกมให้เอง ไม่มีนาฬิกา)
+    // เกมของเว็บอื่นที่ฝังไม่ได้จะเปิดแท็บใหม่ให้เองในโมดัล
+    // ปิดป๊อปอัปรายละเอียดก่อน เพื่อให้หน้าฉลองรางวัลของคู่หูขึ้นเด่นเมื่อกลับมา
     onClose();
+    openPlay(media);
   };
 
   const handleCopyPage = () => {

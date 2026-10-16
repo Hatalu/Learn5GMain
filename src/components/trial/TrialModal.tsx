@@ -20,11 +20,13 @@ const fmt = (ms: number) => {
 };
 
 /**
- * จอทดลองเล่น: อยู่กลางหน้าเว็บเดิม เกือบเต็มจอ เล่นเกมได้เหมือนสมาชิก (ไม่ต้องใส่รหัส)
+ * จอทดลองเล่น / เล่นเต็ม: อยู่กลางหน้าเว็บเดิม เกือบเต็มจอ เล่นเกมได้เหมือนสมาชิก (ไม่ต้องใส่รหัส)
+ * mode='play' = สมาชิกกด "เล่นเลย": แบบเดียวกันแต่ไม่มีนาฬิกา เกมล็อกอินให้เองด้วยโทเคนสมาชิก (/api/play/start)
  * มีเวลา 5 นาทีมุมบนขวาของจอเกม หมดเวลาแล้วจอเกมจางลงและขึ้นโปรโมทสมัครสมาชิก
  * (โทเคนทดลองเซ็นโดยเซิร์ฟเวอร์และหมดอายุเอง เกมจึงล็อกตัวเองด้วยถ้าถูกเปิดแยก)
  */
-export function TrialModal({ media, onClose }: { media: MediaItem; onClose: () => void }) {
+export function TrialModal({ media, onClose, mode = 'trial' }: { media: MediaItem; onClose: () => void; mode?: 'trial' | 'play' }) {
+  const full = mode === 'play';
   const { user, profile } = useAuth();
   const { recordPlay } = useCompanion();
   const member = !!user && hasMembership(profile);
@@ -35,6 +37,8 @@ export function TrialModal({ media, onClose }: { media: MediaItem; onClose: () =
   const [total, setTotal] = useState(300);
   const [left, setLeft] = useState<number | null>(null);
   const [frameGone, setFrameGone] = useState(false);
+  /** เพิ่มค่า = ขอโทเคนใหม่แล้วเปิดเกมใหม่ (เล่นเต็มนานเกิน 4 ชั่วโมง) */
+  const [gen, setGen] = useState(0);
 
   const startedAt = useRef<number | null>(null);
   const loadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -57,20 +61,28 @@ export function TrialModal({ media, onClose }: { media: MediaItem; onClose: () =
     let off = false;
     (async () => {
       try {
-        const res = await fetch('/api/trial/start', {
+        const res = await fetch(full ? '/api/play/start' : '/api/trial/start', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ mediaId: media.id, cf: await getTurnstileToken('trial') }),
+          body: JSON.stringify({ mediaId: media.id, cf: await getTurnstileToken(full ? 'play' : 'trial') }),
         });
         const json = await res.json().catch(() => ({}));
         if (off) return;
         if (!res.ok || !json.url) {
-          setError(json.error || 'เปิดโหมดทดลองไม่ได้ในตอนนี้ ลองใหม่อีกครั้งนะ');
+          setError(json.error || (full ? 'เปิดเกมไม่ได้ในตอนนี้ ลองใหม่อีกครั้งนะ' : 'เปิดโหมดทดลองไม่ได้ในตอนนี้ ลองใหม่อีกครั้งนะ'));
           setPhase('error');
           return;
         }
-        accountRef.current = String(json.account || '');
-        setTotal(Number(json.seconds) || 300);
+        if (full && json.inline === false) {
+          // เกมของเว็บอื่น (ฝังในหน้านี้ไม่ได้): เปิดแท็บใหม่แบบเดิม
+          window.open(json.url, '_blank', 'noopener,noreferrer');
+          onClose();
+          return;
+        }
+        if (!full) {
+          accountRef.current = String(json.account || '');
+          setTotal(Number(json.seconds) || 300);
+        }
         setUrl(json.url);
       } catch {
         if (!off) {
@@ -82,13 +94,22 @@ export function TrialModal({ media, onClose }: { media: MediaItem; onClose: () =
     return () => {
       off = true;
     };
-  }, [media.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [media.id, full, gen]);
 
   // เริ่มจับเวลาเมื่อเกมพร้อมจริง (เกมส่งสัญญาณมา) หรือเมื่อหน้าเกมโหลดเสร็จ
   const startTimer = useCallback(() => {
     if (startedAt.current) return;
     startedAt.current = Date.now();
     setPhase('playing');
+  }, []);
+
+  // เล่นเต็ม: ขอโทเคนใหม่แล้วเปิดเกมใหม่
+  const renew = useCallback(() => {
+    setFrameGone(false);
+    setUrl('');
+    setPhase('loading');
+    setGen((g) => g + 1);
   }, []);
 
   useEffect(() => {
@@ -102,6 +123,12 @@ export function TrialModal({ media, onClose }: { media: MediaItem; onClose: () =
     const onMsg = (ev: MessageEvent) => {
       if (ev.origin !== gameOrigin) return;
       const d = (ev.data || {}) as { type?: string; waitStart?: boolean; seconds?: number };
+      if (full) {
+        // เล่นเต็ม: ไม่มีนาฬิกา แค่รู้ว่าเกมพร้อมแล้ว / ขอต่ออายุเซสชัน
+        if (d.type === 'l5g:trial-ready' || d.type === 'l5g:trial-started') setPhase('playing');
+        if (d.type === 'l5g:member-renew' || d.type === 'l5g:trial-ended') setPhase('ended');
+        return;
+      }
       if (d.type === 'l5g:trial-ready') {
         if (d.waitStart && !startedAt.current) {
           // เกมรุ่นใหม่: ยังไม่นับเวลา จนกว่าผู้เล่นจะแตะเข้าเกมเอง
@@ -130,7 +157,7 @@ export function TrialModal({ media, onClose }: { media: MediaItem; onClose: () =
 
   // นับถอยหลัง (คำนวณจากเวลาจริง ไม่เพี้ยนแม้แท็บถูกพัก)
   useEffect(() => {
-    if (phase !== 'playing' || !startedAt.current) return;
+    if (full || phase !== 'playing' || !startedAt.current) return;
     const tick = () => {
       const remain = total * 1000 - (Date.now() - (startedAt.current as number));
       setLeft(remain);
@@ -139,7 +166,7 @@ export function TrialModal({ media, onClose }: { media: MediaItem; onClose: () =
     tick();
     const t = setInterval(tick, 250);
     return () => clearInterval(t);
-  }, [phase, total]);
+  }, [phase, total, full]);
 
   // หมดเวลา: จอเกมจางลง แล้วปิดเกมจริง (หยุดเสียงและการเล่น)
   useEffect(() => {
@@ -181,14 +208,14 @@ export function TrialModal({ media, onClose }: { media: MediaItem; onClose: () =
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={`ทดลองเล่น ${media.title}`}
+        aria-label={`${full ? 'เล่น' : 'ทดลองเล่น'} ${media.title}`}
         onMouseDown={(e) => e.stopPropagation()}
         className="relative flex flex-col w-[min(98vw,1280px)] h-[min(94vh,860px)] rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden bg-gray-950 border-2 border-indigo-300/60 dark:border-indigo-700 shadow-toy-lg animate-pop-in"
       >
         {/* แถบหัว */}
         <div className="shrink-0 flex items-center gap-3 px-3 sm:px-5 py-2.5 bg-gray-900 text-white border-b border-white/10">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sun-400 text-indigo-950 text-sm font-bold">
-            <Play className="w-3.5 h-3.5 fill-current" /> ทดลองเล่น
+            <Play className="w-3.5 h-3.5 fill-current" /> {full ? 'กำลังเล่น' : 'ทดลองเล่น'}
           </span>
           {phase === 'waiting' ? (
             <p className="flex-1 min-w-0 truncate font-display text-sm sm:text-base text-sun-300">แตะเล่นในเกมเพื่อเริ่มนับเวลา</p>
@@ -196,7 +223,7 @@ export function TrialModal({ media, onClose }: { media: MediaItem; onClose: () =
             <p className="flex-1 min-w-0 truncate font-display text-sm sm:text-base">{media.title}</p>
           )}
       {/* ตัวจับเวลา อยู่ข้างปุ่มปิด ไม่บังจอเกม */}
-  {phase !== 'error' && (
+  {phase !== 'error' && !full && (
     <div
       className={cn(
         'shrink-0 flex items-center gap-2 pl-2 pr-3.5 py-1 rounded-full border text-white transition-colors',
@@ -229,10 +256,10 @@ export function TrialModal({ media, onClose }: { media: MediaItem; onClose: () =
           <button
             type="button"
             onClick={onClose}
-            aria-label="ปิดจอทดลองเล่น"
+            aria-label={full ? 'ปิดเกม' : 'ปิดจอทดลองเล่น'}
             className="btn-jelly inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-sm font-semibold"
           >
-            <X className="w-4 h-4" /> <span className="hidden sm:inline">ปิด</span>
+            <X className="w-4 h-4" /> <span className="hidden sm:inline">{full ? 'ปิดเกม' : 'ปิด'}</span>
           </button>
         </div>
 
@@ -240,8 +267,9 @@ export function TrialModal({ media, onClose }: { media: MediaItem; onClose: () =
         <div className="relative flex-1 min-h-0 bg-black">
           {url && !frameGone && (
             <iframe
+              key={gen}
               src={url}
-              title={`ทดลองเล่น ${media.title}`}
+              title={`${full ? 'เล่น' : 'ทดลองเล่น'} ${media.title}`}
               onLoad={() => {
                 // เกมที่ไม่ได้ส่งสัญญาณ: เริ่มนับหลังโหลดเสร็จ (ถ้าเกมรอผู้เล่นแตะอยู่ จะไม่นับ)
                 setTimeout(() => {
@@ -262,7 +290,7 @@ export function TrialModal({ media, onClose }: { media: MediaItem; onClose: () =
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 text-white bg-gray-950">
               <Buddy stage={1} size={84} animate={false} />
               <p className="inline-flex items-center gap-2 font-display">
-                <Loader2 className="w-5 h-5 animate-spin" /> กำลังเตรียมเกมให้ลองเล่น...
+                <Loader2 className="w-5 h-5 animate-spin" /> {full ? 'กำลังเปิดเกม...' : 'กำลังเตรียมเกมให้ลองเล่น...'}
               </p>
             </div>
           )}
@@ -270,15 +298,33 @@ export function TrialModal({ media, onClose }: { media: MediaItem; onClose: () =
           {phase === 'error' && (
             <div className="absolute inset-0 z-10 flex items-center justify-center p-6 text-center text-white">
               <div className="max-w-sm">
-                <p className="font-display text-xl mb-2">เปิดโหมดทดลองไม่ได้</p>
+                <p className="font-display text-xl mb-2">{full ? 'เปิดเกมไม่ได้' : 'เปิดโหมดทดลองไม่ได้'}</p>
                 <p className="text-white/80 mb-5">{error}</p>
                 <button onClick={onClose} className="btn-primary-grad btn-jelly px-6 py-3 rounded-2xl font-display">ปิด</button>
               </div>
             </div>
           )}
 
+          {/* เล่นเต็มนานเกิน 4 ชั่วโมง: ขอเซสชันใหม่ให้ */}
+          {ended && full && (
+            <div className="absolute inset-0 z-30 flex items-center justify-center p-4 animate-fade-in">
+              <div className="w-full max-w-sm rounded-[2rem] bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-2 border-sun-400 shadow-toy-lg p-6 text-center animate-pop-in">
+                <h2 className="text-xl font-medium text-gray-900 dark:text-white">เล่นมานานแล้ว พักสายตาหน่อยนะ</h2>
+                <p className="mt-1.5 text-sm text-gray-600 dark:text-gray-300">กดเล่นต่อเพื่อเปิดเกมใหม่</p>
+                <div className="mt-5 flex flex-col gap-2.5">
+                  <button type="button" onClick={renew} className="btn-primary-grad btn-jelly inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-display text-lg">
+                    <Play className="w-5 h-5 fill-current" /> เล่นต่อ
+                  </button>
+                  <button type="button" onClick={onClose} className="btn-jelly px-6 py-2.5 rounded-2xl text-gray-600 dark:text-gray-300 font-semibold">
+                    ปิดเกม
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* หมดเวลา: โปรโมทสมัครสมาชิก */}
-          {ended && (
+          {ended && !full && (
             <div className="absolute inset-0 z-30 flex items-center justify-center p-4 animate-fade-in">
               <div className="w-full max-w-md rounded-[2rem] bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-2 border-sun-400 shadow-toy-lg p-6 sm:p-8 text-center animate-pop-in">
                 <span className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-sun-400 to-orange-500 text-white flex items-center justify-center shadow-lg mb-4">

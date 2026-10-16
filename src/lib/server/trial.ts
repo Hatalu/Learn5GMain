@@ -6,13 +6,16 @@
  *   ไม่ต้องไว้ใจโดเมนใดๆ) โทเคนมีเวลาหมดอายุ จึงใช้เล่นได้แค่ช่วงทดลอง
  * - ปลอมโทเคนไม่ได้ถ้าไม่มีกุญแจส่วนตัว
  *
- * โครงสร้าง: base64url(JSON{v,exp,n}) + "." + base64url(ลายเซ็นแบบ r||s 64 ไบต์)
+ * โครงสร้าง: base64url(JSON{v,exp,n,m?}) + "." + base64url(ลายเซ็นแบบ r||s 64 ไบต์)
+ * m = 1 คือโทเคน "สมาชิกเล่นเต็ม" (ไม่มีนาฬิกาทดลอง อายุยาวกว่า) ออกให้เฉพาะสมาชิกผ่าน /api/play/start
  */
 import crypto from 'crypto';
 
 export const TRIAL_SECONDS = 300;
 /** เผื่อเวลาโหลดเกม: โทเคนหมดอายุหลังจากเวลาทดลองจริงอีกเท่านี้ */
 export const TRIAL_GRACE_SECONDS = 180;
+/** โทเคนสมาชิกเล่นเต็ม: อายุ 4 ชั่วโมง (หมดแล้วหน้าเว็บขอใหม่ให้เอง) */
+export const MEMBER_PLAY_SECONDS = 4 * 3600;
 
 function seedScalar(): Buffer {
   const base = process.env.TRIAL_SIGNING_SEED || process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -46,12 +49,14 @@ export interface TrialPayload {
   v: 1;
   exp: number; // unix seconds
   n: string;
+  /** 1 = สมาชิกเล่นเต็ม (ไม่จับเวลา) */
+  m?: 1;
 }
 
-export function signTrialToken(nowMs = Date.now()): { token: string; exp: number; n: string } {
-  const exp = Math.floor(nowMs / 1000) + TRIAL_SECONDS + TRIAL_GRACE_SECONDS;
+export function signTrialToken(nowMs = Date.now(), opts: { member?: boolean } = {}): { token: string; exp: number; n: string } {
+  const exp = Math.floor(nowMs / 1000) + (opts.member ? MEMBER_PLAY_SECONDS : TRIAL_SECONDS + TRIAL_GRACE_SECONDS);
   const n = crypto.randomBytes(6).toString('hex');
-  const payload: TrialPayload = { v: 1, exp, n };
+  const payload: TrialPayload = opts.member ? { v: 1, exp, n, m: 1 } : { v: 1, exp, n };
   const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
   const sig = crypto.sign('sha256', Buffer.from(body), { key: keys().priv, dsaEncoding: 'ieee-p1363' });
   return { token: `${body}.${sig.toString('base64url')}`, exp, n };

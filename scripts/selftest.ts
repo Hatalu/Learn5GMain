@@ -32,7 +32,7 @@ import { hasMembership } from '../src/lib/membership';
 import { crc16, promptPayKind, promptPayPayload, maskPromptPay } from '../src/lib/promptpay';
 import { extendUntil, maskedMatch, nameMatch, receiverMatches } from '../src/lib/server/payments';
 import { PLANS, perDay, savePercent } from '../src/lib/plans';
-import { TRIAL_GRACE_SECONDS, TRIAL_SECONDS, signTrialToken, trialPublicJwk, verifyTrialToken } from '../src/lib/server/trial';
+import { MEMBER_PLAY_SECONDS, TRIAL_GRACE_SECONDS, TRIAL_SECONDS, signTrialToken, trialPublicJwk, verifyTrialToken } from '../src/lib/server/trial';
 import { cleanModeSettings, modeFit, modeQuiz, scoreCap } from '../src/lib/game-creator/modes';
 import { endlessIndex } from '../src/lib/game-creator/quiz';
 import {
@@ -390,6 +390,24 @@ t('โทเคนทดลองเล่น: แก้ข้อมูล/ล�
   for (const junk of ['', 'abc', 'a.b', '.', body + '.', '.' + sig]) assert.equal(verifyTrialToken(junk, now), null);
   // โทเคนต่างกันทุกครั้ง
   assert.notEqual(signTrialToken(now).token, signTrialToken(now).token);
+});
+
+t('โทเคนสมาชิกเล่นเต็ม: มีธง m=1 อายุ 4 ชั่วโมง ส่วนโทเคนทดลองไม่มีธงนี้ และแก้ธงไม่ได้', () => {
+  const now = 1_800_000_000_000;
+  const m = signTrialToken(now, { member: true });
+  assert.equal(m.exp, Math.floor(now / 1000) + MEMBER_PLAY_SECONDS);
+  assert.equal(MEMBER_PLAY_SECONDS, 4 * 3600);
+  const p = verifyTrialToken(m.token, now + 1000);
+  assert.ok(p);
+  assert.equal(p!.m, 1);
+  assert.ok(verifyTrialToken(m.token, now + (MEMBER_PLAY_SECONDS - 5) * 1000));
+  assert.equal(verifyTrialToken(m.token, now + (MEMBER_PLAY_SECONDS + 5) * 1000), null);
+  // โทเคนทดลองธรรมดาไม่มีธงสมาชิก
+  assert.equal(verifyTrialToken(signTrialToken(now).token, now + 1000)!.m, undefined);
+  // เอาลายเซ็นของโทเคนทดลองไปแปะกับข้อมูลสมาชิก (ปลอมสิทธิ์สมาชิก) ต้องไม่ผ่าน
+  const trial = signTrialToken(now);
+  const forged = Buffer.from(JSON.stringify({ v: 1, exp: Math.floor(now / 1000) + 3000, n: 'aaaa', m: 1 })).toString('base64url');
+  assert.equal(verifyTrialToken(forged + '.' + trial.token.split('.')[1], now), null);
 });
 
 t('กุญแจสาธารณะเป็น EC P-256 และไม่เปิดเผยกุญแจส่วนตัว', () => {

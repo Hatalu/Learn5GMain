@@ -12,6 +12,10 @@
  *     const t = window.L5GTrial ? await window.L5GTrial.check() : null;
  *     if (t) { ...ปลดล็อกเกม...; window.L5GTrial.begin(t); return; }
  *
+ * โทเคนมี 2 แบบ (เกมไม่ต้องแก้อะไร SDK จัดการเอง):
+ *   - ทดลองเล่น  : เล่นได้ 300 วินาทีนับจากแตะครั้งแรก แล้วล็อก
+ *   - สมาชิกเล่นเต็ม (m=1) : ไม่มีนาฬิกา ไม่ล็อก (โทเคนอายุ 4 ชั่วโมง) ออกให้โดย /api/play/start เฉพาะสมาชิก
+ *
  * หมายเหตุ: เกมทำงานฝั่งเบราว์เซอร์ จึงกันคนที่ตั้งใจแกะโค้ดไม่ได้ 100% (เหมือนหน้าล็อกอินเดิม)
  * แต่ปลอมโทเคนไม่ได้ และโทเคนใช้ได้จำกัดเวลา
  */
@@ -71,7 +75,7 @@
       if (payload.v !== 1 || typeof payload.exp !== 'number' || payload.exp * 1000 <= Date.now()) return null;
       var cred = null;
       try { cred = JSON.parse(global.sessionStorage.getItem(SS_KEY + '_cred') || 'null'); } catch (e) {}
-      return { exp: payload.exp, cred: cred };
+      return { exp: payload.exp, cred: cred, member: payload.m === 1 };
     } catch (e) {
       return null;
     }
@@ -103,8 +107,10 @@
   function begin(info) {
     // ทดลองเล่นจริง 300 วินาที นับตั้งแต่ผู้เล่นแตะ/กดในเกมครั้งแรก (ไม่นับช่วงโหลดและหน้าเริ่มเกม)
     // โทเคนมีอายุจำกัดเสมอ จึงเปิดค้างไว้เฉยๆ ไม่ได้
+    // สมาชิกเล่นเต็ม (info.member): ไม่มีนาฬิกา เล่นได้จนโทเคนหมดอายุ (4 ชั่วโมง) แล้วขอต่ออายุผ่านหน้าเว็บ
+    var member = !!info.member;
     var exp = info.exp * 1000;
-    var started = false;
+    var started = member;
     document.documentElement.classList.add('l5g-trial');
     ['userBadge', 'user-auth-badge', 'user-auth-badge-hud', 'auth-gate-modal'].forEach(function (id) {
       var n = document.getElementById(id);
@@ -124,7 +130,7 @@
       exp = Math.min(info.exp * 1000, Date.now() + 300000);
       tell({ type: 'l5g:trial-started', seconds: Math.max(1, Math.ceil((exp - Date.now()) / 1000)) });
     }
-    ['pointerdown', 'mousedown', 'touchstart', 'keydown'].forEach(function (ev) { global.addEventListener(ev, startNow, true); });
+    if (!member) ['pointerdown', 'mousedown', 'touchstart', 'keydown'].forEach(function (ev) { global.addEventListener(ev, startNow, true); });
 
     function lock() {
       try { global.sessionStorage.removeItem(SS_KEY); } catch (e) {}
@@ -134,14 +140,28 @@
           'background:rgba(15,10,40,.86);backdrop-filter:blur(8px);font-family:system-ui,sans-serif;color:#fff;text-align:center'
       );
       var box = el('div', 'max-width:360px');
-      box.appendChild(el('div', 'font-size:22px;font-weight:700;margin-bottom:8px', 'หมดเวลาทดลองเล่นแล้ว'));
-      box.appendChild(el('div', 'opacity:.85;margin-bottom:18px;line-height:1.5', 'สมัครสมาชิกเพื่อเล่นต่อได้ไม่จำกัด ติดต่อเพจ สื่อการสอน 5G'));
-      var btn = el('button', 'padding:11px 22px;border:0;border-radius:14px;background:#7140f0;color:#fff;font:700 15px system-ui,sans-serif;cursor:pointer', 'เข้าสู่ระบบสมาชิก');
-      btn.onclick = function () { global.location.reload(); };
+      var btn;
+      if (member) {
+        // สมาชิก: เล่นมานาน เซสชันหมดอายุ กดเล่นต่อ หน้าเว็บจะออกโทเคนใหม่ให้เอง
+        box.appendChild(el('div', 'font-size:22px;font-weight:700;margin-bottom:8px', 'เล่นมานานแล้ว พักสายตาหน่อยนะ'));
+        box.appendChild(el('div', 'opacity:.85;margin-bottom:18px;line-height:1.5', 'กดปุ่มด้านล่างเพื่อเล่นต่อ'));
+        btn = el('button', 'padding:11px 22px;border:0;border-radius:14px;background:#7140f0;color:#fff;font:700 15px system-ui,sans-serif;cursor:pointer', 'เล่นต่อ');
+        btn.onclick = function () {
+          var inFrame = false;
+          try { inFrame = !!global.parent && global.parent !== global; } catch (e) {}
+          if (inFrame) tell({ type: 'l5g:member-renew' });
+          else global.location.reload();
+        };
+      } else {
+        box.appendChild(el('div', 'font-size:22px;font-weight:700;margin-bottom:8px', 'หมดเวลาทดลองเล่นแล้ว'));
+        box.appendChild(el('div', 'opacity:.85;margin-bottom:18px;line-height:1.5', 'สมัครสมาชิกเพื่อเล่นต่อได้ไม่จำกัด ติดต่อเพจ สื่อการสอน 5G'));
+        btn = el('button', 'padding:11px 22px;border:0;border-radius:14px;background:#7140f0;color:#fff;font:700 15px system-ui,sans-serif;cursor:pointer', 'เข้าสู่ระบบสมาชิก');
+        btn.onclick = function () { global.location.reload(); };
+      }
       box.appendChild(btn);
       wrap.appendChild(box);
       document.body.appendChild(wrap);
-      tell({ type: 'l5g:trial-ended' });
+      if (!member) tell({ type: 'l5g:trial-ended' });
     }
 
     // ล็อกอินด้วยบัญชีทดลองที่ระบบสร้างให้ (ผู้เล่นไม่ต้องใส่เอง)
@@ -155,7 +175,7 @@
       } catch (e) {}
     }
     tick();
-    tell({ type: 'l5g:trial-ready', exp: info.exp, waitStart: true });
+    tell({ type: 'l5g:trial-ready', exp: info.exp, waitStart: !member, member: member });
   }
 
   global.L5GTrial = {
