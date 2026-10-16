@@ -33,6 +33,20 @@ import { crc16, promptPayKind, promptPayPayload, maskPromptPay } from '../src/li
 import { extendUntil, maskedMatch, nameMatch, receiverMatches } from '../src/lib/server/payments';
 import { PLANS, perDay, savePercent } from '../src/lib/plans';
 import { TRIAL_GRACE_SECONDS, TRIAL_SECONDS, signTrialToken, trialPublicJwk, verifyTrialToken } from '../src/lib/server/trial';
+import {
+  checkAnswer,
+  isTimeout,
+  playableQuiz,
+  publicQuestion,
+  questionOrder,
+  quizIssues,
+  sanitizeQuiz,
+  scoreFor,
+  texToPlain,
+  richToPlain,
+} from '../src/lib/game-creator/quiz';
+import { cleanBackground } from '../src/lib/game-creator/backgrounds';
+import { cleanNickname, isRoomCode } from '../src/lib/game-creator/templates';
 
 let passed = 0;
 const t = (name: string, fn: () => void) => {
@@ -448,6 +462,120 @@ t('แพลนและราคา', () => {
   assert.equal(perDay(PLANS[2]), 3.3);
   assert.equal(savePercent(PLANS[0]), 0);
   assert.equal(savePercent(PLANS[2]), 41);
+});
+
+console.log('\nระบบสร้างเกม (ควิซ)');
+const PFX = 'https://abc.supabase.co/storage/v1/object/public/game-media/';
+const UID = '11111111-2222-3333-4444-555555555555';
+const goodImg = { kind: 'image', url: `${PFX}${UID}/a1.webp`, path: `${UID}/a1.webp`, w: 800, h: 600 };
+const Q = (over: Record<string, unknown> = {}) => ({
+  id: 'qqqq1',
+  text: [{ t: 'x', v: 'ข้อใดเท่ากับ ' }, { t: 'm', v: '\\frac{1}{2}' }],
+  media: null,
+  choices: [
+    { id: 'aaaa1', text: [{ t: 'x', v: '0.5' }], media: null, correct: true },
+    { id: 'bbbb1', text: [{ t: 'x', v: '2' }], media: null, correct: false },
+  ],
+  multi: false,
+  time: 20,
+  points: 1,
+  ...over,
+});
+
+t('sanitize: เก็บข้อความ/สูตร ตัดสิ่งแปลกปลอม', () => {
+  const c = sanitizeQuiz({ questions: [Q({ text: [{ t: 'x', v: 'ก\u0000ข' }, { t: 'm', v: '\\sqrt{4}' }, { t: 'h', v: '<script>' }], time: 999, points: 7 })] }, PFX);
+  assert.equal(c.questions.length, 1);
+  assert.deepEqual(c.questions[0].text, [{ t: 'x', v: 'กข' }, { t: 'm', v: '\\sqrt{4}' }]);
+  assert.equal(c.questions[0].time, 20); // ค่าที่ไม่อยู่ในตัวเลือก -> ค่าเริ่มต้น
+  assert.equal(c.questions[0].points, 1);
+});
+
+t('sanitize: รูป/คลิปต้องมาจาก bucket ของเราและโฟลเดอร์ผู้ใช้เท่านั้น', () => {
+  const ok = sanitizeQuiz({ questions: [Q({ media: goodImg })] }, PFX).questions[0].media;
+  assert.equal(ok?.url, goodImg.url);
+  const bad = [
+    { ...goodImg, url: 'https://evil.example/x.png' },
+    { ...goodImg, url: `${PFX}${UID}/other.webp` }, // url กับ path ไม่ตรงกัน
+    { ...goodImg, url: `${PFX}../secret`, path: '../secret' },
+    { ...goodImg, kind: 'audio' },
+  ];
+  bad.forEach((m) => assert.equal(sanitizeQuiz({ questions: [Q({ media: m })] }, PFX).questions[0].media, null));
+});
+
+t('คลิปเล่นได้ไม่เกิน 5 วินาที', () => {
+  const v = { kind: 'video', url: `${PFX}${UID}/v.webm`, path: `${UID}/v.webm`, start: 3, end: 30 };
+  const m = sanitizeQuiz({ questions: [Q({ media: v })] }, PFX).questions[0].media!;
+  assert.equal(m.start, 3);
+  assert.equal(m.end, 8);
+  const m2 = sanitizeQuiz({ questions: [Q({ media: { ...v, start: 1, end: 3.5 } })] }, PFX).questions[0].media!;
+  assert.equal(m2.end, 3.5);
+});
+
+t('หลายคำตอบถูก -> เปิดโหมดตอบได้หลายข้อเอง / id ซ้ำถูกแก้', () => {
+  const c = sanitizeQuiz({ questions: [Q({ choices: [{ id: 'same1', text: 'ก', correct: true }, { id: 'same1', text: 'ข', correct: true }] })] }, PFX);
+  assert.equal(c.questions[0].multi, true);
+  assert.notEqual(c.questions[0].choices[0].id, c.questions[0].choices[1].id);
+});
+
+t('ตรวจคำตอบ: ต้องเลือกครบทุกข้อที่ถูก ไม่เกิน', () => {
+  const q = sanitizeQuiz({ questions: [Q({ multi: true, choices: [{ id: 'aaaa1', text: 'ก', correct: true }, { id: 'bbbb1', text: 'ข', correct: true }, { id: 'cccc1', text: 'ค', correct: false }] })] }, PFX).questions[0];
+  assert.equal(checkAnswer(q, ['aaaa1', 'bbbb1']), true);
+  assert.equal(checkAnswer(q, ['bbbb1', 'aaaa1', 'bbbb1']), true);
+  assert.equal(checkAnswer(q, ['aaaa1']), false);
+  assert.equal(checkAnswer(q, ['aaaa1', 'bbbb1', 'cccc1']), false);
+  assert.equal(checkAnswer(q, ['aaaa1', 'zzzz9']), false);
+  assert.equal(checkAnswer(q, []), false);
+});
+
+t('คะแนน: ตอบเร็วได้มาก / ไม่คิดคะแนน / x2 / โบนัสติดกัน / หมดเวลา', () => {
+  assert.equal(scoreFor({ time: 20, points: 1 }, true, 0, 0), 1000);
+  assert.equal(scoreFor({ time: 20, points: 1 }, true, 20000, 0), 500);
+  assert.equal(scoreFor({ time: 20, points: 1 }, true, 10000, 0), 750);
+  assert.equal(scoreFor({ time: 20, points: 1 }, false, 0, 4), 0);
+  assert.equal(scoreFor({ time: 20, points: 0 }, true, 0, 0), 0);
+  assert.equal(scoreFor({ time: 20, points: 2 }, true, 0, 0), 2000);
+  assert.equal(scoreFor({ time: 0, points: 1 }, true, 999999, 0), 1000);
+  assert.equal(scoreFor({ time: 20, points: 1 }, true, 0, 2), 1200);
+  assert.equal(scoreFor({ time: 20, points: 1 }, true, 0, 9), 1500);
+  const q = sanitizeQuiz({ questions: [Q()] }, PFX).questions[0];
+  assert.equal(isTimeout(q, 22000), false); // ยังอยู่ในเวลาเผื่อเน็ต
+  assert.equal(isTimeout(q, 23000), true);
+  assert.equal(isTimeout({ ...q, time: 0 }, 1e9), false);
+});
+
+t('คำถามที่ส่งให้ผู้เล่นไม่มีเฉลย + สลับแบบเดิมทุกครั้ง', () => {
+  const q = sanitizeQuiz({ questions: [Q({ choices: 'abcdef'.split('').map((x, i) => ({ id: `${x}${x}${x}${x}1`, text: x, correct: i === 0 })) })] }, PFX).questions[0];
+  const a = publicQuestion(q, 0, 1, { shuffleChoices: true, seed: 'p1', elapsedMs: 5 });
+  const b = publicQuestion(q, 0, 1, { shuffleChoices: true, seed: 'p1', elapsedMs: 5 });
+  assert.deepEqual(a.choices.map((c) => c.id), b.choices.map((c) => c.id));
+  assert.equal(JSON.stringify(a).includes('correct'), false);
+  assert.deepEqual(questionOrder(5, false, 'x'), [0, 1, 2, 3, 4]);
+  assert.deepEqual(questionOrder(8, true, 'seed').slice().sort(), [0, 1, 2, 3, 4, 5, 6, 7]);
+});
+
+t('ข้อที่ยังไม่ครบไม่ถูกนำไปเล่น', () => {
+  const c = sanitizeQuiz({ questions: [Q(), Q({ id: 'qqqq2', text: [] }), Q({ id: 'qqqq3', choices: [{ id: 'aaaa1', text: 'x', correct: false }, { id: 'bbbb1', text: 'y', correct: false }] })] }, PFX);
+  assert.equal(playableQuiz(c).questions.length, 1);
+  const iss = quizIssues(c);
+  assert.ok(iss.some((i) => i.q === 1) && iss.some((i) => i.q === 2) && !iss.some((i) => i.q === 0));
+});
+
+t('ข้อความสั้นสำหรับรายการ: เศษส่วนอ่านออก', () => {
+  assert.equal(texToPlain('\\frac{3}{4}+\\frac{1}{4}'), '3/4+1/4');
+  assert.equal(richToPlain([{ t: 'x', v: 'ผล ' }, { t: 'm', v: '2\\times3' }]), 'ผล 2×3');
+});
+
+t('พื้นหลังห้อง/ชื่อเล่น/เลขห้อง', () => {
+  assert.deepEqual(cleanBackground({ kind: 'preset', id: 'space' }, PFX), { kind: 'preset', id: 'space' });
+  assert.deepEqual(cleanBackground({ kind: 'color', value: '#ABCDEF' }, PFX), { kind: 'color', value: '#abcdef' });
+  assert.equal(cleanBackground({ kind: 'color', value: 'red;background:url(x)' }, PFX).kind, 'preset');
+  assert.equal(cleanBackground({ kind: 'image', url: 'https://evil.example/a.png' }, PFX).kind, 'preset');
+  assert.equal(cleanBackground({ kind: 'image', url: `${PFX}${UID}/bg.webp` }, PFX).kind, 'image');
+  assert.equal(cleanNickname('  น้อง <b>ฟ้า</b>   ใส  '), 'น้อง bฟ้า/b ใส');
+  assert.equal(cleanNickname('a'.repeat(40)).length, 16);
+  assert.equal(isRoomCode('123456'), true);
+  assert.equal(isRoomCode('12345a'), false);
+  assert.equal(isRoomCode(123456), false);
 });
 
 console.log(`\n${passed} tests passed`);

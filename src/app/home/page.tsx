@@ -20,6 +20,7 @@ import { EmptyState } from '@/components/media/EmptyState';
 import { HeroCarousel } from '@/components/hero/HeroCarousel';
 import { FeatureStrip } from '@/components/media/FeatureStrip';
 import { DailyGameCard } from '@/components/media/DailyGameCard';
+import { JoinRoomBanner } from '@/components/media/JoinRoomBanner';
 import { BuddyLoader } from '@/components/fx/BuddyLoader';
 import { Reveal } from '@/components/ui/Reveal';
 import { AddMediaModal } from '@/components/dev/AddMediaModal';
@@ -349,6 +350,11 @@ export default function HomePage() {
         {/* เกมประจำวัน: เปลี่ยนทุกวัน แอดมินกำหนดได้ที่หน้า Dev */}
         <Reveal className="mt-6 sm:mt-8">
           <DailyGameCard onSelect={handleSelectMedia} />
+        </Reveal>
+
+        {/* เข้าร่วมเกมที่ครู/สมาชิกสร้างด้วยเลขห้อง 6 หลัก */}
+        <Reveal className="mt-6 sm:mt-8">
+          <JoinRoomBanner />
         </Reveal>
 
         <div className="mt-6 sm:mt-8">

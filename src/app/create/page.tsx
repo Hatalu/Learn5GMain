@@ -1,0 +1,466 @@
+'use client';
+
+import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Copy, Crown, DoorOpen, FolderHeart, LogIn, MoreVertical, Pencil, Plus, Rocket, Search, Sparkles, Trash2, Wand2 } from 'lucide-react';
+import { Navbar } from '@/components/navbar/Navbar';
+import { useAuth } from '@/context/AuthContext';
+import { hasMembership } from '@/lib/membership';
+import { createClient } from '@/lib/supabase/client';
+import { TEMPLATES } from '@/lib/game-creator/templates';
+import { cleanTitle, mediaPaths, sanitizeQuiz } from '@/lib/game-creator/quiz';
+import { mediaPrefix, removeMedia } from '@/lib/game-creator/media';
+import type { UserGameSummary } from '@/lib/game-creator/types';
+import { gsfx } from '@/lib/game-creator/gsound';
+import { ChoiceShape, choiceStyle } from '@/components/creator/ChoiceShape';
+import { OpenGameModal } from '@/components/creator/OpenGameModal';
+import { PaperModal } from '@/components/creator/PaperModal';
+import '@/components/creator/creator.css';
+import '@/components/creator/creator-pages.css';
+
+type Tab = 'new' | 'library';
+interface ActiveRoom {
+  id: string;
+  game_id: string | null;
+  code: string;
+  status: string;
+}
+
+const COVER_COLORS = ['#9b6cf0', '#4a7bf0', '#ff6b7a', '#3fd6a8', '#ff9a3d', '#4fb3ff'];
+const hashIdx = (s: string, n: number) => Array.from(s).reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7) % n;
+
+function GameCover({ game }: { game: UserGameSummary }) {
+  const c = COVER_COLORS[hashIdx(game.id, COVER_COLORS.length)];
+  if (game.cover_url) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={game.cover_url} alt="" className="l5g-gcover-img" loading="lazy" />;
+  }
+  return (
+    <div className="l5g-gcover-art" style={{ background: `linear-gradient(135deg, ${c}, color-mix(in srgb, ${c} 55%, #fff))` }}>
+      {[0, 1, 2, 3].map((i) => (
+        <span key={i} className="l5g-gcover-shape" style={{ ['--i' as string]: i }}>
+          <ChoiceShape i={(i + hashIdx(game.id, 6)) % 6} size={30} />
+        </span>
+      ))}
+      <span className="l5g-gcover-q">?</span>
+    </div>
+  );
+}
+
+function TemplateArt({ id, color }: { id: string; color: string }) {
+  if (id === 'quiz') {
+    return (
+      <div className="l5g-tart">
+        <div className="l5g-tart-q">
+          <span>
+            <svg viewBox="0 0 40 30" width="40" height="30" aria-hidden="true">
+              <text x="4" y="12" fontSize="11" fontWeight="700" fill="#2a2350">3</text>
+              <line x1="2" y1="15" x2="14" y2="15" stroke="#2a2350" strokeWidth="2" />
+              <text x="4" y="27" fontSize="11" fontWeight="700" fill="#2a2350">4</text>
+              <text x="19" y="21" fontSize="12" fontWeight="700" fill="#2a2350">= ?</text>
+            </svg>
+          </span>
+        </div>
+        <div className="l5g-tart-grid">
+          {[0, 1, 2, 3].map((i) => (
+            <span key={i} style={{ background: choiceStyle(i).color, animationDelay: `${i * 0.15}s` }}>
+              <ChoiceShape i={i} size={18} />
+            </span>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="l5g-tart l5g-tart-soon" style={{ ['--c' as string]: color }}>
+      {[0, 1, 2].map((i) => (
+        <span key={i} className="l5g-tart-block" style={{ animationDelay: `${i * 0.2}s` }} />
+      ))}
+    </div>
+  );
+}
+
+function CreateHub() {
+  const { user, profile, isLoading } = useAuth();
+  const member = !!user && hasMembership(profile) && !String(profile?.username || '').startsWith('trial_');
+  const router = useRouter();
+  const sp = useSearchParams();
+  const [tab, setTab] = useState<Tab>(sp.get('tab') === 'library' ? 'library' : 'new');
+  const [games, setGames] = useState<UserGameSummary[] | null>(null);
+  const [rooms, setRooms] = useState<ActiveRoom[]>([]);
+  const [dbMissing, setDbMissing] = useState(false);
+  const [q, setQ] = useState('');
+  const [menu, setMenu] = useState<string | null>(null);
+  const [openGame, setOpenGame] = useState<UserGameSummary | null>(null);
+  const [rename, setRename] = useState<UserGameSummary | null>(null);
+  const [renameVal, setRenameVal] = useState('');
+  const [del, setDel] = useState<UserGameSummary | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    if (!member) return;
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('user_games')
+      .select('id, owner_id, title, template, question_count, play_count, cover_url, created_at, updated_at')
+      .order('updated_at', { ascending: false });
+    if (error) {
+      if (error.code === '42P01' || error.code === 'PGRST205') setDbMissing(true);
+      setGames([]);
+      return;
+    }
+    setGames((data || []) as UserGameSummary[]);
+    const { data: r } = await supabase.from('game_rooms').select('id, game_id, code, status').neq('status', 'closed').order('created_at', { ascending: false });
+    setRooms((r || []) as ActiveRoom[]);
+  }, [member]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useEffect(() => {
+    const close = () => setMenu(null);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, []);
+
+  const shown = useMemo(() => (games || []).filter((g) => !q.trim() || g.title.toLowerCase().includes(q.trim().toLowerCase())), [games, q]);
+
+  const switchTab = (t: Tab) => {
+    gsfx.tap();
+    setTab(t);
+    const u = new URL(window.location.href);
+    if (t === 'library') u.searchParams.set('tab', 'library');
+    else u.searchParams.delete('tab');
+    window.history.replaceState(null, '', u.toString());
+  };
+
+  const duplicate = async (g: UserGameSummary) => {
+    if (!user) return;
+    setBusy(true);
+    const supabase = createClient();
+    const { data: full } = await supabase.from('user_games').select('content').eq('id', g.id).maybeSingle();
+    if (full) {
+      const title = cleanTitle(`${g.title} (สำเนา)`);
+      const { error } = await supabase.from('user_games').insert({
+        owner_id: user.id,
+        title,
+        template: g.template,
+        content: full.content,
+        question_count: g.question_count,
+        cover_url: g.cover_url,
+      });
+      if (!error) gsfx.join();
+    }
+    setBusy(false);
+    load();
+  };
+
+  const doRename = async () => {
+    if (!rename) return;
+    const t = cleanTitle(renameVal);
+    if (!t) return;
+    setBusy(true);
+    await createClient().from('user_games').update({ title: t }).eq('id', rename.id);
+    setBusy(false);
+    setRename(null);
+    load();
+  };
+
+  const doDelete = async () => {
+    if (!del) return;
+    setBusy(true);
+    const supabase = createClient();
+    const { data: all } = await supabase.from('user_games').select('id, content');
+    const prefix = mediaPrefix();
+    const mine = (all || []).find((x) => x.id === del.id);
+    const { error } = await supabase.from('user_games').delete().eq('id', del.id);
+    if (!error && mine) {
+      // ลบไฟล์ที่ไม่มีเกมอื่นใช้แล้ว (สำเนาเกมใช้ไฟล์ร่วมกัน)
+      const keep = new Set((all || []).filter((x) => x.id !== del.id).flatMap((x) => mediaPaths(sanitizeQuiz(x.content, prefix))));
+      await removeMedia(mediaPaths(sanitizeQuiz(mine.content, prefix)).filter((p) => !keep.has(p)));
+    }
+    setBusy(false);
+    setDel(null);
+    load();
+  };
+
+  const roomOf = (id: string) => rooms.find((r) => r.game_id === id);
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      <Navbar />
+      <main className="l5g-world flex-1">
+        <span className="l5g-bg-cloud" style={{ top: '7%', animationDelay: '-20s' }} />
+        <span className="l5g-bg-cloud" style={{ top: '40%', animationDelay: '-55s', ['--s' as string]: 0.7 }} />
+
+        <section className="max-w-6xl mx-auto px-4 pt-6 sm:pt-10 pb-4 text-center relative">
+          <span className="l5g-chip-head">
+            <Wand2 className="w-4 h-4" /> ระบบสร้างเกม
+          </span>
+          <h1 className="l5g-hero-title">
+            สร้างเกมของคุณเอง
+            <br />
+            <span>แล้วชวนทั้งห้องมาเล่น</span>
+          </h1>
+          <p className="l5g-hero-sub">เลือก Template ใส่คำถาม สูตรคณิต รูป และคลิป แล้วเปิดห้องด้วยเลข 6 หลัก</p>
+        </section>
+
+        {isLoading ? (
+          <div className="max-w-md mx-auto px-4 pb-16">
+            <div className="l5g-card l5g-card-pad text-center font-bold">กำลังโหลด…</div>
+          </div>
+        ) : !member ? (
+          <section className="max-w-3xl mx-auto px-4 pb-10">
+            <div className="l5g-card l5g-gate">
+              <div className="l5g-gate-art" aria-hidden="true">
+                <span className="l5g-gate-lock">
+                  <svg viewBox="0 0 64 64" width="64" height="64">
+                    <rect x="12" y="28" width="40" height="30" rx="8" fill="#ffcf3f" stroke="#2a2350" strokeWidth="4" />
+                    <path d="M20 28 V20 a12 12 0 0 1 24 0 V28" fill="none" stroke="#2a2350" strokeWidth="4" strokeLinecap="round" />
+                    <circle cx="32" cy="42" r="4" fill="#2a2350" />
+                    <path d="M32 44 V50" stroke="#2a2350" strokeWidth="4" strokeLinecap="round" />
+                  </svg>
+                </span>
+              </div>
+              <h2 className="font-display text-2xl sm:text-3xl">ต้องสมัครสมาชิกก่อน</h2>
+              <p className="font-semibold opacity-80 mt-1">สมาชิกสร้างเกม เก็บในคลัง และเปิดห้องให้คนอื่นเล่นได้ไม่จำกัด</p>
+              <div className="mt-5 flex flex-wrap justify-center gap-3">
+                <Link href="/membership" className="l5g-btn l5g-btn-go">
+                  <Crown className="w-5 h-5" /> สมัครสมาชิก
+                </Link>
+                {!user && (
+                  <Link href="/login?redirect=/create" className="l5g-btn l5g-btn-ghost">
+                    <LogIn className="w-5 h-5" /> เข้าสู่ระบบ
+                  </Link>
+                )}
+              </div>
+            </div>
+          </section>
+        ) : (
+          <>
+            {/* แท็บ */}
+            <div className="max-w-6xl mx-auto px-4">
+              <div className="l5g-seg" role="tablist">
+                <button type="button" role="tab" aria-selected={tab === 'new'} data-on={tab === 'new'} onClick={() => switchTab('new')}>
+                  <Sparkles className="w-5 h-5" /> สร้างเกมใหม่
+                </button>
+                <button type="button" role="tab" aria-selected={tab === 'library'} data-on={tab === 'library'} onClick={() => switchTab('library')}>
+                  <FolderHeart className="w-5 h-5" /> คลังเกมของฉัน
+                  {games && games.length > 0 && <span className="l5g-seg-count">{games.length}</span>}
+                </button>
+              </div>
+            </div>
+
+            {dbMissing && (
+              <div className="max-w-3xl mx-auto px-4 mt-4">
+                <div className="l5g-card l5g-card-pad text-center font-bold">ระบบสร้างเกมยังไม่พร้อมใช้งาน (ผู้ดูแลต้องติดตั้งฐานข้อมูล migration 015)</div>
+              </div>
+            )}
+
+            {tab === 'new' ? (
+              <section className="max-w-6xl mx-auto px-4 pt-6 pb-10">
+                <h2 className="l5g-sec-title">เลือก Template</h2>
+                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 mt-4">
+                  {TEMPLATES.map((t, i) => (
+                    <article key={t.id} className="l5g-tcard" data-soon={!t.available} style={{ ['--a' as string]: t.color, ['--soft' as string]: t.soft, animationDelay: `${i * 80}ms` }}>
+                      {!t.available && <span className="l5g-ribbon">เร็วๆ นี้</span>}
+                      <div className="l5g-tcard-art">
+                        <TemplateArt id={t.id} color={t.color} />
+                      </div>
+                      <div className="p-5 pt-4 flex flex-col flex-1">
+                        <p className="text-xs font-extrabold tracking-wider uppercase" style={{ color: t.color }}>
+                          {t.tagline}
+                        </p>
+                        <h3 className="font-display text-2xl">{t.name}</h3>
+                        <ul className="mt-2 space-y-1 text-sm font-semibold">
+                          {t.points.map((p) => (
+                            <li key={p} className="flex items-center gap-2">
+                              <span className="l5g-dot" style={{ background: t.color }} />
+                              {p}
+                            </li>
+                          ))}
+                        </ul>
+                        <div className="flex-1" />
+                        <button
+                          type="button"
+                          className="l5g-btn l5g-btn-go mt-5 w-full"
+                          disabled={!t.available || dbMissing}
+                          onClick={() => {
+                            gsfx.pick();
+                            router.push(`/create/edit?template=${t.id}`);
+                          }}
+                        >
+                          {t.available ? (
+                            <>
+                              <Plus className="w-5 h-5" strokeWidth={3} /> เริ่มสร้าง
+                            </>
+                          ) : (
+                            'กำลังพัฒนา'
+                          )}
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            ) : (
+              <section className="max-w-6xl mx-auto px-4 pt-6 pb-10">
+                <div className="flex flex-wrap items-center gap-3">
+                  <h2 className="l5g-sec-title">คลังเกมของฉัน</h2>
+                  <span className="flex-1" />
+                  {games && games.length > 3 && (
+                    <label className="l5g-search">
+                      <Search className="w-4 h-4" />
+                      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="ค้นหาชื่อเกม" aria-label="ค้นหาชื่อเกม" />
+                    </label>
+                  )}
+                  <button type="button" className="l5g-btn l5g-btn-violet l5g-btn-sm" onClick={() => switchTab('new')}>
+                    <Plus className="w-4 h-4" strokeWidth={3} /> เกมใหม่
+                  </button>
+                </div>
+
+                {games === null ? (
+                  <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 mt-5">
+                    {[0, 1, 2].map((i) => (
+                      <div key={i} className="l5g-gcard l5g-skel" />
+                    ))}
+                  </div>
+                ) : games.length === 0 ? (
+                  <div className="l5g-card l5g-empty mt-5">
+                    <div className="l5g-empty-art" aria-hidden="true">
+                      {[0, 1, 2, 3].map((i) => (
+                        <span key={i} style={{ background: choiceStyle(i).color, animationDelay: `${i * 0.2}s` }}>
+                          <ChoiceShape i={i} size={22} />
+                        </span>
+                      ))}
+                    </div>
+                    <h3 className="font-display text-2xl">ยังไม่มีเกมในคลัง</h3>
+                    <p className="font-semibold opacity-75">สร้างเกมแรก แล้วกดบันทึก เกมจะมาอยู่ที่นี่</p>
+                    <button type="button" className="l5g-btn l5g-btn-go mt-4" onClick={() => switchTab('new')}>
+                      <Sparkles className="w-5 h-5" /> สร้างเกมแรก
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 mt-5">
+                    {shown.map((g, i) => {
+                      const live = roomOf(g.id);
+                      return (
+                        <article key={g.id} className="l5g-gcard" style={{ animationDelay: `${Math.min(i, 8) * 50}ms` }}>
+                          <div className="l5g-gcover">
+                            <GameCover game={g} />
+                            <span className="l5g-gcover-count">{g.question_count} ข้อ</span>
+                            {live && (
+                              <span className="l5g-gcover-live">
+                                <i /> ห้อง {live.code}
+                              </span>
+                            )}
+                          </div>
+                          <div className="p-4 flex flex-col gap-1 flex-1">
+                            <div className="flex items-start gap-2">
+                              <h3 className="font-display text-lg leading-snug flex-1 min-w-0 break-words">{g.title}</h3>
+                              <div className="relative">
+                                <button
+                                  type="button"
+                                  className="l5g-icon-btn"
+                                  style={{ width: 34, height: 34, borderRadius: 11 }}
+                                  aria-label="ตัวเลือกเพิ่มเติม"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setMenu(menu === g.id ? null : g.id);
+                                  }}
+                                >
+                                  <MoreVertical className="w-4 h-4" />
+                                </button>
+                                {menu === g.id && (
+                                  <div className="l5g-menu" onClick={(e) => e.stopPropagation()}>
+                                    <button type="button" onClick={() => (setMenu(null), setRename(g), setRenameVal(g.title))}>
+                                      <Pencil className="w-4 h-4" /> เปลี่ยนชื่อ
+                                    </button>
+                                    <button type="button" disabled={busy} onClick={() => (setMenu(null), duplicate(g))}>
+                                      <Copy className="w-4 h-4" /> ทำสำเนา
+                                    </button>
+                                    <button type="button" className="l5g-menu-danger" onClick={() => (setMenu(null), setDel(g))}>
+                                      <Trash2 className="w-4 h-4" /> ลบเกม
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <p className="text-xs font-bold opacity-60">
+                              แก้ไข {new Date(g.updated_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })}
+                              {g.play_count > 0 && ` · เปิดเล่น ${g.play_count} ครั้ง`}
+                            </p>
+                            <div className="flex-1" />
+                            <div className="flex gap-2 mt-3">
+                              {live ? (
+                                <Link href={`/create/host?room=${live.id}`} className="l5g-btn l5g-btn-mint flex-1">
+                                  <DoorOpen className="w-5 h-5" /> กลับเข้าห้อง
+                                </Link>
+                              ) : (
+                                <button type="button" className="l5g-btn l5g-btn-go flex-1" disabled={!g.question_count} onClick={() => (gsfx.pick(), setOpenGame(g))}>
+                                  <Rocket className="w-5 h-5" /> เปิดใช้งาน
+                                </button>
+                              )}
+                              <Link href={`/create/edit?id=${g.id}`} className="l5g-btn l5g-btn-ghost" aria-label="แก้ไขเกม">
+                                <Pencil className="w-5 h-5" />
+                                <span className="hidden min-[400px]:inline">แก้ไข</span>
+                              </Link>
+                            </div>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
+            )}
+          </>
+        )}
+      </main>
+
+      {openGame && profile && <OpenGameModal gameId={openGame.id} title={openGame.title} username={profile.username} onClose={() => setOpenGame(null)} />}
+
+      {rename && (
+        <PaperModal title="เปลี่ยนชื่อเกม" icon={<Pencil className="w-5 h-5" />} onClose={() => setRename(null)} busy={busy}>
+          <input className="l5g-input" value={renameVal} maxLength={80} autoFocus onChange={(e) => setRenameVal(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && doRename()} />
+          <div className="l5g-math-foot">
+            <span className="flex-1" />
+            <button type="button" className="l5g-btn l5g-btn-ghost" onClick={() => setRename(null)}>
+              ยกเลิก
+            </button>
+            <button type="button" className="l5g-btn l5g-btn-go" disabled={busy || !cleanTitle(renameVal)} onClick={doRename}>
+              บันทึก
+            </button>
+          </div>
+        </PaperModal>
+      )}
+
+      {del && (
+        <PaperModal title="ลบเกมนี้?" icon={<Trash2 className="w-5 h-5" />} iconBg="#ff6b7a" onClose={() => setDel(null)} busy={busy}>
+          <p className="font-semibold">
+            &quot;{del.title}&quot; จะหายจากคลังถาวร รวมถึงรูปและคลิปที่ใช้เฉพาะเกมนี้
+          </p>
+          <div className="l5g-math-foot">
+            <span className="flex-1" />
+            <button type="button" className="l5g-btn l5g-btn-ghost" onClick={() => setDel(null)} disabled={busy}>
+              ยกเลิก
+            </button>
+            <button type="button" className="l5g-btn l5g-btn-coral" onClick={doDelete} disabled={busy}>
+              <Trash2 className="w-5 h-5" /> ลบเลย
+            </button>
+          </div>
+        </PaperModal>
+      )}
+    </div>
+  );
+}
+
+export default function CreatePage() {
+  return (
+    <Suspense fallback={null}>
+      <CreateHub />
+    </Suspense>
+  );
+}

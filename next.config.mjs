@@ -16,7 +16,8 @@ const csp = [
   "font-src 'self' data:",
   `connect-src 'self' ${supabase} ${supabase.replace('https://', 'wss://')} https://challenges.cloudflare.com${isDev ? ' ws://localhost:* http://localhost:*' : ''}`,
   `frame-src 'self' https:${isDev ? ' http://localhost:*' : ''}`,
-  "media-src 'self' blob:",
+  // คลิปในเกมที่สมาชิกสร้าง เก็บใน Supabase Storage
+  `media-src 'self' blob: ${supabase}`,
   "worker-src 'self' blob:",
   "object-src 'none'",
   "base-uri 'self'",

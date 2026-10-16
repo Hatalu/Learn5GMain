@@ -9,7 +9,7 @@ import { ThemeToggle } from './ThemeToggle';
 import { SoundToggle } from './SoundToggle';
 import { useCompanionOptional } from '@/components/companion/CompanionProvider';
 import { UserMenu } from './UserMenu';
-import { ShieldCheck, Home, LogIn, UserX, Sparkles, Lock, Crown } from 'lucide-react';
+import { ShieldCheck, Home, LogIn, UserX, Sparkles, Lock, Crown, Wand2 } from 'lucide-react';
 import { FacebookIcon } from '@/components/icons/FacebookIcon';
 import { cn } from '@/lib/utils/cn';
 import fx from '@/components/ui/fancy.module.css';
@@ -131,6 +131,21 @@ export function Navbar() {
                 <span className="hidden md:inline font-normal text-amber-700 dark:text-amber-300">แดชบอร์ด</span>
               </Link>
             )
+          )}
+
+          {/* ระบบสร้างเกม (สมาชิกสร้างเกมจาก Template / ทุกคนเข้าเล่นด้วยเลขห้อง) */}
+          {!isDevPage && !pathname.startsWith('/create') && (
+            <Link
+              href="/create"
+              className={cn(fx.shine, user ? 'inline-flex' : 'hidden sm:inline-flex', 'btn-jelly items-center gap-2 pl-1.5 pr-1.5 lg:pr-3 py-1.5 text-sm font-bold rounded-2xl text-white bg-gradient-to-r from-emerald-500 via-teal-500 to-sky-500 border-2 border-white/40 dark:border-white/15 shadow-[0_3px_0_0_rgba(13,148,136,0.5)] whitespace-nowrap')}
+              title="ระบบสร้างเกม"
+              aria-label="ระบบสร้างเกม"
+            >
+              <span className="w-7 h-7 rounded-xl bg-white/95 flex items-center justify-center shrink-0 text-teal-600">
+                <Wand2 className="w-4 h-4" />
+              </span>
+              <span className="hidden lg:inline [text-shadow:0_1px_1px_rgba(0,0,0,0.25)]">สร้างเกม</span>
+            </Link>
           )}
 
           {/* คู่หู + สมุดสะสม */}
