@@ -55,6 +55,18 @@ import { cleanNickname, isRoomCode } from '../src/lib/game-creator/templates';
 import { GEAR_SLOTS, cleanGear, gearCount, randomGear, sameGear } from '../src/lib/game-creator/gear';
 import { MODE_MUSIC, TRACKS, cleanMusicSetting, roomTrack } from '../src/lib/music-tracks';
 import { MODES } from '../src/lib/game-creator/modes';
+import { ALL_MEDIA_TYPES, GAME_FILTER_TYPES } from '../src/types/database';
+import {
+  fileKindOf,
+  filesForFormat,
+  formatsOf,
+  isMissingTable,
+  normalizeDocument,
+  previewPathFor,
+  safeFileName,
+  storagePathFor,
+  uniqueNames,
+} from '../src/lib/documents';
 
 let passed = 0;
 const t = (name: string, fn: () => void) => {
@@ -505,6 +517,8 @@ t('ส่วนลดบัญชีใหม่ปัดลง + โบนั�
 });
 
 t('ลิงก์ยกเลิกรับอีเมล + เนื้อหาอีเมล', () => {
+  // ไม่พึ่งค่าใน .env.local (รันที่ไหนก็ผ่าน)
+  process.env.EMAIL_LINK_SECRET = process.env.EMAIL_LINK_SECRET || 'selftest-email-secret';
   const id = '11111111-2222-3333-4444-555555555555';
   const tok = unsubscribeToken(id);
   assert.ok(checkUnsubscribeToken(id, tok));
@@ -782,6 +796,57 @@ t('บัญชีฟรี: สิทธิ์ 2 ชุดนับจากท
   assert.ok(setsUsed(2, 0) >= FREE_SET_LIMIT);
   assert.ok(setsUsed(1, 1) < FREE_SET_LIMIT);
   assert.equal(setsUsed(1, 2), 2, 'ตัวเลขที่เคยสร้างน้อยกว่าที่มีอยู่จริง ใช้ค่าที่มากกว่า');
+});
+
+t('เอกสาร/ใบงาน: ชนิดไฟล์ รูปแบบดาวน์โหลด และชื่อไฟล์', () => {
+  assert.equal(fileKindOf('ใบงาน.PDF'), 'pdf');
+  assert.equal(fileKindOf('a.docx'), 'word');
+  assert.equal(fileKindOf('a.doc'), 'word');
+  assert.equal(fileKindOf('a.pdf.exe'), null);
+  assert.equal(fileKindOf('noext'), null);
+
+  const files = [{ kind: 'pdf' as const }, { kind: 'word' as const }, { kind: 'pdf' as const }];
+  assert.equal(filesForFormat(files, 'pdf').length, 2);
+  assert.equal(filesForFormat(files, 'word').length, 1);
+  assert.equal(filesForFormat(files, 'both').length, 3);
+  assert.deepEqual(formatsOf(files), { pdf: true, word: true, both: true });
+  // มีแต่ PDF: เลือก Word หรือ Word + PDF ไม่ได้
+  const onlyPdf = [{ kind: 'pdf' as const }];
+  assert.equal(filesForFormat(onlyPdf, 'word').length, 0);
+  assert.equal(filesForFormat(onlyPdf, 'both').length, 0);
+  assert.deepEqual(formatsOf(onlyPdf), { pdf: true, word: false, both: false });
+
+  // พาธใน storage ไม่มีอักษรไทย/ช่องว่าง และไม่หลุดออกนอกโฟลเดอร์ของเอกสาร
+  const p = storagePathFor('doc-1', 'fabc', 'ใบงาน ชุด/../1.DOCX');
+  assert.equal(p, 'doc-1/fabc.docx');
+  assert.equal(previewPathFor('doc-1', 'fabc', 3), 'doc-1/fabc-003.webp');
+
+  assert.equal(safeFileName('ใบงาน: ชุด/1?.pdf'), 'ใบงาน ชุด 1 .pdf');
+  assert.equal(safeFileName('   '), 'file');
+  assert.deepEqual(uniqueNames(['a.pdf', 'A.pdf', 'a.pdf', 'b.docx']), ['a.pdf', 'A (2).pdf', 'a (3).pdf', 'b.docx']);
+});
+
+t('เอกสาร/ใบงาน: แถวจากฐานข้อมูลที่เพี้ยนไม่ทำให้หน้าเว็บพัง', () => {
+  const d = normalizeDocument({
+    id: 'x',
+    title: 'T',
+    doc_type: 'แปลก',
+    files: [{ id: 'a', kind: 'pdf', name: 'a.pdf', path: 'x/a.pdf', preview: ['x/a-001.webp'] }, { kind: 'exe', path: 'x/b.exe' }, null, 'bad'],
+    grade_level: null,
+  });
+  assert.equal(d.doc_type, 'เอกสาร');
+  assert.equal(d.files.length, 1);
+  assert.deepEqual(d.grade_level, []);
+  assert.equal(d.is_public, true);
+  assert.ok(isMissingTable({ code: 'PGRST205' }));
+  assert.ok(!isMissingTable({ code: '23505', message: 'duplicate' }));
+});
+
+t('คลังเกม: ตัวกรองประเภทไม่มีแบบทดสอบ/แบบฝึกหัด', () => {
+  assert.ok(!GAME_FILTER_TYPES.includes('แบบทดสอบ'));
+  assert.ok(!GAME_FILTER_TYPES.includes('แบบฝึกหัด'));
+  assert.ok(GAME_FILTER_TYPES.includes('เกม'));
+  assert.equal(GAME_FILTER_TYPES.length, ALL_MEDIA_TYPES.length - 2);
 });
 
 console.log(`\n${passed} tests passed`);

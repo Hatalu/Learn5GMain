@@ -349,3 +349,11 @@ h1, h2, h3 {
   .fx-fall, .fx-rain, .fx-rise, .fx-cloud, .fx-boat, .fx-firefly, .sun-rays, .confetti, .curtain { display: none !important; }
   .page-enter, .buddy-wake { animation: none; }
 }
+
+/* ซ่อนแถบเลื่อนแต่ยังเลื่อนได้ (แถบไฟล์/รูปย่อในหน้าดูเอกสาร) */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

@@ -1,17 +1,9 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import {
-  ALL_GRADES,
-  ALL_MEDIA_TYPES,
-  ALL_SUBJECTS,
-  FilterState,
-  GradeLevel,
-  MediaType,
-  Subject,
-} from '@/types/database';
-import { X, RotateCcw, Check, BookOpen, GraduationCap, Layers } from 'lucide-react';
-import { cn } from '@/lib/utils/cn';
+import { FilterState } from '@/types/database';
+import { X, RotateCcw, Filter } from 'lucide-react';
+import { FilterSections } from '@/components/media/FilterSidebar';
 
 interface MobileFilterDrawerProps {
   isOpen: boolean;
@@ -20,8 +12,10 @@ interface MobileFilterDrawerProps {
   onFilterChange: (newFilters: FilterState) => void;
   onReset: () => void;
   totalFilteredCount?: number;
+  typeOptions?: readonly string[];
 }
 
+/** ตัวกรองบนมือถือ/แท็บเล็ต: แผงเลื่อนขึ้นจากด้านล่าง ใช้ชุดตัวกรองเดียวกับแถบข้างจอใหญ่ */
 export function MobileFilterDrawer({
   isOpen,
   onClose,
@@ -29,205 +23,74 @@ export function MobileFilterDrawer({
   onFilterChange,
   onReset,
   totalFilteredCount,
+  typeOptions,
 }: MobileFilterDrawerProps) {
-  // Prevent background scroll when drawer is open
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
+    if (!isOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    document.addEventListener('keydown', onKey);
     return () => {
-      document.body.style.overflow = '';
+      document.body.style.overflow = prev;
+      document.removeEventListener('keydown', onKey);
     };
-  }, [isOpen]);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
-  const toggleSubject = (subject: Subject) => {
-    const next = filters.subjects.includes(subject)
-      ? filters.subjects.filter((s) => s !== subject)
-      : [...filters.subjects, subject];
-    onFilterChange({ ...filters, subjects: next });
-  };
-
-  const toggleGrade = (grade: GradeLevel) => {
-    const next = filters.grades.includes(grade)
-      ? filters.grades.filter((g) => g !== grade)
-      : [...filters.grades, grade];
-    onFilterChange({ ...filters, grades: next });
-  };
-
-  const toggleMediaType = (type: MediaType) => {
-    const next = filters.mediaTypes.includes(type)
-      ? filters.mediaTypes.filter((t) => t !== type)
-      : [...filters.mediaTypes, type];
-    onFilterChange({ ...filters, mediaTypes: next });
-  };
+  const activeCount = filters.subjects.length + filters.grades.length + filters.mediaTypes.length;
 
   return (
-    <div className="fixed inset-0 z-50 flex lg:hidden">
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
-        onClick={onClose}
-      />
+    <div className="fixed inset-0 z-50 flex items-end sm:items-stretch sm:justify-end lg:hidden" role="dialog" aria-modal="true" aria-label="ตัวกรอง">
+      <div className="absolute inset-0 bg-indigo-950/60 backdrop-blur-sm animate-fade-in" onClick={onClose} />
 
-      {/* Drawer Panel */}
-      <div className="relative ml-auto w-full max-w-xs sm:max-w-sm h-full bg-white dark:bg-gray-900 shadow-2xl flex flex-col z-10 animate-fade-in">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800">
-          <div>
-            <h2 className="text-base font-bold text-gray-900 dark:text-white">ตัวกรองสื่อ</h2>
-            {typeof totalFilteredCount === 'number' && (
-              <p className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">
-                พบ {totalFilteredCount} รายการ
-              </p>
-            )}
+      <div className="relative w-full sm:max-w-sm max-h-[88vh] sm:max-h-none sm:h-full flex flex-col bg-white dark:bg-gray-900 rounded-t-[2rem] sm:rounded-none sm:rounded-l-[2rem] border-t-[3px] sm:border-t-0 sm:border-l-[3px] border-indigo-200 dark:border-indigo-500/40 shadow-2xl animate-sheet-up sm:animate-fade-in overflow-hidden">
+        <span className="sm:hidden mx-auto mt-2.5 w-12 h-1.5 rounded-full bg-gray-300 dark:bg-gray-700" aria-hidden="true" />
+
+        <div className="flex items-center justify-between gap-2 px-5 pt-3 pb-4 border-b-2 border-dashed border-indigo-100 dark:border-indigo-900/70">
+          <div className="flex items-center gap-2.5">
+            <span className="relative w-9 h-9 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/30">
+              <Filter className="w-4 h-4" />
+              {activeCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[1.15rem] h-[1.15rem] px-1 rounded-full bg-pink-500 text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-white dark:ring-gray-900">
+                  {activeCount}
+                </span>
+              )}
+            </span>
+            <div>
+              <p className="font-display text-base leading-tight text-gray-900 dark:text-white">ตัวกรอง</p>
+              {typeof totalFilteredCount === 'number' && (
+                <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-300">พบ {totalFilteredCount} รายการ</p>
+              )}
+            </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+            className="btn-jelly p-2 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-gray-900 dark:hover:text-white"
             aria-label="ปิดตัวกรอง"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Content (Scrollable) */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-6">
-          {/* 1. Subjects */}
-          <div>
-            <div className="flex items-center gap-2 mb-2.5">
-              <BookOpen className="w-3.5 h-3.5 text-indigo-500" />
-              <h3 className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                วิชา
-              </h3>
-            </div>
-            <div className="space-y-1">
-              {ALL_SUBJECTS.map((sub) => {
-                const isChecked = filters.subjects.includes(sub);
-                return (
-                  <button
-                    key={sub}
-                    type="button"
-                    role="checkbox"
-                    aria-checked={isChecked}
-                    onClick={() => toggleSubject(sub)}
-                    className={cn(
-                      'w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm text-left transition-colors',
-                      isChecked
-                        ? 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-900 dark:text-indigo-200 font-medium'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
-                    )}
-                  >
-                    <span>{sub}</span>
-                    <div
-                      className={cn(
-                        'w-4 h-4 rounded-md border flex items-center justify-center transition-colors',
-                        isChecked
-                          ? 'bg-indigo-600 border-indigo-600 text-white'
-                          : 'border-gray-300 dark:border-gray-700'
-                      )}
-                    >
-                      {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* 2. Grades */}
-          <div>
-            <div className="flex items-center gap-2 mb-2.5">
-              <GraduationCap className="w-3.5 h-3.5 text-indigo-500" />
-              <h3 className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                ระดับชั้น
-              </h3>
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              {ALL_GRADES.map((grade) => {
-                const isSelected = filters.grades.includes(grade);
-                return (
-                  <button
-                    key={grade}
-                    type="button"
-                    onClick={() => toggleGrade(grade)}
-                    className={cn(
-                      'py-2 px-2 rounded-xl text-xs font-medium border text-center transition-all',
-                      isSelected
-                        ? 'bg-indigo-600 border-indigo-600 text-white'
-                        : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300'
-                    )}
-                  >
-                    {grade}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* 3. Media Types */}
-          <div>
-            <div className="flex items-center gap-2 mb-2.5">
-              <Layers className="w-3.5 h-3.5 text-indigo-500" />
-              <h3 className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                ประเภทสื่อ
-              </h3>
-            </div>
-            <div className="space-y-1">
-              {ALL_MEDIA_TYPES.map((type) => {
-                const isChecked = filters.mediaTypes.includes(type);
-                return (
-                  <button
-                    key={type}
-                    type="button"
-                    role="checkbox"
-                    aria-checked={isChecked}
-                    onClick={() => toggleMediaType(type)}
-                    className={cn(
-                      'w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm text-left transition-colors',
-                      isChecked
-                        ? 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-900 dark:text-indigo-200 font-medium'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
-                    )}
-                  >
-                    <span>{type}</span>
-                    <div
-                      className={cn(
-                        'w-4 h-4 rounded-md border flex items-center justify-center transition-colors',
-                        isChecked
-                          ? 'bg-indigo-600 border-indigo-600 text-white'
-                          : 'border-gray-300 dark:border-gray-700'
-                      )}
-                    >
-                      {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+        <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-5 flex flex-col gap-6">
+          <FilterSections filters={filters} onFilterChange={onFilterChange} typeOptions={typeOptions} />
         </div>
 
-        {/* Footer actions */}
-        <div className="p-4 border-t border-gray-100 dark:border-gray-800 flex gap-2">
+        <div className="p-4 border-t border-gray-100 dark:border-gray-800 flex gap-2.5 pb-[max(1rem,env(safe-area-inset-bottom))]">
           <button
             type="button"
             onClick={onReset}
-            className="flex-1 py-2.5 px-3 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium flex items-center justify-center gap-1.5"
+            disabled={activeCount === 0}
+            className="btn-jelly flex-1 py-3 px-3 rounded-2xl border-2 border-dashed border-rose-300 dark:border-rose-800 text-rose-600 dark:text-rose-300 text-sm font-bold flex items-center justify-center gap-1.5 disabled:opacity-40"
           >
             <RotateCcw className="w-4 h-4" />
             <span>ล้าง</span>
           </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 py-2.5 px-3 rounded-xl bg-indigo-600 text-white text-sm font-semibold shadow-md shadow-indigo-600/20"
-          >
-            แสดงผลลัพธ์
+          <button type="button" onClick={onClose} className="btn-jelly btn-primary-grad flex-[2] py-3 px-3 rounded-2xl text-sm font-bold">
+            ดูผลลัพธ์{typeof totalFilteredCount === 'number' ? ` ${totalFilteredCount} รายการ` : ''}
           </button>
         </div>
       </div>

@@ -122,6 +122,8 @@ const config: Config = {
         "pop-in": "popIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both",
         shimmer: "shimmer 3.5s linear infinite",
         kenburns: "kenburns 18s ease-in-out infinite alternate",
+        "sheet-up": "sheetUp 0.42s cubic-bezier(0.22, 1.2, 0.36, 1) both",
+        "page-in": "pageIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) both",
       },
       keyframes: {
         fadeIn: {
@@ -151,6 +153,14 @@ const config: Config = {
         shimmer: {
           "0%": { backgroundPosition: "0% 50%" },
           "100%": { backgroundPosition: "200% 50%" },
+        },
+        sheetUp: {
+          "0%": { transform: "translateY(100%)" },
+          "100%": { transform: "translateY(0)" },
+        },
+        pageIn: {
+          "0%": { opacity: "0", transform: "translateX(var(--page-from, 24px)) scale(0.98)" },
+          "100%": { opacity: "1", transform: "none" },
         },
         kenburns: {
           "0%": { transform: "scale(1.25) translate(0, 0)" },

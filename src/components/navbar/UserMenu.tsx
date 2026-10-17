@@ -86,7 +86,7 @@ export function UserMenu() {
             <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-400 ring-2 ring-white dark:ring-gray-900" aria-hidden="true" />
           )}
         </span>
-        <span className="text-left hidden sm:flex items-center gap-1.5">
+        <span className="text-left hidden lg:flex items-center gap-1.5">
           <span className="text-xs font-semibold text-gray-900 dark:text-gray-100 max-w-[110px] truncate">{username}</span>
           <span
             className={cn(
@@ -101,7 +101,7 @@ export function UserMenu() {
             {isDev ? 'Dev' : member ? 'สมาชิก' : 'ทั่วไป'}
           </span>
         </span>
-        <ChevronDown className={cn('hidden sm:block w-4 h-4 text-gray-400 transition-transform duration-300', isOpen && 'rotate-180')} />
+        <ChevronDown className={cn('hidden lg:block w-4 h-4 text-gray-400 transition-transform duration-300', isOpen && 'rotate-180')} />
       </button>
 
       {isOpen && (

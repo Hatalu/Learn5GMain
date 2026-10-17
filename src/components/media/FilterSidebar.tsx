@@ -3,11 +3,10 @@
 import React from 'react';
 import {
   ALL_GRADES,
-  ALL_MEDIA_TYPES,
   ALL_SUBJECTS,
   FilterState,
+  GAME_FILTER_TYPES,
   GradeLevel,
-  MediaType,
   Subject,
 } from '@/types/database';
 import { Filter, RotateCcw, Check, BookOpen, GraduationCap, Layers, Calculator, FlaskConical, Languages } from 'lucide-react';
@@ -20,6 +19,8 @@ interface FilterSidebarProps {
   onFilterChange: (newFilters: FilterState) => void;
   onReset: () => void;
   totalFilteredCount?: number;
+  /** ตัวเลือกของ "ประเภทสื่อ" (คลังเกม / คลังเอกสาร ใช้ต่างกัน) */
+  typeOptions?: readonly string[];
 }
 
 const SUBJECT_ICON: Record<Subject, React.ComponentType<{ className?: string }>> = {
@@ -40,7 +41,12 @@ function SectionTitle({ icon: Icon, children, tone }: { icon: React.ComponentTyp
   );
 }
 
-export function FilterSidebar({ filters, onFilterChange, onReset, totalFilteredCount }: FilterSidebarProps) {
+/** เนื้อหาตัวกรอง 3 หมวด ใช้ร่วมกันทั้งแถบข้าง (จอใหญ่) และลิ้นชัก (มือถือ) */
+export function FilterSections({
+  filters,
+  onFilterChange,
+  typeOptions = GAME_FILTER_TYPES,
+}: Pick<FilterSidebarProps, 'filters' | 'onFilterChange' | 'typeOptions'>) {
   const toggleSubject = (subject: Subject) => {
     const next = filters.subjects.includes(subject) ? filters.subjects.filter((x) => x !== subject) : [...filters.subjects, subject];
     onFilterChange({ ...filters, subjects: next });
@@ -49,46 +55,13 @@ export function FilterSidebar({ filters, onFilterChange, onReset, totalFilteredC
     const next = filters.grades.includes(grade) ? filters.grades.filter((g) => g !== grade) : [...filters.grades, grade];
     onFilterChange({ ...filters, grades: next });
   };
-  const toggleMediaType = (type: MediaType) => {
+  const toggleMediaType = (type: string) => {
     const next = filters.mediaTypes.includes(type) ? filters.mediaTypes.filter((t) => t !== type) : [...filters.mediaTypes, type];
     onFilterChange({ ...filters, mediaTypes: next });
   };
 
-  const activeCount = filters.subjects.length + filters.grades.length + filters.mediaTypes.length;
-  const hasActiveFilters = activeCount > 0;
-
   return (
-    <aside className="relative w-full flex flex-col gap-6 p-5 rounded-[1.75rem] bg-white dark:bg-gray-900 border-[3px] border-indigo-200/80 dark:border-indigo-500/35 shadow-toy sticky top-20 overflow-hidden">
-      <span aria-hidden="true" className="pointer-events-none absolute -top-16 -right-16 w-44 h-44 rounded-full bg-gradient-to-br from-violet-400/25 to-pink-400/20 blur-2xl" />
-
-      {/* หัวตัวกรอง */}
-      <div className="relative flex items-center justify-between gap-2 pb-4 border-b-2 border-dashed border-indigo-100 dark:border-indigo-900/70">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <span className="relative w-9 h-9 shrink-0 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/30">
-            <Filter className="w-4.5 h-4.5" />
-            {hasActiveFilters && (
-              <span className="absolute -top-1.5 -right-1.5 min-w-[1.15rem] h-[1.15rem] px-1 rounded-full bg-pink-500 text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-white dark:ring-gray-900">
-                {activeCount}
-              </span>
-            )}
-          </span>
-          <div className="min-w-0">
-            <p className="font-display text-base leading-tight text-gray-900 dark:text-white whitespace-nowrap">ตัวกรองสื่อ</p>
-            {typeof totalFilteredCount === 'number' && <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-300 whitespace-nowrap">พบ {totalFilteredCount} รายการ</p>}
-          </div>
-        </div>
-        {hasActiveFilters && (
-          <button
-            type="button"
-            onClick={onReset}
-            className="chip shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold text-rose-600 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900"
-            title="ล้างตัวกรองทั้งหมด"
-          >
-            <RotateCcw className="w-3 h-3" /> ล้าง
-          </button>
-        )}
-      </div>
-
+    <>
       {/* วิชา */}
       <section className="relative">
         <SectionTitle icon={BookOpen} tone="from-emerald-400 to-teal-500">
@@ -172,7 +145,7 @@ export function FilterSidebar({ filters, onFilterChange, onReset, totalFilteredC
           ประเภทสื่อ
         </SectionTitle>
         <div className="flex flex-wrap gap-2">
-          {ALL_MEDIA_TYPES.map((type) => {
+          {typeOptions.map((type) => {
             const on = filters.mediaTypes.includes(type);
             return (
               <button
@@ -197,6 +170,48 @@ export function FilterSidebar({ filters, onFilterChange, onReset, totalFilteredC
           })}
         </div>
       </section>
+
+    </>
+  );
+}
+
+export function FilterSidebar({ filters, onFilterChange, onReset, totalFilteredCount, typeOptions }: FilterSidebarProps) {
+  const activeCount = filters.subjects.length + filters.grades.length + filters.mediaTypes.length;
+  const hasActiveFilters = activeCount > 0;
+
+  return (
+    <aside className="relative w-full flex flex-col gap-6 p-5 rounded-[1.75rem] bg-white dark:bg-gray-900 border-[3px] border-indigo-200/80 dark:border-indigo-500/35 shadow-toy sticky top-20 overflow-hidden">
+      <span aria-hidden="true" className="pointer-events-none absolute -top-16 -right-16 w-44 h-44 rounded-full bg-gradient-to-br from-violet-400/25 to-pink-400/20 blur-2xl" />
+
+      {/* หัวตัวกรอง */}
+      <div className="relative flex items-center justify-between gap-2 pb-4 border-b-2 border-dashed border-indigo-100 dark:border-indigo-900/70">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="relative w-9 h-9 shrink-0 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/30">
+            <Filter className="w-4.5 h-4.5" />
+            {hasActiveFilters && (
+              <span className="absolute -top-1.5 -right-1.5 min-w-[1.15rem] h-[1.15rem] px-1 rounded-full bg-pink-500 text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-white dark:ring-gray-900">
+                {activeCount}
+              </span>
+            )}
+          </span>
+          <div className="min-w-0">
+            <p className="font-display text-base leading-tight text-gray-900 dark:text-white whitespace-nowrap">ตัวกรองสื่อ</p>
+            {typeof totalFilteredCount === 'number' && <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-300 whitespace-nowrap">พบ {totalFilteredCount} รายการ</p>}
+          </div>
+        </div>
+        {hasActiveFilters && (
+          <button
+            type="button"
+            onClick={onReset}
+            className="chip shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold text-rose-600 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900"
+            title="ล้างตัวกรองทั้งหมด"
+          >
+            <RotateCcw className="w-3 h-3" /> ล้าง
+          </button>
+        )}
+      </div>
+
+      <FilterSections filters={filters} onFilterChange={onFilterChange} typeOptions={typeOptions} />
 
       {hasActiveFilters && (
         <button

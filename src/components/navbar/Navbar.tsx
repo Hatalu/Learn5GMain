@@ -70,14 +70,15 @@ export function Navbar() {
         )}
 
         {/* Right: Actions */}
-        <div className="flex items-center gap-1.5 sm:gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3">
           {showJoin && (
             <JoinButton
               className="btn-jelly inline-flex items-center gap-1.5 px-3 py-1.5 whitespace-nowrap rounded-xl bg-gradient-to-r from-sun-400 to-orange-400 text-indigo-950 text-xs sm:text-sm font-bold shadow-md ring-2 ring-white/70 dark:ring-gray-900"
               title="สมัครสมาชิก"
             >
               <Crown className="w-4 h-4" />
-              <span className="hidden min-[400px]:inline">สมัครสมาชิก</span>
+              {/* 640-767px ปุ่มอื่นโผล่ครบ ซ่อนข้อความกันแถบล้น */}
+              <span className="hidden min-[400px]:inline sm:hidden md:inline">สมัครสมาชิก</span>
             </JoinButton>
           )}
 
