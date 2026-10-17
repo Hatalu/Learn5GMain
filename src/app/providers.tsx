@@ -12,23 +12,26 @@ import { RouteCurtain } from '@/components/fx/RouteCurtain';
 import { VisitTracker } from '@/components/analytics/VisitTracker';
 import { IdeaButton } from '@/components/ideas/IdeaButton';
 import { TrialProvider } from '@/components/trial/TrialProvider';
+import { MembershipProvider } from '@/components/membership/MembershipProvider';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <AuthProvider>
         <ToastProvider>
-          <CompanionProvider>
-            <TrialProvider>
-              <AmbientSky />
-              {children}
-              <CompanionWidget />
-              <RewardModal />
-              <RouteCurtain />
-              <IdeaButton />
-              <VisitTracker />
-            </TrialProvider>
-          </CompanionProvider>
+          <MembershipProvider>
+            <CompanionProvider>
+              <TrialProvider>
+                <AmbientSky />
+                {children}
+                <CompanionWidget />
+                <RewardModal />
+                <RouteCurtain />
+                <IdeaButton />
+                <VisitTracker />
+              </TrialProvider>
+            </CompanionProvider>
+          </MembershipProvider>
         </ToastProvider>
       </AuthProvider>
     </ThemeProvider>

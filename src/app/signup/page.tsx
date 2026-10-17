@@ -147,7 +147,7 @@ function SignupInner() {
       <div className="mt-3">
         <TierCompare />
         <p className="mt-3 text-sm font-semibold opacity-80">
-          ชอบแล้วค่อยสมัครสมาชิกตั้งแต่ 39 บาท ชุดคำถามที่สร้างไว้ไม่หาย{' '}
+          สมัครบัญชีวันนี้ รับส่วนลดสมาชิก 30% ภายใน 24 ชม.แรก ชุดคำถามที่สร้างไว้ไม่หาย{' '}
           <Link href="/membership" className="font-extrabold underline decoration-2 underline-offset-2">
             ดูแพลนสมาชิก
           </Link>

@@ -35,6 +35,8 @@ import {
 import { FiveGMascot } from '@/components/mascot/FiveGMascot';
 import { FacebookIcon } from '@/components/icons/FacebookIcon';
 import { cn } from '@/lib/utils/cn';
+import { OfferBanner } from '@/components/membership/Pricing';
+import { SocialProof } from '@/components/membership/SocialProof';
 
 export default function HomePage() {
   const { user, isDev, isLoading: authLoading } = useAuth();
@@ -346,6 +348,10 @@ export default function HomePage() {
           onSelectMedia={handleSelectMedia}
           onBrowseAll={scrollToLibrary}
         />
+
+        {/* ข้อเสนอสมาชิก (ส่วนลดบัญชีใหม่ / โบนัสต่ออายุ) + ตัวเลขผู้ใช้จริง */}
+        <OfferBanner className="mt-6" />
+        <SocialProof className="mt-5" />
 
         {/* เกมประจำวัน: เปลี่ยนทุกวัน แอดมินกำหนดได้ที่หน้า Dev */}
         <Reveal className="mt-6 sm:mt-8">

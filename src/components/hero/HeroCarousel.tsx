@@ -30,6 +30,7 @@ import {
   ScienceArt,
   Spark,
 } from './HeroArt';
+import { JoinButton } from '@/components/membership/JoinButton';
 
 const SLIDE_MS = 7000;
 const FACEBOOK_URL = 'https://www.facebook.com/profile.php?id=61594556657667';
@@ -430,10 +431,10 @@ export function HeroCarousel({
                 เลือกเกมเลย
               </button>
             ) : (
-              <Link href="/membership" className={cn(ctaCls, 'bg-sun-400 text-indigo-950')}>
+              <JoinButton className={cn(ctaCls, 'bg-sun-400 text-indigo-950')}>
                 <Crown className="w-5 h-5" />
-                ดูแพลนสมาชิก
-              </Link>
+                สมัครสมาชิก
+              </JoinButton>
             )}
           </div>
         </Rise>

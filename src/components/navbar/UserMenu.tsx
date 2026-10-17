@@ -12,11 +12,14 @@ import { hasMembership } from '@/lib/membership';
 import { cn } from '@/lib/utils/cn';
 import { CalendarDays, ChevronDown, ChevronRight, Crown, Gamepad2, Heart, LogOut, ShieldCheck, Sticker, Sparkles } from 'lucide-react';
 import s from './userMenu.module.css';
+import { JoinButton } from '@/components/membership/JoinButton';
+import { useMembership } from '@/components/membership/MembershipProvider';
 
 const DAY = 86400000;
 
 export function UserMenu() {
   const { profile, signOut, isDev } = useAuth();
+  const { fromPrice } = useMembership();
   const companion = useCompanionOptional();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -176,8 +179,7 @@ export function UserMenu() {
                     </div>
                   )}
                   {soon && <p className="mt-1.5 text-[11px] font-bold text-rose-600 dark:text-rose-400 animate-pulse">ใกล้หมดอายุแล้ว ต่ออายุไว้ก่อนได้ วันจะต่อจากของเดิม</p>}
-                  <Link
-                    href="/membership"
+                  <JoinButton
                     onClick={() => setIsOpen(false)}
                     className={cn(
                       s.shine,
@@ -185,8 +187,8 @@ export function UserMenu() {
                     )}
                   >
                     <Crown className="w-4 h-4" />
-                    {member ? 'ต่ออายุสมาชิก' : 'สมัครสมาชิก เริ่ม 39 บาท'}
-                  </Link>
+                    {member ? 'ต่ออายุสมาชิก' : `สมัครสมาชิก เริ่ม ${fromPrice} บาท`}
+                  </JoinButton>
                 </>
               )}
             </div>

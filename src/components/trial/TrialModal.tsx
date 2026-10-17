@@ -11,6 +11,8 @@ import { CONTACT_PAGE_URL, hasMembership } from '@/lib/membership';
 import { getTurnstileToken } from '@/lib/turnstile';
 import { MediaItem } from '@/types/database';
 import { cn } from '@/lib/utils/cn';
+import { JoinButton } from '@/components/membership/JoinButton';
+import { useMembership } from '@/components/membership/MembershipProvider';
 
 type Phase = 'loading' | 'waiting' | 'playing' | 'ended' | 'error';
 
@@ -32,6 +34,7 @@ const fmt = (ms: number) => {
 export function TrialModal({ media, onClose, mode = 'trial' }: { media: MediaItem; onClose: () => void; mode?: 'trial' | 'play' }) {
   const full = mode === 'play';
   const { user, profile } = useAuth();
+  const { fromPrice } = useMembership();
   const { recordPlay } = useCompanion();
   const member = !!user && hasMembership(profile);
 
@@ -429,9 +432,9 @@ export function TrialModal({ media, onClose, mode = 'trial' }: { media: MediaIte
                     </button>
                   ) : (
                     <>
-                      <Link href="/membership" onClick={onClose} className="btn-primary-grad btn-jelly inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-display text-lg">
-                        <Crown className="w-5 h-5" /> ดูแพลนสมาชิก เริ่ม 39 บาท
-                      </Link>
+                      <JoinButton onClick={onClose} className="btn-primary-grad btn-jelly inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-display text-lg">
+                        <Crown className="w-5 h-5" /> สมัครสมาชิกเล่นต่อ เริ่ม {fromPrice} บาท
+                      </JoinButton>
                       <a href={CONTACT_PAGE_URL} target="_blank" rel="noopener noreferrer" className="btn-jelly inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-2xl border-2 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 font-semibold">
                         <FacebookIcon className="w-4 h-4" /> สอบถามทางเพจ
                       </a>

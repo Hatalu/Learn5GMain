@@ -33,7 +33,8 @@ import {
 import { hasMembership } from '../src/lib/membership';
 import { crc16, promptPayKind, promptPayPayload, maskPromptPay } from '../src/lib/promptpay';
 import { extendUntil, maskedMatch, nameMatch, receiverMatches } from '../src/lib/server/payments';
-import { PLANS, perDay, savePercent } from '../src/lib/plans';
+import { NO_OFFER, PLANS, comparePrice, perDay, quote, saveBaht, welcomePrice } from '../src/lib/plans';
+import { checkUnsubscribeToken, unsubscribeToken, winbackEmail } from '../src/lib/server/email';
 import { MEMBER_PLAY_SECONDS, TRIAL_GRACE_SECONDS, TRIAL_SECONDS, signTrialToken, trialPublicJwk, verifyTrialToken } from '../src/lib/server/trial';
 import { cleanModeSettings, modeFit, modeQuiz, scoreCap } from '../src/lib/game-creator/modes';
 import { endlessIndex } from '../src/lib/game-creator/quiz';
@@ -483,10 +484,36 @@ t('ต่ออายุสมาชิก: ต่อจากวันเดิ
 });
 
 t('แพลนและราคา', () => {
-  assert.deepEqual(PLANS.map((p) => [p.days, p.price]), [[7, 39], [14, 59], [30, 99]]);
-  assert.equal(perDay(PLANS[2]), 3.3);
-  assert.equal(savePercent(PLANS[0]), 0);
-  assert.equal(savePercent(PLANS[2]), 41);
+  assert.deepEqual(PLANS.map((p) => [p.id, p.days, p.price]), [['day', 1, 19], ['egg', 7, 39], ['kid', 14, 59], ['grown', 30, 99]]);
+  assert.equal(perDay(PLANS[3]), 3.3);
+  // ราคาเทียบ = ซื้อแพลนรายวันต่อกัน (ราคาที่ขายจริง)
+  assert.equal(comparePrice(PLANS[0]), null);
+  assert.deepEqual(PLANS.slice(1).map((p) => [comparePrice(p), saveBaht(p)]), [[133, 94], [266, 207], [570, 471]]);
+});
+
+t('ส่วนลดบัญชีใหม่ปัดลง + โบนัสต่ออายุ', () => {
+  assert.deepEqual(PLANS.map((p) => welcomePrice(p)), [13, 27, 41, 69]);
+  const now = Date.now();
+  const soon = new Date(now + 3600e3).toISOString();
+  const past = new Date(now - 1000).toISOString();
+  assert.deepEqual(quote(PLANS[1], NO_OFFER, now), { amount: 39, welcome: false, bonusDays: 0, days: 7 });
+  assert.deepEqual(quote(PLANS[1], { welcomeEndsAt: soon, renewEndsAt: null }, now), { amount: 27, welcome: true, bonusDays: 0, days: 7 });
+  assert.deepEqual(quote(PLANS[1], { welcomeEndsAt: past, renewEndsAt: null }, now).amount, 39);
+  assert.deepEqual(quote(PLANS[3], { welcomeEndsAt: null, renewEndsAt: soon }, now), { amount: 99, welcome: false, bonusDays: 3, days: 33 });
+  // แพลนรายวันไม่ได้โบนัสต่ออายุ
+  assert.equal(quote(PLANS[0], { welcomeEndsAt: null, renewEndsAt: soon }, now).bonusDays, 0);
+});
+
+t('ลิงก์ยกเลิกรับอีเมล + เนื้อหาอีเมล', () => {
+  const id = '11111111-2222-3333-4444-555555555555';
+  const tok = unsubscribeToken(id);
+  assert.ok(checkUnsubscribeToken(id, tok));
+  assert.ok(!checkUnsubscribeToken('11111111-2222-3333-4444-555555555556', tok));
+  assert.ok(!checkUnsubscribeToken(id, tok.slice(0, -1) + (tok.endsWith('A') ? 'B' : 'A')));
+  const m = winbackEmail({ username: '<b>x</b>', sets: 4, bonusDays: 3, bonusUntil: new Date().toISOString(), site: 'https://s', unsubscribe: 'https://s/u' });
+  assert.ok(m.subject.includes('4 ชุด'));
+  assert.ok(m.html.includes('&lt;b&gt;x&lt;/b&gt;') && !m.html.includes('<b>x</b>'));
+  assert.ok(m.html.includes('https://s/u') && m.html.includes('3 วันฟรี'));
 });
 
 console.log('\nระบบสร้างเกม (ควิซ)');

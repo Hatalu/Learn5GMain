@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminClient, createMemberAccount } from '@/lib/supabase/admin';
-import { planById } from '@/lib/plans';
+import { planById, renewBonusFor, welcomePrice } from '@/lib/plans';
 import {
   ORDER_UPLOAD_HOURS,
   extendUntil,
@@ -11,12 +11,14 @@ import {
 } from '@/lib/server/payments';
 import { clientIp, isSameOrigin, limit } from '@/lib/server/rate-limit';
 import { verifyTurnstile } from '@/lib/server/turnstile';
+import { RESERVED_NAMES } from '@/lib/validations/signup';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const USERNAME = /^[a-zA-Z0-9_-]{3,30}$/;
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const MAX_BYTES = 4 * 1024 * 1024;
 
@@ -42,6 +44,7 @@ export async function POST(req: NextRequest) {
   const file = form.get('slip');
   const newUsername = String(form.get('username') || '').trim();
   const newPassword = String(form.get('password') || '');
+  const newEmail = String(form.get('email') || '').trim().toLowerCase();
   if (!UUID.test(orderId)) return fail('ไม่พบคำสั่งซื้อ');
   if (!(await verifyTurnstile(String(form.get('cf') || ''), ip))) return fail('ยืนยันว่าไม่ใช่บอทไม่สำเร็จ รีเฟรชหน้าแล้วลองใหม่นะ', 403);
   if (!(file instanceof Blob) || file.size === 0) return fail('แนบรูปสลิปก่อนนะ');
@@ -56,13 +59,24 @@ export async function POST(req: NextRequest) {
   if (Date.now() - created > ORDER_UPLOAD_HOURS * 3600 * 1000) return fail('คำสั่งซื้อนี้หมดอายุแล้ว สร้างใหม่อีกครั้งนะ');
   if (order.attempts >= 8) return fail('ส่งสลิปผิดหลายครั้งเกินไป ติดต่อแอดมินทางเพจพร้อมสลิปนะ');
   const plan = planById(order.plan);
-  if (!plan || Number(order.amount) !== plan.price) return fail('คำสั่งซื้อไม่ถูกต้อง');
+  // ยอดในคำสั่งซื้อต้องตรงกับราคาที่ระบบคิดได้เองเท่านั้น (ราคาปกติ หรือราคาส่วนลดบัญชีใหม่)
+  const amount = Number(order.amount);
+  const bonusDays = Number(order.bonus_days || 0);
+  if (!plan) return fail('คำสั่งซื้อไม่ถูกต้อง');
+  if (amount !== (order.promo === 'welcome' ? welcomePrice(plan) : plan.price)) return fail('คำสั่งซื้อไม่ถูกต้อง');
+  if (bonusDays !== (order.promo === 'renew' ? renewBonusFor(plan) : 0)) return fail('คำสั่งซื้อไม่ถูกต้อง');
+  const grantDays = plan.days + bonusDays;
 
   // ผู้สมัครใหม่ต้องตั้งชื่อผู้ใช้/รหัสผ่าน และชื่อต้องยังว่าง (ตรวจก่อนเรียก EasySlip)
   if (!order.user_id) {
     if (!USERNAME.test(newUsername)) return fail('ชื่อผู้ใช้ต้องเป็นภาษาอังกฤษ ตัวเลข _ หรือ - ยาว 3-30 ตัว');
-    if (newUsername.toLowerCase().startsWith('trial_')) return fail('ชื่อผู้ใช้นี้ใช้ไม่ได้');
-    if (newPassword.length < 6 || newPassword.length > 100) return fail('รหัสผ่านต้องยาวอย่างน้อย 6 ตัว');
+    if (newUsername.toLowerCase().startsWith('trial_') || RESERVED_NAMES.includes(newUsername.toLowerCase())) return fail('ชื่อผู้ใช้นี้ใช้ไม่ได้');
+    if (newPassword.length < 8 || newPassword.length > 72) return fail('รหัสผ่านต้องยาว 8-72 ตัว');
+    if (newEmail) {
+      if (newEmail.length > 254 || !EMAIL.test(newEmail) || newEmail.endsWith('@internal.mediahub.local')) return fail('อีเมลไม่ถูกต้อง');
+      const { data: dupe } = await admin.from('profiles').select('id').eq('contact_email', newEmail).maybeSingle();
+      if (dupe) return fail('อีเมลนี้ถูกใช้สมัครแล้ว เข้าสู่ระบบด้วยบัญชีเดิมก่อนนะ');
+    }
     const { data: taken } = await admin.from('profiles').select('id').ilike('username', newUsername.replace(/[_%\\]/g, '\\$&')).maybeSingle();
     if (taken) return fail('ชื่อผู้ใช้นี้มีคนใช้แล้ว ลองชื่ออื่นนะ');
   }
@@ -73,7 +87,7 @@ export async function POST(req: NextRequest) {
   const bumpAttempt = (msg: string) =>
     admin.from('payment_orders').update({ attempts: order.attempts + 1, last_error: msg.slice(0, 200) }).eq('id', orderId);
 
-  const slip = await verifySlip(file, 'slip', plan.price);
+  const slip = await verifySlip(file, 'slip', amount);
   if (!slip.ok) {
     const msg = slipErrorText(slip.code);
     if (slip.code !== 'NOT_CONFIGURED' && slip.code !== 'NETWORK') await bumpAttempt(`${slip.code}`);
@@ -93,9 +107,9 @@ export async function POST(req: NextRequest) {
   // (EasySlip บอกว่าซ้ำ แต่ไม่มีในระบบเรา = เคยตรวจแล้วขั้นตอนถัดไปล้มเหลว จึงให้ลองต่อได้)
 
   // 2) ยอดเงินต้องตรงเป๊ะ
-  if (!(Math.abs((slip.amount ?? 0) - plan.price) < 0.005)) {
+  if (!(Math.abs((slip.amount ?? 0) - amount) < 0.005)) {
     await bumpAttempt(`amount ${slip.amount}`);
-    return fail(`ยอดในสลิปคือ ${slip.amount} บาท แต่แพลนนี้ ${plan.price} บาท`);
+    return fail(`ยอดในสลิปคือ ${slip.amount} บาท แต่คำสั่งซื้อนี้ ${amount} บาท`);
   }
 
   // 3) ผู้รับเงินต้องเป็นบัญชีที่ตั้งไว้
@@ -150,7 +164,7 @@ export async function POST(req: NextRequest) {
       const { data: p } = await admin.from('profiles').select('username, role, premium_until').eq('id', order.user_id).single();
       if (!p) throw new Error('ไม่พบบัญชี');
       username = p.username;
-      until = extendUntil(p.premium_until, plan.days);
+      until = extendUntil(p.premium_until, grantDays);
       if (p.role !== 'dev') {
         const { error: upErr } = await admin.from('profiles').update({ premium_until: until }).eq('id', order.user_id);
         if (upErr) throw upErr;
@@ -158,13 +172,13 @@ export async function POST(req: NextRequest) {
         until = p.premium_until || until;
       }
     } else {
-      until = extendUntil(null, plan.days);
-      const created = await createMemberAccount(newUsername, newPassword, 'member', until);
+      until = extendUntil(null, grantDays);
+      const created = await createMemberAccount(newUsername, newPassword, 'member', until, newEmail || null);
       username = created.username;
       await admin.from('payment_orders').update({ user_id: created.id }).eq('id', orderId);
     }
     await admin.from('payment_orders').update({ username, premium_until: until }).eq('id', orderId);
-    return NextResponse.json({ ok: true, username, premiumUntil: until, plan: plan.id, days: plan.days });
+    return NextResponse.json({ ok: true, username, premiumUntil: until, plan: plan.id, days: grantDays, bonusDays });
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'error';
     await unclaim(`activate failed: ${msg}`);

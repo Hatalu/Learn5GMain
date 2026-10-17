@@ -1,7 +1,8 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAdminClient, deleteMember } from '@/lib/supabase/admin';
 import { TRIAL_PREFIX, sweepTrialAccounts } from '@/lib/server/trial-account';
+import { isSameOrigin } from '@/lib/server/rate-limit';
 
 async function verifyDev() {
   const supabase = await createClient();
@@ -28,7 +29,8 @@ export async function GET() {
 }
 
 /** POST {action:'sweep'} ลบที่หมดอายุ | {action:'purge'} ลบบัญชีทดลองทั้งหมด */
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  if (!isSameOrigin(req)) return NextResponse.json({ error: 'คำขอไม่ถูกต้อง' }, { status: 403 });
   const c = await verifyDev();
   if (!c.ok) return NextResponse.json({ error: c.error }, { status: c.status });
   let action = '';

@@ -2,6 +2,13 @@ import path from 'path';
 
 const isDev = process.env.NODE_ENV !== 'production';
 const supabase = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseHost = (() => {
+  try {
+    return new URL(supabase).hostname;
+  } catch {
+    return '';
+  }
+})();
 
 /**
  * Content-Security-Policy: อนุญาตเฉพาะแหล่งที่เว็บใช้จริง (กันสคริปต์แปลกปลอม/XSS และกันเว็บอื่นเอาไปฝัง)
@@ -29,19 +36,13 @@ const csp = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // ย่อรูปผ่านเซิร์ฟเวอร์เราได้เฉพาะรูปจาก Supabase (ไม่เปิดให้ใช้เป็นตัวย่อรูปของเว็บอื่น)
   images: {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: '**.supabase.co',
-      },
-      {
-        protocol: 'https',
-        hostname: 'images.unsplash.com',
-      },
-      {
-        protocol: 'https',
-        hostname: '**.placeholder.com',
+        // เฉพาะโปรเจกต์ Supabase ของเรา (ไม่ใช่ทุกโปรเจกต์ใน supabase.co)
+        hostname: supabaseHost || '**.supabase.co',
       },
     ],
   },

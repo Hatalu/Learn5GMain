@@ -1,15 +1,17 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight, BadgeCheck, CalendarPlus, Check, Gamepad2, Lightbulb, MonitorSmartphone, QrCode, Receipt, ShieldCheck, Sparkles, Upload } from 'lucide-react';
+import { ArrowRight, BadgeCheck, CalendarPlus, Check, Gamepad2, Gift, Lightbulb, MonitorSmartphone, QrCode, Receipt, ShieldCheck, Sparkles, Upload } from 'lucide-react';
 import { Navbar } from '@/components/navbar/Navbar';
 import { useAuth } from '@/context/AuthContext';
-import { hasMembership, CONTACT_PAGE_URL } from '@/lib/membership';
-import { PLANS, Plan, perDay, savePercent } from '@/lib/plans';
+import { hasMembership } from '@/lib/membership';
+import { PLANS, RENEW_BONUS_DAYS, RENEW_WINDOW_DAYS, WELCOME_HOURS, WELCOME_PCT, perDay } from '@/lib/plans';
 import { FacebookIcon } from '@/components/icons/FacebookIcon';
-import { CheckoutModal } from '@/components/membership/CheckoutModal';
+import { useMembership } from '@/components/membership/MembershipProvider';
+import { OfferBanner, PriceBlock } from '@/components/membership/Pricing';
+import { SocialProof } from '@/components/membership/SocialProof';
 import s from './membership.module.css';
 import { NightSky } from '@/components/fx/NightSky';
 import { TierCompare } from '@/components/creator/TierCompare';
@@ -27,25 +29,11 @@ const FEATURES = [
 
 export default function MembershipPage() {
   const { user, profile } = useAuth();
-  const [ready, setReady] = useState<boolean | null>(null);
-  const [picked, setPicked] = useState<Plan | null>(null);
+  const { ready, plans, offer, openCheckout } = useMembership();
   const member = !!user && hasMembership(profile);
   const until = profile?.premium_until ? new Date(profile.premium_until) : null;
-
-  useEffect(() => {
-    fetch('/api/membership/config', { cache: 'no-store' })
-      .then((r) => r.json())
-      .then((j) => setReady(!!j.ready))
-      .catch(() => setReady(false));
-  }, []);
-
-  const choose = (p: Plan) => {
-    if (ready === false) {
-      window.open(CONTACT_PAGE_URL, '_blank', 'noopener');
-      return;
-    }
-    setPicked(p);
-  };
+  // เส้นทางการเติบโตของน้องไฟว์จี (ไม่รวมแพลนรายวัน)
+  const growth = PLANS.filter((p) => p.id !== 'day');
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -79,7 +67,7 @@ export default function MembershipPage() {
 
           {/* เส้นทางการเติบโต */}
           <div className="mt-6 flex items-end justify-center gap-2 sm:gap-6">
-            {PLANS.map((p, i) => (
+            {growth.map((p, i) => (
               <React.Fragment key={p.id}>
                 {i > 0 && <ArrowRight className="mb-10 w-6 h-6 sm:w-8 sm:h-8 text-[#2a2350] dark:text-[#fff8ec] shrink-0" strokeWidth={3} />}
                 <div className="flex flex-col items-center">
@@ -102,6 +90,11 @@ export default function MembershipPage() {
           )}
         </section>
 
+        <div className="max-w-4xl mx-auto px-4 mb-5 space-y-3">
+          <OfferBanner />
+          <SocialProof />
+        </div>
+
         {ready === false && (
           <div className="max-w-3xl mx-auto px-4 mb-4">
             <div className={`${s.paper} p-4 text-center text-sm font-semibold`}>
@@ -112,10 +105,9 @@ export default function MembershipPage() {
 
         {/* ---------- แพลน ---------- */}
         <section className="max-w-6xl mx-auto px-4 pt-6 pb-12" aria-label="แพลนสมาชิก">
-          <div className="grid gap-9 md:grid-cols-3 md:items-end">
-            {PLANS.map((p) => {
+          <div className={`grid gap-9 md:grid-cols-2 ${plans.length > 3 ? 'xl:grid-cols-4' : 'lg:grid-cols-3'} md:items-end`}>
+            {plans.map((p) => {
               const best = p.id === 'grown';
-              const save = savePercent(p);
               return (
                 <article
                   key={p.id}
@@ -140,18 +132,14 @@ export default function MembershipPage() {
                     </p>
                     <h2 className="text-center font-display text-2xl sm:text-3xl mt-0.5">{p.name}</h2>
 
-                    <div className="mt-3 flex items-end justify-center gap-1.5">
-                      <span className="font-display text-6xl leading-none" style={{ color: '#2a2350' }}>
-                        {p.price}
-                      </span>
-                      <span className="mb-1.5 font-bold">บาท / {p.days === 30 ? '1 เดือน' : `${p.days} วัน`}</span>
+                    <div className="mt-3">
+                      <PriceBlock plan={p} offer={offer} />
                     </div>
-                    <div className="mt-2 flex flex-wrap items-center justify-center gap-2 text-sm font-bold">
-                      <span className="px-3 py-1 rounded-full border-2 border-[#2a2350]" style={{ background: p.color.soft }}>
+                    <p className="mt-2 text-center">
+                      <span className="inline-block px-3 py-1 rounded-full border-2 border-[#2a2350] text-sm font-bold" style={{ background: p.color.soft }}>
                         ตกวันละ {perDay(p)} บาท
                       </span>
-                      {save > 0 && <span className="px-3 py-1 rounded-full border-2 border-[#2a2350] bg-[#ff6b7a] text-white">ประหยัด {save}%</span>}
-                    </div>
+                    </p>
 
                     <ul className="mt-5 space-y-2 text-[15px] font-semibold">
                       {FEATURES.map((f) => (
@@ -166,14 +154,14 @@ export default function MembershipPage() {
                         <span className="mt-0.5 w-5 h-5 rounded-full border-2 border-[#2a2350] flex items-center justify-center shrink-0" style={{ background: p.color.main }}>
                           <Check className="w-3 h-3" strokeWidth={4} />
                         </span>
-                        ใช้ได้ {p.days} วันเต็ม ไม่ตัดเงินซ้ำ
+                        ใช้ได้ {p.days === 1 ? '24 ชั่วโมง' : `${p.days} วันเต็ม`} ไม่ตัดเงินซ้ำ
                       </li>
                     </ul>
 
                     <div className="flex-1" />
                     <button
                       type="button"
-                      onClick={() => choose(p)}
+                      onClick={() => openCheckout(p.id)}
                       className={`${s.btn} mt-6 w-full py-3.5 text-lg font-display`}
                       style={{ background: best ? '#ffcf3f' : p.color.main }}
                     >
@@ -262,6 +250,9 @@ export default function MembershipPage() {
             {[
               { icon: Receipt, q: 'ต่ออายุอัตโนมัติไหม', a: 'ไม่ จ่ายครั้งเดียวต่อรอบ ไม่มีการตัดเงินซ้ำ หมดแล้วค่อยซื้อใหม่' },
               { icon: CalendarPlus, q: 'ซื้อเพิ่มตอนยังไม่หมดอายุได้ไหม', a: 'ได้ วันใหม่จะต่อจากวันหมดอายุเดิม ไม่เสียวันที่เหลือ' },
+              { icon: Gift, q: 'ต่ออายุมีโบนัสไหม', a: `ต่ออายุในช่วง ${RENEW_WINDOW_DAYS} วันก่อนหรือหลังวันหมดอายุ ด้วยแพลนตั้งแต่ 7 วันขึ้นไป รับเพิ่ม ${RENEW_BONUS_DAYS} วันฟรี` },
+              { icon: Sparkles, q: 'ส่วนลดบัญชีใหม่คืออะไร', a: `สมัครบัญชีฟรีแล้ว ภายใน ${WELCOME_HOURS} ชั่วโมงแรก ซื้อแพลนไหนก็ได้ลด ${WELCOME_PCT}% (ปัดเศษลง) ใช้ได้กับการซื้อครั้งแรกครั้งเดียว` },
+              { icon: Receipt, q: '"ถ้าซื้อรายวัน" คือราคาอะไร', a: 'คือราคาถ้าซื้อแพลนรายวัน 19 บาทต่อกันจนครบจำนวนวันเท่ากัน ใช้เทียบให้เห็นว่าแพลนยาวประหยัดกว่ากี่บาท' },
               { icon: Upload, q: 'พื้นที่อัปโหลดรูปและคลิปเท่าไร', a: `รวมทุกไฟล์ในบัญชีไม่เกิน ${MEMBER_UPLOAD_MB} MB สำหรับสมาชิก (บัญชีฟรี 5 MB) ลบรูปหรือคลิปที่ไม่ใช้เพื่อคืนพื้นที่ได้` },
               { icon: BadgeCheck, q: 'มีบัญชีอยู่แล้ว', a: 'เข้าสู่ระบบก่อนแล้วเลือกแพลน ระบบจะต่ออายุให้บัญชีเดิม' },
               { icon: FacebookIcon, q: 'โอนแล้วแต่ระบบไม่ผ่าน', a: 'ทักเพจ สื่อการสอน 5G พร้อมแนบสลิป แอดมินช่วยตรวจให้' },
@@ -285,7 +276,6 @@ export default function MembershipPage() {
         </section>
       </main>
 
-      {picked && <CheckoutModal plan={picked} onClose={() => setPicked(null)} />}
     </div>
   );
 }

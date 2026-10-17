@@ -14,6 +14,7 @@ import { FacebookIcon } from '@/components/icons/FacebookIcon';
 import { cn } from '@/lib/utils/cn';
 import fx from '@/components/ui/fancy.module.css';
 import { hasMembership } from '@/lib/membership';
+import { JoinButton } from '@/components/membership/JoinButton';
 
 export function Navbar() {
   const { user, profile, isDev } = useAuth();
@@ -71,28 +72,27 @@ export function Navbar() {
         {/* Right: Actions */}
         <div className="flex items-center gap-1.5 sm:gap-3">
           {showJoin && (
-            <Link
-              href="/membership"
+            <JoinButton
               className="btn-jelly inline-flex items-center gap-1.5 px-3 py-1.5 whitespace-nowrap rounded-xl bg-gradient-to-r from-sun-400 to-orange-400 text-indigo-950 text-xs sm:text-sm font-bold shadow-md ring-2 ring-white/70 dark:ring-gray-900"
               title="สมัครสมาชิก"
             >
               <Crown className="w-4 h-4" />
               <span className="hidden min-[400px]:inline">สมัครสมาชิก</span>
-            </Link>
+            </JoinButton>
           )}
 
           {/* ปุ่มกลับหน้าหลัก (จอใหญ่/ไอแพด): อยู่ซ้ายปุ่มเพจ */}
           {!isDevPage && !pathname.startsWith('/home') && (
             <Link
               href="/home"
-              className={cn(fx.shine, 'btn-jelly hidden sm:inline-flex items-center gap-2 pl-1.5 pr-1.5 lg:pr-3.5 py-1.5 rounded-2xl text-white text-sm font-bold bg-gradient-to-r from-sky-500 to-indigo-600 border-2 border-white/40 dark:border-white/15 shadow-[0_3px_0_0_rgba(49,46,129,0.5)] whitespace-nowrap')}
+              className={cn(fx.shine, 'btn-jelly hidden sm:inline-flex items-center gap-2 pl-1.5 pr-1.5 xl:pr-3.5 py-1.5 rounded-2xl text-white text-sm font-bold bg-gradient-to-r from-sky-500 to-indigo-600 border-2 border-white/40 dark:border-white/15 shadow-[0_3px_0_0_rgba(49,46,129,0.5)] whitespace-nowrap')}
               aria-label="กลับหน้าหลัก"
               title="กลับหน้าหลัก"
             >
               <span className="w-7 h-7 rounded-xl bg-white/95 text-indigo-600 flex items-center justify-center">
                 <Home className="w-4 h-4" />
               </span>
-              <span className="hidden lg:inline">หน้าหลัก</span>
+              <span className="hidden xl:inline">หน้าหลัก</span>
             </Link>
           )}
 
@@ -107,7 +107,7 @@ export function Navbar() {
             <span className="w-7 h-7 rounded-xl bg-white flex items-center justify-center shrink-0 group-hover:rotate-[-8deg] transition-transform">
               <FacebookIcon className="w-4 h-4 text-[#1877f2]" />
             </span>
-            <span className="hidden lg:inline text-sm font-bold [text-shadow:0_1px_1px_rgba(0,0,0,0.25)]">เพจ Facebook</span>
+            <span className="hidden xl:inline text-sm font-bold [text-shadow:0_1px_1px_rgba(0,0,0,0.25)]">เพจ Facebook</span>
           </a>
 
           {/* Dev Button - ONLY rendered if user has dev role! */}
@@ -137,14 +137,14 @@ export function Navbar() {
           {!isDevPage && !pathname.startsWith('/create') && (
             <Link
               href="/create"
-              className={cn(fx.shine, user ? 'inline-flex' : 'hidden sm:inline-flex', 'btn-jelly items-center gap-2 pl-1.5 pr-1.5 lg:pr-3 py-1.5 text-sm font-bold rounded-2xl text-white bg-gradient-to-r from-emerald-500 via-teal-500 to-sky-500 border-2 border-white/40 dark:border-white/15 shadow-[0_3px_0_0_rgba(13,148,136,0.5)] whitespace-nowrap')}
+              className={cn(fx.shine, user ? 'inline-flex' : 'hidden sm:inline-flex', 'btn-jelly items-center gap-2 pl-1.5 pr-1.5 xl:pr-3 py-1.5 text-sm font-bold rounded-2xl text-white bg-gradient-to-r from-emerald-500 via-teal-500 to-sky-500 border-2 border-white/40 dark:border-white/15 shadow-[0_3px_0_0_rgba(13,148,136,0.5)] whitespace-nowrap')}
               title="ระบบสร้างเกม"
               aria-label="ระบบสร้างเกม"
             >
               <span className="w-7 h-7 rounded-xl bg-white/95 flex items-center justify-center shrink-0 text-teal-600">
                 <Wand2 className="w-4 h-4" />
               </span>
-              <span className="hidden lg:inline [text-shadow:0_1px_1px_rgba(0,0,0,0.25)]">สร้างเกม</span>
+              <span className="hidden xl:inline [text-shadow:0_1px_1px_rgba(0,0,0,0.25)]">สร้างเกม</span>
             </Link>
           )}
 
@@ -158,7 +158,7 @@ export function Navbar() {
               <span className="w-7 h-7 rounded-xl bg-white/95 flex items-center justify-center shrink-0 text-fuchsia-600">
                 {buddyLocked ? <Lock className="w-4 h-4" /> : <Sparkles className={cn('w-4 h-4', fx.twinkle)} />}
               </span>
-              <span className="hidden lg:inline [text-shadow:0_1px_1px_rgba(0,0,0,0.25)]">คู่หูของฉัน</span>
+              <span className="hidden xl:inline [text-shadow:0_1px_1px_rgba(0,0,0,0.25)]">คู่หูของฉัน</span>
             </Link>
           )}
 
@@ -171,7 +171,7 @@ export function Navbar() {
             <UserMenu />
           ) : (
             <div className="flex items-center gap-2">
-              <span className="hidden lg:inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs sm:text-xs font-medium bg-gray-100 dark:bg-gray-800/80 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
+              <span className="hidden 2xl:inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs sm:text-xs font-medium bg-gray-100 dark:bg-gray-800/80 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
                 <UserX className="w-3.5 h-3.5 text-gray-400" />
                 <span>ยังไม่ได้เข้าสู่ระบบ</span>
               </span>

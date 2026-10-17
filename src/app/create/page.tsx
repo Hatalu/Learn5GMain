@@ -23,6 +23,9 @@ import { OpenGameModal } from '@/components/creator/OpenGameModal';
 import { PaperModal } from '@/components/creator/PaperModal';
 import '@/components/creator/creator.css';
 import '@/components/creator/creator-pages.css';
+import { JoinButton } from '@/components/membership/JoinButton';
+import { OfferBanner } from '@/components/membership/Pricing';
+import { SocialProof } from '@/components/membership/SocialProof';
 
 type Tab = 'new' | 'discover' | 'library';
 const GAME_COLS = 'id, owner_id, owner_name, title, template, question_count, play_count, cover_url, is_public, created_at, updated_at';
@@ -297,6 +300,8 @@ function CreateHub() {
             </div>
 
             <div className="max-w-6xl mx-auto px-4 mt-4 flex flex-col gap-3">
+              <OfferBanner />
+              <SocialProof />
               {tier === 'guest' ? (
                 <div className="l5g-tierbar">
                   <Lock className="w-5 h-5 shrink-0" />
@@ -316,9 +321,9 @@ function CreateHub() {
                       <span className="flex-1 min-w-[200px]">
                         บัญชีฟรี: ชุดคำถาม <b>{games ? games.length : '-'}</b> / {FREE_SET_LIMIT} ชุด เปิดห้องได้เฉพาะชุดของตัวเอง
                       </span>
-                      <Link href="/membership" className="l5g-btn l5g-btn-go l5g-btn-sm">
+                      <JoinButton className="l5g-btn l5g-btn-go l5g-btn-sm">
                         <Crown className="w-4 h-4" /> สมัครสมาชิก
-                      </Link>
+                      </JoinButton>
                     </div>
                   )}
                   <UsageMeter compact />
@@ -406,9 +411,9 @@ function CreateHub() {
                           <Sparkles className="w-5 h-5" /> สมัครบัญชีฟรี
                         </Link>
                       )}
-                      <Link href="/membership" className="l5g-btn l5g-btn-go">
+                      <JoinButton className="l5g-btn l5g-btn-go">
                         <Crown className="w-5 h-5" /> สมัครสมาชิก
-                      </Link>
+                      </JoinButton>
                     </div>
                   </div>
                 )}
@@ -425,9 +430,9 @@ function CreateHub() {
                   <p className="font-semibold opacity-80 mt-1">ชุดคำถามของคนอื่นดู ทำสำเนา และเปิดใช้งานได้เฉพาะสมาชิก</p>
                   <TierCompare className="mt-5 text-left" />
                   <div className="mt-5 flex flex-wrap justify-center gap-3">
-                    <Link href="/membership" className="l5g-btn l5g-btn-go">
+                    <JoinButton className="l5g-btn l5g-btn-go">
                       <Crown className="w-5 h-5" /> สมัครสมาชิก
-                    </Link>
+                    </JoinButton>
                     {tier === 'guest' && (
                       <Link href="/login?redirect=/create" className="l5g-btn l5g-btn-ghost">
                         <LogIn className="w-5 h-5" /> เข้าสู่ระบบ
@@ -711,9 +716,9 @@ function CreateHub() {
                 <FolderHeart className="w-5 h-5" /> ไปที่คลังของฉัน
               </button>
             )}
-            <Link href="/membership" className="l5g-btn l5g-btn-go">
+            <JoinButton className="l5g-btn l5g-btn-go">
               <Crown className="w-5 h-5" /> สมัครสมาชิก
-            </Link>
+            </JoinButton>
           </div>
         </PaperModal>
       )}

@@ -29,6 +29,8 @@ import { SubjectTag } from '@/components/media/SubjectTag';
 import { useCompanion } from '@/components/companion/CompanionProvider';
 import { useTrial } from '@/components/trial/TrialProvider';
 import { CONTACT_PAGE_URL, hasMembership } from '@/lib/membership';
+import { JoinButton } from '@/components/membership/JoinButton';
+import { useMembership } from '@/components/membership/MembershipProvider';
 
 interface MediaDetailModalProps {
   media: MediaItem | null;
@@ -48,6 +50,7 @@ export function MediaDetailModal({
   onMediaOpened,
 }: MediaDetailModalProps) {
   const { user, profile, isDev } = useAuth();
+  const { fromPrice, openCheckout } = useMembership();
   const { dailyUnlockedId } = useCompanion();
   const { openTrial, openPlay } = useTrial();
   const { success, error } = useToast();
@@ -92,7 +95,8 @@ export function MediaDetailModal({
       if (!user) {
         error('คุณยังไม่ได้เข้าสู่ระบบ กรุณาเข้าสู่ระบบก่อนใช้งานสื่อ');
       } else {
-        error('ต้องเป็นสมาชิกก่อน สมัครออนไลน์ได้เลย เริ่ม 39 บาท (หรือกดทดลองเล่นได้เลย)');
+        error(`ต้องเป็นสมาชิกก่อน สมัครออนไลน์ได้เลย เริ่ม ${fromPrice} บาท (หรือกดทดลองเล่นได้เลย)`);
+        openCheckout();
       }
       return;
     }
@@ -270,14 +274,12 @@ export function MediaDetailModal({
                 /* Case 3: ล็อกอินแล้วแต่ยังไม่มีสิทธิ์/สิทธิ์หมดอายุ */
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <Link
-                      href="/membership"
-                      onClick={onClose}
+                    <JoinButton
                       className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold shadow-sm active:scale-95 transition-all"
                     >
                       <Crown className="w-3.5 h-3.5" />
-                      <span>ดูแพลนสมาชิก</span>
-                    </Link>
+                      <span>สมัครสมาชิก เริ่ม {fromPrice} บาท</span>
+                    </JoinButton>
                     <a
                       href={CONTACT_PAGE_URL}
                       target="_blank"

@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { resetMemberPassword } from '@/lib/supabase/admin';
 import { resetPasswordSchema } from '@/lib/validations/member';
+import { isSameOrigin } from '@/lib/server/rate-limit';
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function POST(req: NextRequest) {
+  if (!isSameOrigin(req)) return NextResponse.json({ error: 'คำขอไม่ถูกต้อง' }, { status: 403 });
   const supabase = await createClient();
   const {
     data: { user },
@@ -27,7 +31,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { userId, newPassword } = body;
 
-    if (!userId) {
+    if (!userId || !UUID.test(String(userId))) {
       return NextResponse.json({ error: 'ไม่พบ ID สมาชิก' }, { status: 400 });
     }
 

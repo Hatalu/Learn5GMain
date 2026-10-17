@@ -7,6 +7,9 @@ import {
   updateMember,
 } from '@/lib/supabase/admin';
 import { createMemberSchema, editMemberSchema } from '@/lib/validations/member';
+import { isSameOrigin } from '@/lib/server/rate-limit';
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Server-side helper to verify that requester is authenticated and has role = 'dev'
@@ -60,6 +63,7 @@ export async function GET() {
 
 // POST /api/dev/members - Create a new member
 export async function POST(req: NextRequest) {
+  if (!isSameOrigin(req)) return NextResponse.json({ error: 'คำขอไม่ถูกต้อง' }, { status: 403 });
   const check = await verifyDev();
   if (!check.authorized) {
     return NextResponse.json({ error: check.error }, { status: check.status });
@@ -85,6 +89,7 @@ export async function POST(req: NextRequest) {
 
 // PUT /api/dev/members - Edit member (username, role, premium_until)
 export async function PUT(req: NextRequest) {
+  if (!isSameOrigin(req)) return NextResponse.json({ error: 'คำขอไม่ถูกต้อง' }, { status: 403 });
   const check = await verifyDev();
   if (!check.authorized) {
     return NextResponse.json({ error: check.error }, { status: check.status });
@@ -94,7 +99,7 @@ export async function PUT(req: NextRequest) {
     const body = await req.json();
     const { userId, username, role, premium_until } = body;
 
-    if (!userId) {
+    if (!userId || !UUID.test(String(userId))) {
       return NextResponse.json({ error: 'ไม่พบ ID สมาชิก' }, { status: 400 });
     }
 
@@ -115,6 +120,7 @@ export async function PUT(req: NextRequest) {
 
 // DELETE /api/dev/members - Delete member
 export async function DELETE(req: NextRequest) {
+  if (!isSameOrigin(req)) return NextResponse.json({ error: 'คำขอไม่ถูกต้อง' }, { status: 403 });
   const check = await verifyDev();
   if (!check.authorized) {
     return NextResponse.json({ error: check.error }, { status: check.status });
@@ -124,8 +130,11 @@ export async function DELETE(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get('userId');
 
-    if (!userId) {
+    if (!userId || !UUID.test(userId)) {
       return NextResponse.json({ error: 'ไม่พบ ID สมาชิก' }, { status: 400 });
+    }
+    if (userId === check.user?.id) {
+      return NextResponse.json({ error: 'ลบบัญชีของตัวเองไม่ได้' }, { status: 400 });
     }
 
     await deleteMember(userId);

@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import QRCode from 'qrcode';
 import { createClient } from '@/lib/supabase/server';
 import { getAdminClient } from '@/lib/supabase/admin';
-import { planById } from '@/lib/plans';
+import { NO_OFFER, planById, quote } from '@/lib/plans';
+import { offerFor, offersReady } from '@/lib/server/offers';
 import { maskPromptPay, promptPayKind, promptPayPayload } from '@/lib/promptpay';
 import { ORDER_PAY_MINUTES, easySlipConfigured, getPaymentSettings } from '@/lib/server/payments';
 import { clientIp, isSameOrigin, limit } from '@/lib/server/rate-limit';
@@ -30,6 +31,8 @@ export async function POST(req: NextRequest) {
   if (!(await verifyTurnstile(cf, ip))) return NextResponse.json({ error: 'ยืนยันว่าไม่ใช่บอทไม่สำเร็จ รีเฟรชหน้าแล้วลองใหม่นะ' }, { status: 403 });
   const plan = planById(planId);
   if (!plan) return NextResponse.json({ error: 'ไม่พบแพลนนี้' }, { status: 400 });
+  const v2 = await offersReady().catch(() => false);
+  if (plan.id === 'day' && !v2) return NextResponse.json({ error: 'แพลนรายวันยังไม่เปิด เลือกแพลนอื่นก่อนนะ' }, { status: 400 });
 
   const s = await getPaymentSettings().catch(() => null);
   if (!s || !s.enabled || !promptPayKind(s.promptpay_id || '') || !s.account_name || !easySlipConfigured()) {
@@ -49,6 +52,10 @@ export async function POST(req: NextRequest) {
     username = p?.username ?? null;
   }
 
+  // ราคา/วันแถมคิดจากข้อมูลในฐานข้อมูลเท่านั้น
+  const offer = user && v2 ? await offerFor(user.id).catch(() => NO_OFFER) : NO_OFFER;
+  const q = quote(plan, offer);
+
   const now = Date.now();
   const expiresAt = new Date(now + ORDER_PAY_MINUTES * 60 * 1000).toISOString();
   const { data: order, error } = await getAdminClient()
@@ -58,15 +65,16 @@ export async function POST(req: NextRequest) {
       username,
       plan: plan.id,
       days: plan.days,
-      amount: plan.price,
+      amount: q.amount,
       expires_at: expiresAt,
       ip,
+      ...(v2 ? { promo: q.welcome ? 'welcome' : q.bonusDays ? 'renew' : null, list_amount: plan.price, bonus_days: q.bonusDays } : {}),
     })
     .select('id, created_at')
     .single();
   if (error || !order) return NextResponse.json({ error: 'สร้างคำสั่งซื้อไม่สำเร็จ ลองใหม่อีกครั้ง' }, { status: 500 });
 
-  const payload = promptPayPayload(s.promptpay_id as string, plan.price);
+  const payload = promptPayPayload(s.promptpay_id as string, q.amount);
   const qr = await QRCode.toDataURL(payload, {
     errorCorrectionLevel: 'M',
     margin: 1,
@@ -77,8 +85,11 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     orderId: order.id,
     plan: plan.id,
-    amount: plan.price,
-    days: plan.days,
+    amount: q.amount,
+    listAmount: plan.price,
+    days: q.days,
+    bonusDays: q.bonusDays,
+    welcome: q.welcome,
     qr,
     expiresAt,
     accountName: s.account_name,

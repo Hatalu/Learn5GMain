@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getAdminClient } from '@/lib/supabase/admin';
 import { promptPayKind } from '@/lib/promptpay';
 import { easySlipConfigured } from '@/lib/server/payments';
+import { isSameOrigin } from '@/lib/server/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,6 +50,7 @@ export async function GET() {
 
 /** บันทึกตั้งค่าบัญชีรับเงิน */
 export async function PUT(req: NextRequest) {
+  if (!isSameOrigin(req)) return NextResponse.json({ error: 'คำขอไม่ถูกต้อง' }, { status: 403 });
   const c = await verifyDev();
   if (!c.ok) return NextResponse.json({ error: c.error }, { status: c.status });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
