@@ -22,11 +22,14 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import { hasMembership } from '@/lib/membership';
 
 export function MemberManagement() {
   const { success, error, warning, info } = useToast();
   const [members, setMembers] = useState<Profile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // บัญชีสมาชิก = สมาชิกที่ยังไม่หมดอายุ + Dev · บัญชีทั่วไป = สมัครบัญชีเองและสมาชิกที่หมดอายุแล้ว
+  const [group, setGroup] = useState<'member' | 'general'>('member');
 
   // Password visibility set for table rows
   const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set());
@@ -273,6 +276,34 @@ export function MemberManagement() {
         </button>
       </div>
 
+      {(() => {
+        const nMember = members.filter((m) => hasMembership(m)).length;
+        const tabs: { id: 'member' | 'general'; label: string; n: number }[] = [
+          { id: 'member', label: 'บัญชีสมาชิก', n: nMember },
+          { id: 'general', label: 'บัญชีทั่วไป', n: members.length - nMember },
+        ];
+        return (
+          <div className="flex flex-wrap items-center gap-2" role="tablist">
+            {tabs.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                role="tab"
+                aria-selected={group === t.id}
+                onClick={() => setGroup(t.id)}
+                className={cn(
+                  'px-4 py-2 rounded-xl text-sm font-bold border transition-all',
+                  group === t.id ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+                )}
+              >
+                {t.label} <span className="opacity-80">({t.n})</span>
+              </button>
+            ))}
+            <span className="text-xs text-gray-500 dark:text-gray-400">บัญชีทั่วไป รวมคนที่สมาชิกหมดอายุแล้ว</span>
+          </div>
+        );
+      })()}
+
       {/* Members Table */}
       {isLoading ? (
         <div className="p-12 flex flex-col items-center justify-center text-gray-400 gap-3">
@@ -292,7 +323,7 @@ export function MemberManagement() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-              {members.map((m) => {
+              {members.filter((m) => hasMembership(m) === (group === 'member')).map((m) => {
                 const isPasswordVisible = visiblePasswords.has(m.id);
                 const displayPassword = m.password || '••••••';
                 const premiumFormatted = formatPremiumDate(m.premium_until);
