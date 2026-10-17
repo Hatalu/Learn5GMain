@@ -55,7 +55,7 @@ interface SlideDef {
 
 const SUBJECT_SLIDE: Record<
   Subject,
-  { bg: string; title: string; desc: string; Art: () => JSX.Element }
+  { bg: string; title: string; desc: string; Art: () => React.JSX.Element }
 > = {
   คณิตศาสตร์: {
     bg: 'from-emerald-500 via-teal-600 to-sky-700',

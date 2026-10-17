@@ -7,8 +7,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // กันปั่นยอดเบื้องต้น: 1 ครั้ง/นาที ต่อ IP ต่อสื่อ (ในหน่วยความจำ)
 const seen = new Map<string, number>();
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  const mediaId = params.id;
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id: mediaId } = await params;
   if (!mediaId || !UUID.test(mediaId)) {
     return NextResponse.json({ error: 'Invalid media id' }, { status: 400 });
   }

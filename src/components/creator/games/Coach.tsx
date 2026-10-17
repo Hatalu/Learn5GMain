@@ -109,7 +109,7 @@ export function useCoach(steps: CoachStep[], opts: { loops?: number; active?: bo
 type Box = { x: number; y: number; w: number; h: number; k: number; group: boolean };
 
 /** ลูกศรหนาๆ ชี้เป้าหมาย + ข้อความสั้น (ลอยเหนือทุกอย่าง ไม่บังการกด) */
-export function CoachArrow({ coach, root }: { coach: Coach; root: React.RefObject<HTMLElement> }) {
+export function CoachArrow({ coach, root }: { coach: Coach; root: React.RefObject<HTMLElement | null> }) {
   const step = coach.step;
   const [box, setBox] = useState<Box | null>(null);
   const [mounted, setMounted] = useState(false);
