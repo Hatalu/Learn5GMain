@@ -215,43 +215,49 @@ function Form({ editing, onClose, onSuccess }: Omit<Props, 'isOpen'>) {
         aria-modal="true"
         aria-label={editing ? 'แก้ไขเอกสาร/ใบงาน' : 'เพิ่มเอกสาร/ใบงาน'}
         onMouseDown={(e) => e.stopPropagation()}
-        className="relative w-full max-w-2xl my-4 bg-white dark:bg-gray-900 rounded-[2rem] border-[3px] border-indigo-200 dark:border-indigo-500/40 shadow-toy-lg overflow-hidden animate-pop-in"
+        className="relative w-full max-w-xl my-4 bg-white dark:bg-gray-900 rounded-3xl border-2 border-indigo-200 dark:border-indigo-500/40 shadow-toy-lg overflow-hidden animate-pop-in"
       >
-        <div className="relative flex items-center justify-between gap-3 px-5 sm:px-6 py-4 bg-gradient-to-r from-sky-500 via-indigo-500 to-violet-500 text-white">
+        <div className="relative flex items-center justify-between gap-3 px-5 py-3.5 bg-gradient-to-r from-sky-500 via-indigo-500 to-violet-500 text-white">
           <div className="flex items-center gap-3">
-            <span className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center">
-              <FileText className="w-5 h-5" />
+            <span className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
+              <FileText className="w-4 h-4" />
             </span>
             <div>
-              <p className="font-display text-lg leading-tight">{editing ? 'แก้ไขเอกสาร/ใบงาน' : 'เพิ่มเอกสาร/ใบงาน'}</p>
-              <p className="text-xs text-white/85">ไฟล์ PDF / Word ใส่ได้หลายไฟล์ ระบบทำหน้าตัวอย่างพร้อมลายน้ำให้เอง</p>
+              <p className="font-bold text-base sm:text-lg leading-tight">{editing ? 'แก้ไขเอกสาร/ใบงาน' : 'เพิ่มเอกสาร/ใบงาน'}</p>
             </div>
           </div>
-          <button type="button" onClick={onClose} disabled={busy} className="btn-jelly p-2 rounded-full bg-white/20 hover:bg-white/30 disabled:opacity-40" aria-label="ปิดหน้าต่าง">
+          <button type="button" onClick={onClose} disabled={busy} className="btn-jelly p-1.5 rounded-full bg-white/20 hover:bg-white/30 disabled:opacity-40" aria-label="ปิดหน้าต่าง">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <form onSubmit={submit} className="p-5 sm:p-6 space-y-5">
-          {/* 1. ไฟล์ */}
+        <form onSubmit={submit} className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
+          {/* 1. ไฟล์: PDF ซ้าย / Word ขวา แต่ละฝั่งมีรายการของตัวเอง (เพิ่มต่อได้เสมอ) */}
           <Field label="ไฟล์ (ใส่กี่ไฟล์ก็ได้)" error={errs.files}>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <DropZone kind="pdf" accept={PDF_ACCEPT} disabled={busy} onFiles={(l) => addFiles(l, 'pdf')} />
-              <DropZone kind="word" accept={WORD_ACCEPT} disabled={busy} onFiles={(l) => addFiles(l, 'word')} />
+            <div className="grid grid-cols-2 gap-2.5">
+              {(['pdf', 'word'] as const).map((kind) => {
+                const kept = keep.filter((f) => f.kind === kind);
+                const fresh = added.map((f, i) => ({ f, i })).filter(({ f }) => fileKindOf(f.name) === kind);
+                return (
+                  <div key={kind} className="min-w-0 flex flex-col gap-1.5">
+                    <DropZone kind={kind} accept={kind === 'pdf' ? PDF_ACCEPT : WORD_ACCEPT} disabled={busy} onFiles={(l) => addFiles(l, kind)} />
+                    {kept.length + fresh.length > 0 && (
+                      <ul className="space-y-1 max-h-40 overflow-y-auto pr-0.5">
+                        {kept.map((f) => (
+                          <FileRow key={f.id} kind={f.kind} name={f.name} size={f.size} tag="เดิม" disabled={busy} onRemove={() => setKeep((k) => k.filter((x) => x.id !== f.id))} />
+                        ))}
+                        {fresh.map(({ f, i }) => (
+                          <FileRow key={`${f.name}-${i}`} kind={kind} name={f.name} size={f.size} tag="ใหม่" disabled={busy} onRemove={() => setAdded((a) => a.filter((_, j) => j !== i))} />
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-            {(keep.length > 0 || added.length > 0) && (
-              <ul className="mt-3 space-y-1.5">
-                {keep.map((f) => (
-                  <FileRow key={f.id} kind={f.kind} name={f.name} size={f.size} note={f.preview.length ? `ตัวอย่าง ${f.preview.length} หน้า` : 'ไม่มีหน้าตัวอย่าง'} tag="ไฟล์เดิม" disabled={busy} onRemove={() => setKeep((k) => k.filter((x) => x.id !== f.id))} />
-                ))}
-                {added.map((f, i) => (
-                  <FileRow key={`${f.name}-${i}`} kind={fileKindOf(f.name) as DocFileKind} name={f.name} size={f.size} tag="ใหม่" disabled={busy} onRemove={() => setAdded((a) => a.filter((_, j) => j !== i))} />
-                ))}
-              </ul>
-            )}
-            <p className="mt-2 flex items-start gap-1.5 text-[11px] text-gray-500 dark:text-gray-400">
-              <Info className="w-3.5 h-3.5 shrink-0 mt-px" />
-              หน้าตัวอย่างสร้างจากไฟล์ PDF (ตรงต้นฉบับที่สุด) ถ้าชุดนี้มีแต่ Word ระบบจำลองหน้าจาก .docx ให้โดยประมาณ ไฟล์ละไม่เกิน {formatBytes(DOC_MAX_BYTES)}
+            <p className="mt-1.5 flex items-start gap-1 text-[11px] text-gray-500 dark:text-gray-400">
+              <Info className="w-3 h-3 shrink-0 mt-0.5" />
+              หน้าตัวอย่างสร้างจาก PDF ถ้ามีแต่ Word จะจำลองหน้าให้โดยประมาณ ไฟล์ละไม่เกิน {formatBytes(DOC_MAX_BYTES)}
             </p>
           </Field>
 
@@ -270,7 +276,7 @@ function Form({ editing, onClose, onSuccess }: Omit<Props, 'isOpen'>) {
                     disabled={busy}
                     onClick={() => setIsPublic(o.on)}
                     className={cn(
-                      'btn-jelly flex items-center gap-2.5 p-3 rounded-2xl border-2 text-left',
+                      'btn-jelly flex items-center gap-2 px-3 py-2 rounded-xl border-2 text-left',
                       active
                         ? o.on
                           ? 'bg-gradient-to-r from-sky-500 to-indigo-500 text-white border-white/30 shadow-[0_4px_0_0_rgba(55,48,163,0.45)]'
@@ -278,7 +284,7 @@ function Form({ editing, onClose, onSuccess }: Omit<Props, 'isOpen'>) {
                         : 'bg-gray-50 dark:bg-gray-800/60 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200'
                     )}
                   >
-                    <o.icon className="w-5 h-5 shrink-0" />
+                    <o.icon className="w-4 h-4 shrink-0" />
                     <span>
                       <span className="block text-sm font-bold">{o.title}</span>
                       <span className={cn('block text-[11px]', active ? 'text-white/85' : 'text-gray-500 dark:text-gray-400')}>{o.sub}</span>
@@ -297,7 +303,7 @@ function Form({ editing, onClose, onSuccess }: Omit<Props, 'isOpen'>) {
               disabled={busy}
               maxLength={200}
               placeholder="เช่น ใบงานเรื่องเศษส่วน ชุดที่ 1"
-              className="w-full px-4 py-3 rounded-2xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-400/20"
+              className="w-full px-3.5 py-2.5 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-400/20"
             />
           </Field>
           <Field label="คำอธิบาย (ไม่บังคับ)">
@@ -308,13 +314,13 @@ function Form({ editing, onClose, onSuccess }: Omit<Props, 'isOpen'>) {
               rows={2}
               maxLength={2000}
               placeholder="เนื้อหาในชุดนี้ จุดประสงค์ หรือวิธีใช้"
-              className="w-full px-4 py-3 rounded-2xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-400/20"
+              className="w-full px-3.5 py-2.5 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-400/20"
             />
           </Field>
 
           {/* 4. วิชา */}
           <Field label="วิชา">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {ALL_SUBJECTS.map((s) => (
                 <button
                   key={s}
@@ -322,7 +328,7 @@ function Form({ editing, onClose, onSuccess }: Omit<Props, 'isOpen'>) {
                   disabled={busy}
                   onClick={() => setSubject(s)}
                   className={cn(
-                    'btn-jelly flex items-center justify-between gap-2 px-3 py-2.5 rounded-2xl border-2',
+                    'btn-jelly flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl border-2',
                     subject === s ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 ring-4 ring-indigo-400/20' : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/60'
                   )}
                 >
@@ -345,7 +351,7 @@ function Form({ editing, onClose, onSuccess }: Omit<Props, 'isOpen'>) {
                     disabled={busy}
                     onClick={() => toggleGrade(g)}
                     className={cn(
-                      'btn-jelly py-2.5 rounded-2xl border-2 font-display text-sm sm:text-base',
+                      'btn-jelly py-1.5 rounded-xl border-2 text-xs sm:text-sm font-bold',
                       on
                         ? 'bg-gradient-to-br from-indigo-500 to-violet-600 border-white/30 text-white shadow-[0_4px_0_0_rgba(76,29,149,0.45)]'
                         : 'bg-gray-50 dark:bg-gray-800/60 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200'
@@ -371,7 +377,7 @@ function Form({ editing, onClose, onSuccess }: Omit<Props, 'isOpen'>) {
                     disabled={busy}
                     onClick={() => setDocType(t)}
                     className={cn(
-                      'btn-jelly flex items-center gap-2.5 p-3 rounded-2xl border-2 text-left',
+                      'btn-jelly flex items-center gap-2 px-3 py-2 rounded-xl border-2 text-left',
                       on
                         ? t === 'ใบงาน'
                           ? 'bg-gradient-to-r from-pink-400 to-fuchsia-500 text-white border-white/30 shadow-[0_4px_0_0_rgba(157,23,77,0.4)]'
@@ -379,7 +385,7 @@ function Form({ editing, onClose, onSuccess }: Omit<Props, 'isOpen'>) {
                         : 'bg-gray-50 dark:bg-gray-800/60 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200'
                     )}
                   >
-                    <Icon className="w-5 h-5 shrink-0" />
+                    <Icon className="w-4 h-4 shrink-0" />
                     <span>
                       <span className="block text-sm font-bold">{t}</span>
                       <span className={cn('block text-[11px]', on ? 'text-white/85' : 'text-gray-500 dark:text-gray-400')}>
@@ -405,11 +411,11 @@ function Form({ editing, onClose, onSuccess }: Omit<Props, 'isOpen'>) {
             </div>
           )}
 
-          <div className="pt-4 border-t-2 border-dashed border-indigo-100 dark:border-indigo-900/60 flex justify-end gap-2.5">
-            <button type="button" onClick={onClose} disabled={busy} className="btn-jelly px-5 py-3 rounded-2xl text-sm font-bold border-2 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 disabled:opacity-40">
+          <div className="pt-3 border-t-2 border-dashed border-indigo-100 dark:border-indigo-900/60 flex justify-end gap-2.5">
+            <button type="button" onClick={onClose} disabled={busy} className="btn-jelly px-4 py-2.5 rounded-xl text-sm font-bold border-2 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 disabled:opacity-40">
               ยกเลิก
             </button>
-            <button type="submit" disabled={busy} className="btn-jelly btn-primary-grad px-6 py-3 rounded-2xl text-sm font-bold inline-flex items-center gap-2 disabled:opacity-60">
+            <button type="submit" disabled={busy} className="btn-jelly btn-primary-grad px-5 py-2.5 rounded-xl text-sm font-bold inline-flex items-center gap-2 disabled:opacity-60">
               {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
               {busy ? 'กำลังบันทึก...' : editing ? 'บันทึกการแก้ไข' : 'เพิ่มเอกสาร/ใบงาน'}
             </button>
@@ -423,7 +429,7 @@ function Form({ editing, onClose, onSuccess }: Omit<Props, 'isOpen'>) {
 function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="mb-2 text-xs font-bold text-gray-700 dark:text-gray-300">{label}</p>
+      <p className="mb-1.5 text-xs font-bold text-gray-700 dark:text-gray-300">{label}</p>
       {children}
       {error && <p className="mt-1.5 text-xs font-semibold text-rose-500">{error}</p>}
     </div>
@@ -452,7 +458,7 @@ function DropZone({ kind, accept, disabled, onFiles }: { kind: DocFileKind; acce
         if (!disabled && e.dataTransfer.files.length) onFiles(e.dataTransfer.files);
       }}
       className={cn(
-        'group flex flex-col items-center justify-center gap-2 px-3 py-5 rounded-2xl border-[3px] border-dashed text-center cursor-pointer transition-all',
+        'group flex items-center justify-center gap-2.5 px-2 py-3 rounded-xl border-2 border-dashed text-left cursor-pointer transition-all',
         pdf
           ? 'border-rose-200 dark:border-rose-900/70 bg-rose-50/60 dark:bg-rose-950/20 hover:border-rose-400'
           : 'border-sky-200 dark:border-sky-900/70 bg-sky-50/60 dark:bg-sky-950/20 hover:border-sky-400',
@@ -461,13 +467,15 @@ function DropZone({ kind, accept, disabled, onFiles }: { kind: DocFileKind; acce
       )}
     >
       <span className="relative">
-        <FileBadge kind={kind} className="w-9 h-11 transition-transform group-hover:-translate-y-1 group-hover:-rotate-6" />
-        <span className={cn('absolute -right-2 -bottom-1 w-5 h-5 rounded-full text-white flex items-center justify-center ring-2 ring-white dark:ring-gray-900', pdf ? 'bg-rose-500' : 'bg-sky-500')}>
-          <Upload className="w-3 h-3" />
+        <FileBadge kind={kind} className="w-6 h-8 transition-transform group-hover:-translate-y-1 group-hover:-rotate-6" />
+        <span className={cn('absolute -right-1.5 -bottom-1 w-4 h-4 rounded-full text-white flex items-center justify-center ring-2 ring-white dark:ring-gray-900', pdf ? 'bg-rose-500' : 'bg-sky-500')}>
+          <Upload className="w-2.5 h-2.5" />
         </span>
       </span>
-      <span className="text-sm font-bold text-gray-800 dark:text-gray-100">{pdf ? 'อัปโหลดไฟล์ PDF' : 'อัปโหลดไฟล์ Word'}</span>
-      <span className="text-[11px] text-gray-500 dark:text-gray-400">{pdf ? '.pdf' : '.docx / .doc'} · ลากมาวาง หรือกดเลือก</span>
+      <span className="min-w-0">
+        <span className="block text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-100">{pdf ? '+ เพิ่มไฟล์ PDF' : '+ เพิ่มไฟล์ Word'}</span>
+        <span className="block text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400">{pdf ? '.pdf' : '.docx / .doc'} · ลากมาวางได้</span>
+      </span>
       <input
         ref={ref}
         type="file"
@@ -483,22 +491,21 @@ function DropZone({ kind, accept, disabled, onFiles }: { kind: DocFileKind; acce
   );
 }
 
-function FileRow({ kind, name, size, note, tag, disabled, onRemove }: { kind: DocFileKind; name: string; size: number; note?: string; tag: string; disabled: boolean; onRemove: () => void }) {
+function FileRow({ kind, name, size, tag, disabled, onRemove }: { kind: DocFileKind; name: string; size: number; tag: string; disabled: boolean; onRemove: () => void }) {
   return (
-    <li className="flex items-center gap-2.5 p-2 pr-2.5 rounded-2xl bg-gray-50 dark:bg-gray-800/60 border-2 border-gray-100 dark:border-gray-800 animate-pop-in">
-      <FileBadge kind={kind} className="w-7 h-8" />
+    <li className="flex items-center gap-1.5 p-1.5 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-800 animate-pop-in">
+      <FileBadge kind={kind} className="w-4 h-5" />
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate" title={name}>
+        <p className="text-xs font-semibold text-gray-800 dark:text-gray-100 truncate" title={name}>
           {name}
         </p>
-        <p className="text-[11px] text-gray-500 dark:text-gray-400">
-          {formatBytes(size)}
-          {note ? ` · ${note}` : ''}
+        <p className="text-[10px] text-gray-500 dark:text-gray-400">
+          {formatBytes(size)}{' '}
+          <span className={cn('font-bold', tag === 'ใหม่' ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-500')}>· {tag}</span>
         </p>
       </div>
-      <span className={cn('shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold', tag === 'ใหม่' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300')}>{tag}</span>
-      <button type="button" onClick={onRemove} disabled={disabled} className="shrink-0 p-1.5 rounded-xl text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 disabled:opacity-40" aria-label={`เอา ${name} ออก`}>
-        <Trash2 className="w-4 h-4" />
+      <button type="button" onClick={onRemove} disabled={disabled} className="shrink-0 p-1 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 disabled:opacity-40" aria-label={'เอาไฟล์ ' + name + ' ออก'}>
+        <Trash2 className="w-3.5 h-3.5" />
       </button>
     </li>
   );
