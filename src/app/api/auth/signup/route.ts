@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createMemberAccount, getAdminClient } from '@/lib/supabase/admin';
 import { clientIp, isSameOrigin, limit } from '@/lib/server/rate-limit';
 import { verifyTurnstile } from '@/lib/server/turnstile';
-import { signupSchema } from '@/lib/validations/signup';
+import { normalizeGmail, signupSchema } from '@/lib/validations/signup';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,7 +28,9 @@ export async function POST(req: NextRequest) {
   }
   const parsed = signupSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message || 'ข้อมูลไม่ถูกต้อง' }, { status: 400 });
-  const { username, email, password } = parsed.data;
+  const { username, password } = parsed.data;
+  // เก็บและเช็กซ้ำด้วยรูปแบบกลาง (ไม่สนจุด/ส่วนหลัง +) กันสมัครซ้ำด้วยอีเมลเดียวกัน
+  const email = normalizeGmail(parsed.data.email) as string;
 
   const admin = getAdminClient();
   // ต้องรัน migration 019 ก่อน (คอลัมน์อีเมล) ตรวจก่อนสร้างบัญชี จะได้ไม่เหลือบัญชีค้าง
@@ -36,8 +38,8 @@ export async function POST(req: NextRequest) {
   if (probe.error) {
     return NextResponse.json({ error: 'ระบบสมัครบัญชียังไม่พร้อมใช้งาน ลองใหม่ภายหลังนะ' }, { status: 503 });
   }
-  const { data: dupe } = await admin.from('profiles').select('id').eq('contact_email', email).maybeSingle();
-  if (dupe) return NextResponse.json({ error: 'อีเมลนี้ถูกใช้สมัครแล้ว ลองเข้าสู่ระบบแทนนะ', field: 'email' }, { status: 409 });
+  const { data: dupes } = await admin.from('profiles').select('id').in('contact_email', [email, parsed.data.email]).limit(1);
+  if (dupes && dupes.length) return NextResponse.json({ error: 'อีเมลนี้ถูกใช้สมัครแล้ว ลองเข้าสู่ระบบแทนนะ', field: 'email' }, { status: 409 });
 
   try {
     await createMemberAccount(username, password, 'member', null, email);

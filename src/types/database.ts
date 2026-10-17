@@ -31,6 +31,8 @@ export interface Profile {
   premium_until?: string | null;
   /** อีเมลติดต่อที่ผู้สมัครกรอกเอง (migration 019) */
   contact_email?: string | null;
+  /** จำนวนชุดคำถามที่เคยสร้างทั้งหมด ไม่ลดเมื่อลบ ใช้จำกัดบัญชีฟรี (migration 021) */
+  games_created?: number;
   created_at: string;
   updated_at: string;
 }

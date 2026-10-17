@@ -95,7 +95,7 @@ export default function LoginPage() {
             <Sparkles className="w-4 h-4" strokeWidth={2.6} />
           </span>
           <span>
-            <b>สมัครบัญชีฟรี</b> ลองสร้างชุดคำถามของตัวเอง 2 ชุด แล้วเปิดห้องให้เพื่อนเล่น
+            <b>สมัครบัญชีฟรี</b> สร้างชุดคำถามของตัวเองได้ 2 ชุดตลอดอายุบัญชี แล้วเปิดห้องให้เพื่อนเล่น
           </span>
         </div>
         <div className={s.step}>

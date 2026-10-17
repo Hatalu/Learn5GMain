@@ -4,7 +4,7 @@ import React, { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { FREE_SET_LIMIT, creatorTier } from '@/lib/game-creator/quota';
+import { FREE_SET_LIMIT, creatorTier, setsUsed } from '@/lib/game-creator/quota';
 import { createClient } from '@/lib/supabase/client';
 import { QuizEditor } from '@/components/creator/quiz/QuizEditor';
 import { NightSky } from '@/components/fx/NightSky';
@@ -31,14 +31,14 @@ function EditInner() {
     }
     // บัญชีฟรีที่ชุดคำถามครบโควต้า สร้างชุดใหม่ไม่ได้ (แก้ชุดเดิมได้)
     if (tier === 'free' && !id) {
-      createClient()
-        .from('user_games')
-        .select('id')
-        .eq('owner_id', user.id)
-        .then(({ data }) => {
-          if ((data?.length ?? 0) >= FREE_SET_LIMIT) router.replace('/create?tab=library&gate=limit');
-          else setChecked(true);
-        });
+      const supabase = createClient();
+      Promise.all([
+        supabase.from('user_games').select('id').eq('owner_id', user.id),
+        supabase.from('profiles').select('games_created').eq('id', user.id).maybeSingle(),
+      ]).then(([g, p]) => {
+        if (setsUsed(p.data?.games_created, g.data?.length ?? 0) >= FREE_SET_LIMIT) router.replace('/create?tab=library&gate=limit');
+        else setChecked(true);
+      });
       return;
     }
     setChecked(true);

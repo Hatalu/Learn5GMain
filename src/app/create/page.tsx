@@ -8,7 +8,7 @@ import { Check, Compass, Copy, Crown, DoorOpen, FolderHeart, Globe, Loader2, Loc
 import { Navbar } from '@/components/navbar/Navbar';
 import { useAuth } from '@/context/AuthContext';
 import { ShieldCheck } from 'lucide-react';
-import { FREE_SET_LIMIT, creatorTier } from '@/lib/game-creator/quota';
+import { FREE_SET_LIMIT, creatorTier, setsUsed } from '@/lib/game-creator/quota';
 import { TierCompare } from '@/components/creator/TierCompare';
 import { UsageMeter } from '@/components/creator/UsageMeter';
 import { createClient } from '@/lib/supabase/client';
@@ -87,7 +87,10 @@ function CreateHub() {
   const [copied, setCopied] = useState<string | null>(null);
   const [devAll, setDevAll] = useState(false);
 
-  const atLimit = tier === 'free' && (games?.length ?? 0) >= FREE_SET_LIMIT;
+  // บัญชีฟรี: นับชุดที่เคยสร้างทั้งหมด (ลบแล้วไม่คืนสิทธิ์)
+  const [made, setMade] = useState<number | null>(null);
+  const used = setsUsed(made, games?.length ?? 0);
+  const atLimit = tier === 'free' && used >= FREE_SET_LIMIT;
 
   const load = useCallback(async () => {
     if (!signedIn || !user) return;
@@ -103,6 +106,8 @@ function CreateHub() {
       return;
     }
     setGames((data || []) as UserGameSummary[]);
+    const { data: me } = await supabase.from('profiles').select('games_created').eq('id', user.id).maybeSingle();
+    setMade(typeof me?.games_created === 'number' ? me.games_created : null);
     const { data: r } = await supabase.from('game_rooms').select('id, game_id, code, status').neq('status', 'closed').order('created_at', { ascending: false });
     setRooms((r || []) as ActiveRoom[]);
   }, [signedIn, user]);
@@ -319,7 +324,7 @@ function CreateHub() {
                     <div className="l5g-tierbar">
                       <Sparkles className="w-5 h-5 shrink-0" />
                       <span className="flex-1 min-w-[200px]">
-                        บัญชีฟรี: ชุดคำถาม <b>{games ? games.length : '-'}</b> / {FREE_SET_LIMIT} ชุด เปิดห้องได้เฉพาะชุดของตัวเอง
+                        บัญชีฟรี: สร้างชุดคำถามไปแล้ว <b>{games ? used : '-'}</b> / {FREE_SET_LIMIT} ชุด สร้างได้ {FREE_SET_LIMIT} ชุดตลอดอายุบัญชี ลบชุดเดิมแล้วสิทธิ์ไม่คืน
                       </span>
                       <JoinButton className="l5g-btn l5g-btn-go l5g-btn-sm">
                         <Crown className="w-4 h-4" /> สมัครสมาชิก
@@ -689,8 +694,8 @@ function CreateHub() {
         <PaperModal title="ต้องสมัครสมาชิกก่อน" icon={<Lock className="w-5 h-5" />} iconBg="#ff9a3d" onClose={() => setGate(null)} width={560}>
           <p className="font-semibold">
             {gate === 'guest'
-              ? 'ยังไม่ได้เข้าสู่ระบบ สร้างและเปิดใช้งานชุดคำถามได้เมื่อมีบัญชี สมัครบัญชีฟรีเพื่อลองสร้างได้ 2 ชุด หรือสมัครสมาชิกเพื่อใช้ได้ไม่จำกัด'
-              : `บัญชีฟรีมีชุดคำถามได้ ${FREE_SET_LIMIT} ชุด และตอนนี้ครบแล้ว ลบชุดเดิมออกสักชุด หรือสมัครสมาชิกเพื่อสร้างเพิ่มได้ไม่จำกัด`}
+              ? 'ยังไม่ได้เข้าสู่ระบบ สร้างและเปิดใช้งานชุดคำถามได้เมื่อมีบัญชี สมัครบัญชีฟรีเพื่อลองสร้างได้ 2 ชุดตลอดอายุบัญชี หรือสมัครสมาชิกเพื่อใช้ได้ไม่จำกัด'
+              : `บัญชีฟรีสร้างชุดคำถามได้ ${FREE_SET_LIMIT} ชุดตลอดอายุบัญชี และคุณใช้สิทธิ์ครบแล้ว การลบชุดเดิมไม่คืนสิทธิ์ให้ ถ้าอยากสร้างเพิ่มต้องสมัครสมาชิก`}
           </p>
           <TierCompare className="mt-3" />
           <div className="l5g-math-foot">
@@ -745,6 +750,11 @@ function CreateHub() {
           <p className="font-semibold">
             &quot;{del.title}&quot; จะถูกลบถาวร (ห้องที่เปิดเล่นอยู่ยังเล่นต่อได้จนปิดห้อง)
           </p>
+          {tier === 'free' && !isDev && (
+            <p className="mt-2 rounded-xl border-2 border-[#2a2350] bg-[#ffe1e5] px-3 py-2 text-sm font-bold">
+              บัญชีฟรีสร้างได้ {FREE_SET_LIMIT} ชุดตลอดอายุบัญชี ลบชุดนี้แล้วสิทธิ์ที่ใช้ไปจะไม่คืนกลับมา และสร้างชุดใหม่แทนไม่ได้ ถ้าแค่อยากแก้ไข ให้กดแก้ไขชุดเดิมแทนการลบ
+            </p>
+          )}
           <div className="l5g-math-foot">
             <span className="flex-1" />
             <button type="button" className="l5g-btn l5g-btn-ghost" onClick={() => setDel(null)} disabled={busy}>

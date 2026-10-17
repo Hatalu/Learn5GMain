@@ -10,6 +10,7 @@ import { Offer, Plan, WELCOME_PCT, planLength } from '@/lib/plans';
 import { CONTACT_PAGE_URL } from '@/lib/membership';
 import { FacebookIcon } from '@/components/icons/FacebookIcon';
 import { getTurnstileToken } from '@/lib/turnstile';
+import { GMAIL_ONLY_MESSAGE, normalizeGmail } from '@/lib/validations/signup';
 import s from '@/app/membership/membership.module.css';
 import { PriceBlock, fmtLeft, useCountdown } from './Pricing';
 
@@ -36,7 +37,6 @@ const fmt = (ms: number) => {
 };
 
 const CONFETTI = ['#ff6b7a', '#ffcf3f', '#3fd6a8', '#4a7bf0', '#9b6cf0', '#ff9a3d'];
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 interface Props {
   plan: Plan | null;
@@ -252,7 +252,7 @@ function Checkout({ plan, plans, onClose, onPick, onPaid }: Props & { plan: Plan
       if (!/^[a-zA-Z0-9_-]{3,30}$/.test(username.trim())) return setErr('ชื่อผู้ใช้ใช้ภาษาอังกฤษ ตัวเลข _ หรือ - ยาว 3-30 ตัว');
       if (password.length < 8) return setErr('รหัสผ่านต้องยาวอย่างน้อย 8 ตัว');
       if (password !== password2) return setErr('รหัสผ่านสองช่องไม่ตรงกัน');
-      if (email.trim() && !EMAIL.test(email.trim())) return setErr('อีเมลไม่ถูกต้อง');
+      if (email.trim() && !normalizeGmail(email)) return setErr(GMAIL_ONLY_MESSAGE);
     }
     setStep('verifying');
     const fd = new FormData();
@@ -434,7 +434,7 @@ function Checkout({ plan, plans, onClose, onPick, onPaid }: Props & { plan: Plan
                     onChange={(e) => setEmail(e.target.value)}
                     type="email"
                     inputMode="email"
-                    placeholder="อีเมล (ไม่บังคับ) ไว้แจ้งเตือนก่อนหมดอายุ"
+                    placeholder="อีเมล Gmail (ไม่บังคับ) ไว้แจ้งเตือนก่อนหมดอายุ"
                     autoComplete="email"
                     maxLength={254}
                     className={inputCls}

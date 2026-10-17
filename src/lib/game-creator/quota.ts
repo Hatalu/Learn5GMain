@@ -10,6 +10,7 @@ import type { Profile } from '@/types/database';
  */
 export type CreatorTier = 'guest' | 'free' | 'member';
 
+/** บัญชีฟรีสร้างชุดคำถามได้ FREE_SET_LIMIT ชุด "ตลอดอายุบัญชี" ลบชุดเดิมแล้วไม่คืนสิทธิ์ (นับจาก profiles.games_created) */
 export const FREE_SET_LIMIT = 2;
 export const MEMBER_SET_LIMIT = 300;
 
@@ -30,6 +31,9 @@ export function creatorTier(signedIn: boolean, profile: Pick<Profile, 'role' | '
   return hasMembership(profile) ? 'member' : 'free';
 }
 
+/** ชุดที่นับว่าใช้สิทธิ์ไปแล้ว = จำนวนที่เคยสร้างทั้งหมด (ถ้ายังไม่ได้รัน migration 021 ใช้จำนวนที่มีอยู่แทน) */
+export const setsUsed = (made: number | null | undefined, current: number) => Math.max(Number(made) || 0, current);
+
 export const quotaBytes = (tier: CreatorTier) => UPLOAD_QUOTA_MB[tier] * 1024 * 1024;
 
 export function fmtMB(bytes: number): string {
@@ -41,7 +45,7 @@ export function fmtMB(bytes: number): string {
 
 /** ข้อความอธิบายความต่างของแต่ละระดับ (ใช้ซ้ำทั้งหน้าสร้างเกม หน้าสมัครสมาชิก หน้าสมัครบัญชี) */
 export const TIER_ROWS: { label: string; free: string; member: string }[] = [
-  { label: 'สร้างชุดคำถามของตัวเอง', free: `สูงสุด ${FREE_SET_LIMIT} ชุด`, member: 'ไม่จำกัด' },
+  { label: 'สร้างชุดคำถามของตัวเอง', free: `${FREE_SET_LIMIT} ชุดตลอดอายุบัญชี ลบแล้วไม่คืนสิทธิ์`, member: 'ไม่จำกัด' },
   { label: 'เปิดห้องให้คนอื่นเล่น', free: 'ได้ เฉพาะชุดของตัวเอง', member: 'ได้ทุกชุด' },
   { label: 'ชุดคำถามของคนอื่น (Discover)', free: 'เปิดดู/ใช้ไม่ได้', member: 'ดู ทำสำเนา เปิดห้องได้' },
   { label: 'พื้นที่อัปโหลดรูปและคลิป', free: `รวมไม่เกิน ${FREE_UPLOAD_MB} MB`, member: `รวมไม่เกิน ${MEMBER_UPLOAD_MB} MB` },

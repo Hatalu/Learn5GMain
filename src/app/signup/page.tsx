@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { AlertTriangle, Check, ChevronDown, Crown, Eye, EyeOff, FolderHeart, Loader2, Lock, Mail, ShieldCheck, Sparkles, User, Wand2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { getTurnstileToken } from '@/lib/turnstile';
-import { RESERVED_NAMES, signupSchema } from '@/lib/validations/signup';
+import { RESERVED_NAMES, normalizeGmail, signupSchema } from '@/lib/validations/signup';
 import { TierCompare } from '@/components/creator/TierCompare';
 import { FREE_SET_LIMIT, FREE_UPLOAD_MB } from '@/lib/game-creator/quota';
 import { AuthShell, authStyles as s, type Mood } from '@/components/auth/AuthShell';
@@ -24,7 +24,7 @@ type Field = 'username' | 'email' | 'password' | 'confirm';
 function fieldOk(k: Field, v: Record<Field, string>): boolean {
   const u = v.username.trim();
   if (k === 'username') return /^[a-zA-Z0-9_-]{3,20}$/.test(u) && !u.toLowerCase().startsWith('trial_') && !RESERVED_NAMES.includes(u.toLowerCase());
-  if (k === 'email') return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.email.trim());
+  if (k === 'email') return normalizeGmail(v.email) !== null;
   if (k === 'password') return v.password.length >= 8 && v.password.length <= 72;
   return v.confirm.length > 0 && v.confirm === v.password && v.password.length >= 8;
 }
@@ -132,7 +132,7 @@ function SignupInner() {
 
   const rows: { k: Field; label: string; icon: React.ReactNode; type: string; auto: string; ph: string }[] = [
     { k: 'username', label: 'ชื่อผู้ใช้', icon: <User className="w-5 h-5" strokeWidth={2.6} />, type: 'text', auto: 'username', ph: 'a-z ตัวเลข _ หรือ - (3-20 ตัว)' },
-    { k: 'email', label: 'อีเมล', icon: <Mail className="w-5 h-5" strokeWidth={2.6} />, type: 'email', auto: 'email', ph: 'name@example.com' },
+    { k: 'email', label: 'อีเมล', icon: <Mail className="w-5 h-5" strokeWidth={2.6} />, type: 'email', auto: 'email', ph: 'ชื่อคุณ@gmail.com' },
     { k: 'password', label: 'รหัสผ่าน', icon: <Lock className="w-5 h-5" strokeWidth={2.6} />, type: show ? 'text' : 'password', auto: 'new-password', ph: 'อย่างน้อย 8 ตัวอักษร' },
     { k: 'confirm', label: 'ยืนยันรหัสผ่าน', icon: <ShieldCheck className="w-5 h-5" strokeWidth={2.6} />, type: show ? 'text' : 'password', auto: 'new-password', ph: 'พิมพ์รหัสผ่านอีกครั้ง' },
   ];
@@ -173,7 +173,7 @@ function SignupInner() {
       }
       lead="ใช้เวลาไม่ถึงนาที ลองสร้างชุดคำถามแล้วเปิดห้องให้เพื่อนเล่นได้ทันที"
       perks={[
-        { icon: <Wand2 className="w-4 h-4" />, text: `สร้างชุดคำถามได้ ${FREE_SET_LIMIT} ชุด` },
+        { icon: <Wand2 className="w-4 h-4" />, text: `สร้างชุดคำถามได้ ${FREE_SET_LIMIT} ชุดตลอดอายุบัญชี` },
         { icon: <FolderHeart className="w-4 h-4" />, text: `พื้นที่รูปและคลิป ${FREE_UPLOAD_MB} MB` },
         { icon: <Sparkles className="w-4 h-4" />, text: 'ไม่มีโฆษณา' },
       ]}
@@ -250,13 +250,18 @@ function SignupInner() {
                   </div>
                 )}
                 {errors[r.k] && <p className={s.hint}>{errors[r.k]}</p>}
+                {r.k === 'email' && !errors.email && (
+                  <p className="mt-1 text-xs font-semibold" style={{ color: 'var(--muted)' }}>
+                    ใช้ได้เฉพาะอีเมล Gmail และ 1 อีเมลสมัครได้ 1 บัญชี
+                  </p>
+                )}
               </div>
             );
           })}
 
           <p className="flex gap-2 text-xs font-semibold" style={{ color: 'var(--muted)' }}>
             <ShieldCheck className="w-4 h-4 shrink-0 text-emerald-500" />
-            <span>เราเก็บอีเมลไว้ติดต่อเรื่องบัญชีเท่านั้น ไม่ส่งโฆษณา ไม่เปิดเผยให้ใคร ล็อกอินด้วยชื่อผู้ใช้</span>
+            <span>เราเก็บอีเมลไว้ติดต่อเรื่องบัญชีและแจ้งเตือนสมาชิก ไม่เปิดเผยให้ใคร ยกเลิกรับอีเมลได้ทุกเมื่อ ล็อกอินด้วยชื่อผู้ใช้</span>
           </p>
 
           <button type="submit" disabled={busy || done} className={s.submit} data-done={done}>

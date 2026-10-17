@@ -3,8 +3,8 @@
  * รัน: npm run selftest
  */
 import assert from 'node:assert/strict';
-import { FREE_SET_LIMIT, FREE_UPLOAD_MB, MEMBER_UPLOAD_MB, creatorTier, fmtMB, quotaBytes } from '../src/lib/game-creator/quota';
-import { signupSchema } from '../src/lib/validations/signup';
+import { FREE_SET_LIMIT, FREE_UPLOAD_MB, MEMBER_UPLOAD_MB, creatorTier, fmtMB, quotaBytes, setsUsed } from '../src/lib/game-creator/quota';
+import { normalizeGmail, signupSchema } from '../src/lib/validations/signup';
 import {
   autoPickDaily,
   bkkParts,
@@ -739,10 +739,10 @@ t('โควต้า: guest ไม่มีพื้นที่ บัญช�
 });
 
 t('สมัครบัญชีเอง: กติกาชื่อ/อีเมล/รหัสผ่าน', () => {
-  const ok = { username: 'Kru_Ann-1', email: ' Ann@Example.COM ', password: 'abcd1234', confirm: 'abcd1234' };
+  const ok = { username: 'Kru_Ann-1', email: ' Kru.Ann+x@Gmail.COM ', password: 'abcd1234', confirm: 'abcd1234' };
   const r = signupSchema.safeParse(ok);
   assert.ok(r.success);
-  if (r.success) assert.equal(r.data.email, 'ann@example.com');
+  if (r.success) assert.equal(normalizeGmail(r.data.email), 'kruann@gmail.com');
   const bad = (o: object) => !signupSchema.safeParse({ ...ok, ...o }).success;
   assert.ok(bad({ username: 'ab' }), 'ชื่อสั้นเกิน');
   assert.ok(bad({ username: 'a'.repeat(21) }), 'ชื่อยาวเกิน');
@@ -753,9 +753,35 @@ t('สมัครบัญชีเอง: กติกาชื่อ/อี�
   assert.ok(bad({ email: 'not-an-email' }));
   assert.ok(bad({ email: 'a@b' }));
   assert.ok(bad({ email: 'x@internal.mediahub.local' }));
+  assert.ok(bad({ email: 'awdad@gmai.com' }), 'สะกดโดเมนผิด');
+  assert.ok(bad({ email: 'someone@example.com' }), 'ต้องเป็น gmail เท่านั้น');
+  assert.ok(bad({ email: 'someone@yahoo.com' }));
+  assert.ok(bad({ email: 'someone@gmail.co' }));
+  assert.ok(bad({ email: 'someone@gmail.com.evil.com' }));
+  assert.ok(bad({ email: 'awdad@gmail.com' }), 'ชื่อสั้นกว่า 6 ตัว Gmail จริงไม่มี');
   assert.ok(bad({ password: 'short1' }), 'รหัสผ่านสั้นเกิน');
   assert.ok(bad({ password: 'a'.repeat(73), confirm: 'a'.repeat(73) }), 'รหัสผ่านยาวเกิน');
   assert.ok(bad({ confirm: 'abcd12345' }), 'รหัสผ่านสองช่องไม่ตรงกัน');
+});
+
+t('อีเมล Gmail: รูปแบบกลางกันสมัครซ้ำด้วยจุดและ +', () => {
+  const key = 'kruann@gmail.com';
+  for (const v of ['kruann@gmail.com', 'Kru.Ann@gmail.com', 'k.r.u.a.n.n@GMAIL.com', 'kruann+shop@gmail.com', 'kru.ann+a+b@gmail.com', '  KRUANN@gmail.com  ']) {
+    assert.equal(normalizeGmail(v), key, v);
+  }
+  for (const v of ['', 'kruann', 'kruann@', '@gmail.com', '.kruann@gmail.com', 'kruann.@gmail.com', 'kru..ann@gmail.com', 'kru ann@gmail.com', 'kruann@googlemail.com', 'ครูแอน123@gmail.com', 'a'.repeat(31) + '@gmail.com']) {
+    assert.equal(normalizeGmail(v), null, v);
+  }
+  assert.equal(normalizeGmail('a'.repeat(30) + '@gmail.com'), 'a'.repeat(30) + '@gmail.com');
+});
+
+t('บัญชีฟรี: สิทธิ์ 2 ชุดนับจากที่เคยสร้าง ลบแล้วไม่คืน', () => {
+  assert.equal(setsUsed(undefined, 1), 1, 'ยังไม่รัน migration: ใช้จำนวนที่มีอยู่');
+  assert.equal(setsUsed(null, 0), 0);
+  assert.equal(setsUsed(2, 0), 2, 'สร้างครบ 2 แล้วลบหมด ยังนับว่าใช้ครบ');
+  assert.ok(setsUsed(2, 0) >= FREE_SET_LIMIT);
+  assert.ok(setsUsed(1, 1) < FREE_SET_LIMIT);
+  assert.equal(setsUsed(1, 2), 2, 'ตัวเลขที่เคยสร้างน้อยกว่าที่มีอยู่จริง ใช้ค่าที่มากกว่า');
 });
 
 console.log(`\n${passed} tests passed`);

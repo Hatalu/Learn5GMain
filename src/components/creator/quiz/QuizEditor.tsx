@@ -393,7 +393,7 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
       const m = error?.message || '';
       setSaveErr(
         /free game limit/i.test(m)
-          ? 'บัญชีฟรีมีชุดคำถามได้ 2 ชุด ครบแล้ว ลบชุดเก่าหรือสมัครสมาชิกเพื่อสร้างเพิ่มนะ'
+          ? 'บัญชีฟรีสร้างชุดคำถามได้ 2 ชุดตลอดอายุบัญชี และใช้สิทธิ์ครบแล้ว (ลบชุดเก่าก็ไม่คืนสิทธิ์) สมัครสมาชิกเพื่อสร้างเพิ่มนะ'
           : /quota/i.test(m)
           ? 'คลังเต็มแล้ว (สูงสุด 300 เกม) ลบเกมเก่าก่อนนะ'
           : /row-level|permission|policy/i.test(m)

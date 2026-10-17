@@ -3,6 +3,23 @@ import { z } from 'zod';
 /** กติกาสมัครบัญชีเอง (หน้า /signup และ API ใช้ชุดเดียวกัน) */
 export const RESERVED_NAMES = ['admin', 'administrator', 'root', 'support', 'staff', 'system', 'dev', 'owner', 'moderator', 'hatalu', 'learn5g'];
 
+/**
+ * อีเมลที่รับสมัคร: ต้องเป็น Gmail (@gmail.com) เท่านั้น และคืนค่า "รูปแบบกลาง" ที่ใช้เช็กซ้ำและเก็บในฐานข้อมูล
+ * Gmail ถือว่าจุดในชื่อและส่วนหลังเครื่องหมาย + เป็นกล่องเดียวกัน (a.b+x@gmail.com = ab@gmail.com)
+ * จึงตัดทิ้งก่อนเทียบ ไม่งั้นคนเดียวสมัครได้ไม่จำกัดด้วยอีเมลเดียว
+ * ชื่ออีเมล Gmail จริงยาว 6-30 ตัว (a-z 0-9 และจุด ห้ามขึ้นต้น/ลงท้าย/จุดติดกัน) ไม่ถูกรูปแบบคืน null
+ */
+export function normalizeGmail(raw: string): string | null {
+  const m = String(raw || '').trim().toLowerCase().match(/^([^@\s]+)@gmail\.com$/);
+  if (!m) return null;
+  const local = m[1].split('+')[0];
+  if (!/^[a-z0-9]+(\.[a-z0-9]+)*$/.test(local)) return null;
+  const key = local.replace(/\./g, '');
+  return key.length >= 6 && key.length <= 30 ? `${key}@gmail.com` : null;
+}
+
+export const GMAIL_ONLY_MESSAGE = 'ใช้ได้เฉพาะอีเมล Gmail ที่ถูกต้อง (ลงท้าย @gmail.com)';
+
 export const signupSchema = z
   .object({
     username: z
@@ -16,7 +33,7 @@ export const signupSchema = z
       .trim()
       .toLowerCase()
       .max(254, { message: 'อีเมลยาวเกินไป' })
-      .regex(/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/, { message: 'อีเมลไม่ถูกต้อง' }),
+      .refine((v) => normalizeGmail(v) !== null, { message: GMAIL_ONLY_MESSAGE }),
     password: z.string().min(8, { message: 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร' }).max(72, { message: 'รหัสผ่านต้องไม่เกิน 72 ตัวอักษร' }),
     confirm: z.string(),
   })

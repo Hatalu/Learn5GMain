@@ -11,14 +11,13 @@ import {
 } from '@/lib/server/payments';
 import { clientIp, isSameOrigin, limit } from '@/lib/server/rate-limit';
 import { verifyTurnstile } from '@/lib/server/turnstile';
-import { RESERVED_NAMES } from '@/lib/validations/signup';
+import { GMAIL_ONLY_MESSAGE, RESERVED_NAMES, normalizeGmail } from '@/lib/validations/signup';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const USERNAME = /^[a-zA-Z0-9_-]{3,30}$/;
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const MAX_BYTES = 4 * 1024 * 1024;
 
@@ -44,7 +43,9 @@ export async function POST(req: NextRequest) {
   const file = form.get('slip');
   const newUsername = String(form.get('username') || '').trim();
   const newPassword = String(form.get('password') || '');
-  const newEmail = String(form.get('email') || '').trim().toLowerCase();
+  const rawEmail = String(form.get('email') || '').trim().toLowerCase();
+  // อีเมล (ไม่บังคับ): ถ้ากรอกต้องเป็น Gmail และห้ามซ้ำ เก็บเป็นรูปแบบกลาง
+  const newEmail = rawEmail ? normalizeGmail(rawEmail) || '' : '';
   if (!UUID.test(orderId)) return fail('ไม่พบคำสั่งซื้อ');
   if (!(await verifyTurnstile(String(form.get('cf') || ''), ip))) return fail('ยืนยันว่าไม่ใช่บอทไม่สำเร็จ รีเฟรชหน้าแล้วลองใหม่นะ', 403);
   if (!(file instanceof Blob) || file.size === 0) return fail('แนบรูปสลิปก่อนนะ');
@@ -72,10 +73,10 @@ export async function POST(req: NextRequest) {
     if (!USERNAME.test(newUsername)) return fail('ชื่อผู้ใช้ต้องเป็นภาษาอังกฤษ ตัวเลข _ หรือ - ยาว 3-30 ตัว');
     if (newUsername.toLowerCase().startsWith('trial_') || RESERVED_NAMES.includes(newUsername.toLowerCase())) return fail('ชื่อผู้ใช้นี้ใช้ไม่ได้');
     if (newPassword.length < 8 || newPassword.length > 72) return fail('รหัสผ่านต้องยาว 8-72 ตัว');
-    if (newEmail) {
-      if (newEmail.length > 254 || !EMAIL.test(newEmail) || newEmail.endsWith('@internal.mediahub.local')) return fail('อีเมลไม่ถูกต้อง');
-      const { data: dupe } = await admin.from('profiles').select('id').eq('contact_email', newEmail).maybeSingle();
-      if (dupe) return fail('อีเมลนี้ถูกใช้สมัครแล้ว เข้าสู่ระบบด้วยบัญชีเดิมก่อนนะ');
+    if (rawEmail) {
+      if (!newEmail) return fail(GMAIL_ONLY_MESSAGE);
+      const { data: dupes } = await admin.from('profiles').select('id').in('contact_email', [newEmail, rawEmail]).limit(1);
+      if (dupes && dupes.length) return fail('อีเมลนี้ถูกใช้สมัครแล้ว เข้าสู่ระบบด้วยบัญชีเดิมก่อนนะ');
     }
     const { data: taken } = await admin.from('profiles').select('id').ilike('username', newUsername.replace(/[_%\\]/g, '\\$&')).maybeSingle();
     if (taken) return fail('ชื่อผู้ใช้นี้มีคนใช้แล้ว ลองชื่ออื่นนะ');
