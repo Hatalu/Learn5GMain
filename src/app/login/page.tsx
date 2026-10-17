@@ -4,9 +4,9 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { ThemeToggle } from '@/components/navbar/ThemeToggle';
-import { Sparkles, Lock, User, Eye, EyeOff, Loader2, BookOpen, ArrowLeft, PlayCircle, Crown } from 'lucide-react';
+import { AlertTriangle, Check, Crown, Eye, EyeOff, Gamepad2, Loader2, Lock, PlayCircle, Sparkles, User, Wand2 } from 'lucide-react';
 import { FacebookIcon } from '@/components/icons/FacebookIcon';
+import { AuthShell, authStyles as s, type Mood } from '@/components/auth/AuthShell';
 
 /** หน้าที่ขอไว้ก่อนมาล็อกอิน (?redirect=/dev) รับเฉพาะ path ภายในเว็บเรา */
 function redirectTarget(): string {
@@ -21,6 +21,10 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [done, setDone] = useState(false);
+  const [focus, setFocus] = useState<'user' | 'pass' | null>(null);
+  const [errAt, setErrAt] = useState(0);
+  const [query, setQuery] = useState('');
   // กันเดารหัสรัวๆ จากหน้าเว็บ: ผิดหลายครั้งต้องรอ (ด่านจริงอยู่ที่ Supabase Auth rate limit)
   const [fails, setFails] = useState(0);
   const [lockUntil, setLockUntil] = useState(0);
@@ -28,31 +32,36 @@ export default function LoginPage() {
   const { signIn, user, isLoading } = useAuth();
   const router = useRouter();
 
-  // If already logged in, redirect to /home
   useEffect(() => {
-    if (!isLoading && user) {
-      router.replace(redirectTarget());
-    }
-  }, [user, isLoading, router]);
+    const r = new URLSearchParams(window.location.search).get('redirect');
+    if (r && r.startsWith('/') && !r.startsWith('//')) setQuery(`?redirect=${encodeURIComponent(r)}`);
+  }, []);
+
+  // ล็อกอินอยู่แล้ว: ไปหน้าที่ขอไว้
+  useEffect(() => {
+    if (!isLoading && user && !done) router.replace(redirectTarget());
+  }, [user, isLoading, done, router]);
+
+  // ผิดแล้วน้องไฟว์จีส่ายหัวแป๊บหนึ่ง
+  useEffect(() => {
+    if (!errAt) return;
+    const t = setTimeout(() => setErrAt(0), 1400);
+    return () => clearTimeout(t);
+  }, [errAt]);
+
+  const fail = (m: string) => {
+    setErrorMsg(m);
+    setErrAt(Date.now());
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting || done) return;
     setErrorMsg('');
 
-    if (!username.trim()) {
-      setErrorMsg('กรุณากรอกชื่อผู้ใช้');
-      return;
-    }
-
-    if (!password) {
-      setErrorMsg('กรุณากรอกรหัสผ่าน');
-      return;
-    }
-
-    if (Date.now() < lockUntil) {
-      setErrorMsg(`ลองผิดหลายครั้ง กรุณารอ ${Math.ceil((lockUntil - Date.now()) / 1000)} วินาทีแล้วลองใหม่`);
-      return;
-    }
+    if (!username.trim()) return fail('กรุณากรอกชื่อผู้ใช้');
+    if (!password) return fail('กรุณากรอกรหัสผ่าน');
+    if (Date.now() < lockUntil) return fail(`ลองผิดหลายครั้ง กรุณารอ ${Math.ceil((lockUntil - Date.now()) / 1000)} วินาทีแล้วลองใหม่`);
 
     setIsSubmitting(true);
     try {
@@ -61,229 +70,176 @@ export default function LoginPage() {
         const n = fails + 1;
         setFails(n);
         if (n >= 5) setLockUntil(Date.now() + Math.min(300, 30 * 2 ** (n - 5)) * 1000);
-        setErrorMsg(res.error || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
+        fail(res.error || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
+        setIsSubmitting(false);
       } else {
         setFails(0);
-        router.push(redirectTarget());
+        setDone(true);
+        // ฉลองสั้นๆ แล้วค่อยไป
+        setTimeout(() => router.push(redirectTarget()), 900);
       }
     } catch {
-      setErrorMsg('เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง');
-    } finally {
+      fail('เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง');
       setIsSubmitting(false);
     }
   };
 
-  return (
-    <main className="min-h-screen relative flex flex-col justify-center items-center p-4 sm:p-6 bg-gradient-to-br from-indigo-50/70 via-background to-violet-50/50 dark:from-slate-950 dark:via-background dark:to-indigo-950/40">
-      {/* Background ambient decorative shapes */}
-      <div className="absolute top-10 left-10 w-72 h-72 bg-indigo-500/10 dark:bg-indigo-600/15 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-10 right-10 w-80 h-80 bg-violet-500/10 dark:bg-violet-600/15 rounded-full blur-3xl pointer-events-none" />
-      {/* ดาวและรูปทรงลอยเบาๆ */}
-      <svg className="absolute top-[18%] right-[14%] w-8 h-8 text-sun-400 animate-twinkle pointer-events-none" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M12 0c.9 6.2 2.8 8.9 12 12-9.2 3.1-11.1 5.8-12 12-.9-6.2-2.8-8.9-12-12C9.2 8.9 11.1 6.2 12 0z" fill="currentColor" />
-      </svg>
-      <svg className="absolute bottom-[22%] left-[10%] w-6 h-6 text-violet-400 animate-twinkle [animation-delay:1.4s] pointer-events-none" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M12 0c.9 6.2 2.8 8.9 12 12-9.2 3.1-11.1 5.8-12 12-.9-6.2-2.8-8.9-12-12C9.2 8.9 11.1 6.2 12 0z" fill="currentColor" />
-      </svg>
-      <div className="hidden sm:block absolute top-[30%] left-[12%] w-14 h-14 rounded-2xl bg-mint-500/80 rotate-12 animate-float pointer-events-none" />
-      <div className="hidden sm:block absolute bottom-[16%] right-[12%] w-12 h-12 rounded-full bg-sky-400/80 animate-float-slow pointer-events-none" />
+  const mood: Mood = done ? 'happy' : errAt ? 'error' : focus === 'pass' && !showPassword ? 'secret' : focus ? 'focus' : 'idle';
 
-      {/* Top bar controls */}
-      <div className="absolute top-5 left-5 sm:top-8 sm:left-8 z-10">
-        <Link
-          href="/home"
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white/70 dark:bg-gray-900/70 hover:bg-white dark:hover:bg-gray-800 text-xs font-semibold text-gray-700 dark:text-gray-300 shadow-sm backdrop-blur-md transition-all active:scale-95"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span>ดูสื่อการสอน (หน้าหลัก)</span>
+  const panel = (
+    <>
+      <p className="font-display text-lg">ยังไม่มีบัญชี? เริ่มได้ 3 ขั้น</p>
+      <div className={`${s.steps} mt-3`}>
+        <div className={s.step}>
+          <span className={s.stepNum} style={{ background: '#3fd6a8' }}>
+            <Sparkles className="w-4 h-4" strokeWidth={2.6} />
+          </span>
+          <span>
+            <b>สมัครบัญชีฟรี</b> ลองสร้างชุดคำถามของตัวเอง 2 ชุด แล้วเปิดห้องให้เพื่อนเล่น
+          </span>
+        </div>
+        <div className={s.step}>
+          <span className={s.stepNum} style={{ background: '#ffcf3f' }}>
+            <PlayCircle className="w-4 h-4" strokeWidth={2.6} />
+          </span>
+          <span>
+            <b>ลองเล่นเกมในคลัง</b> กด &quot;ทดลองเล่น&quot; ได้ทุกเกม ครั้งละ 5 นาที
+          </span>
+        </div>
+        <div className={s.step}>
+          <span className={s.stepNum} style={{ background: '#ff8fc4' }}>
+            <Crown className="w-4 h-4" strokeWidth={2.6} />
+          </span>
+          <span>
+            <b>ชอบแล้วสมัครสมาชิก</b> เริ่ม 39 บาท สแกนพร้อมเพย์ รับสิทธิ์ทันที
+          </span>
+        </div>
+      </div>
+      <div className={s.cta}>
+        <Link href="/home" className={s.ctaBtn} style={{ background: '#bfe8ff' }}>
+          <PlayCircle className="w-5 h-5" /> เปิดเว็บทดลอง
+        </Link>
+        <Link href="/membership" className={s.ctaBtn} style={{ background: 'linear-gradient(135deg,#ffd75e,#ff9a3d)' }}>
+          <Crown className="w-5 h-5" /> ดูแพลนสมาชิก
         </Link>
       </div>
+    </>
+  );
 
-      <div className="absolute top-5 right-5 sm:top-8 sm:right-8 z-10">
-        <ThemeToggle />
-      </div>
+  return (
+    <AuthShell
+      mode="login"
+      mood={mood}
+      celebrate={done}
+      query={query}
+      backHref="/home"
+      backLabel="หน้าหลัก"
+      headline={
+        <>
+          กลับมาแล้ว!
+          <br />
+          <span>ไปผจญภัยต่อกัน</span>
+        </>
+      }
+      lead="เกมการเรียนรู้ ป.1-ป.6 คณิต วิทย์ อังกฤษ และระบบสร้างเกมของคุณเอง"
+      perks={[
+        { icon: <Gamepad2 className="w-4 h-4" />, text: 'เกมทุกวิชา' },
+        { icon: <Wand2 className="w-4 h-4" />, text: 'สร้างเกมเองได้' },
+        { icon: <Sparkles className="w-4 h-4" />, text: 'ไม่มีโฆษณา' },
+      ]}
+      panel={panel}
+    >
+      <div className={s.stagger}>
+        <h2 className={s.title} style={{ ['--i' as string]: 0 }}>
+          เข้าสู่ระบบ
+        </h2>
+        <p className={s.subtitle} style={{ ['--i' as string]: 1 }}>
+          ใช้ชื่อผู้ใช้และรหัสผ่านของคุณ
+        </p>
 
-      <div className="w-full max-w-md lg:max-w-4xl relative z-10">
-        {/* Logo & Header with glowing edge */}
-        <div className="text-center mb-8">
-          <div className="inline-block relative w-20 h-20 rounded-2xl overflow-hidden mb-4 ring-4 ring-indigo-400/80 dark:ring-indigo-400 shadow-[0_0_25px_rgba(99,102,241,0.85)] dark:shadow-[0_0_30px_rgba(129,140,248,0.95)] transform hover:scale-105 transition-all duration-300 bg-white dark:bg-gray-900">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/logo.png"
-              alt="สื่อการสอน 5G Logo"
-              className="w-full h-full object-cover"
-            />
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-medium text-gradient-brand">
-            สื่อการสอน 5G
-          </h1>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-            ศูนย์รวมสื่อการสอนและเกมการศึกษา ประถมศึกษา
-          </p>
-        </div>
-
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)] lg:items-start lg:justify-center">
-        {/* Login Card */}
-        <div className="bg-white/85 dark:bg-gray-900/80 backdrop-blur-xl border-2 border-indigo-100 dark:border-indigo-900 rounded-[2rem] p-6 sm:p-8 shadow-toy-lg">
-          <div className="flex items-center gap-2 mb-6">
-            <Sparkles className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              เข้าสู่ระบบสมาชิก
-            </h2>
-          </div>
-
+        <form onSubmit={handleSubmit} className={s.form} style={{ ['--i' as string]: 2 }} noValidate>
           {errorMsg && (
-            <div
-              role="alert"
-              className="mb-5 p-3.5 rounded-xl text-sm bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900/80 text-rose-700 dark:text-rose-300 animate-fade-in flex items-start gap-2.5"
-            >
-              <div className="w-1.5 h-1.5 rounded-full bg-rose-500 mt-2 shrink-0" />
+            <div role="alert" className={s.alert} key={errAt}>
+              <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
               <span>{errorMsg}</span>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Username Input */}
-            <div>
-              <label
-                htmlFor="username"
-                className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5"
-              >
-                ชื่อผู้ใช้
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
-                  <User className="w-4 h-4" />
-                </div>
-                <input
-                  id="username"
-                  type="text"
-                  autoComplete="username"
-                  required
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="กรอกชื่อผู้ใช้ของคุณ"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800/80 text-gray-900 dark:text-white placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                />
-              </div>
+          <div>
+            <label htmlFor="username" className={s.label}>
+              ชื่อผู้ใช้
+            </label>
+            <div className={s.field}>
+              <span className={s.fieldIcon}>
+                <User className="w-5 h-5" strokeWidth={2.6} />
+              </span>
+              <input
+                id="username"
+                type="text"
+                autoComplete="username"
+                autoCapitalize="none"
+                spellCheck={false}
+                required
+                value={username}
+                onFocus={() => setFocus('user')}
+                onBlur={() => setFocus(null)}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="ชื่อผู้ใช้ของคุณ"
+              />
             </div>
+          </div>
 
-            {/* Password Input */}
-            <div>
-              <label
-                htmlFor="password"
-                className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5"
-              >
-                รหัสผ่าน
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
-                  <Lock className="w-4 h-4" />
-                </div>
-                <input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="กรอกรหัสผ่าน"
-                  className="w-full pl-10 pr-11 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800/80 text-gray-900 dark:text-white placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-                  aria-label={showPassword ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'}
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            {/* Submit Button */}
-            <div className="pt-2">
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="btn-primary-grad w-full py-3.5 px-4 rounded-2xl font-display font-medium text-base flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>กำลังเข้าสู่ระบบ...</span>
-                  </>
-                ) : (
-                  <span>เข้าสู่ระบบ</span>
-                )}
+          <div>
+            <label htmlFor="password" className={s.label}>
+              รหัสผ่าน
+            </label>
+            <div className={s.field}>
+              <span className={s.fieldIcon}>
+                <Lock className="w-5 h-5" strokeWidth={2.6} />
+              </span>
+              <input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="current-password"
+                required
+                value={password}
+                onFocus={() => setFocus('pass')}
+                onBlur={() => setFocus(null)}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="รหัสผ่าน"
+              />
+              <button type="button" className={s.eye} onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'}>
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
             </div>
-          </form>
-
-          {/* Footer note: Specification #3 requirement */}
-          <div className="mt-6 pt-5 border-t border-gray-200/80 dark:border-gray-800 text-center">
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              ลืมรหัสผ่าน?{' '}
-              <a
-                href="https://www.facebook.com/profile.php?id=61594556657667"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-medium text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1 transition-colors"
-              >
-                <FacebookIcon className="w-3.5 h-3.5" />
-                ติดต่อแอดมินผ่านเพจ สื่อการสอน 5G
-              </a>
-            </p>
           </div>
-        </div>
 
-        {/* ทางเข้าสำหรับคนที่ยังไม่มีบัญชี */}
-        <aside className="rounded-[2rem] border-2 border-amber-200/80 dark:border-amber-900/60 bg-gradient-to-br from-amber-50/90 to-pink-50/80 dark:from-amber-950/30 dark:to-pink-950/20 backdrop-blur-xl p-6 sm:p-7 shadow-toy">
-          <p className="text-xs font-bold uppercase tracking-widest text-amber-700 dark:text-amber-300">ยังไม่มีบัญชี?</p>
-          <h2 className="mt-1 font-display text-xl sm:text-2xl text-gray-900 dark:text-white">เริ่มต้นได้ใน 3 ขั้น</h2>
-          <ol className="mt-4 space-y-3">
-            <li className="flex gap-3">
-              <span className="w-7 h-7 shrink-0 rounded-full bg-mint-500 text-indigo-950 text-sm font-bold flex items-center justify-center">1</span>
-              <p className="text-sm text-gray-700 dark:text-gray-200">
-                <b>สมัครบัญชีฟรี</b> ลองสร้างชุดคำถามของตัวเองได้ 2 ชุด แล้วเปิดห้องให้เพื่อนเล่น
-              </p>
-            </li>
-            <li className="flex gap-3">
-              <span className="w-7 h-7 shrink-0 rounded-full bg-sun-400 text-indigo-950 text-sm font-bold flex items-center justify-center">2</span>
-              <p className="text-sm text-gray-700 dark:text-gray-200">
-                <b>ลองเล่นเกมในคลัง</b> เปิดเว็บทดลอง กดปุ่ม &quot;ทดลองเล่น&quot; เล่นได้ทุกเกมครั้งละ 5 นาที ไม่ต้องใส่รหัส
-              </p>
-            </li>
-            <li className="flex gap-3">
-              <span className="w-7 h-7 shrink-0 rounded-full bg-pink-400 text-white text-sm font-bold flex items-center justify-center">3</span>
-              <p className="text-sm text-gray-700 dark:text-gray-200">
-                <b>ชอบแล้วสมัครเลย</b> เลือกแพลนตั้งแต่ 39 บาท สแกนจ่ายพร้อมเพย์ รับสิทธิ์ทันที
-              </p>
-            </li>
-          </ol>
-          <div className="mt-5 flex flex-col gap-2.5">
-            <Link
-              href="/signup"
-              className="btn-jelly inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-mint-500 to-sky-400 text-indigo-950 font-display text-lg shadow-md ring-2 ring-white/70 dark:ring-gray-900"
-            >
-              <Sparkles className="w-5 h-5" /> สมัครบัญชีฟรี
-            </Link>
-            <Link
-              href="/home"
-              className="btn-jelly inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-white dark:bg-gray-800 border-2 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 font-bold shadow-sm"
-            >
-              <PlayCircle className="w-5 h-5" /> เปิดเว็บทดลอง
-            </Link>
-            <Link
-              href="/membership"
-              className="btn-jelly inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-sun-400 to-orange-400 text-indigo-950 font-display text-lg shadow-md ring-2 ring-white/70 dark:ring-gray-900"
-            >
-              <Crown className="w-5 h-5" /> ดูแพลนสมาชิก
-            </Link>
+          <button type="submit" disabled={isSubmitting || done} className={s.submit} data-done={done}>
+            {done ? (
+              <>
+                <Check className="w-6 h-6" strokeWidth={3.5} /> เข้าสู่ระบบแล้ว
+              </>
+            ) : isSubmitting ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" /> กำลังเข้าสู่ระบบ
+              </>
+            ) : (
+              'เข้าสู่ระบบ'
+            )}
+          </button>
+        </form>
+
+        <div className={s.foot} style={{ ['--i' as string]: 3 }}>
+          ยังไม่มีบัญชี?{' '}
+          <Link href={`/signup${query}`}>สมัครบัญชีฟรี</Link>
+          <div className="mt-2 inline-flex items-center gap-1.5 justify-center w-full">
+            ลืมรหัสผ่าน?
+            <a href="https://www.facebook.com/profile.php?id=61594556657667" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1">
+              <FacebookIcon className="w-3.5 h-3.5" /> ติดต่อแอดมินทางเพจ
+            </a>
           </div>
-        </aside>
         </div>
       </div>
-    </main>
+    </AuthShell>
   );
 }
