@@ -21,7 +21,7 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-type Ctx = { params: { id: string } };
+type Ctx = { params: Promise<{ id: string }> };
 
 async function hostRoom(id: string) {
   const uid = await getUserId();
@@ -35,7 +35,7 @@ async function hostRoom(id: string) {
 
 /** สถานะห้องสำหรับครู (ผู้เล่นทั้งหมด + คะแนน และสรุปรายข้อเมื่อขอ) */
 export async function GET(req: NextRequest, { params }: Ctx) {
-  const r = await hostRoom(params.id);
+  const r = await hostRoom((await params).id);
   if ('error' in r) return r.error;
   const { db, room, uid } = r;
   if (!rateLimit(`host-poll:${uid}`, 240, 60 * 1000)) return NextResponse.json({ error: 'ช้าลงหน่อยนะ' }, { status: 429 });
@@ -82,7 +82,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
 /** คำสั่งของเจ้าของห้อง: เริ่ม / จบ / เล่นใหม่ / ปิดห้อง / เตะผู้เล่น / เปลี่ยนพื้นหลัง / ตั้งค่า / เพลง */
 export async function POST(req: NextRequest, { params }: Ctx) {
   if (!isSameOrigin(req)) return NextResponse.json({ error: 'คำขอไม่ถูกต้อง' }, { status: 403 });
-  const r = await hostRoom(params.id);
+  const r = await hostRoom((await params).id);
   if ('error' in r) return r.error;
   const { db, room, uid } = r;
   if (!rateLimit(`host-act:${uid}`, 90, 60 * 1000)) return NextResponse.json({ error: 'ช้าลงหน่อยนะ' }, { status: 429 });
