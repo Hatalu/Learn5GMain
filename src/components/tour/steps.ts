@@ -1,7 +1,7 @@
 import { MODES } from '@/lib/game-creator/modes';
 
 /**
- * ทัวร์แนะนำเว็บหลังสมัครบัญชี: หน้าหลัก > คลังเกม > เอกสาร/ใบงาน > ระบบสร้างเกม (6 รูปแบบ) > สมัครสมาชิก
+ * ทัวร์แนะนำเว็บหลังสมัครบัญชี: หน้าหลัก > คลังเกม > เอกสาร/ใบงาน > ระบบสร้างเกม (ภาพรวมรูปแบบเกม) > สมัครสมาชิก
  * target / click / via คือค่า data-tour="..." ของ element ในหน้านั้น ๆ
  */
 export type TourChapter = 'start' | 'home' | 'library' | 'create' | 'member';
@@ -104,24 +104,11 @@ export const STEPS: TourStep[] = [
     path: '/create',
     chapter: 'create',
     target: 'modes',
-    title: 'ชุดเดียว เล่นได้ 6 แบบ',
-    text: 'เปิดห้องด้วยเลข 6 หลัก ทั้งห้องเล่นพร้อมกัน',
-    ms: 5000,
+    title: `มีเกมให้เลือกเล่น ${MODES.length} รูปแบบ`,
+    text: 'ชุดคำถามเดียว เลือกเล่นได้ทุกแบบ ทั้งห้องเล่นพร้อมกัน',
+    ms: 6400,
     accent: '#14b8a6',
   },
-  ...MODES.map(
-    (m, i): TourStep => ({
-      id: `mode-${m.id}`,
-      path: '/create',
-      chapter: 'create',
-      target: `mode-${m.id}`,
-      title: m.name,
-      text: m.tagline,
-      chip: `แบบที่ ${i + 1} · ${m.genre}`,
-      ms: 3900,
-      accent: m.color,
-    })
-  ),
   {
     id: 'member',
     path: '/membership',

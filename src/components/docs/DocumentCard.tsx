@@ -127,13 +127,18 @@ export function DocumentCard({ doc, onOpen }: { doc: DocumentItem; onOpen: (doc:
               onOpen(doc, true);
             }}
             className={cn(
-              'btn-jelly flex-1 min-w-[6.5rem] inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-2xl text-sm font-bold border-2',
+              // ปุ่มทึบเด่นเท่าปุ่มดูตัวอย่าง: สมาชิก = เขียวมิ้นต์ / ยังไม่เป็นสมาชิก = ทองพร้อมแม่กุญแจ
+              'group/dl btn-jelly flex-1 min-w-[6.5rem] inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-2xl text-sm font-bold bg-gradient-to-r hover:brightness-110',
               isMember
-                ? 'bg-mint-400/15 text-emerald-800 dark:text-mint-300 border-mint-500/50'
-                : 'bg-sun-400/20 text-amber-900 dark:text-sun-300 border-sun-500/60'
+                ? 'from-emerald-400 via-teal-500 to-cyan-500 text-white [text-shadow:0_1px_1px_rgba(0,0,0,0.2)] shadow-[0_4px_0_0_rgba(4,120,87,0.55),0_12px_22px_-8px_rgba(16,185,129,0.6)]'
+                : 'from-amber-300 via-yellow-300 to-orange-400 text-indigo-950 shadow-[0_4px_0_0_rgba(180,83,9,0.5),0_12px_22px_-8px_rgba(245,158,11,0.55)]'
             )}
           >
-            {isMember ? <Download className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+            {isMember ? (
+              <Download className="w-4 h-4 shrink-0 transition-transform group-hover/dl:translate-y-0.5" />
+            ) : (
+              <Lock className="w-4 h-4 shrink-0" />
+            )}
             <span>ดาวน์โหลด</span>
           </button>
         </div>

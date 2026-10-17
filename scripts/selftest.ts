@@ -850,7 +850,7 @@ t('คลังเกม: ตัวกรองประเภทไม่มี
   assert.equal(GAME_FILTER_TYPES.length, ALL_MEDIA_TYPES.length - 2);
 });
 
-t('ทัวร์แนะนำเว็บ: ลำดับหน้า ครบทุกรูปแบบเกม และจบที่ฉากเลือก', () => {
+t('ทัวร์แนะนำเว็บ: ลำดับหน้า ภาพรวมรูปแบบเกม และจบที่ฉากเลือก', () => {
   const ids = STEPS.map((x) => x.id);
   assert.equal(new Set(ids).size, ids.length);
   // ลำดับหน้า: หน้าหลัก > สร้างเกม > สมาชิก (ไม่ย้อนไปมา)
@@ -860,7 +860,9 @@ t('ทัวร์แนะนำเว็บ: ลำดับหน้า ค�
   assert.ok(seq.every((v, i) => i === 0 || v >= seq[i - 1]));
   // เกมการเรียนรู้มาก่อนเอกสาร/ใบงาน
   assert.ok(ids.indexOf('games') < ids.indexOf('docs'));
-  for (const m of MODES) assert.ok(ids.includes('mode-' + m.id), m.id);
+  // รูปแบบเกมโชว์แค่ภาพรวมขั้นเดียว ไม่ไล่ทีละแบบ
+  assert.ok(ids.includes('modes'));
+  assert.ok(!ids.some((id) => id.startsWith('mode-')));
   // ทุกขั้นเดินเองได้ ยกเว้นฉากสุดท้ายที่รอผู้ใช้เลือก
   const last = STEPS[STEPS.length - 1];
   assert.ok(last.final && !last.target && last.path === '/membership');
@@ -869,9 +871,9 @@ t('ทัวร์แนะนำเว็บ: ลำดับหน้า ค�
     assert.ok(CHAPTERS[x.chapter], x.id);
     assert.ok(x.title.length > 0 && x.text.length <= 60, x.id);
   }
-  // ไม่ช้า/ไม่เร็วเกิน: เวลาโชว์รวมราว 1 นาทีกว่า
+  // ไม่ช้า/ไม่เร็วเกิน: เวลาโชว์รวมราว 1 นาที
   const total = STEPS.reduce((a, x) => a + x.ms, 0);
-  assert.ok(total >= 50_000 && total <= 100_000, String(total));
+  assert.ok(total >= 35_000 && total <= 90_000, String(total));
 });
 
 console.log(`\n${passed} tests passed`);

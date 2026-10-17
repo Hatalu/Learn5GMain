@@ -372,7 +372,7 @@ function CreateHub() {
                 <p className="l5g-sec-note">กด เปิดใช้งาน ที่ชุดคำถามในคลัง แล้วเลือกได้เลยว่าจะเล่นแบบไหน</p>
                 <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4 mt-4" data-tour="modes">
                   {MODES.map((m, i) => (
-                    <article key={m.id} data-tour={`mode-${m.id}`} className="l5g-tcard" style={{ ['--a' as string]: m.color, ['--soft' as string]: m.soft, animationDelay: `${i * 80}ms` }}>
+                    <article key={m.id} className="l5g-tcard" style={{ ['--a' as string]: m.color, ['--soft' as string]: m.soft, animationDelay: `${i * 80}ms` }}>
                       <div className="l5g-tcard-art">
                         <ModeArt mode={m.id} />
                       </div>
