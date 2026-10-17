@@ -33,6 +33,7 @@ import {
   choiceFilled,
   cleanTitle,
   emptyQuiz,
+  mediaPaths,
   newChoice,
   newQuestion,
   playableQuiz,
@@ -45,6 +46,7 @@ import {
 } from '@/lib/game-creator/quiz';
 import { mediaPrefix, probeVideo, uploadImage, type VideoProbe } from '@/lib/game-creator/media';
 import { gsfx } from '@/lib/game-creator/gsound';
+import { UsageMeter } from '../UsageMeter';
 import { RichInput, type RichInputHandle } from '../math/RichInput';
 import { MediaView } from '../MediaView';
 import { ChoiceShape, choiceStyle } from '../ChoiceShape';
@@ -390,10 +392,12 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
     if (error || !id) {
       const m = error?.message || '';
       setSaveErr(
-        /quota/i.test(m)
+        /free game limit/i.test(m)
+          ? 'บัญชีฟรีมีชุดคำถามได้ 2 ชุด ครบแล้ว ลบชุดเก่าหรือสมัครสมาชิกเพื่อสร้างเพิ่มนะ'
+          : /quota/i.test(m)
           ? 'คลังเต็มแล้ว (สูงสุด 300 เกม) ลบเกมเก่าก่อนนะ'
           : /row-level|permission|policy/i.test(m)
-            ? 'บันทึกได้เฉพาะสมาชิกที่สิทธิ์ยังไม่หมดอายุ'
+            ? 'บันทึกไม่ได้ ลองเข้าสู่ระบบใหม่อีกครั้ง'
             : /too long|check constraint|octet/i.test(m)
               ? 'เกมนี้ใหญ่เกินไป ลองลดจำนวนคำถาม'
               : 'บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง'
@@ -508,6 +512,10 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} บันทึก
         </button>
       </header>
+
+      <div className="l5g-ebar-usage">
+        <UsageMeter compact keepPaths={() => mediaPaths(sanitizeQuiz(content, prefix))} />
+      </div>
 
       {(saveErr || draftOffer) && (
         <div className="l5g-ebar-msgs">

@@ -29,6 +29,8 @@ export interface Profile {
   role: UserRole;
   password?: string | null;
   premium_until?: string | null;
+  /** อีเมลติดต่อที่ผู้สมัครกรอกเอง (migration 019) */
+  contact_email?: string | null;
   created_at: string;
   updated_at: string;
 }

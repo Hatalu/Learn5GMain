@@ -87,6 +87,18 @@ export async function getMember(): Promise<{ id: string; username: string } | nu
   return { id: user.id, username: p.username };
 }
 
+/** เจ้าของห้อง: ผู้ใช้ที่ล็อกอินและเป็นบัญชีจริง (บัญชีฟรีก็เปิดห้องจากชุดของตัวเองได้ ไม่นับบัญชีทดลองเล่น) */
+export async function getHost(): Promise<{ id: string; username: string } | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data: p } = await supabase.from('profiles').select('username').eq('id', user.id).maybeSingle();
+  if (!p || String(p.username || '').startsWith('trial_')) return null;
+  return { id: user.id, username: p.username };
+}
+
 export async function getUserId(): Promise<string | null> {
   const supabase = await createClient();
   const {

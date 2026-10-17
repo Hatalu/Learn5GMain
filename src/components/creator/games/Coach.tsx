@@ -17,6 +17,8 @@ export interface CoachStep {
   /** ตัวเลือก CSS (ใช้ตัวแรกที่เจอและมองเห็น) ค้นในกรอบของเกม */
   target: string | string[];
   text: string;
+  /** ข้อความแยกตามตัวเลือก CSS แต่ละตัวใน target (ลำดับเดียวกัน) ถ้าไม่ใส่ใช้ text */
+  texts?: string[];
   doneIf?: () => boolean;
   when?: () => boolean;
   optional?: boolean;
@@ -81,19 +83,30 @@ export function useCoach(steps: CoachStep[], opts: { loops?: number; active?: bo
   const cur = idx >= 0 ? steps[idx] : null;
   const curDone = !!cur?.doneIf?.();
   const waiting = !!cur?.when && !cur.when();
+  // ผู้เล่นข้ามไปทำขั้นหลังๆ ก่อนแล้ว (เช่น เปิดแผงคำถามเองโดยยังไม่ได้ลากตัวละคร): ข้ามไปต่อจากขั้นนั้นเลย ไม่บังคับลำดับ
+  let jump = -1;
+  if (!done && idx >= 0) {
+    for (let k = steps.length - 1; k > idx; k--) {
+      if (steps[k].doneIf?.()) {
+        jump = k;
+        break;
+      }
+    }
+  }
   useEffect(() => {
     if (done) return;
     if (idx < 0) {
       advanceTo(steps.length); // ที่เหลือทำไม่ได้ทั้งหมด: นับว่าจบรอบ
       return;
     }
-    if (curDone) advanceTo(idx + 1);
+    if (jump >= 0) advanceTo(jump + 1);
+    else if (curDone) advanceTo(idx + 1);
   });
 
-  return { step: done || curDone || waiting ? null : cur, hit, stop };
+  return { step: done || curDone || waiting || jump >= 0 ? null : cur, hit, stop };
 }
 
-type Box = { x: number; y: number; w: number; h: number };
+type Box = { x: number; y: number; w: number; h: number; k: number; group: boolean };
 
 /** ลูกศรหนาๆ ชี้เป้าหมาย + ข้อความสั้น (ลอยเหนือทุกอย่าง ไม่บังการกด) */
 export function CoachArrow({ coach, root }: { coach: Coach; root: React.RefObject<HTMLElement> }) {
@@ -112,7 +125,8 @@ export function CoachArrow({ coach, root }: { coach: Coach; root: React.RefObjec
     const find = () => {
       const base = root.current || document.body;
       const sels = Array.isArray(step.target) ? step.target : [step.target];
-      for (const sel of sels) {
+      for (let k = 0; k < sels.length; k++) {
+        const sel = sels[k];
         let els: HTMLElement[] = [];
         try {
           els = Array.from(base.querySelectorAll<HTMLElement>(sel));
@@ -121,14 +135,14 @@ export function CoachArrow({ coach, root }: { coach: Coach; root: React.RefObjec
         }
         for (const el of els) {
           const r = el.getBoundingClientRect();
-          if (r.width > 4 && r.height > 4 && r.bottom > 0 && r.top < window.innerHeight) return { x: r.left, y: r.top, w: r.width, h: r.height };
+          if (r.width > 4 && r.height > 4 && r.bottom > 0 && r.top < window.innerHeight) return { x: r.left, y: r.top, w: r.width, h: r.height, k, group: /l5g-(qp-)?choices/.test(sel) };
         }
       }
       return null;
     };
     const tick = () => {
       const b = find();
-      setBox((old) => (!b ? null : old && Math.abs(old.x - b.x) < 1 && Math.abs(old.y - b.y) < 1 && Math.abs(old.w - b.w) < 1 ? old : b));
+      setBox((old) => (!b ? null : old && Math.abs(old.x - b.x) < 1 && Math.abs(old.y - b.y) < 1 && Math.abs(old.w - b.w) < 1 && old.k === b.k ? old : b));
     };
     tick();
     // วัดตำแหน่งซ้ำ (เป้าหมายขยับ/เปลี่ยนขนาดได้)
@@ -145,7 +159,10 @@ export function CoachArrow({ coach, root }: { coach: Coach; root: React.RefObjec
   // เป้าอยู่ครึ่งบนของจอ = ลูกศรอยู่ใต้เป้าชี้ขึ้น / ครึ่งล่าง = อยู่เหนือเป้าชี้ลง
   const below = box.y + box.h / 2 < window.innerHeight * 0.42;
   const cx = Math.max(40, Math.min(vw - 40, box.x + box.w / 2));
-  const ay = below ? box.y + box.h + 4 : box.y - 4;
+  // กลุ่มตัวเลือก: ลูกศรอยู่นอกกรอบ ไม่แตะข้อใดข้อหนึ่ง (กันเหมือนบอกคำตอบ)
+  const gap = box.group ? 22 : 4;
+  const ay = below ? box.y + box.h + gap : box.y - gap;
+  const text = step.texts?.[box.k] ?? step.text;
   const bubbleX = Math.max(10, Math.min(vw - 230, cx - 110));
 
   return createPortal(
@@ -161,7 +178,7 @@ export function CoachArrow({ coach, root }: { coach: Coach; root: React.RefObjec
         </svg>
       </span>
       <span className="cx-bubble" data-dir={below ? 'up' : 'down'} style={{ left: bubbleX, top: below ? ay + 92 : ay - 92 - 50 }} key={`b${step.id}`}>
-        {step.text}
+        {text}
         <button type="button" className="cx-x" onClick={coach.stop} aria-label="ปิดการสอนเล่น" title="ไม่ต้องสอนแล้ว">
           <X className="w-3.5 h-3.5" strokeWidth={3} />
         </button>

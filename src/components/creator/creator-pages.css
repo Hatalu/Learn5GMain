@@ -3403,3 +3403,91 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* ---------- พื้นที่อัปโหลด + ป้ายสิทธิ์ ---------- */
+.l5g-usage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  padding: 8px 12px;
+  border-radius: 14px;
+  border: 3px solid #2a2350;
+  background: #fff;
+  color: #2a2350;
+  box-shadow: 0 3px 0 #2a2350;
+  font-size: 13px;
+  font-weight: 700;
+}
+.l5g-usage b {
+  font-weight: 900;
+}
+.l5g-usage-bar {
+  flex: 1 1 90px;
+  min-width: 70px;
+  height: 10px;
+  border-radius: 99px;
+  background: #e9e4fb;
+  border: 2px solid #2a2350;
+  overflow: hidden;
+}
+.l5g-usage-bar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #3fd6a8, #4a7bf0);
+  border-radius: 99px;
+  transition: width 0.4s ease;
+}
+.l5g-usage[data-full="true"] .l5g-usage-bar i {
+  background: linear-gradient(90deg, #ff9a3d, #ff6b7a);
+}
+.l5g-usage-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 10px;
+  border: 2px solid #2a2350;
+  background: #ffe9a8;
+  font-weight: 800;
+  font-size: 12px;
+  cursor: pointer;
+}
+.l5g-usage-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.l5g-usage-note {
+  flex-basis: 100%;
+  font-size: 12px;
+  opacity: 0.8;
+}
+.l5g-usage-compact {
+  padding: 5px 9px;
+  font-size: 12px;
+  box-shadow: 0 2px 0 #2a2350;
+}
+.l5g-tierbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 10px 14px;
+  border-radius: 16px;
+  border: 3px solid #2a2350;
+  background: #fff6d6;
+  color: #2a2350;
+  box-shadow: 0 4px 0 #2a2350;
+  font-weight: 700;
+  font-size: 14px;
+}
+.dark .l5g-tierbar,
+.dark .l5g-usage {
+  background: #fff6d6;
+}
+
+.l5g-ebar-usage {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 14px 0;
+}

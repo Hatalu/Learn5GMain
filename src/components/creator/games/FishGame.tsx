@@ -106,6 +106,8 @@ function rollCatch(zone: Zone): Catch {
   return { kind: 'fish', fish, weight, magnet: false, zone };
 }
 
+const CATCH_LOCK_MS = 1500;
+
 type Phase = 'idle' | 'cast' | 'sink' | 'wait' | 'bite' | 'reel' | 'catch';
 
 function fmtClock(ms: number) {
@@ -134,6 +136,8 @@ export function FishGame({ engine, deadline, sync, me, preview, onLeave }: GameP
   const [giant, setGiant] = useState(0);
   const [phase, setPhase] = useState<Phase>('idle');
   const [catchRes, setCatchRes] = useState<Catch | null>(null);
+  // ได้ปลาแล้วแตะจอไม่ได้ 1.5 วินาที (กันแตะรัวๆ จนการ์ดปลาหายก่อนมองทัน)
+  const [lock, setLock] = useState(false);
   const [reel, setReel] = useState(0);
   const [reelLeft, setReelLeft] = useState(0);
   const [splash, setSplash] = useState(0);
@@ -152,7 +156,7 @@ export function FishGame({ engine, deadline, sync, me, preview, onLeave }: GameP
   // สอนเล่น: ตอบถูกได้เหยื่อ -> เหวี่ยงเบ็ด -> แตะรัวๆ ดึงปลา (2 รอบ)
   const coach = useCoach(
     [
-      { id: 'answer', target: [...DOCK_CHOICES, '.fs-askbtn'], text: 'ตอบให้ถูก ได้เหยื่อ 1 ชิ้น', doneIf: () => baits.length > 0, when: () => phase === 'idle' },
+      { id: 'answer', target: [...DOCK_CHOICES, '.fs-askbtn'], text: 'เลือกตัวเลือก ตอบถูกได้เหยื่อ 1 ชิ้น', texts: ['เลือกตัวเลือก ตอบถูกได้เหยื่อ 1 ชิ้น', 'เลือกตัวเลือก ตอบถูกได้เหยื่อ 1 ชิ้น', 'กดตรงนี้ แล้วตอบคำถามเพื่อรับเหยื่อ'], doneIf: () => baits.length > 0, when: () => phase === 'idle' },
       { id: 'cast', target: '.fs-castbtn', text: 'มีเหยื่อแล้ว กดเหวี่ยงเบ็ด!', doneIf: () => phase !== 'idle' && phase !== 'catch', when: () => phase === 'idle' },
       { id: 'reel', target: ['.fs-bite', '.fs-reel-btn'], text: 'ปลากินเบ็ด! แตะรัวๆ ดึงขึ้นมา', when: () => phase === 'bite' || phase === 'reel' },
     ],
@@ -362,6 +366,7 @@ export function FishGame({ engine, deadline, sync, me, preview, onLeave }: GameP
     }
     setSplash(Date.now());
     setCatchRes(res);
+    setLock(true);
     coachHit.current('reel');
     setP('catch');
   };
@@ -385,11 +390,12 @@ export function FishGame({ engine, deadline, sync, me, preview, onLeave }: GameP
   // ปิดการ์ดปลาที่ได้
   useEffect(() => {
     if (phase !== 'catch') return;
+    const lt = setTimeout(() => setLock(false), CATCH_LOCK_MS);
     const t = setTimeout(() => {
       setCatchRes(null);
       setP('idle');
     }, catchRes?.fish?.rarity === 'legend' ? 3400 : 2400);
-    return () => clearTimeout(t);
+    return () => (clearTimeout(t), clearTimeout(lt));
   }, [phase, catchRes]);
 
   const cast = () => {
@@ -471,7 +477,7 @@ export function FishGame({ engine, deadline, sync, me, preview, onLeave }: GameP
   const myLook = me.gear ? { ...me.gear, i: 0 } : null;
 
   return (
-    <div className="fs gm-root" ref={rootRef} data-over={over} data-dock={ask}>
+    <div className="fs gm-root" ref={rootRef} data-over={over} data-dock={ask} data-lock={lock}>
       <CoachArrow coach={coach} root={rootRef} />
       <div className="gm-main">
         <div className="fs-hud">
@@ -586,7 +592,11 @@ export function FishGame({ engine, deadline, sync, me, preview, onLeave }: GameP
 
           {/* ได้ปลา! */}
           {phase === 'catch' && res && (
-            <button type="button" className="fs-got" style={{ ['--rc' as string]: resRar?.color || '#ffd84a' }} onClick={() => (setCatchRes(null), setP('idle'))}>
+            <button type="button" className="fs-got" style={{ ['--rc' as string]: resRar?.color || '#ffd84a' }} onClick={() => {
+              if (lock) return;
+              setCatchRes(null);
+              setP('idle');
+            }}>
               <span className="fs-got-rays" aria-hidden="true" />
               <span className="fs-got-card">
                 {res.kind === 'fish' ? (

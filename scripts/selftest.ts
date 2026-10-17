@@ -3,6 +3,8 @@
  * รัน: npm run selftest
  */
 import assert from 'node:assert/strict';
+import { FREE_SET_LIMIT, FREE_UPLOAD_MB, MEMBER_UPLOAD_MB, creatorTier, fmtMB, quotaBytes } from '../src/lib/game-creator/quota';
+import { signupSchema } from '../src/lib/validations/signup';
 import {
   autoPickDaily,
   bkkParts,
@@ -683,6 +685,50 @@ t('เพลงประกอบ: ค่าที่ตั้งได้ แ�
   assert.equal(roomTrack('lofi', 'brawl'), 'lofi');
   assert.equal(new Set(TRACKS.map((t) => t.id)).size, TRACKS.length);
   for (const tr of TRACKS) assert.match(tr.id, /^[a-z]+$/);
+});
+
+t('สิทธิ์ระบบสร้างเกม: ไม่ล็อกอิน/ทดลองเล่น = guest, ไม่เป็นสมาชิก = free, สมาชิก/Dev = member', () => {
+  const future = new Date(Date.now() + 86400000).toISOString();
+  const past = new Date(Date.now() - 86400000).toISOString();
+  assert.equal(creatorTier(false, null), 'guest');
+  assert.equal(creatorTier(true, null), 'guest');
+  assert.equal(creatorTier(true, { role: 'member', premium_until: future, username: 'trial_ab12' }), 'guest');
+  assert.equal(creatorTier(true, { role: 'member', premium_until: null, username: 'abc' }), 'free');
+  assert.equal(creatorTier(true, { role: 'member', premium_until: past, username: 'abc' }), 'free');
+  assert.equal(creatorTier(true, { role: 'member', premium_until: future, username: 'abc' }), 'member');
+  assert.equal(creatorTier(true, { role: 'dev', premium_until: null, username: 'dev1' }), 'member');
+});
+
+t('โควต้า: guest ไม่มีพื้นที่ บัญชีฟรีน้อยกว่าสมาชิก และชุดคำถามฟรี 2 ชุด', () => {
+  assert.equal(quotaBytes('guest'), 0);
+  assert.equal(quotaBytes('free'), FREE_UPLOAD_MB * 1024 * 1024);
+  assert.equal(quotaBytes('member'), MEMBER_UPLOAD_MB * 1024 * 1024);
+  assert.ok(quotaBytes('free') < quotaBytes('member'));
+  assert.equal(FREE_SET_LIMIT, 2); // ตรงกับตัวกันใน migration 019
+  assert.equal(fmtMB(5 * 1024 * 1024), '5 MB');
+  assert.equal(fmtMB(1.5 * 1024 * 1024), '1.5 MB');
+  assert.equal(fmtMB(0), '0 MB');
+  assert.equal(fmtMB(30 * 1024 * 1024), '30 MB');
+});
+
+t('สมัครบัญชีเอง: กติกาชื่อ/อีเมล/รหัสผ่าน', () => {
+  const ok = { username: 'Kru_Ann-1', email: ' Ann@Example.COM ', password: 'abcd1234', confirm: 'abcd1234' };
+  const r = signupSchema.safeParse(ok);
+  assert.ok(r.success);
+  if (r.success) assert.equal(r.data.email, 'ann@example.com');
+  const bad = (o: object) => !signupSchema.safeParse({ ...ok, ...o }).success;
+  assert.ok(bad({ username: 'ab' }), 'ชื่อสั้นเกิน');
+  assert.ok(bad({ username: 'a'.repeat(21) }), 'ชื่อยาวเกิน');
+  assert.ok(bad({ username: 'สมชาย' }), 'ชื่อเป็นภาษาไทยไม่ได้ (ใช้เป็นอีเมลภายใน)');
+  assert.ok(bad({ username: 'a b c' }), 'เว้นวรรคไม่ได้');
+  assert.ok(bad({ username: 'trial_xyz' }), 'ชื่อ trial_ สงวนไว้');
+  assert.ok(bad({ username: 'Admin' }), 'ชื่อสงวน');
+  assert.ok(bad({ email: 'not-an-email' }));
+  assert.ok(bad({ email: 'a@b' }));
+  assert.ok(bad({ email: 'x@internal.mediahub.local' }));
+  assert.ok(bad({ password: 'short1' }), 'รหัสผ่านสั้นเกิน');
+  assert.ok(bad({ password: 'a'.repeat(73), confirm: 'a'.repeat(73) }), 'รหัสผ่านยาวเกิน');
+  assert.ok(bad({ confirm: 'abcd12345' }), 'รหัสผ่านสองช่องไม่ตรงกัน');
 });
 
 console.log(`\n${passed} tests passed`);

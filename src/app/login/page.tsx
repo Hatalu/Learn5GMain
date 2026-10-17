@@ -223,7 +223,7 @@ export default function LoginPage() {
           {/* Footer note: Specification #3 requirement */}
           <div className="mt-6 pt-5 border-t border-gray-200/80 dark:border-gray-800 text-center">
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              ลืมรหัสผ่านหรือต้องการสมัครสมาชิก?{' '}
+              ลืมรหัสผ่าน?{' '}
               <a
                 href="https://www.facebook.com/profile.php?id=61594556657667"
                 target="_blank"
@@ -240,22 +240,34 @@ export default function LoginPage() {
         {/* ทางเข้าสำหรับคนที่ยังไม่มีบัญชี */}
         <aside className="rounded-[2rem] border-2 border-amber-200/80 dark:border-amber-900/60 bg-gradient-to-br from-amber-50/90 to-pink-50/80 dark:from-amber-950/30 dark:to-pink-950/20 backdrop-blur-xl p-6 sm:p-7 shadow-toy">
           <p className="text-xs font-bold uppercase tracking-widest text-amber-700 dark:text-amber-300">ยังไม่มีบัญชี?</p>
-          <h2 className="mt-1 font-display text-xl sm:text-2xl text-gray-900 dark:text-white">เริ่มต้นได้ใน 2 ทาง</h2>
+          <h2 className="mt-1 font-display text-xl sm:text-2xl text-gray-900 dark:text-white">เริ่มต้นได้ใน 3 ขั้น</h2>
           <ol className="mt-4 space-y-3">
             <li className="flex gap-3">
-              <span className="w-7 h-7 shrink-0 rounded-full bg-sun-400 text-indigo-950 text-sm font-bold flex items-center justify-center">1</span>
+              <span className="w-7 h-7 shrink-0 rounded-full bg-mint-500 text-indigo-950 text-sm font-bold flex items-center justify-center">1</span>
               <p className="text-sm text-gray-700 dark:text-gray-200">
-                <b>ลองก่อนฟรี</b> เปิดเว็บทดลอง กดปุ่ม &quot;ทดลองเล่น&quot; เล่นได้ทุกเกมครั้งละ 5 นาที ไม่ต้องใส่รหัส
+                <b>สมัครบัญชีฟรี</b> ลองสร้างชุดคำถามของตัวเองได้ 2 ชุด แล้วเปิดห้องให้เพื่อนเล่น
               </p>
             </li>
             <li className="flex gap-3">
-              <span className="w-7 h-7 shrink-0 rounded-full bg-pink-400 text-white text-sm font-bold flex items-center justify-center">2</span>
+              <span className="w-7 h-7 shrink-0 rounded-full bg-sun-400 text-indigo-950 text-sm font-bold flex items-center justify-center">2</span>
+              <p className="text-sm text-gray-700 dark:text-gray-200">
+                <b>ลองเล่นเกมในคลัง</b> เปิดเว็บทดลอง กดปุ่ม &quot;ทดลองเล่น&quot; เล่นได้ทุกเกมครั้งละ 5 นาที ไม่ต้องใส่รหัส
+              </p>
+            </li>
+            <li className="flex gap-3">
+              <span className="w-7 h-7 shrink-0 rounded-full bg-pink-400 text-white text-sm font-bold flex items-center justify-center">3</span>
               <p className="text-sm text-gray-700 dark:text-gray-200">
                 <b>ชอบแล้วสมัครเลย</b> เลือกแพลนตั้งแต่ 39 บาท สแกนจ่ายพร้อมเพย์ รับสิทธิ์ทันที
               </p>
             </li>
           </ol>
           <div className="mt-5 flex flex-col gap-2.5">
+            <Link
+              href="/signup"
+              className="btn-jelly inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-mint-500 to-sky-400 text-indigo-950 font-display text-lg shadow-md ring-2 ring-white/70 dark:ring-gray-900"
+            >
+              <Sparkles className="w-5 h-5" /> สมัครบัญชีฟรี
+            </Link>
             <Link
               href="/home"
               className="btn-jelly inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-white dark:bg-gray-800 border-2 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 font-bold shadow-sm"

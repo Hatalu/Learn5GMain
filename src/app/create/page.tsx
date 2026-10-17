@@ -8,7 +8,9 @@ import { Check, Compass, Copy, Crown, DoorOpen, FolderHeart, Globe, Loader2, Loc
 import { Navbar } from '@/components/navbar/Navbar';
 import { useAuth } from '@/context/AuthContext';
 import { ShieldCheck } from 'lucide-react';
-import { hasMembership } from '@/lib/membership';
+import { FREE_SET_LIMIT, creatorTier } from '@/lib/game-creator/quota';
+import { TierCompare } from '@/components/creator/TierCompare';
+import { UsageMeter } from '@/components/creator/UsageMeter';
 import { createClient } from '@/lib/supabase/client';
 import { MODES } from '@/lib/game-creator/modes';
 import { ModeArt } from '@/components/creator/games/ModeArt';
@@ -55,13 +57,17 @@ function GameCover({ game }: { game: UserGameSummary }) {
 
 function CreateHub() {
   const { user, profile, isLoading, isDev } = useAuth();
-  const member = !!user && hasMembership(profile) && !String(profile?.username || '').startsWith('trial_');
+  const tier = creatorTier(!!user, profile);
+  const member = tier === 'member';
+  const signedIn = tier !== 'guest';
   const router = useRouter();
   const sp = useSearchParams();
   const [tab, setTab] = useState<Tab>(sp.get('tab') === 'library' ? 'library' : sp.get('tab') === 'discover' ? 'discover' : 'new');
   const [games, setGames] = useState<UserGameSummary[] | null>(null);
   const [rooms, setRooms] = useState<ActiveRoom[]>([]);
   const [dbMissing, setDbMissing] = useState(false);
+  /** หน้าต่างแจ้งว่าต้องสมัครสมาชิก: guest = ยังไม่ล็อกอิน / limit = บัญชีฟรีครบ 2 ชุด */
+  const [gate, setGate] = useState<null | 'guest' | 'limit'>(sp.get('gate') === 'guest' ? 'guest' : sp.get('gate') === 'limit' ? 'limit' : null);
   const [q, setQ] = useState('');
   const [menu, setMenu] = useState<string | null>(null);
   const [openGame, setOpenGame] = useState<UserGameSummary | null>(null);
@@ -78,8 +84,10 @@ function CreateHub() {
   const [copied, setCopied] = useState<string | null>(null);
   const [devAll, setDevAll] = useState(false);
 
+  const atLimit = tier === 'free' && (games?.length ?? 0) >= FREE_SET_LIMIT;
+
   const load = useCallback(async () => {
-    if (!member || !user) return;
+    if (!signedIn || !user) return;
     const supabase = createClient();
     const { data, error } = await supabase
       .from('user_games')
@@ -94,7 +102,7 @@ function CreateHub() {
     setGames((data || []) as UserGameSummary[]);
     const { data: r } = await supabase.from('game_rooms').select('id, game_id, code, status').neq('status', 'closed').order('created_at', { ascending: false });
     setRooms((r || []) as ActiveRoom[]);
-  }, [member, user]);
+  }, [signedIn, user]);
 
   useEffect(() => {
     load();
@@ -192,6 +200,7 @@ function CreateHub() {
 
   const duplicate = async (g: UserGameSummary) => {
     if (!user) return;
+    if (atLimit) return setGate('limit');
     setBusy(true);
     const supabase = createClient();
     const { data: full } = await supabase.from('user_games').select('content').eq('id', g.id).maybeSingle();
@@ -207,6 +216,7 @@ function CreateHub() {
         is_public: g.is_public,
       });
       if (!error) gsfx.join();
+      else if (/free game limit/i.test(error.message || '')) setGate('limit');
     }
     setBusy(false);
     load();
@@ -268,33 +278,6 @@ function CreateHub() {
           <div className="max-w-md mx-auto px-4 pb-16">
             <div className="l5g-card l5g-card-pad text-center font-bold">กำลังโหลด…</div>
           </div>
-        ) : !member ? (
-          <section className="max-w-3xl mx-auto px-4 pb-10">
-            <div className="l5g-card l5g-gate">
-              <div className="l5g-gate-art" aria-hidden="true">
-                <span className="l5g-gate-lock">
-                  <svg viewBox="0 0 64 64" width="64" height="64">
-                    <rect x="12" y="28" width="40" height="30" rx="8" fill="#ffcf3f" stroke="#2a2350" strokeWidth="4" />
-                    <path d="M20 28 V20 a12 12 0 0 1 24 0 V28" fill="none" stroke="#2a2350" strokeWidth="4" strokeLinecap="round" />
-                    <circle cx="32" cy="42" r="4" fill="#2a2350" />
-                    <path d="M32 44 V50" stroke="#2a2350" strokeWidth="4" strokeLinecap="round" />
-                  </svg>
-                </span>
-              </div>
-              <h2 className="font-display text-2xl sm:text-3xl">ต้องสมัครสมาชิกก่อน</h2>
-              <p className="font-semibold opacity-80 mt-1">สมาชิกสร้างชุดคำถาม เก็บในคลัง และเปิดห้องให้คนอื่นเล่นได้ไม่จำกัด</p>
-              <div className="mt-5 flex flex-wrap justify-center gap-3">
-                <Link href="/membership" className="l5g-btn l5g-btn-go">
-                  <Crown className="w-5 h-5" /> สมัครสมาชิก
-                </Link>
-                {!user && (
-                  <Link href="/login?redirect=/create" className="l5g-btn l5g-btn-ghost">
-                    <LogIn className="w-5 h-5" /> เข้าสู่ระบบ
-                  </Link>
-                )}
-              </div>
-            </div>
-          </section>
         ) : (
           <>
             {/* แท็บ */}
@@ -311,6 +294,36 @@ function CreateHub() {
                   {games && games.length > 0 && <span className="l5g-seg-count">{games.length}</span>}
                 </button>
               </div>
+            </div>
+
+            <div className="max-w-6xl mx-auto px-4 mt-4 flex flex-col gap-3">
+              {tier === 'guest' ? (
+                <div className="l5g-tierbar">
+                  <Lock className="w-5 h-5 shrink-0" />
+                  <span className="flex-1 min-w-[200px]">ยังไม่ได้เข้าสู่ระบบ ดูระบบได้ แต่ต้องสมัครสมาชิกก่อนจึงจะสร้างและเปิดใช้งานชุดคำถามได้</span>
+                  <Link href="/signup?redirect=/create" className="l5g-btn l5g-btn-mint l5g-btn-sm">
+                    สมัครบัญชีฟรี
+                  </Link>
+                  <Link href="/login?redirect=/create" className="l5g-btn l5g-btn-ghost l5g-btn-sm">
+                    เข้าสู่ระบบ
+                  </Link>
+                </div>
+              ) : (
+                <>
+                  {tier === 'free' && (
+                    <div className="l5g-tierbar">
+                      <Sparkles className="w-5 h-5 shrink-0" />
+                      <span className="flex-1 min-w-[200px]">
+                        บัญชีฟรี: ชุดคำถาม <b>{games ? games.length : '-'}</b> / {FREE_SET_LIMIT} ชุด เปิดห้องได้เฉพาะชุดของตัวเอง
+                      </span>
+                      <Link href="/membership" className="l5g-btn l5g-btn-go l5g-btn-sm">
+                        <Crown className="w-4 h-4" /> สมัครสมาชิก
+                      </Link>
+                    </div>
+                  )}
+                  <UsageMeter compact />
+                </>
+              )}
             </div>
 
             {dbMissing && (
@@ -332,6 +345,8 @@ function CreateHub() {
                       disabled={dbMissing}
                       onClick={() => {
                         gsfx.pick();
+                        if (tier === 'guest') return setGate('guest');
+                        if (atLimit) return setGate('limit');
                         router.push('/create/edit');
                       }}
                     >
@@ -378,6 +393,47 @@ function CreateHub() {
                       </div>
                     </article>
                   ))}
+                </div>
+
+                {!member && (
+                  <div className="mt-10">
+                    <h2 className="l5g-sec-title">สมัครสมาชิก กับ ไม่สมัคร ต่างกันยังไง</h2>
+                    <p className="l5g-sec-note">ทดลองสร้างและเปิดห้องด้วยบัญชีฟรีได้เลย ชอบแล้วค่อยสมัครสมาชิก ชุดคำถามที่สร้างไว้ไม่หาย</p>
+                    <TierCompare className="mt-4 max-w-3xl" />
+                    <div className="mt-4 flex flex-wrap gap-3">
+                      {tier === 'guest' && (
+                        <Link href="/signup?redirect=/create" className="l5g-btn l5g-btn-mint">
+                          <Sparkles className="w-5 h-5" /> สมัครบัญชีฟรี
+                        </Link>
+                      )}
+                      <Link href="/membership" className="l5g-btn l5g-btn-go">
+                        <Crown className="w-5 h-5" /> สมัครสมาชิก
+                      </Link>
+                    </div>
+                  </div>
+                )}
+              </section>
+            ) : tab === 'discover' && !member ? (
+              <section className="max-w-3xl mx-auto px-4 pt-6 pb-10">
+                <div className="l5g-card l5g-gate">
+                  <div className="l5g-gate-art" aria-hidden="true">
+                    <span className="l5g-gate-lock">
+                      <Lock className="w-12 h-12" />
+                    </span>
+                  </div>
+                  <h2 className="font-display text-2xl sm:text-3xl">ต้องสมัครสมาชิกก่อน</h2>
+                  <p className="font-semibold opacity-80 mt-1">ชุดคำถามของคนอื่นดู ทำสำเนา และเปิดใช้งานได้เฉพาะสมาชิก</p>
+                  <TierCompare className="mt-5 text-left" />
+                  <div className="mt-5 flex flex-wrap justify-center gap-3">
+                    <Link href="/membership" className="l5g-btn l5g-btn-go">
+                      <Crown className="w-5 h-5" /> สมัครสมาชิก
+                    </Link>
+                    {tier === 'guest' && (
+                      <Link href="/login?redirect=/create" className="l5g-btn l5g-btn-ghost">
+                        <LogIn className="w-5 h-5" /> เข้าสู่ระบบ
+                      </Link>
+                    )}
+                  </div>
                 </div>
               </section>
             ) : tab === 'discover' ? (
@@ -503,7 +559,25 @@ function CreateHub() {
                   </button>
                 </div>
 
-                {games === null ? (
+                {!signedIn ? (
+                  <div className="l5g-card l5g-gate mt-5">
+                    <div className="l5g-gate-art" aria-hidden="true">
+                      <span className="l5g-gate-lock">
+                        <Lock className="w-12 h-12" />
+                      </span>
+                    </div>
+                    <h3 className="font-display text-2xl">ต้องสมัครสมาชิกก่อน</h3>
+                    <p className="font-semibold opacity-80 mt-1">เข้าสู่ระบบหรือสมัครบัญชีฟรีเพื่อมีคลังชุดคำถามของตัวเอง</p>
+                    <div className="mt-5 flex flex-wrap justify-center gap-3">
+                      <Link href="/signup?redirect=/create?tab=library" className="l5g-btn l5g-btn-mint">
+                        <Sparkles className="w-5 h-5" /> สมัครบัญชีฟรี
+                      </Link>
+                      <Link href="/login?redirect=/create" className="l5g-btn l5g-btn-ghost">
+                        <LogIn className="w-5 h-5" /> เข้าสู่ระบบ
+                      </Link>
+                    </div>
+                  </div>
+                ) : games === null ? (
                   <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 mt-5">
                     {[0, 1, 2].map((i) => (
                       <div key={i} className="l5g-gcard l5g-skel" />
@@ -605,6 +679,44 @@ function CreateHub() {
           </>
         )}
       </main>
+
+      {gate && (
+        <PaperModal title="ต้องสมัครสมาชิกก่อน" icon={<Lock className="w-5 h-5" />} iconBg="#ff9a3d" onClose={() => setGate(null)} width={560}>
+          <p className="font-semibold">
+            {gate === 'guest'
+              ? 'ยังไม่ได้เข้าสู่ระบบ สร้างและเปิดใช้งานชุดคำถามได้เมื่อมีบัญชี สมัครบัญชีฟรีเพื่อลองสร้างได้ 2 ชุด หรือสมัครสมาชิกเพื่อใช้ได้ไม่จำกัด'
+              : `บัญชีฟรีมีชุดคำถามได้ ${FREE_SET_LIMIT} ชุด และตอนนี้ครบแล้ว ลบชุดเดิมออกสักชุด หรือสมัครสมาชิกเพื่อสร้างเพิ่มได้ไม่จำกัด`}
+          </p>
+          <TierCompare className="mt-3" />
+          <div className="l5g-math-foot">
+            <span className="flex-1" />
+            {gate === 'guest' ? (
+              <>
+                <Link href="/login?redirect=/create" className="l5g-btn l5g-btn-ghost">
+                  <LogIn className="w-5 h-5" /> เข้าสู่ระบบ
+                </Link>
+                <Link href="/signup?redirect=/create" className="l5g-btn l5g-btn-mint">
+                  <Sparkles className="w-5 h-5" /> สมัครบัญชีฟรี
+                </Link>
+              </>
+            ) : (
+              <button
+                type="button"
+                className="l5g-btn l5g-btn-ghost"
+                onClick={() => {
+                  setGate(null);
+                  switchTab('library');
+                }}
+              >
+                <FolderHeart className="w-5 h-5" /> ไปที่คลังของฉัน
+              </button>
+            )}
+            <Link href="/membership" className="l5g-btn l5g-btn-go">
+              <Crown className="w-5 h-5" /> สมัครสมาชิก
+            </Link>
+          </div>
+        </PaperModal>
+      )}
 
       {openGame && profile && <OpenGameModal gameId={openGame.id} title={openGame.title} username={profile.username} onClose={() => setOpenGame(null)} />}
 

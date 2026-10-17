@@ -310,8 +310,9 @@ export function MemberManagement() {
                         <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-violet-500 text-white flex items-center justify-center font-bold text-xs shrink-0">
                           {m.username.charAt(0).toUpperCase()}
                         </div>
-                        <span className="font-semibold text-gray-900 dark:text-white">
-                          {m.username}
+                        <span className="flex flex-col min-w-0">
+                          <span className="font-semibold text-gray-900 dark:text-white">{m.username}</span>
+                          {m.contact_email && <span className="text-[11px] text-gray-500 dark:text-gray-400 truncate max-w-[200px]">{m.contact_email}</span>}
                         </span>
                       </div>
                     </td>

@@ -103,7 +103,7 @@ export function RaceGame({ engine, goal, me, preview, live, onLeave }: GameProps
   // สอนเล่น: ตอบถูก = ก้าว / มีไอเท็มให้กดใช้ (1 รอบ)
   const coach = useCoach(
     [
-      { id: 'answer', target: ['.rc-pad-in .l5g-qp-choices', '.rc-pad-open'], text: 'ตอบถูก = วิ่งไปข้างหน้า 1 ก้าว' },
+      { id: 'answer', target: ['.rc-pad-in .l5g-qp-choices', '.rc-pad-open'], text: 'เลือกตัวเลือก ตอบถูกวิ่งไปข้างหน้า 1 ก้าว', texts: ['เลือกตัวเลือก ตอบถูกวิ่งไปข้างหน้า 1 ก้าว', 'กดตรงนี้ เพื่อเปิดคำถาม'] },
       { id: 'power', target: '.rc-power', text: 'ได้ไอเท็มแล้ว! กดใช้เลย', when: () => !!power, optional: true },
     ],
     { loops: 1, active: !finished }

@@ -948,3 +948,10 @@
   animation: fsSwimR 6s linear infinite;
   left: -30%;
 }
+
+/* ได้ปลาแล้วแตะอะไรไม่ได้ 1.5 วินาที (ปุ่มด้านล่างและแผงคำถามก็ถูกล็อกด้วย) */
+.fs[data-lock="true"] .fs-bar,
+.fs[data-lock="true"] .gm-dock,
+.fs[data-lock="true"] .fs-got {
+  pointer-events: none;
+}

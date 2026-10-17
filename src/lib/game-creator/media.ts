@@ -16,26 +16,43 @@ export const IMAGE_MAX_MB = 12;
 export const VIDEO_PICK_MAX_MB = 200;
 export const VIDEO_UPLOAD_MAX_MB = 25;
 
-const rand = () => Math.random().toString(36).slice(2, 10);
+/** ผู้ใช้เห็นเลขพื้นที่ที่ใช้ไปแล้วเปลี่ยนทันทีหลังอัปโหลด/ล้างไฟล์ (ตัวแสดงพื้นที่ใน QuizEditor ฟังเหตุการณ์นี้) */
+export const USAGE_EVENT = 'l5g:usage-changed';
 
-async function upload(userId: string, blob: Blob, ext: string, contentType: string): Promise<{ url: string; path: string }> {
-  const supabase = createClient();
-  const path = `${userId}/${Date.now().toString(36)}-${rand()}.${ext}`;
-  const { error } = await supabase.storage.from(MEDIA_BUCKET).upload(path, blob, { contentType, cacheControl: '31536000', upsert: false });
+/**
+ * อัปโหลดผ่านลิงก์ที่เซิร์ฟเวอร์ออกให้ (เซิร์ฟเวอร์ตรวจโควต้า MB ต่อบัญชีก่อน) ลงโฟลเดอร์ <user id>/ ของตัวเอง
+ * ตัวแปร _userId ไม่ได้ใช้แล้ว เก็บไว้ให้ผู้เรียกเดิมไม่ต้องแก้
+ */
+async function upload(_userId: string, blob: Blob, ext: string, contentType: string): Promise<{ url: string; path: string }> {
+  void ext;
+  let res: Response;
+  try {
+    res = await fetch('/api/creator/upload-url', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contentType, size: blob.size }),
+    });
+  } catch {
+    throw new Error('เชื่อมต่อไม่ได้ ตรวจอินเทอร์เน็ตแล้วลองใหม่');
+  }
+  const j = (await res.json().catch(() => ({}))) as { error?: string; path?: string; token?: string };
+  if (!res.ok || !j.path || !j.token) throw new Error(j.error || 'อัปโหลดไม่สำเร็จ ลองใหม่อีกครั้ง');
+  const { error } = await createClient().storage.from(MEDIA_BUCKET).uploadToSignedUrl(j.path, j.token, blob, { contentType, cacheControl: '31536000' });
   if (error) {
     const m = String(error.message || '');
-    if (/row-level security|unauthorized|403/i.test(m)) throw new Error('อัปโหลดได้เฉพาะสมาชิกที่สิทธิ์ยังไม่หมดอายุ');
     if (/bucket not found/i.test(m)) throw new Error('ยังไม่ได้สร้างที่เก็บไฟล์ (รัน migration 015 ก่อน)');
     if (/exceeded|too large|413/i.test(m)) throw new Error('ไฟล์ใหญ่เกินไป');
     throw new Error('อัปโหลดไม่สำเร็จ ลองใหม่อีกครั้ง');
   }
-  return { url: mediaPrefix() + path, path };
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(USAGE_EVENT));
+  return { url: mediaPrefix() + j.path, path: j.path };
 }
 
 export async function removeMedia(paths: string[]) {
   if (!paths.length) return;
   try {
     await createClient().storage.from(MEDIA_BUCKET).remove(paths);
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event(USAGE_EVENT));
   } catch {
     /* ลบไม่ได้ก็ไม่เป็นไร */
   }

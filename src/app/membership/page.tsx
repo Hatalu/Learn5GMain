@@ -12,10 +12,18 @@ import { FacebookIcon } from '@/components/icons/FacebookIcon';
 import { CheckoutModal } from '@/components/membership/CheckoutModal';
 import s from './membership.module.css';
 import { NightSky } from '@/components/fx/NightSky';
+import { TierCompare } from '@/components/creator/TierCompare';
+import { MEMBER_UPLOAD_MB } from '@/lib/game-creator/quota';
 
 const FLAG_COLORS = ['#ff6b7a', '#ffcf3f', '#3fd6a8', '#4a7bf0', '#9b6cf0', '#ff9a3d'];
 
-const FEATURES = ['เล่นได้ทุกเกมในคลังไม่จำกัด', 'คู่หูปุ๋งและสติกเกอร์บันทึกในบัญชี', 'ส่งไอเดียเกมใหม่ถึงทีมได้'];
+const FEATURES = [
+  'เล่นได้ทุกเกมในคลังไม่จำกัด',
+  'สร้างชุดคำถามและเปิดห้องเกมได้ไม่จำกัด',
+  `อัปโหลดรูปและคลิปรวมได้ถึง ${MEMBER_UPLOAD_MB} MB`,
+  'คู่หูปุ๋งและสติกเกอร์บันทึกในบัญชี',
+  'ส่งไอเดียเกมใหม่ถึงทีมได้',
+];
 
 export default function MembershipPage() {
   const { user, profile } = useAuth();
@@ -227,6 +235,24 @@ export default function MembershipPage() {
           </div>
         </section>
 
+        {/* ---------- บัญชีฟรี กับ สมาชิก ---------- */}
+        <section className="max-w-4xl mx-auto px-4 pb-12">
+          <h2 className="text-center font-display text-3xl sm:text-4xl text-white" style={{ textShadow: '0 3px 0 #2a2350' }}>
+            สมัครสมาชิก กับ ไม่สมัคร ต่างกันยังไง
+          </h2>
+          <p className="mt-2 text-center text-sm sm:text-base font-semibold text-[#2a2350]/85 dark:text-[#fff8ec]/85">
+            สมัครบัญชีฟรีแล้วลองสร้างชุดคำถามเองได้เลย ชอบแล้วค่อยสมัครสมาชิก ชุดคำถามที่สร้างไว้ไม่หาย
+          </p>
+          <TierCompare className="mt-5" />
+          {!user && (
+            <p className="mt-4 text-center">
+              <Link href="/signup" className="underline decoration-2 underline-offset-4 font-bold text-[#2a2350] dark:text-[#fff8ec]">
+                ยังไม่มีบัญชี? สมัครบัญชีฟรี
+              </Link>
+            </p>
+          )}
+        </section>
+
         {/* ---------- คำถามที่พบบ่อย ---------- */}
         <section className="max-w-3xl mx-auto px-4 pb-16">
           <h2 className="text-center font-display text-3xl text-white" style={{ textShadow: '0 3px 0 #2a2350' }}>
@@ -236,6 +262,7 @@ export default function MembershipPage() {
             {[
               { icon: Receipt, q: 'ต่ออายุอัตโนมัติไหม', a: 'ไม่ จ่ายครั้งเดียวต่อรอบ ไม่มีการตัดเงินซ้ำ หมดแล้วค่อยซื้อใหม่' },
               { icon: CalendarPlus, q: 'ซื้อเพิ่มตอนยังไม่หมดอายุได้ไหม', a: 'ได้ วันใหม่จะต่อจากวันหมดอายุเดิม ไม่เสียวันที่เหลือ' },
+              { icon: Upload, q: 'พื้นที่อัปโหลดรูปและคลิปเท่าไร', a: `รวมทุกไฟล์ในบัญชีไม่เกิน ${MEMBER_UPLOAD_MB} MB สำหรับสมาชิก (บัญชีฟรี 5 MB) ลบรูปหรือคลิปที่ไม่ใช้เพื่อคืนพื้นที่ได้` },
               { icon: BadgeCheck, q: 'มีบัญชีอยู่แล้ว', a: 'เข้าสู่ระบบก่อนแล้วเลือกแพลน ระบบจะต่ออายุให้บัญชีเดิม' },
               { icon: FacebookIcon, q: 'โอนแล้วแต่ระบบไม่ผ่าน', a: 'ทักเพจ สื่อการสอน 5G พร้อมแนบสลิป แอดมินช่วยตรวจให้' },
             ].map((f) => (

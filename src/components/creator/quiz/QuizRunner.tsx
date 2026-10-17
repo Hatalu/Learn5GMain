@@ -86,7 +86,7 @@ export function QuizRunner({
   picksRef.current = picks;
   const runRef = useRef<HTMLDivElement>(null);
   // สอนเล่น: แตะคำตอบ (ข้อแรกข้อเดียว)
-  const coach = useCoach([{ id: 'answer', target: '.l5g-choices', text: 'แตะคำตอบที่ถูก ยิ่งไวยิ่งได้คะแนนเยอะ' }], { loops: 1 });
+  const coach = useCoach([{ id: 'answer', target: '.l5g-choices', text: 'เลือกตัวเลือก ยิ่งตอบไวยิ่งได้คะแนนเยอะ' }], { loops: 1 });
   const coachHit = useRef(coach.hit);
   coachHit.current = coach.hit;
 

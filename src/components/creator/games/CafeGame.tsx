@@ -118,7 +118,7 @@ export function CafeGame({ engine, deadline, sync, me, preview, onLeave }: GameP
   const coach = useCoach(
     [
       { id: 'ask', target: '.cf-restock', text: 'กดเติมของ แล้วตอบคำถาม', doneIf: () => ask },
-      { id: 'answer', target: DOCK_CHOICES, text: 'ตอบให้ถูก ได้วัตถุดิบเข้าครัว' },
+      { id: 'answer', target: DOCK_CHOICES, text: 'เลือกตัวเลือก ตอบถูกได้วัตถุดิบ' },
       { id: 'serve', target: ['.cf-cust[data-state="wait"]:has(.cf-tag)', '.cf-cust[data-state="wait"]'], text: 'แตะลูกค้าเพื่อเสิร์ฟ รับเงิน' },
     ],
     { loops: 2, active: !over }

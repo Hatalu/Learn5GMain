@@ -808,7 +808,7 @@ export function BrawlGame({ engine, deadline, sync, me, preview, onLeave }: Game
     [
       { id: 'move', target: '.mb-hero', text: 'ลากนิ้วบนจอ หรือกดปุ่มลูกศร เพื่อเดินหลบ' },
       { id: 'ask', target: '.mb-askbtn', text: 'ตอบคำถามเพื่อเลเวลอัป', doneIf: () => ask },
-      { id: 'answer', target: DOCK_CHOICES, text: 'ตอบถูก = เลเวลอัป ได้อาวุธ' },
+      { id: 'answer', target: DOCK_CHOICES, text: 'เลือกตัวเลือก ตอบถูกเลเวลอัป ได้อาวุธ' },
       { id: 'pick', target: '.mb-pick-cards', text: 'เลือกอาวุธที่ชอบ 1 อย่าง', when: () => !!choice },
     ],
     { loops: 1, active: !over }

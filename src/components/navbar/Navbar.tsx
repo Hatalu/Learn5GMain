@@ -176,6 +176,12 @@ export function Navbar() {
                 <span>ยังไม่ได้เข้าสู่ระบบ</span>
               </span>
               <Link
+                href="/signup"
+                className="btn-jelly hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-bold rounded-2xl whitespace-nowrap bg-white dark:bg-gray-800 border-2 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-200"
+              >
+                <span>สมัครบัญชีฟรี</span>
+              </Link>
+              <Link
                 href="/login"
                 className="btn-primary-grad inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-2 text-sm font-bold rounded-2xl whitespace-nowrap"
               >

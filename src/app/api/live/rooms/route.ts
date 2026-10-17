@@ -6,15 +6,15 @@ import { cleanBackground } from '@/lib/game-creator/backgrounds';
 import { sanitizeQuiz } from '@/lib/game-creator/quiz';
 import { isGameMode, modeById, modeFit, modeQuiz, type GameMode } from '@/lib/game-creator/modes';
 import { AVATAR_COUNT, cleanNickname } from '@/lib/game-creator/templates';
-import { MAX_OPEN_ROOMS, admin, cleanSettings, getMember, hashToken, isUuid, newToken, randomCode, sweepRooms } from '@/lib/server/live';
+import { MAX_OPEN_ROOMS, admin, cleanSettings, getHost, hashToken, isUuid, newToken, randomCode, sweepRooms } from '@/lib/server/live';
 
 export const dynamic = 'force-dynamic';
 
 /** เปิดใช้งานเกม: สร้างห้องพร้อมเลขห้อง 6 หลัก (สมาชิกเท่านั้น เปิดได้เฉพาะเกมของตัวเอง) */
 export async function POST(req: NextRequest) {
   if (!isSameOrigin(req)) return NextResponse.json({ error: 'คำขอไม่ถูกต้อง' }, { status: 403 });
-  const me = await getMember();
-  if (!me) return NextResponse.json({ error: 'ต้องเป็นสมาชิกก่อนจึงจะเปิดเกมได้' }, { status: 401 });
+  const me = await getHost();
+  if (!me) return NextResponse.json({ error: 'ต้องสมัครสมาชิกหรือเข้าสู่ระบบก่อนจึงจะเปิดเกมได้' }, { status: 401 });
   if (!(await limit(`room-open:${me.id}`, 30, 10 * 60 * 1000))) {
     return NextResponse.json({ error: 'เปิดห้องบ่อยเกินไป รอสักครู่นะ' }, { status: 429 });
   }

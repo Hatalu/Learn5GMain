@@ -31,7 +31,8 @@ export async function createMemberAccount(
   username: string,
   password: string,
   role: UserRole,
-  premiumUntil?: string | null
+  premiumUntil?: string | null,
+  contactEmail?: string | null
 ) {
   const admin = getAdminClient();
   const email = usernameToEmail(username);
@@ -40,7 +41,7 @@ export async function createMemberAccount(
   const { data: existingProfile } = await admin
     .from('profiles')
     .select('id')
-    .ilike('username', username)
+    .ilike('username', username.trim().replace(/_/g, '\\_')) // _ เป็นอักขระพิเศษของ ilike ต้องหนี (ชื่อผู้ใช้มีแค่ a-z 0-9 _ -)
     .maybeSingle();
 
   if (existingProfile) {
@@ -70,6 +71,7 @@ export async function createMemberAccount(
       username: username.trim(),
       role,
       premium_until: premiumUntil ? new Date(premiumUntil).toISOString() : null,
+      ...(contactEmail ? { contact_email: contactEmail } : {}),
     })
     .select()
     .single();
