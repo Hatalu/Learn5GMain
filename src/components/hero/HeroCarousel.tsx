@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils/cn';
 import { FacebookIcon } from '@/components/icons/FacebookIcon';
 import { CountUp } from '@/components/fx/CountUp';
 import { hasMembership } from '@/lib/membership';
+import { isVideoMedia } from '@/lib/youtube';
 import {
   ArrowRight,
   ChevronLeft,
@@ -322,7 +323,7 @@ export function HeroCarousel({
             <div className="mt-6 flex flex-wrap gap-3">
               <button type="button" onClick={() => onSelectMedia(latest)} className={ctaCls}>
                 <Play className="w-5 h-5 fill-current" />
-                เล่นเลย
+                {isVideoMedia(latest) ? 'ดูวิดีโอ' : 'เล่นเลย'}
               </button>
               <button type="button" onClick={onBrowseAll} className={ghostCls}>
                 ดูสื่อทั้งหมด

@@ -17,6 +17,7 @@ import { ImageCropperModal } from '@/components/media/ImageCropperModal';
 import { generateSafeStoragePath } from '@/lib/utils/image';
 import { X, Upload, Edit3, Loader2, Globe, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import { MediaLinkField } from './MediaLinkField';
 
 interface EditMediaModalProps {
   media: MediaItem | null;
@@ -371,22 +372,8 @@ export function EditMediaModal({
               </select>
             </div>
 
-            {/* 7. Game URL */}
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
-                Link เว็บไซต์เกม / สื่อ *
-              </label>
-              <input
-                type="url"
-                required
-                value={gameUrl}
-                onChange={(e) => setGameUrl(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-              {fieldErrors.game_url && (
-                <p className="text-xs text-rose-500 mt-1">{fieldErrors.game_url}</p>
-              )}
-            </div>
+            {/* 7. ลิงก์: เกม = เว็บไซต์เกม / วิดีโอ = คลิป YouTube */}
+            <MediaLinkField mediaType={mediaType} value={gameUrl} onChange={setGameUrl} error={fieldErrors.game_url} />
 
             {/* Actions */}
             <div className="pt-4 border-t border-gray-100 dark:border-gray-800 flex justify-end gap-3">

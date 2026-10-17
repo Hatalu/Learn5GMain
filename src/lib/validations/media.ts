@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { ALL_GRADES, ALL_MEDIA_TYPES, ALL_SUBJECTS } from '@/types/database';
+import { VIDEO_TYPE, youTubeId } from '@/lib/youtube';
 
 export const mediaSchema = z.object({
   title: z
@@ -32,6 +33,11 @@ export const mediaSchema = z.object({
   icon_url: z
     .string()
     .min(1, { message: 'กรุณาอัปโหลดรูปภาพ Icon สำหรับสื่อการสอน' }),
+}).superRefine((v, ctx) => {
+  // ประเภทวิดีโอ: ลิงก์ต้องเป็นคลิป YouTube (เล่นในจอบนหน้าเว็บ)
+  if (v.media_type === VIDEO_TYPE && !youTubeId(v.game_url)) {
+    ctx.addIssue({ code: 'custom', path: ['game_url'], message: 'ประเภทวิดีโอต้องใส่ลิงก์คลิป YouTube (เช่น https://www.youtube.com/watch?v=... หรือ https://youtu.be/...)' });
+  }
 });
 
 export type MediaFormData = z.infer<typeof mediaSchema>;

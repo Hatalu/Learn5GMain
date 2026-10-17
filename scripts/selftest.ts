@@ -55,8 +55,10 @@ import { cleanNickname, isRoomCode } from '../src/lib/game-creator/templates';
 import { GEAR_SLOTS, cleanGear, gearCount, randomGear, sameGear } from '../src/lib/game-creator/gear';
 import { MODE_MUSIC, TRACKS, cleanMusicSetting, roomTrack } from '../src/lib/music-tracks';
 import { MODES } from '../src/lib/game-creator/modes';
-import { ALL_MEDIA_TYPES, GAME_FILTER_TYPES } from '../src/types/database';
+import { ALL_MEDIA_TYPES, ALL_SUBJECTS, GAME_FILTER_TYPES } from '../src/types/database';
 import { CHAPTERS, STEPS } from '../src/components/tour/steps';
+import { isVideoMedia, youTubeEmbedUrl, youTubeId, youTubeStart } from '../src/lib/youtube';
+import { mediaSchema } from '../src/lib/validations/media';
 import {
   fileKindOf,
   filesForFormat,
@@ -874,6 +876,36 @@ t('ทัวร์แนะนำเว็บ: ลำดับหน้า ภ�
   // ไม่ช้า/ไม่เร็วเกิน: เวลาโชว์รวมราว 1 นาที
   const total = STEPS.reduce((a, x) => a + x.ms, 0);
   assert.ok(total >= 35_000 && total <= 90_000, String(total));
+});
+
+t('วิดีโอ: อ่านลิงก์ YouTube ทุกแบบ และบังคับลิงก์ YouTube เมื่อเลือกประเภทวิดีโอ', () => {
+  const id = 'dQw4w9WgXcQ';
+  for (const u of [
+    'https://www.youtube.com/watch?v=' + id,
+    'https://youtube.com/watch?v=' + id + '&list=PL123&index=2',
+    'https://m.youtube.com/watch?v=' + id,
+    'https://youtu.be/' + id + '?si=abc',
+    'https://www.youtube.com/shorts/' + id,
+    'https://www.youtube.com/embed/' + id,
+    'https://www.youtube.com/live/' + id,
+    'youtu.be/' + id,
+  ]) assert.equal(youTubeId(u), id, u);
+  for (const u of ['https://evil.com/watch?v=' + id, 'https://www.youtube.com/watch?v=short', 'https://youtube.com.evil.com/watch?v=' + id, 'not a url', ''])
+    assert.equal(youTubeId(u), null, u);
+  assert.equal(youTubeStart('https://youtu.be/' + id + '?t=90'), 90);
+  assert.equal(youTubeStart('https://www.youtube.com/watch?v=' + id + '&t=1m30s'), 90);
+  assert.equal(youTubeStart('https://youtu.be/' + id), 0);
+  assert.match(youTubeEmbedUrl(id, 90), /^https:\/\/www\.youtube-nocookie\.com\/embed\/dQw4w9WgXcQ\?.*autoplay=1.*start=90/);
+  assert.ok(isVideoMedia({ media_type: 'วิดีโอ' }));
+  assert.ok(!isVideoMedia({ media_type: 'เกม' }));
+
+  const base = { title: 'คลิปทดสอบ', subject: ALL_SUBJECTS[0], grade_level: ['ป.1'], access_tier: 'premium', icon_url: 'x' };
+  assert.ok(mediaSchema.safeParse({ ...base, media_type: 'วิดีโอ', game_url: 'https://youtu.be/' + id }).success);
+  const bad = mediaSchema.safeParse({ ...base, media_type: 'วิดีโอ', game_url: 'https://hatalu.github.io/Learn5G/game/' });
+  assert.ok(!bad.success);
+  assert.equal(bad.error?.issues[0].path[0], 'game_url');
+  // ประเภทเกมยังใช้ลิงก์เว็บไซต์ได้ตามเดิม
+  assert.ok(mediaSchema.safeParse({ ...base, media_type: 'เกม', game_url: 'https://hatalu.github.io/Learn5G/game/' }).success);
 });
 
 console.log(`\n${passed} tests passed`);
