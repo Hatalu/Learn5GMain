@@ -344,7 +344,7 @@ function CreateHub() {
 
             {tab === 'new' ? (
               <section className="max-w-6xl mx-auto px-4 pt-6 pb-10">
-                <div className="l5g-newset">
+                <div className="l5g-newset" data-tour="create-new">
                   <div className="l5g-newset-text">
                     <span className="l5g-sec-sub">ขั้นที่ 1</span>
                     <h2 className="font-display text-3xl mt-2">สร้างชุดคำถาม</h2>
@@ -370,9 +370,9 @@ function CreateHub() {
 
                 <h2 className="l5g-sec-title mt-8">ขั้นที่ 2 เลือกรูปแบบการเล่นตอนเปิดห้อง</h2>
                 <p className="l5g-sec-note">กด เปิดใช้งาน ที่ชุดคำถามในคลัง แล้วเลือกได้เลยว่าจะเล่นแบบไหน</p>
-                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4 mt-4">
+                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4 mt-4" data-tour="modes">
                   {MODES.map((m, i) => (
-                    <article key={m.id} className="l5g-tcard" style={{ ['--a' as string]: m.color, ['--soft' as string]: m.soft, animationDelay: `${i * 80}ms` }}>
+                    <article key={m.id} data-tour={`mode-${m.id}`} className="l5g-tcard" style={{ ['--a' as string]: m.color, ['--soft' as string]: m.soft, animationDelay: `${i * 80}ms` }}>
                       <div className="l5g-tcard-art">
                         <ModeArt mode={m.id} />
                       </div>

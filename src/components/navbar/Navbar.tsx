@@ -59,20 +59,22 @@ export function Navbar() {
         {!isDevPage && !pathname.startsWith('/home') && (
           <Link
             href="/home"
-            className={cn(fx.shine, 'btn-jelly sm:hidden shrink-0 inline-flex items-center gap-1.5 pl-1.5 pr-2.5 py-1.5 rounded-2xl text-white text-sm font-bold bg-gradient-to-r from-sky-500 to-indigo-600 border-2 border-white/40 dark:border-white/15 shadow-[0_3px_0_0_rgba(49,46,129,0.5)] whitespace-nowrap')}
+            className={cn(fx.shine, 'btn-jelly sm:hidden shrink-0 inline-flex items-center gap-1.5 pl-1.5 pr-1.5 min-[440px]:pr-2.5 py-1.5 rounded-2xl text-white text-sm font-bold bg-gradient-to-r from-sky-500 to-indigo-600 border-2 border-white/40 dark:border-white/15 shadow-[0_3px_0_0_rgba(49,46,129,0.5)] whitespace-nowrap')}
             aria-label="กลับหน้าหลัก"
           >
             <span className="w-7 h-7 rounded-xl bg-white/95 text-indigo-600 flex items-center justify-center">
               <Home className="w-4 h-4" />
             </span>
-            <span className="max-[340px]:hidden">หน้าหลัก</span>
+            {/* จอแคบ: เหลือแค่ไอคอน กันแถบเมนูล้นจอ (ผู้ใช้ที่ล็อกอินมีปุ่มเยอะ) */}
+            <span className="max-[439px]:hidden">หน้าหลัก</span>
           </Link>
         )}
 
         {/* Right: Actions */}
-        <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3">
+        <div className="flex items-center gap-1 min-[400px]:gap-1.5 sm:gap-2 lg:gap-3">
           {showJoin && (
             <JoinButton
+              data-tour="nav-join"
               className="btn-jelly inline-flex items-center gap-1.5 px-3 py-1.5 whitespace-nowrap rounded-xl bg-gradient-to-r from-sun-400 to-orange-400 text-indigo-950 text-xs sm:text-sm font-bold shadow-md ring-2 ring-white/70 dark:ring-gray-900"
               title="สมัครสมาชิก"
             >
@@ -138,6 +140,7 @@ export function Navbar() {
           {!isDevPage && !pathname.startsWith('/create') && (
             <Link
               href="/create"
+              data-tour="nav-create"
               className={cn(fx.shine, user ? 'inline-flex' : 'hidden sm:inline-flex', 'btn-jelly items-center gap-2 pl-1.5 pr-1.5 xl:pr-3 py-1.5 text-sm font-bold rounded-2xl text-white bg-gradient-to-r from-emerald-500 via-teal-500 to-sky-500 border-2 border-white/40 dark:border-white/15 shadow-[0_3px_0_0_rgba(13,148,136,0.5)] whitespace-nowrap')}
               title="ระบบสร้างเกม"
               aria-label="ระบบสร้างเกม"

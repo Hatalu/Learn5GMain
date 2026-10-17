@@ -10,10 +10,11 @@ import { CountUp } from '@/components/fx/CountUp';
 import { buddyStage } from '@/lib/companion';
 import { hasMembership } from '@/lib/membership';
 import { cn } from '@/lib/utils/cn';
-import { CalendarDays, ChevronDown, ChevronRight, Crown, Gamepad2, Heart, LogOut, ShieldCheck, Sticker, Sparkles } from 'lucide-react';
+import { CalendarDays, ChevronDown, ChevronRight, Compass, Crown, Gamepad2, Heart, LogOut, ShieldCheck, Sticker, Sparkles } from 'lucide-react';
 import s from './userMenu.module.css';
 import { JoinButton } from '@/components/membership/JoinButton';
 import { useMembership } from '@/components/membership/MembershipProvider';
+import { useTour } from '@/components/tour/TourProvider';
 
 const DAY = 86400000;
 
@@ -21,6 +22,7 @@ export function UserMenu() {
   const { profile, signOut, isDev } = useAuth();
   const { fromPrice } = useMembership();
   const companion = useCompanionOptional();
+  const tour = useTour();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -229,6 +231,18 @@ export function UserMenu() {
                 <span className="flex-1">คู่หูและสมุดสติกเกอร์</span>
                 <ChevronRight className="w-4 h-4 text-gray-400 transition-transform group-hover/item:translate-x-0.5" />
               </Link>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  tour.start();
+                }}
+                className="group/item w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-violet-50 dark:hover:bg-violet-950/40 transition-colors text-left"
+              >
+                <Compass className="w-4 h-4 text-violet-500" />
+                <span className="flex-1">พาชมเว็บไซต์อีกครั้ง</span>
+                <ChevronRight className="w-4 h-4 text-gray-400 transition-transform group-hover/item:translate-x-0.5" />
+              </button>
               {isDev && (
                 <Link
                   href="/dev"

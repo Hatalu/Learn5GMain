@@ -410,14 +410,16 @@ export default function HomePage() {
       <Navbar />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <HeroCarousel
-          media={allMedia}
-          isLoading={isLoadingMedia}
-          selectedSubjects={filters.subjects}
-          onPickSubject={handlePickSubject}
-          onSelectMedia={handleSelectMedia}
-          onBrowseAll={scrollToLibrary}
-        />
+        <div data-tour="hero">
+          <HeroCarousel
+            media={allMedia}
+            isLoading={isLoadingMedia}
+            selectedSubjects={filters.subjects}
+            onPickSubject={handlePickSubject}
+            onSelectMedia={handleSelectMedia}
+            onBrowseAll={scrollToLibrary}
+          />
+        </div>
 
         {/* ข้อเสนอสมาชิก (ส่วนลดบัญชีใหม่ / โบนัสต่ออายุ) + ตัวเลขผู้ใช้จริง */}
         <OfferBanner className="mt-6" />
@@ -457,8 +459,8 @@ export default function HomePage() {
         )}
 
         {/* ---------- คลังสื่อ: สลับ เกมการเรียนรู้ / เอกสาร-ใบงาน ---------- */}
-        <section id="library" className="relative mt-10 sm:mt-14 scroll-mt-20">
-          <div className="relative overflow-hidden rounded-[2rem] sm:rounded-[2.5rem] px-3 sm:px-8 pt-7 sm:pt-10 pb-5 sm:pb-7 bg-gradient-to-br from-indigo-100/80 via-white to-pink-100/70 dark:from-[#1d1745] dark:via-[#150f30] dark:to-[#2a1340] border-[3px] border-indigo-200/70 dark:border-indigo-500/25 shadow-toy text-center">
+        <section id="library" data-tour="library" className="relative mt-10 sm:mt-14 scroll-mt-20">
+          <div data-tour="library-head" className="relative overflow-hidden rounded-[2rem] sm:rounded-[2.5rem] px-3 sm:px-8 pt-7 sm:pt-10 pb-5 sm:pb-7 bg-gradient-to-br from-indigo-100/80 via-white to-pink-100/70 dark:from-[#1d1745] dark:via-[#150f30] dark:to-[#2a1340] border-[3px] border-indigo-200/70 dark:border-indigo-500/25 shadow-toy text-center">
             <span aria-hidden="true" className="pointer-events-none absolute -top-20 -left-16 w-64 h-64 rounded-full bg-violet-400/25 dark:bg-violet-500/20 blur-3xl" />
             <span aria-hidden="true" className="pointer-events-none absolute -bottom-24 -right-10 w-72 h-72 rounded-full bg-sky-400/25 dark:bg-sky-500/15 blur-3xl" />
             <span aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-50 dark:opacity-25 [background-image:radial-gradient(rgba(124,58,237,0.16)_1.2px,transparent_1.2px)] [background-size:20px_20px]" />

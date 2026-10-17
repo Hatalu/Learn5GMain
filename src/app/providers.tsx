@@ -13,6 +13,7 @@ import { VisitTracker } from '@/components/analytics/VisitTracker';
 import { IdeaButton } from '@/components/ideas/IdeaButton';
 import { TrialProvider } from '@/components/trial/TrialProvider';
 import { MembershipProvider } from '@/components/membership/MembershipProvider';
+import { TourProvider } from '@/components/tour/TourProvider';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -22,13 +23,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
           <MembershipProvider>
             <CompanionProvider>
               <TrialProvider>
-                <AmbientSky />
-                {children}
-                <CompanionWidget />
-                <RewardModal />
-                <RouteCurtain />
-                <IdeaButton />
-                <VisitTracker />
+                <TourProvider>
+                  <AmbientSky />
+                  {children}
+                  <CompanionWidget />
+                  <RewardModal />
+                  <RouteCurtain />
+                  <IdeaButton />
+                  <VisitTracker />
+                </TourProvider>
               </TrialProvider>
             </CompanionProvider>
           </MembershipProvider>

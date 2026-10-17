@@ -46,6 +46,7 @@ export function LibrarySwitch({
             type="button"
             role="tab"
             aria-selected={on}
+            data-tour={`lib-${id}`}
             onClick={() => onChange(id)}
             className={cn(
               'group relative z-10 flex items-center justify-center gap-2 sm:gap-3.5 px-1.5 sm:px-4 py-2.5 sm:py-3.5 rounded-[1.5rem] sm:rounded-[1.75rem] transition-colors duration-300 active:scale-[0.97]',

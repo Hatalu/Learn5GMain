@@ -270,24 +270,29 @@ function Viewer({ doc, startDownload, onClose, onViewed, onDownloaded }: Props &
 
             {total > 1 && !zoom && (
               <>
-                <button
-                  type="button"
-                  onClick={() => go(page - 1)}
-                  disabled={page === 0}
-                  className="btn-jelly absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-white/95 dark:bg-gray-900/90 border-2 border-indigo-200 dark:border-indigo-700 text-indigo-600 dark:text-indigo-200 shadow-lg flex items-center justify-center disabled:opacity-30 disabled:pointer-events-none"
-                  aria-label="หน้าก่อนหน้า"
-                >
-                  <ChevronLeft className="w-6 h-6" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => go(page + 1)}
-                  disabled={page >= total - 1}
-                  className="btn-jelly absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-white/95 dark:bg-gray-900/90 border-2 border-indigo-200 dark:border-indigo-700 text-indigo-600 dark:text-indigo-200 shadow-lg flex items-center justify-center disabled:opacity-30 disabled:pointer-events-none"
-                  aria-label="หน้าถัดไป"
-                >
-                  <ChevronRight className="w-6 h-6" />
-                </button>
+                {/* จัดกึ่งกลางที่กรอบนอก: transform ของ btn-jelly ตอน hover จะได้ไม่ไปทับ translate จนปุ่มกระตุก */}
+                <div className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2">
+                  <button
+                    type="button"
+                    onClick={() => go(page - 1)}
+                    disabled={page === 0}
+                    className="btn-jelly w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-white/95 dark:bg-gray-900/90 border-2 border-indigo-200 dark:border-indigo-700 text-indigo-600 dark:text-indigo-200 shadow-lg flex items-center justify-center disabled:opacity-30 disabled:pointer-events-none"
+                    aria-label="หน้าก่อนหน้า"
+                  >
+                    <ChevronLeft className="w-6 h-6" />
+                  </button>
+                </div>
+                <div className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2">
+                  <button
+                    type="button"
+                    onClick={() => go(page + 1)}
+                    disabled={page >= total - 1}
+                    className="btn-jelly w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-white/95 dark:bg-gray-900/90 border-2 border-indigo-200 dark:border-indigo-700 text-indigo-600 dark:text-indigo-200 shadow-lg flex items-center justify-center disabled:opacity-30 disabled:pointer-events-none"
+                    aria-label="หน้าถัดไป"
+                  >
+                    <ChevronRight className="w-6 h-6" />
+                  </button>
+                </div>
               </>
             )}
           </div>

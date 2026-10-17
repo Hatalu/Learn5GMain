@@ -104,7 +104,7 @@ export default function MembershipPage() {
         )}
 
         {/* ---------- แพลน ---------- */}
-        <section className="max-w-6xl mx-auto px-4 pt-6 pb-12" aria-label="แพลนสมาชิก">
+        <section className="max-w-6xl mx-auto px-4 pt-6 pb-12" aria-label="แพลนสมาชิก" data-tour="plans">
           <div className={`grid gap-9 md:grid-cols-2 ${plans.length > 3 ? 'xl:grid-cols-4' : 'lg:grid-cols-3'} md:items-end`}>
             {plans.map((p) => {
               const best = p.id === 'grown';

@@ -10,6 +10,7 @@ import { RESERVED_NAMES, normalizeGmail, signupSchema } from '@/lib/validations/
 import { TierCompare } from '@/components/creator/TierCompare';
 import { FREE_SET_LIMIT, FREE_UPLOAD_MB } from '@/lib/game-creator/quota';
 import { AuthShell, authStyles as s, type Mood } from '@/components/auth/AuthShell';
+import { useTour } from '@/components/tour/TourProvider';
 
 /** หน้าที่ขอไว้ก่อนมาสมัคร (?redirect=/create) รับเฉพาะ path ภายในเว็บเรา */
 function redirectTarget(): string {
@@ -51,6 +52,7 @@ const STRENGTH = [
 function SignupInner() {
   const { signIn, user, isLoading } = useAuth();
   const router = useRouter();
+  const tour = useTour();
   const [v, setV] = useState<Record<Field, string>>({ username: '', email: '', password: '', confirm: '' });
   const [errors, setErrors] = useState<Partial<Record<Field, string>>>({});
   const [msg, setMsg] = useState('');
@@ -118,7 +120,8 @@ function SignupInner() {
         return;
       }
       setDone(true);
-      setTimeout(() => router.push(redirectTarget()), 1100);
+      // บัญชีใหม่: พาเที่ยวรอบเว็บก่อน (ทัวร์พาไปหน้าหลักเอง กดข้ามได้)
+      setTimeout(() => tour.start(), 1100);
     } catch {
       setMsg('เชื่อมต่อไม่ได้ ตรวจอินเทอร์เน็ตแล้วลองใหม่นะ');
       setErrAt(Date.now());

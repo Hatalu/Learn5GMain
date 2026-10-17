@@ -1,0 +1,197 @@
+/* ---------- ทัวร์แนะนำเว็บ ---------- */
+
+/* ม่านมืดทั้งจอ เจาะรูด้วย clip-path (เงาก้อนใหญ่ไม่วาดบนจอใหญ่ใน Chrome) */
+.dim {
+  background: rgba(14, 9, 38, 0.68);
+  animation: dimIn 0.45s ease-out both;
+}
+@keyframes dimIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* กรอบเรืองแสงรอบไฟส่อง */
+.ring {
+  position: fixed;
+  z-index: 9981;
+  pointer-events: none;
+  border-radius: 22px;
+}
+.ring::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 26px;
+  border: 3px solid var(--a);
+  box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.16), 0 0 34px 4px var(--a);
+  animation: ring 1.8s ease-in-out infinite;
+}
+@keyframes ring {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.012); opacity: 0.72; }
+}
+
+/* ดาววิ้งที่มุมไฟส่อง */
+.spark {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  color: #fff;
+  filter: drop-shadow(0 0 6px var(--a));
+  animation: spark 1.6s ease-in-out infinite;
+}
+@keyframes spark {
+  0%, 100% { transform: scale(0.5) rotate(0deg); opacity: 0.35; }
+  50% { transform: scale(1.1) rotate(45deg); opacity: 1; }
+}
+
+/* ---------- เคอร์เซอร์จำลอง ---------- */
+.cursor {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 9986;
+  pointer-events: none;
+  transition: transform 0.75s cubic-bezier(0.65, 0, 0.35, 1), opacity 0.3s ease;
+  will-change: transform;
+}
+.cursor[data-instant='true'] {
+  transition: opacity 0.3s ease;
+}
+.cursorIcon {
+  display: block;
+  width: 34px;
+  height: 34px;
+  filter: drop-shadow(0 4px 6px rgba(20, 10, 60, 0.45));
+  transform-origin: 6px 4px;
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.cursor[data-click='true'] .cursorIcon {
+  transform: scale(0.82);
+}
+.ripple {
+  position: absolute;
+  left: -22px;
+  top: -22px;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 3px solid #fff;
+  box-shadow: 0 0 16px rgba(255, 255, 255, 0.8);
+  animation: ripple 0.55s ease-out forwards;
+}
+@keyframes ripple {
+  0% { transform: scale(0.3); opacity: 1; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+/* ---------- การ์ดคำบรรยาย ---------- */
+.card {
+  animation: cardIn 0.5s cubic-bezier(0.22, 1.2, 0.36, 1) both;
+}
+@keyframes cardIn {
+  0% { opacity: 0; transform: translateY(26px) scale(0.96); }
+  100% { opacity: 1; transform: none; }
+}
+.center {
+  animation: centerIn 0.6s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+@keyframes centerIn {
+  0% { opacity: 0; transform: scale(0.82) translateY(18px); }
+  100% { opacity: 1; transform: none; }
+}
+
+.title {
+  animation: titleIn 0.5s cubic-bezier(0.34, 1.5, 0.64, 1) both;
+}
+@keyframes titleIn {
+  0% { opacity: 0; transform: translateY(10px) scale(0.94); }
+  100% { opacity: 1; transform: none; }
+}
+
+/* คำบรรยายโผล่ทีละช่วงคำ */
+.word {
+  display: inline-block;
+  opacity: 0;
+  animation: wordIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+@keyframes wordIn {
+  0% { opacity: 0; transform: translateY(8px); filter: blur(3px); }
+  100% { opacity: 1; transform: none; filter: none; }
+}
+
+.bob {
+  animation: bob 2.4s ease-in-out infinite;
+}
+@keyframes bob {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50% { transform: translateY(-7px) rotate(3deg); }
+}
+
+/* แถบเวลาแบบสตอรี่ */
+.fill {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background: var(--a);
+  animation-name: fill;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+@keyframes fill {
+  to { width: 100%; }
+}
+
+/* ปุ่มข้าม: ขอบรุ้งหมุน */
+/* ตำแหน่ง fixed มาจากคลาส tailwind (ห้ามใส่ position ที่นี่ จะทับกัน) */
+.skip {
+  isolation: isolate;
+  overflow: hidden;
+}
+.skip::before {
+  content: '';
+  position: absolute;
+  inset: -40%;
+  z-index: -2;
+  background: conic-gradient(from 0deg, #ff62b3, #ffd25e, #2fd196, #2eb4f5, #8660fb, #ff62b3);
+  animation: spin 3.2s linear infinite;
+}
+.skip::after {
+  content: '';
+  position: absolute;
+  inset: 2.5px;
+  z-index: -1;
+  border-radius: inherit;
+  background: rgba(255, 255, 255, 0.96);
+}
+:global(.dark) .skip::after {
+  background: rgba(22, 16, 48, 0.96);
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ฉากจบ */
+.burst {
+  animation: burst 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes burst {
+  0% { opacity: 0; transform: scale(0.6) rotate(-6deg); }
+  100% { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ring::before,
+  .spark,
+  .bob,
+  .skip::before {
+    animation: none;
+  }
+  .word {
+    animation-duration: 0.01s;
+  }
+  .cursor {
+    transition: none;
+  }
+}

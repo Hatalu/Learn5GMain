@@ -56,6 +56,7 @@ import { GEAR_SLOTS, cleanGear, gearCount, randomGear, sameGear } from '../src/l
 import { MODE_MUSIC, TRACKS, cleanMusicSetting, roomTrack } from '../src/lib/music-tracks';
 import { MODES } from '../src/lib/game-creator/modes';
 import { ALL_MEDIA_TYPES, GAME_FILTER_TYPES } from '../src/types/database';
+import { CHAPTERS, STEPS } from '../src/components/tour/steps';
 import {
   fileKindOf,
   filesForFormat,
@@ -847,6 +848,30 @@ t('คลังเกม: ตัวกรองประเภทไม่มี
   assert.ok(!GAME_FILTER_TYPES.includes('แบบฝึกหัด'));
   assert.ok(GAME_FILTER_TYPES.includes('เกม'));
   assert.equal(GAME_FILTER_TYPES.length, ALL_MEDIA_TYPES.length - 2);
+});
+
+t('ทัวร์แนะนำเว็บ: ลำดับหน้า ครบทุกรูปแบบเกม และจบที่ฉากเลือก', () => {
+  const ids = STEPS.map((x) => x.id);
+  assert.equal(new Set(ids).size, ids.length);
+  // ลำดับหน้า: หน้าหลัก > สร้างเกม > สมาชิก (ไม่ย้อนไปมา)
+  const order = ['/home', '/create', '/membership'];
+  const seq = STEPS.map((x) => order.indexOf(x.path));
+  assert.ok(seq.every((v) => v >= 0));
+  assert.ok(seq.every((v, i) => i === 0 || v >= seq[i - 1]));
+  // เกมการเรียนรู้มาก่อนเอกสาร/ใบงาน
+  assert.ok(ids.indexOf('games') < ids.indexOf('docs'));
+  for (const m of MODES) assert.ok(ids.includes('mode-' + m.id), m.id);
+  // ทุกขั้นเดินเองได้ ยกเว้นฉากสุดท้ายที่รอผู้ใช้เลือก
+  const last = STEPS[STEPS.length - 1];
+  assert.ok(last.final && !last.target && last.path === '/membership');
+  for (const x of STEPS.slice(0, -1)) {
+    assert.ok(!x.final && x.ms >= 3000 && x.ms <= 8000, x.id);
+    assert.ok(CHAPTERS[x.chapter], x.id);
+    assert.ok(x.title.length > 0 && x.text.length <= 60, x.id);
+  }
+  // ไม่ช้า/ไม่เร็วเกิน: เวลาโชว์รวมราว 1 นาทีกว่า
+  const total = STEPS.reduce((a, x) => a + x.ms, 0);
+  assert.ok(total >= 50_000 && total <= 100_000, String(total));
 });
 
 console.log(`\n${passed} tests passed`);
