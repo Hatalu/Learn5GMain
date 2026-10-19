@@ -22,7 +22,7 @@ export const ALL_MEDIA_TYPES: MediaType[] = [
 ];
 
 /** ตัวกรอง "ประเภทสื่อ" ของคลังเกมการเรียนรู้ (แบบทดสอบ/แบบฝึกหัด ย้ายไปอยู่ฝั่งเอกสาร/ใบงาน จึงไม่มีในตัวกรองนี้) */
-export const GAME_FILTER_TYPES: MediaType[] = ALL_MEDIA_TYPES.filter((t) => t !== 'แบบฝึกหัด' && t !== 'แบบทดสอบ');
+export const GAME_FILTER_TYPES: MediaType[] = ALL_MEDIA_TYPES.filter((t) => t !== 'แบบฝึกหัด' && t !== 'แบบทดสอบ' && t !== 'วิดีโอ');
 
 export const ALL_ACCESS_TIERS: AccessTier[] = ['free', 'premium'];
 

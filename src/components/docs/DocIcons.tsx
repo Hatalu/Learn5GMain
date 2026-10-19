@@ -30,6 +30,17 @@ export function PaperStackIcon({ className }: { className?: string }) {
   );
 }
 
+/** จอวิดีโอมีปุ่มเล่น ใช้กับปุ่มคลังวิดีโอ */
+export function VideoScreenIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 48 48" className={className} aria-hidden="true">
+      <rect x="5" y="9" width="38" height="27" rx="7" fill="#fff" stroke="currentColor" strokeWidth="2.5" />
+      <path d="M20.5 16.5v12l10-6z" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+      <path d="M17 41h14" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 /** จอยเกม ใช้กับปุ่มคลังเกม */
 export function GamepadIcon({ className }: { className?: string }) {
   return (

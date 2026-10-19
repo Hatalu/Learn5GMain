@@ -139,7 +139,8 @@ export function FilterSections({
         </div>
       </section>
 
-      {/* ประเภทสื่อ */}
+      {/* ประเภทสื่อ (คลังวิดีโอไม่มีตัวเลือกประเภท) */}
+      {typeOptions.length > 0 && (
       <section className="relative">
         <SectionTitle icon={Layers} tone="from-pink-400 to-fuchsia-500">
           ประเภทสื่อ
@@ -170,6 +171,7 @@ export function FilterSections({
           })}
         </div>
       </section>
+      )}
 
     </>
   );

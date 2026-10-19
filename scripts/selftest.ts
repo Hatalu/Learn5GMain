@@ -849,7 +849,8 @@ t('คลังเกม: ตัวกรองประเภทไม่มี
   assert.ok(!GAME_FILTER_TYPES.includes('แบบทดสอบ'));
   assert.ok(!GAME_FILTER_TYPES.includes('แบบฝึกหัด'));
   assert.ok(GAME_FILTER_TYPES.includes('เกม'));
-  assert.equal(GAME_FILTER_TYPES.length, ALL_MEDIA_TYPES.length - 2);
+  assert.ok(!GAME_FILTER_TYPES.includes('วิดีโอ'));
+  assert.equal(GAME_FILTER_TYPES.length, ALL_MEDIA_TYPES.length - 3);
 });
 
 t('ทัวร์แนะนำเว็บ: ลำดับหน้า ภาพรวมรูปแบบเกม และจบที่ฉากเลือก', () => {
@@ -860,8 +861,10 @@ t('ทัวร์แนะนำเว็บ: ลำดับหน้า ภ�
   const seq = STEPS.map((x) => order.indexOf(x.path));
   assert.ok(seq.every((v) => v >= 0));
   assert.ok(seq.every((v, i) => i === 0 || v >= seq[i - 1]));
-  // เกมการเรียนรู้มาก่อนเอกสาร/ใบงาน
-  assert.ok(ids.indexOf('games') < ids.indexOf('docs'));
+  // คลังเรียงตามปุ่ม: เกมการเรียนรู้ > วิดีโอ > เอกสาร/ใบงาน
+  assert.ok(ids.indexOf('games') < ids.indexOf('videos'));
+  assert.ok(ids.indexOf('videos') < ids.indexOf('docs'));
+  assert.equal(STEPS.find((x) => x.id === 'videos')?.click, 'lib-videos');
   // รูปแบบเกมโชว์แค่ภาพรวมขั้นเดียว ไม่ไล่ทีละแบบ
   assert.ok(ids.includes('modes'));
   assert.ok(!ids.some((id) => id.startsWith('mode-')));

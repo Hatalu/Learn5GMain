@@ -11,6 +11,12 @@ import { WEEKDAY_TH, bkkParts, shiftDate } from '@/lib/companion';
 import { AddMediaModal } from '@/components/dev/AddMediaModal';
 import { EditMediaModal } from '@/components/dev/EditMediaModal';
 import { DeleteConfirmModal } from '@/components/dev/DeleteConfirmModal';
+import { Modal } from '@/components/ui/Modal';
+import { DAILY_CHANGED_EVENT } from '@/components/companion/CompanionProvider';
+import { cn } from '@/lib/utils/cn';
+
+/** บอกหน้าที่เปิดอยู่ (หน้าหลัก/คู่หู) ให้โหลดเกมประจำวันใหม่ */
+const announce = () => window.dispatchEvent(new Event(DAILY_CHANGED_EVENT));
 
 interface Row {
   id: string;
@@ -47,7 +53,7 @@ export function DailyGamesAdmin({ library, onMediaChanged }: { library: MediaIte
   const [loading, setLoading] = useState(true);
   const [missingTable, setMissingTable] = useState(false);
 
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editing, setEditing] = useState<Row | null>(null);
   const [day, setDay] = useState(today);
   const [mediaId, setMediaId] = useState('');
   const [unlock, setUnlock] = useState(false);
@@ -90,7 +96,6 @@ export function DailyGamesAdmin({ library, onMediaChanged }: { library: MediaIte
   }, [library, mediaId]);
 
   const resetForm = () => {
-    setEditingId(null);
     setNote('');
     setUnlock(false);
   };
@@ -101,30 +106,21 @@ export function DailyGamesAdmin({ library, onMediaChanged }: { library: MediaIte
     e.preventDefault();
     if (!mediaId || !day) return;
     if (day < today) return error('เลือกวันนี้หรือวันในอนาคตเท่านั้น');
-    if (dayTaken(day, editingId)) return error(`${thDate(day)} มีเกมประจำวันอยู่แล้ว ตั้งซ้ำวันเดียวกันไม่ได้ (ลบหรือแก้ของเดิมก่อน)`);
+    if (dayTaken(day)) return error(`${thDate(day)} มีเกมประจำวันอยู่แล้ว ตั้งซ้ำวันเดียวกันไม่ได้ (กดแก้ไขในตารางด้านล่างแทน)`);
     setSaving(true);
-    const body = { media_id: mediaId, unlock, note: note.trim() || null };
-    const { error: err } = editingId
-      ? await supabase.from('daily_games').update(body).eq('id', editingId)
-      : await supabase.from('daily_games').insert({ day, ...body, created_by: user?.id ?? null });
+    const { error: err } = await supabase
+      .from('daily_games')
+      .insert({ day, media_id: mediaId, unlock, note: note.trim() || null, created_by: user?.id ?? null });
     setSaving(false);
     if (err) {
       error((err as { code?: string }).code === '23505' ? `${thDate(day)} มีเกมประจำวันอยู่แล้ว` : err.message);
       load();
       return;
     }
-    success(editingId ? 'แก้ไขแล้ว' : `ตั้งเกมประจำวันที่ ${thDate(day)} แล้ว`);
+    success(`ตั้งเกมประจำวันที่ ${thDate(day)} แล้ว`);
     resetForm();
     load();
-  };
-
-  const startEdit = (r: Row) => {
-    setEditingId(r.id);
-    setDay(r.day);
-    setMediaId(r.media_id);
-    setUnlock(r.unlock);
-    setNote(r.note || '');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    announce();
   };
 
   const remove = async (r: Row) => {
@@ -132,8 +128,16 @@ export function DailyGamesAdmin({ library, onMediaChanged }: { library: MediaIte
     const { error: err } = await supabase.from('daily_games').delete().eq('id', r.id);
     if (err) return error(err.message);
     success('ลบแล้ว');
-    if (editingId === r.id) resetForm();
+    if (editing?.id === r.id) setEditing(null);
     load();
+    announce();
+  };
+
+  const formRef = React.useRef<HTMLFormElement>(null);
+  const pickDay = (d: string) => {
+    resetForm();
+    setDay(d);
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
 
   const days = Array.from({ length: DAYS_AHEAD }, (_, i) => {
@@ -215,12 +219,12 @@ export function DailyGamesAdmin({ library, onMediaChanged }: { library: MediaIte
 
       {/* ---------- 2) ตั้งวัน ---------- */}
       <section>
-        <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-3">2. {editingId ? `แก้ไขเกมประจำวัน ${thDate(day)}` : 'ลงเกมประจำวัน'}</h3>
-        <form onSubmit={save} className="surface p-5 grid gap-4 sm:grid-cols-2">
+        <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-3">2. ลงเกมประจำวัน</h3>
+        <form ref={formRef} onSubmit={save} className="surface p-5 grid gap-4 sm:grid-cols-2 scroll-mt-24">
           <div>
             <label className={label}>วันที่</label>
-            <input type="date" min={today} value={day} disabled={!!editingId} onChange={(e) => setDay(e.target.value)} required className={inputCls + (editingId ? ' opacity-60' : '')} />
-            {!editingId && dayTaken(day) && <p className="mt-1 text-xs font-semibold text-rose-600">วันนี้มีเกมประจำวันอยู่แล้ว เลือกวันอื่น หรือแก้/ลบของเดิมในตารางด้านล่าง</p>}
+            <input type="date" min={today} value={day} onChange={(e) => setDay(e.target.value)} required className={inputCls} />
+            {dayTaken(day) && <p className="mt-1 text-xs font-semibold text-rose-600">วันนี้มีเกมประจำวันอยู่แล้ว เลือกวันอื่น หรือกด &quot;แก้ไข&quot; ในตารางด้านล่าง</p>}
           </div>
           <div>
             <label className={label}>เกมจากคลังเกมประจำวัน</label>
@@ -244,18 +248,13 @@ export function DailyGamesAdmin({ library, onMediaChanged }: { library: MediaIte
             </span>
           </label>
           <div className="sm:col-span-2 flex justify-end gap-2">
-            {editingId && (
-              <button type="button" onClick={resetForm} className="px-4 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 inline-flex items-center gap-2">
-                <X className="w-4 h-4" /> ยกเลิกการแก้ไข
-              </button>
-            )}
             <button
               type="submit"
-              disabled={saving || !mediaId || (!editingId && dayTaken(day))}
+              disabled={saving || !mediaId || dayTaken(day)}
               className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md disabled:opacity-50 inline-flex items-center gap-2"
             >
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : editingId ? <Save className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-              {editingId ? 'บันทึกการแก้ไข' : 'ลงเกมประจำวัน'}
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+              ลงเกมประจำวัน
             </button>
           </div>
         </form>
@@ -285,7 +284,7 @@ export function DailyGamesAdmin({ library, onMediaChanged }: { library: MediaIte
                       {set.note ? ` · ${set.note}` : ''}
                     </p>
                   </div>
-                  <button type="button" onClick={() => startEdit(set)} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 inline-flex items-center gap-1">
+                  <button type="button" onClick={() => setEditing(set)} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 inline-flex items-center gap-1">
                     <Pencil className="w-3.5 h-3.5" /> แก้ไข
                   </button>
                   <button type="button" onClick={() => remove(set)} aria-label="ลบ" className="p-2 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40">
@@ -300,11 +299,7 @@ export function DailyGamesAdmin({ library, onMediaChanged }: { library: MediaIte
                   <p className="flex-1 text-sm text-gray-500 dark:text-gray-400">ยังไม่ได้ตั้ง (หน้าแรกขึ้นว่ายังไม่มีเกมประจำวัน)</p>
                   <button
                     type="button"
-                    onClick={() => {
-                      resetForm();
-                      setDay(d);
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }}
+                    onClick={() => pickDay(d)}
                     className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100"
                   >
                     ตั้งวันนี้
@@ -316,9 +311,149 @@ export function DailyGamesAdmin({ library, onMediaChanged }: { library: MediaIte
         </ul>
       </section>
 
+      {editing && (
+        <EditDailyModal
+          key={editing.id}
+          row={editing}
+          today={today}
+          library={library}
+          dayTaken={(d) => dayTaken(d, editing.id)}
+          onClose={() => setEditing(null)}
+          onSaved={() => {
+            setEditing(null);
+            load();
+            announce();
+          }}
+        />
+      )}
+
       <AddMediaModal isOpen={addOpen} isDaily onClose={() => setAddOpen(false)} onSuccess={afterMediaChange} />
       <EditMediaModal media={editMedia} isOpen={!!editMedia} onClose={() => setEditMedia(null)} onSuccess={afterMediaChange} />
       <DeleteConfirmModal media={deleteMedia} isOpen={!!deleteMedia} onClose={() => setDeleteMedia(null)} onSuccess={afterMediaChange} />
     </div>
+  );
+}
+
+/** หน้าต่างแก้ไขเกมประจำวัน: เปลี่ยนวัน เปลี่ยนเกม ข้อความโปรย และแจกฟรี */
+function EditDailyModal({
+  row,
+  today,
+  library,
+  dayTaken,
+  onClose,
+  onSaved,
+}: {
+  row: Row;
+  today: string;
+  library: MediaItem[];
+  dayTaken: (d: string) => boolean;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const supabase = useMemo(() => createClient(), []);
+  const { success, error } = useToast();
+  const [day, setDay] = useState(row.day);
+  const [mediaId, setMediaId] = useState(row.media_id);
+  const [unlock, setUnlock] = useState(row.unlock);
+  const [note, setNote] = useState(row.note || '');
+  const [saving, setSaving] = useState(false);
+
+  const taken = day !== row.day && dayTaken(day);
+  const missing = !library.some((m) => m.id === mediaId);
+
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!day || day < today) return error('เลือกวันนี้หรือวันในอนาคตเท่านั้น');
+    if (taken) return error(`${thDate(day)} มีเกมประจำวันอยู่แล้ว`);
+    if (missing) return error('เลือกเกมจากคลังก่อน');
+    setSaving(true);
+    const { error: err } = await supabase
+      .from('daily_games')
+      .update({ day, media_id: mediaId, unlock, note: note.trim() || null })
+      .eq('id', row.id);
+    setSaving(false);
+    if (err) return error((err as { code?: string }).code === '23505' ? `${thDate(day)} มีเกมประจำวันอยู่แล้ว` : err.message);
+    success(day === row.day ? `บันทึกเกมประจำวันที่ ${thDate(day)} แล้ว` : `ย้ายไปวันที่ ${thDate(day)} แล้ว`);
+    onSaved();
+  };
+
+  return (
+    <Modal open onClose={onClose} title={`แก้ไขเกมประจำวัน ${thDate(row.day)}`} wide>
+      <form onSubmit={save} className="grid gap-5">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className={label}>วันที่</label>
+            <input type="date" min={today} value={day} onChange={(e) => setDay(e.target.value)} required className={inputCls} />
+            {taken ? (
+              <p className="mt-1 text-xs font-semibold text-rose-600">วันนี้มีเกมประจำวันอยู่แล้ว เลือกวันอื่น</p>
+            ) : day !== row.day ? (
+              <p className="mt-1 text-xs font-semibold text-indigo-600 dark:text-indigo-300">จะย้ายไปลงวัน {thDate(day)}</p>
+            ) : null}
+          </div>
+          <div>
+            <label className={label}>ข้อความโปรย (ไม่บังคับ)</label>
+            <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={200} placeholder="เช่น วันนี้มาฝึกอ่านนาฬิกากันเถอะ" className={inputCls} />
+          </div>
+        </div>
+
+        <div>
+          <label className={label}>เลือกเกม ({library.length})</label>
+          {library.length === 0 ? (
+            <p className="p-4 rounded-xl border border-dashed border-gray-300 dark:border-gray-700 text-sm text-gray-500">ยังไม่มีเกมในคลังเกมประจำวัน</p>
+          ) : (
+            <div role="radiogroup" aria-label="เลือกเกม" className="grid gap-2 sm:grid-cols-2 max-h-72 overflow-y-auto p-1 -m-1">
+              {library.map((m) => {
+                const on = m.id === mediaId;
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    onClick={() => setMediaId(m.id)}
+                    className={cn(
+                      'flex items-center gap-3 p-2.5 rounded-2xl border-2 text-left transition-colors',
+                      on
+                        ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 ring-2 ring-indigo-300/50'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-600'
+                    )}
+                  >
+                    <Image src={m.icon_url} alt="" width={44} height={44} className="rounded-xl object-cover w-11 h-11 shrink-0" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-semibold text-gray-900 dark:text-white truncate">{m.title}</span>
+                      <span className="block text-xs text-gray-500 dark:text-gray-400 truncate">
+                        {m.subject} · {m.grade_level?.join(' ')}
+                      </span>
+                    </span>
+                    {on && <CalendarCheck2 className="w-5 h-5 text-indigo-600 dark:text-indigo-300 shrink-0" />}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <label className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-200 cursor-pointer select-none">
+          <input type="checkbox" checked={unlock} onChange={(e) => setUnlock(e.target.checked)} className="w-5 h-5 accent-indigo-600" />
+          <span className="inline-flex items-center gap-1.5 font-semibold">
+            <Gift className="w-4 h-4 text-emerald-600" /> แจกเล่นฟรีเฉพาะวันนั้น
+          </span>
+        </label>
+
+        <div className="flex justify-end gap-2">
+          <button type="button" onClick={onClose} className="px-4 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 inline-flex items-center gap-2">
+            <X className="w-4 h-4" /> ยกเลิก
+          </button>
+          <button
+            type="submit"
+            disabled={saving || taken || missing}
+            className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md disabled:opacity-50 inline-flex items-center gap-2"
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            บันทึกการแก้ไข
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
 }

@@ -13,7 +13,7 @@ import React, {
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { MediaItem } from '@/types/database';
-import { bkkParts, type Hat } from '@/lib/companion';
+import { bkkParts, type Hat, msUntilMidnight } from '@/lib/companion';
 import {
   CompanionState,
   Reward,
@@ -62,7 +62,12 @@ interface Ctx {
   dismissReward: () => void;
   /** เหตุการณ์เข้าเว็บของวันนี้ (ดาวเช็คอิน ฯลฯ) ใช้ในคำทักทาย */
   visit: { checkinStars: number; firstEver: boolean } | null;
+  /** โหลดรายการสื่อ + เกมประจำวันใหม่ (เช่น Dev เพิ่งตั้งเกมของวันนี้ หรือข้ามเที่ยงคืน) */
+  refreshDaily: (opts?: { ifOlderThanMs?: number }) => void;
 }
+
+/** ส่งเหตุการณ์นี้หลัง Dev แก้ตารางเกมประจำวัน ให้ทุกหน้าที่เปิดอยู่โหลดใหม่ */
+export const DAILY_CHANGED_EVENT = 'l5g:daily-changed';
 
 const CompanionContext = createContext<Ctx | null>(null);
 
@@ -98,6 +103,14 @@ export function CompanionProvider({ children }: { children: React.ReactNode }) {
   const [visit, setVisit] = useState<Ctx['visit']>(null);
   const [ready, setReady] = useState(false);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
+  const [reloadKey, setReloadKey] = useState(0);
+  const lastLoad = useRef(0);
+  const mediaLoadedRef = useRef(false);
+  const loading = useRef(false);
+  const refreshDaily = useCallback((opts?: { ifOlderThanMs?: number }) => {
+    if (opts?.ifOlderThanMs && (loading.current || Date.now() - lastLoad.current < opts.ifOlderThanMs)) return;
+    setReloadKey((k) => k + 1);
+  }, []);
 
   const canSync = useRef(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -223,12 +236,34 @@ export function CompanionProvider({ children }: { children: React.ReactNode }) {
     };
   }, [doSave]);
 
-  // รายการสื่อ + เกมประจำวันของวันนี้ (ถ้าแอดมินตั้งไว้ใช้ตามนั้น ไม่งั้นเลือกอัตโนมัติ)
+  // โหลดใหม่เมื่อ: Dev แก้ตาราง (เหตุการณ์), กลับมาที่แท็บ (ไม่ถี่กว่า 20 วิ), ข้ามเที่ยงคืนเวลาไทย
+  useEffect(() => {
+    const soft = () => {
+      if (document.visibilityState === 'visible') refreshDaily({ ifOlderThanMs: 20_000 });
+    };
+    const force = () => refreshDaily();
+    window.addEventListener(DAILY_CHANGED_EVENT, force);
+    window.addEventListener('focus', soft);
+    document.addEventListener('visibilitychange', soft);
+    const midnight = setTimeout(force, msUntilMidnight(bkkParts()) + 2000);
+    return () => {
+      window.removeEventListener(DAILY_CHANGED_EVENT, force);
+      window.removeEventListener('focus', soft);
+      document.removeEventListener('visibilitychange', soft);
+      clearTimeout(midnight);
+    };
+  }, [refreshDaily, reloadKey]);
+
+  // รายการสื่อ + เกมประจำวันของวันนี้ (Dev ตั้งเองเท่านั้น ไม่ตั้ง = ไม่มี)
   useEffect(() => {
     let off = false;
+    lastLoad.current = Date.now();
+    loading.current = true;
     (async () => {
       const today = bkkParts().date;
-      const { data } = await supabase.from('media').select('*').order('created_at', { ascending: true });
+      const { data, error: mediaErr } = await supabase.from('media').select('*').order('created_at', { ascending: true });
+      // โหลดซ้ำแล้วเน็ตสะดุด: คงข้อมูลเดิมไว้ ไม่ล้างเกมประจำวันทิ้ง
+      if (mediaErr && mediaLoadedRef.current) return;
       const all = ((data || []) as MediaItem[]).filter((m) => m.is_public !== false).map((m) => ({
         ...m,
         access_tier: (m.access_tier ? String(m.access_tier).toLowerCase().trim() : 'premium') as MediaItem['access_tier'],
@@ -237,7 +272,6 @@ export function CompanionProvider({ children }: { children: React.ReactNode }) {
       const list = all.filter((m) => !m.is_daily);
       if (off) return;
       setMedia(list);
-      setMediaLoaded(true);
 
       let chosen: DailyGame | null = null;
       try {
@@ -251,14 +285,20 @@ export function CompanionProvider({ children }: { children: React.ReactNode }) {
           if (m) chosen = { media: m, unlock: row.unlock !== false, source: 'dev', note: row.note ?? null, date: today };
         }
       } catch {
-        /* ตารางยังไม่ถูกสร้าง ใช้การเลือกอัตโนมัติ */
+        /* ตารางยังไม่ถูกสร้าง = ไม่มีเกมประจำวัน */
       }
-      if (!off) setDaily(chosen);
-    })();
+      if (off) return;
+      // บอกว่าโหลดเสร็จหลังรู้เกมประจำวันแล้วเท่านั้น (เดิมขึ้น "ยังไม่มีเกมประจำวัน" ระหว่างรอ)
+      setDaily(chosen);
+      setMediaLoaded(true);
+      mediaLoadedRef.current = true;
+    })().finally(() => {
+      if (!off) loading.current = false;
+    });
     return () => {
       off = true;
     };
-  }, [supabase]);
+  }, [supabase, reloadKey]);
 
   const recordPlay = useCallback(
     (m: MediaItem): Reward => {
@@ -290,6 +330,7 @@ export function CompanionProvider({ children }: { children: React.ReactNode }) {
     rewards,
     dismissReward,
     visit,
+    refreshDaily,
   };
 
   return <CompanionContext.Provider value={value}>{children}</CompanionContext.Provider>;

@@ -16,7 +16,8 @@ import { ALL_DOC_TYPES, DocumentItem, isMissingTable, normalizeDocument } from '
 import { LibrarySwitch, LibraryKind } from '@/components/docs/LibrarySwitch';
 import { DocumentCard } from '@/components/docs/DocumentCard';
 import { DocumentViewerModal } from '@/components/docs/DocumentViewerModal';
-import { PaperStackIcon } from '@/components/docs/DocIcons';
+import { PaperStackIcon, VideoScreenIcon } from '@/components/docs/DocIcons';
+import { isVideoMedia } from '@/lib/youtube';
 import { Navbar } from '@/components/navbar/Navbar';
 import { MediaRail } from '@/components/media/MediaRail';
 import { MediaCard } from '@/components/media/MediaCard';
@@ -77,7 +78,7 @@ export default function HomePage() {
     setIsDetailModalOpen(true);
   }, []);
 
-  // คลังที่เปิดอยู่: เกมการเรียนรู้ (ค่าเริ่มต้น) / เอกสาร-ใบงาน (?lib=docs)
+  // คลังที่เปิดอยู่: เกมการเรียนรู้ (ค่าเริ่มต้น) / วิดีโอ (?lib=videos) / เอกสาร-ใบงาน (?lib=docs)
   const [library, setLibrary] = useState<LibraryKind>('games');
   const [docs, setDocs] = useState<DocumentItem[]>([]);
   const [docsLoading, setDocsLoading] = useState(true);
@@ -109,7 +110,8 @@ export default function HomePage() {
   }, [fetchDocs]);
 
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get('lib') === 'docs') setLibrary('docs');
+    const lib = new URLSearchParams(window.location.search).get('lib');
+    if (lib === 'docs' || lib === 'videos') setLibrary(lib);
   }, []);
 
   const switchLibrary = (next: LibraryKind) => {
@@ -118,7 +120,7 @@ export default function HomePage() {
     // ประเภทของสองคลังต่างกัน ล้างเฉพาะตัวกรองประเภท (วิชา/ชั้นคงไว้)
     setFilters((prev) => ({ ...prev, mediaTypes: [] }));
     const url = new URL(window.location.href);
-    if (next === 'docs') url.searchParams.set('lib', 'docs');
+    if (next !== 'games') url.searchParams.set('lib', next);
     else url.searchParams.delete('lib');
     window.history.replaceState(null, '', url.pathname + url.search + url.hash);
   };
@@ -326,7 +328,9 @@ export default function HomePage() {
   // Filter and Sort calculation
   const filteredAndSortedMedia = useMemo(() => {
     // Only public media is shown on the Home page (Private media is only visible in Dev dashboard)
-    let result = allMedia.filter((m) => m.is_public !== false);
+    // คลังวิดีโอ = เฉพาะสื่อประเภทวิดีโอ, คลังเกม = ทุกอย่างที่ไม่ใช่วิดีโอ
+    const wantVideo = library === 'videos';
+    let result = allMedia.filter((m) => m.is_public !== false && isVideoMedia(m) === wantVideo);
 
     // Filter by Subject (multi-select)
     if (filters.subjects.length > 0) {
@@ -367,7 +371,7 @@ export default function HomePage() {
     }
 
     return result;
-  }, [allMedia, filters, sortOption, favoriteIds, user]);
+  }, [allMedia, filters, sortOption, favoriteIds, user, library]);
 
   // คลังเอกสาร/ใบงาน: ตัวกรองวิชา/ชั้นเหมือนคลังเกม ส่วน "ประเภท" = เอกสาร / ใบงาน
   const filteredDocs = useMemo(() => {
@@ -383,8 +387,10 @@ export default function HomePage() {
   }, [docs, filters, sortOption]);
 
   const isDocs = library === 'docs';
+  const isVideos = library === 'videos';
   const shownCount = isDocs ? filteredDocs.length : filteredAndSortedMedia.length;
-  const typeOptions = isDocs ? ALL_DOC_TYPES : GAME_FILTER_TYPES;
+  const typeOptions = isDocs ? ALL_DOC_TYPES : isVideos ? [] : GAME_FILTER_TYPES;
+  const videoCount = useMemo(() => allMedia.filter(isVideoMedia).length, [allMedia]);
 
   // Netflix Rail items: latest items
   const latestMediaList = useMemo(() => {
@@ -474,12 +480,16 @@ export default function HomePage() {
               <h2 className="mt-3 font-display text-2xl sm:text-4xl leading-tight text-gray-900 dark:text-white">
                 วันนี้อยากใช้<span className="text-gradient-brand">สื่อแบบไหน</span>
               </h2>
-              <p className="mt-1.5 text-sm sm:text-base text-gray-600 dark:text-gray-300">เกมฝึกทักษะให้เด็กเล่นสนุก หรือเอกสารและใบงานพร้อมพิมพ์ใช้ในห้องเรียน</p>
+              <p className="mt-1.5 text-sm sm:text-base text-gray-600 dark:text-gray-300">เกมฝึกทักษะให้เด็กเล่นสนุก คลิปวิดีโอดูฟรี หรือเอกสารและใบงานพร้อมพิมพ์ใช้ในห้องเรียน</p>
               <div className="mt-5 sm:mt-7">
                 <LibrarySwitch
                   value={library}
                   onChange={switchLibrary}
-                  counts={{ games: isLoadingMedia ? null : allMedia.length, docs: docsLoading ? null : docs.length }}
+                  counts={{
+                    games: isLoadingMedia ? null : allMedia.length - videoCount,
+                    videos: isLoadingMedia ? null : videoCount,
+                    docs: docsLoading ? null : docs.length,
+                  }}
                 />
               </div>
             </div>
@@ -505,14 +515,18 @@ export default function HomePage() {
                   <span
                     className={cn(
                       'w-10 h-10 shrink-0 rounded-2xl bg-gradient-to-br text-white flex items-center justify-center shadow-lg',
-                      isDocs ? 'from-sky-400 to-indigo-500 shadow-sky-500/30' : 'from-indigo-500 to-fuchsia-500 shadow-indigo-500/30'
+                      isDocs
+                        ? 'from-sky-400 to-indigo-500 shadow-sky-500/30'
+                        : isVideos
+                          ? 'from-rose-500 to-fuchsia-500 shadow-rose-500/30'
+                          : 'from-indigo-500 to-fuchsia-500 shadow-indigo-500/30'
                     )}
                   >
-                    {isDocs ? <PaperStackIcon className="w-7 h-7" /> : <LayoutGrid className="w-5 h-5" />}
+                    {isDocs ? <PaperStackIcon className="w-7 h-7" /> : isVideos ? <VideoScreenIcon className="w-7 h-7" /> : <LayoutGrid className="w-5 h-5" />}
                   </span>
                   <div className="min-w-0">
                     <h2 className="font-display text-xl sm:text-2xl leading-tight text-gray-900 dark:text-white truncate">
-                      {hasActiveFilters ? 'ผลลัพธ์การกรอง' : isDocs ? 'เอกสารและใบงานทั้งหมด' : 'เกมการเรียนรู้ทั้งหมด'}
+                      {hasActiveFilters ? 'ผลลัพธ์การกรอง' : isDocs ? 'เอกสารและใบงานทั้งหมด' : isVideos ? 'วิดีโอทั้งหมด' : 'เกมการเรียนรู้ทั้งหมด'}
                     </h2>
                     <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-300">{shownCount} รายการ</p>
                   </div>
@@ -600,7 +614,9 @@ export default function HomePage() {
                   ))}
                 </div>
               ) : filteredAndSortedMedia.length === 0 ? (
-                allMedia.length === 0 ? (
+                isVideos && videoCount === 0 ? (
+                  <VideosEmpty isDev={isDev} />
+                ) : allMedia.length === 0 ? (
                   <EmptyState type="no-media" onOpenAddModal={() => setIsAddMediaOpen(true)} />
                 ) : (
                   <EmptyState type="no-filter-results" onResetFilters={handleResetFilters} />
@@ -658,6 +674,7 @@ export default function HomePage() {
             <nav aria-label="ลิงก์ด่วน" className="grid grid-cols-2 gap-2 content-start">
               {[
                 { label: 'เกมการเรียนรู้', onClick: () => { switchLibrary('games'); scrollToLibrary(); } },
+                { label: 'วิดีโอ', onClick: () => { switchLibrary('videos'); scrollToLibrary(); } },
                 { label: 'เอกสาร/ใบงาน', onClick: () => { switchLibrary('docs'); scrollToLibrary(); } },
                 { label: 'สร้างเกมของฉัน', href: '/create' },
                 { label: 'สมัครสมาชิก', href: '/membership' },
@@ -723,6 +740,23 @@ export default function HomePage() {
 }
 
 /** คลังเอกสารยังว่าง (หรือยังไม่ได้รัน migration 022) */
+function VideosEmpty({ isDev }: { isDev: boolean }) {
+  return (
+    <div className="relative overflow-hidden flex flex-col items-center justify-center px-6 py-12 sm:py-16 text-center rounded-[2rem] border-[3px] border-dashed border-pink-200 dark:border-pink-800/60 bg-white/60 dark:bg-gray-900/50 my-2">
+      <span className="relative w-20 h-20 rounded-3xl bg-gradient-to-br from-rose-500 to-fuchsia-500 text-white flex items-center justify-center shadow-lg shadow-rose-500/30 animate-float-slow">
+        <VideoScreenIcon className="w-12 h-12" />
+      </span>
+      <h3 className="mt-5 font-display text-xl text-gray-900 dark:text-white">คลิปวิดีโอกำลังมาเร็วๆ นี้</h3>
+      <p className="mt-1.5 text-sm text-gray-500 dark:text-gray-400 max-w-sm">ทีมงานกำลังเตรียมคลิปการสอนให้ดูฟรี ระหว่างนี้ลองเล่นเกมการเรียนรู้ก่อนได้เลย</p>
+      {isDev && (
+        <Link href="/dev" className="btn-jelly btn-primary-grad mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl text-sm font-bold">
+          + เพิ่มวิดีโอ (หน้า Dev เลือกประเภท &quot;วิดีโอ&quot;)
+        </Link>
+      )}
+    </div>
+  );
+}
+
 function DocsEmpty({ ready, isDev }: { ready: boolean; isDev: boolean }) {
   return (
     <div className="relative overflow-hidden flex flex-col items-center justify-center px-6 py-12 sm:py-16 text-center rounded-[2rem] border-[3px] border-dashed border-indigo-200 dark:border-indigo-800/70 bg-white/60 dark:bg-gray-900/50 my-2">

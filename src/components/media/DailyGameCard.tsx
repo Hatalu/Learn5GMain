@@ -38,8 +38,12 @@ function Countdown() {
 
 /** การ์ด "เกมประจำวัน" บนหน้าหลัก: เปลี่ยนทุกวัน มีนับถอยหลังถึงเที่ยงคืน */
 export function DailyGameCard({ onSelect }: { onSelect: (m: MediaItem) => void }) {
-  const { daily, dailyPlayedToday, mediaLoaded, entitled } = useCompanion();
+  const { daily, dailyPlayedToday, mediaLoaded, entitled, refreshDaily } = useCompanion();
   const { openTrial } = useTrial();
+  // เปิดหน้าหลักทุกครั้งดึงเกมประจำวันล่าสุด (เช่น Dev เพิ่งตั้งจากหน้า Dev แล้วกดกลับมา)
+  useEffect(() => {
+    refreshDaily({ ifOlderThanMs: 3000 });
+  }, [refreshDaily]);
 
   if (!mediaLoaded) {
     return <div className="h-56 rounded-[2rem] bg-gray-200/70 dark:bg-gray-800/70 animate-pulse" />;
