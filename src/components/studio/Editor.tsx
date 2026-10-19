@@ -465,7 +465,8 @@ export function StudioEditor({ id }: { id: string }) {
     setSave('saving');
     const body: Record<string, unknown> = { title: cleanTitle(title) || 'สื่อไม่มีชื่อ', content: d, page_count: d.pages.length, is_public: isPublic };
     if (Date.now() - lastThumb.current > 15000 && thumbEl.current) {
-      const t = await makeThumb(thumbEl.current, d.size.w, d.size.h).catch(() => null);
+      // รูปปกค้างได้ (แท็บอยู่เบื้องหลัง/รูปโหลดไม่เสร็จ) ห้ามให้มันขวางการบันทึกงาน
+      const t = await Promise.race([makeThumb(thumbEl.current, d.size.w, d.size.h).catch(() => null), new Promise<null>((r) => setTimeout(() => r(null), 8000))]);
       if (t) {
         body.thumb = t;
         lastThumb.current = Date.now();
@@ -880,7 +881,7 @@ export function StudioEditor({ id }: { id: string }) {
           <span className="max-md:hidden">หน้าแรก</span>
         </Link>
         {!readOnly && (
-          <Pop title="ปรับขนาดสื่อ" width={330} className="st-topbtn max-sm:!hidden" button={<><Scaling className="w-4 h-4" /> ปรับขนาด</>}>
+          <Pop title="ปรับขนาดสื่อ" width={330} className="st-topbtn st-g st-g-sky max-sm:!hidden" button={<><Scaling className="w-4 h-4" /> ปรับขนาด</>}>
             {(close) => <SizePicker ctl={ctl} onDone={close} />}
           </Pop>
         )}
@@ -909,17 +910,17 @@ export function StudioEditor({ id }: { id: string }) {
           )}
         </div>
         {!readOnly && (
-          <button type="button" className="st-topbtn st-pub" data-on={isPublic} onClick={() => setIsPublic(!isPublic)} title={isPublic ? 'Public: สมาชิกคนอื่นเห็นใน Discover แตะเพื่อเปลี่ยนเป็น Private' : 'Private: เห็นเฉพาะคุณ แตะเพื่อเปลี่ยนเป็น Public'}>
+          <button type="button" className={`st-topbtn st-g ${isPublic ? 'st-g-mint' : 'st-g-slate'}`} data-on={isPublic} onClick={() => setIsPublic(!isPublic)} title={isPublic ? 'Public: สมาชิกคนอื่นเห็นใน Discover แตะเพื่อเปลี่ยนเป็น Private' : 'Private: เห็นเฉพาะคุณ แตะเพื่อเปลี่ยนเป็น Public'}>
             {isPublic ? <Globe className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
             <span className="max-md:hidden">{isPublic ? 'Public' : 'Private'}</span>
           </button>
         )}
         {readOnly && (
-          <button type="button" className="st-topbtn" onClick={copyMine} disabled={copying || tier === 'guest'}>
+          <button type="button" className="st-topbtn st-g st-g-sky" onClick={copyMine} disabled={copying || tier === 'guest'}>
             {copying ? <Loader2 className="w-4 h-4 animate-spin" /> : <Copy className="w-4 h-4" />} <span className="max-sm:hidden">ทำสำเนาไปแก้</span>
           </button>
         )}
-        <button type="button" className="st-topbtn st-present" onClick={() => (finishEdit(), setSelId(null), setPresent(ap))} title="นำเสนอเต็มจอ">
+        <button type="button" className="st-topbtn st-g st-g-grape" onClick={() => (finishEdit(), setSelId(null), setPresent(ap))} title="นำเสนอเต็มจอ">
           <MonitorPlay className="w-4 h-4" /> <span className="max-sm:hidden">นำเสนอ</span>
         </button>
         <ExportMenu pages={doc.pages.length} busy={!!exporting} label={exportLabel} onPick={runExport} />
@@ -1186,7 +1187,7 @@ function ExportMenu({ pages, busy, label, onPick }: { pages: number; busy: boole
   };
   return (
     <div className="relative" ref={ref}>
-      <button type="button" className="st-topbtn st-dl" onClick={() => setOpen(!open)} disabled={busy} aria-expanded={open}>
+      <button type="button" className="st-topbtn st-g st-g-sun" onClick={() => setOpen(!open)} disabled={busy} aria-expanded={open}>
         {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
         <span className="max-sm:hidden">{busy ? label : 'ดาวน์โหลด'}</span>
       </button>

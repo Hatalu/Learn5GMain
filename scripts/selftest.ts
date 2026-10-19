@@ -74,6 +74,10 @@ import {
   formatsOf,
   isMissingTable,
   normalizeDocument,
+  DOC_MAX_BYTES,
+  DOC_MAX_PARTS,
+  DOC_PART_BYTES,
+  partPaths,
   previewPathFor,
   safeFileName,
   storagePathFor,
@@ -1078,6 +1082,19 @@ t('สร้างสื่อ: ตัวละครแต่งเอง ก�
   for (const p of CHAR_PRESETS) assert.deepEqual(cleanLook(JSON.parse(JSON.stringify(p.look))), p.look, p.id);
   const it = sanitizeDesign({ pages: [{ items: [{ type: 'char', look: { hairColor: '#123456' } }] }] }).pages[0].items[0];
   assert.ok(it.type === 'char' && it.look.hairColor === '#123456');
+});
+
+t('เอกสารไฟล์ใหญ่: แบ่งชิ้นต่ำกว่าเพดาน 50MB ของ Storage และพาธทุกชิ้นถูกต้อง', () => {
+  assert.ok(DOC_PART_BYTES < 50 * 1024 * 1024);
+  assert.deepEqual(partPaths({ path: 'd/f1.pdf', parts: 1 }), ['d/f1.pdf']);
+  assert.deepEqual(partPaths({ path: 'd/f1.pdf', parts: 3 }), ['d/f1.pdf.1', 'd/f1.pdf.2', 'd/f1.pdf.3']);
+  assert.equal(Math.ceil(DOC_MAX_BYTES / DOC_PART_BYTES), DOC_MAX_PARTS);
+  const row = (parts: unknown) => normalizeDocument({ id: 'x', files: [{ id: 'f', kind: 'pdf', name: 'a.pdf', path: 'x/f.pdf', parts }] }).files[0].parts;
+  assert.equal(row(undefined), 1);
+  assert.equal(row(2), 2);
+  assert.equal(row(-5), 1);
+  assert.equal(row(9999), DOC_MAX_PARTS);
+  assert.equal(row('abc'), 1);
 });
 
 console.log(`\n${passed} tests passed`);

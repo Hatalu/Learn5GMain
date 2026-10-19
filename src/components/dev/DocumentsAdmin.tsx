@@ -7,7 +7,7 @@ import { useToast } from '@/components/ui/Toast';
 import { FileBadge, PaperStackIcon } from '@/components/docs/DocIcons';
 import { DocumentViewerModal } from '@/components/docs/DocumentViewerModal';
 import { cn } from '@/lib/utils/cn';
-import { DOC_BUCKET, DocumentItem, PREVIEW_BUCKET, formatsOf, isMissingTable, normalizeDocument, previewUrl } from '@/lib/documents';
+import { DOC_BUCKET, DocumentItem, PREVIEW_BUCKET, formatsOf, isMissingTable, normalizeDocument, partPaths, previewUrl } from '@/lib/documents';
 
 interface Props {
   /** เปลี่ยนค่าเมื่อมีการเพิ่ม/แก้ไขจากหน้าต่างฟอร์ม ให้โหลดรายการใหม่ */
@@ -67,17 +67,15 @@ export function DocumentsAdmin({ refreshKey, onAdd, onEdit, onCount }: Props) {
       return error(err.message);
     }
     // ลบไฟล์ต้นฉบับและหน้าตัวอย่างทั้งหมดของชุดนี้
-    const originals = d.files.map((f) => f.path);
+    const originals = d.files.flatMap(partPaths);
     const previews = d.files.flatMap((f) => f.preview);
     if (originals.length) await supabase.storage.from(DOC_BUCKET).remove(originals);
     if (previews.length) await supabase.storage.from(PREVIEW_BUCKET).remove(previews);
     setBusyId(null);
     setDeleting(null);
-    setDocs((prev) => {
-      const next = prev.filter((x) => x.id !== d.id);
-      onCount?.(next.length);
-      return next;
-    });
+    const next = docs.filter((x) => x.id !== d.id);
+    setDocs(next);
+    onCount?.(next.length);
     success(`ลบ "${d.title}" แล้ว`);
   };
 

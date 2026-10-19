@@ -4,7 +4,7 @@ import { getAdminClient } from '@/lib/supabase/admin';
 import { hasMembership } from '@/lib/membership';
 import { TRIAL_PREFIX } from '@/lib/server/trial-account';
 import { clientIp, isSameOrigin, limit } from '@/lib/server/rate-limit';
-import { DOC_BUCKET, DownloadFormat, filesForFormat, normalizeDocument, safeFileName, uniqueNames } from '@/lib/documents';
+import { DOC_BUCKET, DownloadFormat, filesForFormat, normalizeDocument, partPaths, safeFileName, uniqueNames } from '@/lib/documents';
 
 export const dynamic = 'force-dynamic';
 
@@ -63,11 +63,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (!files.length) return NextResponse.json({ error: 'เอกสารนี้ไม่มีไฟล์รูปแบบที่เลือก' }, { status: 400 });
 
     const names = uniqueNames(files.map((f) => f.name));
-    const out: { name: string; url: string; size: number }[] = [];
+    // ไฟล์ใหญ่เก็บเป็นหลายชิ้น เบราว์เซอร์โหลดทุกชิ้นแล้วต่อกันเอง
+    const out: { name: string; urls: string[]; size: number }[] = [];
     for (let i = 0; i < files.length; i++) {
-      const { data, error } = await admin.storage.from(DOC_BUCKET).createSignedUrl(files[i].path, LINK_SECONDS);
-      if (error || !data?.signedUrl) throw error || new Error('sign');
-      out.push({ name: names[i], url: data.signedUrl, size: files[i].size });
+      const { data, error } = await admin.storage.from(DOC_BUCKET).createSignedUrls(partPaths(files[i]), LINK_SECONDS);
+      const urls = (data || []).map((d) => d.signedUrl || '');
+      if (error || !urls.length || urls.some((u) => !u)) throw error || new Error('sign');
+      out.push({ name: names[i], urls, size: files[i].size });
     }
 
     await admin.rpc('increment_document_count', { p_id: id, p_download: true });

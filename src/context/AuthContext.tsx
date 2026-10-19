@@ -76,11 +76,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for auth state changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
         setUser(session.user);
-        const p = await fetchProfile(session.user.id);
-        if (p) setProfile(p);
+        // ห้าม await คำสั่ง Supabase ในตัวรับนี้ (มันทำงานในล็อกของ auth = ค้างทั้งเว็บตอนต่ออายุ token) เลื่อนไปทำหลังปล่อยล็อก
+        const id = session.user.id;
+        setTimeout(() => {
+          if (mounted) fetchProfile(id).then((p) => mounted && p && setProfile(p));
+        }, 0);
       } else {
         setUser(null);
         setProfile(null);

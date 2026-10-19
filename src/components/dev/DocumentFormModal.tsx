@@ -13,6 +13,7 @@ import {
   ALL_DOC_TYPES,
   DOC_BUCKET,
   DOC_MAX_BYTES,
+  DOC_PART_BYTES,
   DocFile,
   DocFileKind,
   DocType,
@@ -25,6 +26,7 @@ import {
   isMissingTable,
   mimeOf,
   newFileId,
+  partPaths,
   previewPathFor,
   storagePathFor,
 } from '@/lib/documents';
@@ -38,6 +40,56 @@ interface Props {
 }
 
 type Step = { label: string; done: number; total: number };
+
+/** ไม่มีข้อมูลขยับเลยนานเท่านี้ = เน็ตหลุด ยกเลิกแล้วแจ้ง (แทนการค้างเงียบ) */
+const STALL_MS = 60_000;
+
+/**
+ * อัปโหลดเข้า Storage ด้วย XHR เพื่อให้เห็น % จริงของไฟล์ใหญ่ (supabase-js ไม่บอกความคืบหน้า)
+ * ใช้ token ของ Dev ที่ล็อกอินอยู่ สิทธิ์ยังถูกตรวจด้วย RLS ของ storage ตามเดิม
+ */
+async function putObject(bucket: string, path: string, body: Blob, contentType: string, onProgress?: (frac: number) => void) {
+  const { data } = await createClient().auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new Error('หมดเวลาเข้าสู่ระบบ ล็อกอินใหม่แล้วลองอีกครั้ง');
+  const base = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').replace(/\/$/, '');
+  const url = `${base}/storage/v1/object/${bucket}/${path.split('/').map(encodeURIComponent).join('/')}`;
+  await new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    let timer = 0;
+    const arm = () => {
+      clearTimeout(timer);
+      timer = window.setTimeout(() => xhr.abort(), STALL_MS);
+    };
+    xhr.open('POST', url);
+    xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    xhr.setRequestHeader('apikey', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '');
+    xhr.setRequestHeader('Content-Type', contentType);
+    xhr.setRequestHeader('x-upsert', 'true');
+    xhr.upload.onprogress = (e) => {
+      arm();
+      if (e.lengthComputable) onProgress?.(e.loaded / e.total);
+    };
+    xhr.onload = () => {
+      clearTimeout(timer);
+      if (xhr.status >= 200 && xhr.status < 300) return resolve();
+      let msg = `HTTP ${xhr.status}`;
+      try {
+        msg = JSON.parse(xhr.responseText).message || msg;
+      } catch {
+        /* ใช้รหัสสถานะ */
+      }
+      reject(new Error(msg));
+    };
+    xhr.onerror = () => {
+      clearTimeout(timer);
+      reject(new Error('เชื่อมต่อไม่ได้ ตรวจอินเทอร์เน็ตแล้วลองใหม่'));
+    };
+    xhr.onabort = () => reject(new Error('อินเทอร์เน็ตช้าหรือหลุดระหว่างอัปโหลด ลองใหม่อีกครั้ง'));
+    arm();
+    xhr.send(body);
+  });
+}
 
 export function DocumentFormModal({ isOpen, editing, onClose, onSuccess }: Props) {
   if (!isOpen) return null;
@@ -130,20 +182,30 @@ function Form({ editing, onClose, onSuccess }: Omit<Props, 'isOpen'>) {
         const kind = fileKindOf(file.name) as DocFileKind;
         const id = newFileId();
         const path = storagePathFor(docId, id, file.name);
-        setStep({ label: `อัปโหลด ${file.name}`, done: i, total: queue.length });
-        const { error: upErr } = await supabase.storage.from(DOC_BUCKET).upload(path, file, { contentType: mimeOf(file.name), upsert: false });
-        if (upErr) throw new Error(`อัปโหลด ${file.name} ไม่สำเร็จ: ${upErr.message}`);
-        upOriginals.push(path);
+        // ไฟล์ใหญ่เกินเพดานต่อชิ้นของ Storage แบ่งเป็นหลายชิ้น (ต่อกลับตอนดาวน์โหลด)
+        const parts = Math.max(1, Math.ceil(file.size / DOC_PART_BYTES));
+        const paths = partPaths({ path, parts });
+        for (let k = 0; k < parts; k++) {
+          const chunk = parts > 1 ? file.slice(k * DOC_PART_BYTES, (k + 1) * DOC_PART_BYTES) : file;
+          upOriginals.push(paths[k]);
+          await putObject(DOC_BUCKET, paths[k], chunk, mimeOf(file.name), (frac) => {
+            const sent = (k + frac) / parts;
+            setStep({ label: `อัปโหลด ${file.name} ${Math.round(sent * 100)}%`, done: i + sent * 0.5, total: queue.length });
+          }).catch((err: Error) => {
+            throw new Error(`อัปโหลด ${file.name} ไม่สำเร็จ: ${err.message}`);
+          });
+        }
 
         const preview: string[] = [];
         let pages = 0;
         const onPage = async (blob: Blob, idx: number, total: number) => {
-          setStep({ label: `ทำหน้าตัวอย่าง + ลายน้ำ ${file.name} (${idx + 1}/${total})`, done: i + (idx + 1) / (total + 1), total: queue.length });
+          setStep({ label: `ทำหน้าตัวอย่าง + ลายน้ำ ${file.name} (${idx + 1}/${total})`, done: i + 0.5 + (0.5 * (idx + 1)) / total, total: queue.length });
           const p = previewPathFor(docId, id, idx + 1);
-          const { error: pErr } = await supabase.storage.from(PREVIEW_BUCKET).upload(p, blob, { contentType: 'image/webp', upsert: true });
-          if (pErr) throw new Error(`อัปโหลดหน้าตัวอย่างไม่สำเร็จ: ${pErr.message}`);
-          preview.push(p);
           upPreviews.push(p);
+          await putObject(PREVIEW_BUCKET, p, blob, blob.type || 'image/webp').catch((err: Error) => {
+            throw new Error(`อัปโหลดหน้าตัวอย่างไม่สำเร็จ: ${err.message}`);
+          });
+          preview.push(p);
         };
         try {
           if (kind === 'pdf') pages = await renderPdfPreviews(file, onPage);
@@ -152,7 +214,7 @@ function Form({ editing, onClose, onSuccess }: Omit<Props, 'isOpen'>) {
           if (err instanceof Error && err.message.startsWith('อัปโหลดหน้าตัวอย่าง')) throw err;
           warn.push(file.name);
         }
-        created.push({ id, kind, name: file.name, size: file.size, path, pages, preview });
+        created.push({ id, kind, name: file.name, size: file.size, path, parts, pages, preview });
       }
 
       const files = [...keep, ...created];
@@ -184,7 +246,7 @@ function Form({ editing, onClose, onSuccess }: Omit<Props, 'isOpen'>) {
       if (editing) {
         const removed = editing.files.filter((f) => !keep.some((k) => k.id === f.id && k.path === f.path));
         if (removed.length) {
-          await supabase.storage.from(DOC_BUCKET).remove(removed.map((f) => f.path));
+          await supabase.storage.from(DOC_BUCKET).remove(removed.flatMap(partPaths));
           const pv = removed.flatMap((f) => f.preview);
           if (pv.length) await supabase.storage.from(PREVIEW_BUCKET).remove(pv);
         }

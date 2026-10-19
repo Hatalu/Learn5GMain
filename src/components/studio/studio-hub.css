@@ -228,3 +228,18 @@
 .dark .l5g-world .l5g-sec-note {
   color: rgba(236, 232, 255, 0.82);
 }
+/* โหมดมืด: พื้นการ์ด/ปกที่เป็นสีอ่อนคงที่ */
+.dark .sh-chip {
+  background: linear-gradient(135deg, #3b1d4a, #2a2357);
+  color: #ede9fe;
+}
+.dark .sh-size[data-main='true'] {
+  background: linear-gradient(160deg, #1d1f45, #2a1f55);
+}
+.dark .sh-cover {
+  background: linear-gradient(160deg, #221d4a, #142640);
+}
+.dark .sh-empty-ic {
+  background: #2a2357;
+  color: #c4b5fd;
+}

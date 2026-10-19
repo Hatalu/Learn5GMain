@@ -39,14 +39,20 @@ export function useDocDownload() {
         setState({ phase: 'error', message: data?.error || 'ดาวน์โหลดไม่สำเร็จ', need: data?.need });
         return false;
       }
-      const files: { name: string; url: string }[] = data.files || [];
-      // โหลดเป็น blob แล้วบันทึกด้วยชื่อจริง (ภาษาไทยไม่เพี้ยน) หลายไฟล์รวมเป็น .zip
+      const files: { name: string; urls: string[] }[] = data.files || [];
+      // โหลดเป็น blob แล้วบันทึกด้วยชื่อจริง (ภาษาไทยไม่เพี้ยน) ไฟล์ใหญ่ต่อชิ้นกลับเป็นไฟล์เดียว หลายไฟล์รวมเป็น .zip
+      const total = files.reduce((n, f) => n + f.urls.length, 0);
       const blobs: Blob[] = [];
-      for (let i = 0; i < files.length; i++) {
-        setState({ phase: 'fetching', done: i, total: files.length });
-        const r = await fetch(files[i].url);
-        if (!r.ok) throw new Error('fetch');
-        blobs.push(await r.blob());
+      let done = 0;
+      for (const f of files) {
+        const parts: Blob[] = [];
+        for (const url of f.urls) {
+          setState({ phase: 'fetching', done: done++, total });
+          const r = await fetch(url);
+          if (!r.ok) throw new Error('fetch');
+          parts.push(await r.blob());
+        }
+        blobs.push(parts.length === 1 ? parts[0] : new Blob(parts, { type: parts[0].type }));
       }
       if (files.length === 1) {
         saveBlob(blobs[0], files[0].name);

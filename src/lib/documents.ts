@@ -13,8 +13,11 @@ export type DownloadFormat = 'pdf' | 'word' | 'both';
 
 export const DOC_BUCKET = 'documents';
 export const PREVIEW_BUCKET = 'doc-previews';
-/** เพดานขนาดต่อไฟล์ (ตรงกับ file_size_limit ของ bucket) */
-export const DOC_MAX_BYTES = 50 * 1024 * 1024;
+/** เพดานขนาดต่อไฟล์ (ไฟล์ใหญ่กว่า DOC_PART_BYTES เก็บเป็นหลายชิ้นแล้วต่อกลับตอนดาวน์โหลด) */
+export const DOC_MAX_BYTES = 200 * 1024 * 1024;
+/** ขนาดต่อชิ้นใน storage (ต้องต่ำกว่า file_size_limit 50MB ของ bucket และเพดานรวมของ Supabase แผนฟรี) */
+export const DOC_PART_BYTES = 45 * 1024 * 1024;
+export const DOC_MAX_PARTS = Math.ceil(DOC_MAX_BYTES / DOC_PART_BYTES);
 /** ทำรูปตัวอย่างไม่เกินกี่หน้าต่อไฟล์ (กันไฟล์ใหญ่มากกินพื้นที่) */
 export const PREVIEW_MAX_PAGES = 120;
 
@@ -25,8 +28,10 @@ export interface DocFile {
   /** ชื่อไฟล์เดิมตอนอัปโหลด (ใช้เป็นชื่อตอนดาวน์โหลด) */
   name: string;
   size: number;
-  /** พาธใน bucket documents */
+  /** พาธใน bucket documents (ถ้า parts > 1 ไฟล์จริงอยู่ที่ path.1 ... path.N) */
   path: string;
+  /** จำนวนชิ้นใน storage (1 = เก็บทั้งไฟล์ที่ path) */
+  parts: number;
   /** จำนวนหน้าของไฟล์ (0 = ไม่ทราบ) */
   pages: number;
   /** พาธรูปตัวอย่างแต่ละหน้าใน bucket doc-previews (ว่าง = ไม่มีตัวอย่าง) */
@@ -88,6 +93,11 @@ export function newFileId(): string {
   const a = new Uint8Array(6);
   globalThis.crypto.getRandomValues(a);
   return 'f' + Array.from(a, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+/** พาธทุกชิ้นของไฟล์ใน bucket documents เรียงตามลำดับ */
+export function partPaths(f: Pick<DocFile, 'path' | 'parts'>): string[] {
+  return f.parts > 1 ? Array.from({ length: f.parts }, (_, i) => `${f.path}.${i + 1}`) : [f.path];
 }
 
 export function previewPathFor(docId: string, fileId: string, page: number): string {
@@ -171,6 +181,7 @@ export function normalizeDocument(row: Record<string, unknown>): DocumentItem {
         name: String(f.name || 'file'),
         size: Number(f.size) || 0,
         path: String(f.path),
+        parts: Math.min(DOC_MAX_PARTS, Math.max(1, Math.floor(Number(f.parts)) || 1)),
         pages: Number(f.pages) || 0,
         preview: Array.isArray(f.preview) ? (f.preview as unknown[]).map(String) : [],
       })),

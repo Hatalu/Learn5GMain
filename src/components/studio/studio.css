@@ -1,4 +1,4 @@
-/* ระบบสร้างสื่อการสอน (Studio) — หน้าตาแนว Canva: แถบบนไล่สีม่วง-ฟ้า แถบเครื่องมือขาว พื้นที่ทำงานเทาอ่อน หน้ากระดาษเรียงต่อกัน คลาสขึ้นต้น st- */
+/* ระบบสร้างสื่อการสอน (Studio) — โครงแบบ Canva (หน้ากระดาษเรียงต่อกัน) ใต้แถบนำทางของเว็บ ปุ่มเยลลี่ไล่สีแบบทั้งเว็บ รองรับสว่าง/มืด คลาสขึ้นต้น st- */
 .st-shell,
 .st-pop,
 .cb-back,
@@ -11,14 +11,43 @@
   --st-acc: #8b3dff;
   --st-acc-soft: #f1e9ff;
   --st-muted: #5c6370;
+  --st-card: #ffffff;
+  --st-tint: #faf7ff;
+  --st-acc-line: #ddd6fe;
+  --st-acc-ink: #6d28d9;
 }
-.st-shell {
-  position: fixed;
-  inset: 0;
-  z-index: 40;
+/* โหมดมืดตามปุ่มสว่าง/มืดของเว็บ (หน้ากระดาษยังขาวเหมือนพิมพ์จริง) */
+html.dark .st-shell,
+html.dark .st-pop,
+html.dark .cb-back,
+html.dark .st-menu {
+  --st-ink: #e8eaf6;
+  --st-bg: #0b0f1e;
+  --st-panel: #121731;
+  --st-line: #262d4d;
+  --st-soft: #1a2040;
+  --st-acc: #a78bfa;
+  --st-acc-soft: rgba(139, 92, 246, 0.2);
+  --st-muted: #9aa3c0;
+  --st-card: #161c38;
+  --st-tint: #1d2347;
+  --st-acc-line: #5b45a8;
+  --st-acc-ink: #c4b5fd;
+  color-scheme: dark;
+}
+/* หน้าแก้สื่อ: แถบนำทางของเว็บด้านบน + พื้นที่สร้างสื่อเต็มที่เหลือ (ไม่เลื่อนทั้งหน้า) */
+.st-page {
   display: flex;
   flex-direction: column;
   height: 100dvh;
+  overflow: hidden;
+}
+.st-shell {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   background: var(--st-bg);
   color: var(--st-ink);
   font-family: var(--font-noto-sans-thai), sans-serif;
@@ -43,78 +72,159 @@
   font-size: 20px;
 }
 
-/* ---------------- แถบบน ---------------- */
+/* ---------------- แถบเครื่องมือบน (ปุ่มเยลลี่ไล่สีแบบแถบนำทางของเว็บ) ---------------- */
 .st-top {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   padding: 8px 12px;
-  min-height: 56px;
-  color: #fff;
-  background: linear-gradient(90deg, #00c4cc 0%, #6f4cf6 55%, #8b3dff 100%);
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.08);
+  min-height: 58px;
+  background: linear-gradient(90deg, #e0f2fe 0%, #ede9fe 50%, #fce7f3 100%);
+  border-bottom: 2px solid #e0e7ff;
   z-index: 6;
+}
+html.dark .st-top {
+  background: linear-gradient(90deg, #0c1a33 0%, #1b1442 50%, #2a1033 100%);
+  border-bottom-color: #1e1b4b;
 }
 .st-topbtn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  height: 38px;
+  height: 40px;
   padding: 0 12px;
-  border-radius: 10px;
+  border-radius: 16px;
   font-size: 14px;
   font-weight: 700;
-  color: #fff;
+  color: #3730a3;
+  background: #fff;
+  border: 2px solid #c7d2fe;
+  box-shadow: 0 3px 0 0 rgba(99, 102, 241, 0.3);
   white-space: nowrap;
   flex-shrink: 0;
-  transition: background 0.15s;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s, filter 0.2s;
+}
+html.dark .st-topbtn:not(.st-g) {
+  color: #c7d2fe;
+  background: #1a1f45;
+  border-color: #3730a3;
+  box-shadow: 0 3px 0 0 rgba(0, 0, 0, 0.45);
 }
 .st-topbtn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.18);
+  transform: scale(1.04, 0.97);
+  filter: brightness(1.05);
+}
+.st-topbtn:active:not(:disabled) {
+  transform: scale(0.94, 1.05) translateY(2px);
+  box-shadow: 0 1px 0 0 rgba(49, 46, 129, 0.4);
 }
 .st-topbtn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
-.st-topbtn[data-on='true'] {
-  background: rgba(255, 255, 255, 0.22);
+.st-topbtn:focus-visible {
+  outline: 3px solid #a5b4fc;
+  outline-offset: 2px;
+}
+/* ปุ่มไล่สี: ไอคอนอยู่ในวงขาวโปร่งแบบปุ่มบนแถบนำทาง */
+.st-g {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.45);
+  padding-left: 5px;
+}
+html.dark .st-g {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+.st-g > svg:first-child {
+  box-sizing: content-box;
+  padding: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.25);
+}
+.st-g-sky {
+  background: linear-gradient(90deg, #0ea5e9, #4f46e5);
+  box-shadow: 0 3px 0 0 rgba(49, 46, 129, 0.5);
+}
+.st-g-grape {
+  background: linear-gradient(90deg, #7c3aed, #d946ef, #ec4899);
+  box-shadow: 0 3px 0 0 rgba(126, 34, 206, 0.5);
+}
+.st-g-mint {
+  background: linear-gradient(90deg, #10b981, #14b8a6, #0ea5e9);
+  box-shadow: 0 3px 0 0 rgba(13, 148, 136, 0.5);
+}
+.st-g-sun {
+  color: #1e1b4b;
+  background: linear-gradient(90deg, #fbbf24, #fb923c);
+  box-shadow: 0 3px 0 0 rgba(194, 65, 12, 0.45);
+}
+html.dark .st-g-sun {
+  color: #1e1b4b;
+}
+.st-g-sun > svg:first-child {
+  background: rgba(255, 255, 255, 0.45);
+}
+.st-g-slate {
+  background: linear-gradient(90deg, #475569, #1e293b);
+  box-shadow: 0 3px 0 0 rgba(0, 0, 0, 0.35);
 }
 .st-topicon {
-  padding: 0 8px;
+  width: 40px;
+  padding: 0;
 }
 .st-top-sep {
-  width: 1px;
-  height: 24px;
-  background: rgba(255, 255, 255, 0.35);
-  margin: 0 4px;
+  width: 2px;
+  height: 26px;
+  border-radius: 2px;
+  background: #c7d2fe;
+  margin: 0 2px;
+}
+html.dark .st-top-sep {
+  background: #312e81;
 }
 .st-title {
   width: 100%;
   max-width: 380px;
   text-align: center;
-  font-size: 15px;
-  font-weight: 700;
+  font-family: var(--font-mitr), sans-serif;
+  font-size: 16px;
+  font-weight: 500;
   padding: 7px 12px;
-  border-radius: 10px;
+  border-radius: 14px;
   border: 2px solid transparent;
   background: transparent;
-  color: #fff;
+  color: #1e1b4b;
+}
+html.dark .st-title {
+  color: #e0e7ff;
 }
 .st-title::placeholder {
-  color: rgba(255, 255, 255, 0.75);
+  color: #818cf8;
 }
 .st-title:hover {
-  border-color: rgba(255, 255, 255, 0.45);
+  border-color: #c7d2fe;
 }
 .st-title:focus {
   outline: none;
-  border-color: #fff;
-  background: rgba(255, 255, 255, 0.12);
+  border-color: #818cf8;
+  background: #fff;
+}
+html.dark .st-title:hover {
+  border-color: #3730a3;
+}
+html.dark .st-title:focus {
+  border-color: #6366f1;
+  background: #12163a;
 }
 .st-title-ro {
-  font-size: 15px;
-  font-weight: 700;
+  font-family: var(--font-mitr), sans-serif;
+  font-size: 16px;
+  color: #1e1b4b;
+}
+html.dark .st-title-ro {
+  color: #e0e7ff;
 }
 .st-save {
   display: inline-flex;
@@ -122,26 +232,16 @@
   gap: 4px;
   font-size: 12.5px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.92);
+  color: #4f46e5;
   white-space: nowrap;
   padding: 0 4px;
 }
+html.dark .st-save {
+  color: #a5b4fc;
+}
 .st-save[data-s='error'] {
-  color: #ffe1e5;
+  color: #e11d48;
   cursor: pointer;
-}
-.st-pub {
-  background: rgba(255, 255, 255, 0.16);
-}
-.st-present {
-  background: rgba(255, 255, 255, 0.16);
-}
-.st-dl {
-  background: #fff;
-  color: #5b21b6;
-}
-.st-dl:hover:not(:disabled) {
-  background: #f5f0ff;
 }
 
 /* ---------------- ปุ่มเครื่องมือทั่วไป ---------------- */
@@ -170,7 +270,23 @@
 }
 .st-tb[data-on='true'] {
   background: var(--st-acc-soft);
-  color: #6d28d9;
+  color: var(--st-acc-ink);
+}
+/* ปุ่มเปิดหน้าต่าง (Pop) ที่อยู่บนแถบบน ใช้หน้าตาปุ่มแถบบนแทนปุ่มเครื่องมือ */
+.st-top .st-tb.st-topbtn {
+  height: 40px;
+  min-width: 0;
+  padding: 0 12px 0 5px;
+  gap: 6px;
+  border-radius: 16px;
+  font-size: 14px;
+  font-weight: 700;
+}
+.st-top .st-tb.st-g,
+.st-top .st-tb.st-g:hover:not(:disabled),
+.st-top .st-tb.st-g[data-on='true'] {
+  color: #fff;
+  background: linear-gradient(90deg, #0ea5e9, #4f46e5);
 }
 .st-tb-sm {
   min-width: 30px;
@@ -227,7 +343,7 @@
   height: 34px;
   border-radius: 8px;
   border: 1.5px solid var(--st-line);
-  background: #fff;
+  background: var(--st-card);
   color: inherit;
   padding: 0 8px;
   font-size: 13px;
@@ -241,7 +357,7 @@
   border-radius: 8px;
   overflow: hidden;
   flex-shrink: 0;
-  background: #fff;
+  background: var(--st-card);
 }
 .st-stepper button {
   width: 26px;
@@ -278,7 +394,7 @@
 }
 .st-seg button[data-on='true'] {
   background: var(--st-acc-soft);
-  color: #6d28d9;
+  color: var(--st-acc-ink);
 }
 .st-dash {
   display: block;
@@ -328,7 +444,7 @@
   padding: 4px 10px;
   border-radius: 999px;
   background: var(--st-acc-soft);
-  color: #6d28d9;
+  color: var(--st-acc-ink);
   white-space: nowrap;
   flex-shrink: 0;
   margin-right: 4px;
@@ -349,7 +465,7 @@
   overflow-y: auto;
   padding: 12px;
   border-radius: 14px;
-  background: #fff;
+  background: var(--st-card);
   color: var(--st-ink);
   box-shadow: 0 0 0 1px rgba(64, 87, 109, 0.07), 0 6px 24px rgba(53, 71, 90, 0.22);
   animation: st-pop 0.14s ease-out;
@@ -494,7 +610,7 @@
   flex-direction: column;
   gap: 2px;
   padding: 8px 4px;
-  background: #fff;
+  background: var(--st-card);
   border-right: 1px solid var(--st-line);
   overflow-y: auto;
   z-index: 4;
@@ -543,7 +659,7 @@
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  background: #fff;
+  background: var(--st-card);
   border-right: 1px solid var(--st-line);
   animation: st-slide 0.18s ease-out;
   z-index: 3;
@@ -598,7 +714,7 @@
 }
 .st-search:focus-within {
   border-color: var(--st-acc);
-  background: #fff;
+  background: var(--st-card);
 }
 .st-search input {
   flex: 1;
@@ -635,7 +751,7 @@
   padding: 10px 12px;
   border-radius: 10px;
   border: 1.5px solid var(--st-line);
-  background: #fff;
+  background: var(--st-card);
   text-align: left;
   overflow: hidden;
   transition: border-color 0.15s, background 0.15s;
@@ -648,7 +764,7 @@
 .st-size:hover,
 .st-pat:hover {
   border-color: #b794f6;
-  background: #faf7ff;
+  background: var(--st-tint);
 }
 .st-cell {
   aspect-ratio: 1;
@@ -670,7 +786,7 @@
   height: 62px;
   border-radius: 10px;
   border: 1.5px solid var(--st-line);
-  background: #fff;
+  background: var(--st-card);
   overflow: hidden;
   display: grid;
   place-items: center;
@@ -707,8 +823,8 @@
   padding: 22px 12px;
   border-radius: 12px;
   border: 2px dashed #b794f6;
-  background: #faf7ff;
-  color: #6d28d9;
+  background: var(--st-tint);
+  color: var(--st-acc-ink);
   text-align: center;
 }
 .st-drop small {
@@ -721,7 +837,7 @@
   padding: 0 12px;
   border-radius: 10px;
   border: 1.5px solid var(--st-line);
-  background: #fff;
+  background: var(--st-card);
   color: inherit;
   font-size: 14px;
   min-width: 0;
@@ -745,7 +861,7 @@
   padding: 8px 6px;
   border-radius: 10px;
   border: 1.5px solid var(--st-line);
-  background: #fff;
+  background: var(--st-card);
   color: var(--st-ink);
   font-size: 11.5px;
   font-weight: 700;
@@ -765,11 +881,11 @@
   border: 1.5px solid var(--st-line);
   padding: 10px 12px;
   margin-top: 8px;
-  background: #fff;
+  background: var(--st-card);
 }
 .st-gen[open] {
   border-color: #c4b5fd;
-  background: #fcfaff;
+  background: var(--st-tint);
 }
 .st-gen summary {
   display: flex;
@@ -779,7 +895,7 @@
   font-size: 13.5px;
   cursor: pointer;
   list-style: none;
-  color: #5b21b6;
+  color: var(--st-acc-ink);
 }
 .st-gen summary::-webkit-details-marker {
   display: none;
@@ -798,10 +914,10 @@
   aspect-ratio: 1.3;
   border-radius: 4px;
   border: 1.5px solid var(--st-line);
-  background: #fff;
+  background: var(--st-card);
 }
 .st-tgrid button[data-on='true'] {
-  background: #ddd6fe;
+  background: var(--st-acc-line);
   border-color: var(--st-acc);
 }
 .st-num {
@@ -825,7 +941,7 @@
   display: block;
   aspect-ratio: 4 / 3;
   border-radius: 6px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--st-line);
 }
 .st-pat small {
   font-size: 11px;
@@ -834,7 +950,7 @@
 .st-pat[data-on='true'],
 .st-size[data-on='true'] {
   border-color: var(--st-acc);
-  box-shadow: 0 0 0 2px #ddd6fe;
+  box-shadow: 0 0 0 2px var(--st-acc-line);
 }
 .st-tpl {
   display: flex;
@@ -936,7 +1052,7 @@
   display: grid;
   place-items: center;
   border-radius: 6px;
-  background: #fff;
+  background: var(--st-card);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
 }
 
@@ -1047,13 +1163,13 @@
   border-radius: 10px;
   font-weight: 700;
   color: var(--st-ink);
-  background: #fff;
+  background: var(--st-card);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
   transition: background 0.15s;
 }
 .st-addpage-big:hover:not(:disabled) {
-  background: #f8f5ff;
-  color: #6d28d9;
+  background: var(--st-tint);
+  color: var(--st-acc-ink);
 }
 
 /* กรอบเลือก + จุดจับ แบบ Canva */
@@ -1126,7 +1242,7 @@
   gap: 2px;
   padding: 4px;
   border-radius: 10px;
-  background: #fff;
+  background: var(--st-card);
   box-shadow: 0 0 0 1px rgba(64, 87, 109, 0.07), 0 4px 16px rgba(53, 71, 90, 0.25);
   white-space: nowrap;
 }
@@ -1149,7 +1265,7 @@
   gap: 8px;
   height: 46px;
   padding: 0 14px;
-  background: #fff;
+  background: var(--st-card);
   border-top: 1px solid var(--st-line);
   flex-shrink: 0;
 }
@@ -1217,7 +1333,7 @@
   width: 260px;
   padding: 6px;
   border-radius: 12px;
-  background: #fff;
+  background: var(--st-card);
   color: var(--st-ink);
   box-shadow: 0 0 0 1px rgba(64, 87, 109, 0.07), 0 8px 28px rgba(53, 71, 90, 0.25);
   animation: st-pop 0.14s ease-out;
@@ -1254,7 +1370,7 @@
   height: min(720px, 100%);
   display: flex;
   flex-direction: column;
-  background: #fff;
+  background: var(--st-card);
   border-radius: 18px;
   overflow: hidden;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
@@ -1320,7 +1436,7 @@
   white-space: nowrap;
 }
 .cb-tabs button[data-on='true'] {
-  color: #6d28d9;
+  color: var(--st-acc-ink);
   border-bottom-color: var(--st-acc);
 }
 .cb-body {
@@ -1347,7 +1463,7 @@
   padding: 6px 4px;
   border-radius: 12px;
   border: 1.5px solid var(--st-line);
-  background: #fff;
+  background: var(--st-card);
   font-weight: 700;
   transition: border-color 0.15s, background 0.15s, transform 0.15s;
 }
@@ -1357,7 +1473,7 @@
 }
 .cb-opt:hover {
   border-color: #b794f6;
-  background: #faf7ff;
+  background: var(--st-tint);
 }
 .cb-opt:active {
   transform: scale(0.96);
@@ -1365,7 +1481,7 @@
 .cb-opt[data-on='true'] {
   border-color: var(--st-acc);
   background: var(--st-acc-soft);
-  box-shadow: 0 0 0 2px #ddd6fe;
+  box-shadow: 0 0 0 2px var(--st-acc-line);
 }
 .cb-row {
   display: flex;
@@ -1422,7 +1538,7 @@
   border-radius: 10px;
   font-size: 13.5px;
   font-weight: 700;
-  background: #fff;
+  background: var(--st-card);
   border: 1.5px solid var(--st-line);
   white-space: nowrap;
 }
