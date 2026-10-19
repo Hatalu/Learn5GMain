@@ -9,7 +9,7 @@ import { ThemeToggle } from './ThemeToggle';
 import { SoundToggle } from './SoundToggle';
 import { useCompanionOptional } from '@/components/companion/CompanionProvider';
 import { UserMenu } from './UserMenu';
-import { ShieldCheck, Home, LogIn, UserX, Sparkles, Lock, Crown, Wand2 } from 'lucide-react';
+import { ShieldCheck, Home, LogIn, UserX, Sparkles, Lock, Crown, Wand2, Palette } from 'lucide-react';
 import { FacebookIcon } from '@/components/icons/FacebookIcon';
 import { cn } from '@/lib/utils/cn';
 import fx from '@/components/ui/fancy.module.css';
@@ -149,6 +149,22 @@ export function Navbar() {
                 <Wand2 className="w-4 h-4" />
               </span>
               <span className="hidden xl:inline [text-shadow:0_1px_1px_rgba(0,0,0,0.25)]">สร้างเกม</span>
+            </Link>
+          )}
+
+          {/* ระบบสร้างสื่อการสอน (ใบงาน ใบความรู้ ป้าย โหลดเป็นรูป/PDF) จอเล็กกว่า 440px ที่มีปุ่มสมัครสมาชิกด้วยจะล้น: ซ่อน ใช้เมนูผู้ใช้แทน */}
+          {!isDevPage && !pathname.startsWith('/studio') && (
+            <Link
+              href="/studio"
+              data-tour="nav-studio"
+              className={cn(fx.shine, !user ? 'hidden sm:inline-flex' : showJoin ? 'max-[439px]:hidden inline-flex' : 'inline-flex', 'btn-jelly items-center gap-2 pl-1.5 pr-1.5 xl:pr-3 py-1.5 text-sm font-bold rounded-2xl text-white bg-gradient-to-r from-rose-500 via-pink-500 to-orange-400 border-2 border-white/40 dark:border-white/15 shadow-[0_3px_0_0_rgba(190,24,93,0.5)] whitespace-nowrap')}
+              title="ระบบสร้างสื่อการสอน"
+              aria-label="ระบบสร้างสื่อการสอน"
+            >
+              <span className="w-7 h-7 rounded-xl bg-white/95 flex items-center justify-center shrink-0 text-pink-600">
+                <Palette className="w-4 h-4" />
+              </span>
+              <span className="hidden xl:inline [text-shadow:0_1px_1px_rgba(0,0,0,0.25)]">สร้างสื่อ</span>
             </Link>
           )}
 

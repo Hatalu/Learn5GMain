@@ -59,6 +59,15 @@ import { ALL_MEDIA_TYPES, ALL_SUBJECTS, GAME_FILTER_TYPES } from '../src/types/d
 import { CHAPTERS, STEPS } from '../src/components/tour/steps';
 import { isVideoMedia, youTubeEmbedUrl, youTubeId, youTubeStart } from '../src/lib/youtube';
 import { mediaSchema } from '../src/lib/validations/media';
+import { FREE_DESIGN_LIMIT } from '../src/lib/game-creator/quota';
+import { blankDesign, cleanSrc, designMediaPaths, MAX_PAGES, sanitizeDesign, SIZES } from '../src/lib/studio/doc';
+import { buildPdf, jpegSize } from '../src/lib/studio/pdf';
+import { answerSheet, cellsOf, timesTable, wordSearch } from '../src/lib/studio/gen';
+import { ACCS, CHAR_PRESETS, POSES, cleanLook, toggleAcc } from '../src/lib/studio/char';
+import { clampEdu, EDU_KINDS, makeEdu } from '../src/lib/studio/doc';
+import { mediaPrefix } from '../src/lib/game-creator/prefix';
+import { TEMPLATES } from '../src/components/studio/templates';
+import { STICKERS } from '../src/components/studio/stickers';
 import {
   fileKindOf,
   filesForFormat,
@@ -857,7 +866,7 @@ t('ทัวร์แนะนำเว็บ: ลำดับหน้า ภ�
   const ids = STEPS.map((x) => x.id);
   assert.equal(new Set(ids).size, ids.length);
   // ลำดับหน้า: หน้าหลัก > สร้างเกม > สมาชิก (ไม่ย้อนไปมา)
-  const order = ['/home', '/create', '/membership'];
+  const order = ['/home', '/create', '/studio', '/membership'];
   const seq = STEPS.map((x) => order.indexOf(x.path));
   assert.ok(seq.every((v) => v >= 0));
   assert.ok(seq.every((v, i) => i === 0 || v >= seq[i - 1]));
@@ -909,6 +918,166 @@ t('วิดีโอ: อ่านลิงก์ YouTube ทุกแบบ �
   assert.equal(bad.error?.issues[0].path[0], 'game_url');
   // ประเภทเกมยังใช้ลิงก์เว็บไซต์ได้ตามเดิม
   assert.ok(mediaSchema.safeParse({ ...base, media_type: 'เกม', game_url: 'https://hatalu.github.io/Learn5G/game/' }).success);
+});
+
+t('สร้างสื่อ: ตัวกรองข้อมูลกันสคริปต์/สไตล์แปลกปลอม และรูปจากเว็บอื่น', () => {
+  const evil = {
+    v: 1,
+    size: { id: 'a4p', w: 99999, h: -5 },
+    pages: [
+      {
+        id: 'x" onload="1',
+        bg: { color: 'red;background:url(https://evil.example/t.png)', pattern: 'hack', pcolor: 'expression(alert(1))', color2: '#ff00ff' },
+        border: { style: 'line', color: '#12345', w: 999 },
+        items: [
+          { type: 'text', text: '<img src=x onerror=alert(1)>', font: 'comic', size: 1e9, color: 'url(javascript:alert(1))', align: 'justify', x: 'a' },
+          { type: 'image', src: 'https://evil.example/a.png' },
+          { type: 'image', src: 'javascript:alert(1)' },
+          { type: 'image', src: 'data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=' },
+          { type: 'image', src: 'data:image/png;base64,iVBORw0KGgo=' },
+          { type: 'sticker', sticker: '../../etc' },
+          { type: 'shape', shape: 'star', fill: '#abcdef', sw: 5000 },
+          { type: 'script', src: 'x' },
+          { type: 'table', cells: [['a', 'b'], ['c']], stroke: '#000000' },
+        ],
+      },
+    ],
+  };
+  const d = sanitizeDesign(evil);
+  assert.equal(d.size.w, 2400);
+  assert.equal(d.size.h, 200);
+  assert.equal(d.size.id, 'custom');
+  const p = d.pages[0];
+  assert.match(p.id, /^[a-z0-9]+$/);
+  assert.equal(p.bg.color, '#ffffff');
+  assert.equal(p.bg.pattern, 'none');
+  assert.equal(p.bg.pcolor, '#d9d3f5');
+  assert.equal(p.bg.color2, '#ff00ff');
+  assert.equal(p.border.color, '#7c5cf0');
+  assert.equal(p.border.w, 40);
+  const [txt, ...rest] = p.items;
+  assert.equal(txt.type, 'text');
+  if (txt.type === 'text') {
+    assert.equal(txt.text, '<img src=x onerror=alert(1)>'); // เก็บเป็นตัวอักษรธรรมดา แสดงผลแบบ text ไม่ใช่ HTML
+    assert.equal(txt.font, 'sarabun');
+    assert.equal(txt.size, 400);
+    assert.equal(txt.color, '#2a2350');
+    assert.equal(txt.align, 'center');
+    assert.equal(txt.x, 0);
+  }
+  // เหลือ: รูป png ที่ระบบสร้าง, รูปทรง, ตาราง (รูปเว็บอื่น/javascript:/svg, สติกเกอร์ปลอม, ชนิดแปลก ถูกตัดทิ้ง)
+  assert.deepEqual(rest.map((i) => i.type), ['image', 'shape', 'table']);
+  const shape = rest[1];
+  if (shape.type === 'shape') assert.equal(shape.sw, 60);
+  const table = rest[2];
+  if (table.type === 'table') assert.deepEqual(table.cells, [['a', 'b'], ['c', '']]);
+  // ไฟล์จากที่เก็บของเราผ่าน แต่ห้ามไต่โฟลเดอร์
+  const pre = mediaPrefix();
+  if (pre) {
+    assert.equal(cleanSrc(pre + 'abc/x1.webp'), pre + 'abc/x1.webp');
+    assert.equal(cleanSrc(pre + '../secret.png'), '');
+    assert.deepEqual(designMediaPaths(sanitizeDesign({ pages: [{ items: [{ type: 'image', src: pre + 'u1/a.webp' }, { type: 'image', src: pre + 'u1/a.webp' }] }] })), ['u1/a.webp']);
+  }
+  // จำนวนหน้า/ชิ้นมีเพดาน
+  assert.equal(sanitizeDesign({ pages: Array.from({ length: 50 }, () => ({})) }).pages.length, MAX_PAGES);
+  assert.equal(sanitizeDesign(null).pages.length, 1);
+  assert.equal(FREE_DESIGN_LIMIT, 1);
+});
+
+t('สร้างสื่อ: ค่าเริ่มต้น A4 แนวตั้ง และแม่แบบทุกอันผ่านตัวกรองครบไม่ตกหล่น', () => {
+  const b = blankDesign();
+  assert.equal(b.size.id, 'a4p');
+  assert.deepEqual([b.size.w, b.size.h], [794, 1123]);
+  assert.equal(sanitizeDesign(JSON.parse(JSON.stringify(b))).size.id, 'a4p');
+  for (const s of SIZES) assert.ok(s.w >= 200 && s.h >= 200 && s.w <= 2400 && s.h <= 2400, s.id);
+  const stickerIds = new Set(STICKERS.map((x) => x.id));
+  assert.equal(stickerIds.size, STICKERS.length);
+  for (const tp of TEMPLATES) {
+    const d = tp.make();
+    const back = sanitizeDesign(JSON.parse(JSON.stringify(d)));
+    assert.equal(back.size.id, tp.sizeId, tp.id);
+    assert.deepEqual(back.pages.map((p) => p.items.length), d.pages.map((p) => p.items.length), tp.id);
+    for (const it of d.pages.flatMap((p) => p.items)) if (it.type === 'sticker') assert.ok(stickerIds.has(it.sticker), `${tp.id}: ${it.sticker}`);
+  }
+});
+
+t('สร้างสื่อ: ไฟล์ PDF ถูกโครงสร้าง (xref ชี้ตำแหน่งวัตถุตรง)', () => {
+  // JPEG ปลอมที่มีหัว SOF0 กว้าง 3 สูง 2
+  const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x04, 0x00, 0x00, 0xff, 0xc0, 0x00, 0x0b, 0x08, 0x00, 0x02, 0x00, 0x03, 0x01, 0x01, 0x11, 0x00, 0xff, 0xd9]);
+  assert.deepEqual(jpegSize(jpeg), { w: 3, h: 2 });
+  assert.equal(jpegSize(new Uint8Array([1, 2, 3])), null);
+  const pdf = buildPdf([
+    { jpeg, wPt: 595.5, hPt: 842.25 },
+    { jpeg, wPt: 595.5, hPt: 842.25 },
+  ]);
+  const txt = Buffer.from(pdf).toString('latin1');
+  assert.ok(txt.startsWith('%PDF-1.4'));
+  assert.ok(txt.trimEnd().endsWith('%%EOF'));
+  assert.match(txt, /\/Count 2/);
+  const start = Number(/startxref\n(\d+)/.exec(txt)![1]);
+  assert.ok(txt.slice(start).startsWith('xref'));
+  const offs = txt.slice(start).split('\n').slice(3, 3 + 8).map((l) => Number(l.slice(0, 10)));
+  offs.forEach((o, i) => assert.ok(txt.slice(o).startsWith(`${i + 1} 0 obj`), `obj ${i + 1}`));
+  assert.match(txt, /\/Width 3 \/Height 2/);
+  assert.throws(() => buildPdf([{ jpeg: new Uint8Array([1, 2]), wPt: 1, hPt: 1 }]));
+});
+
+t('สร้างสื่อ: ตารางค้นหาคำ วางคำครบและอ่านเจอในตาราง (ไทย/อังกฤษ)', () => {
+  let seed = 7;
+  const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const en = wordSearch(['cat', 'dog', 'bird', 'fish', 'lion'], 10, false, rand);
+  assert.equal(en.grid.length, 10);
+  assert.ok(en.grid.every((r) => r.length === 10 && r.every((c) => /^[A-Z]$/.test(c))));
+  assert.deepEqual(en.placed.sort(), ['bird', 'cat', 'dog', 'fish', 'lion']);
+  const lines = (g: string[][]) => {
+    const n = g.length;
+    const out: string[] = [];
+    for (let r = 0; r < n; r++) out.push(g[r].join(''));
+    for (let c = 0; c < n; c++) out.push(g.map((r) => r[c]).join(''));
+    for (let k = -n; k <= n; k++) out.push(g.map((r, i) => r[i + k] ?? '').join(''));
+    return out.join('|');
+  };
+  for (const w of en.placed) assert.ok(lines(en.grid).includes(w.toUpperCase()), w);
+  assert.deepEqual(cellsOf('กิน'), ['กิ', 'น']);
+  const th = wordSearch(['แมว', 'ปลา', 'นก'], 8, false, rand);
+  assert.equal(th.placed.length, 3);
+  assert.ok(th.grid.flat().every((c) => /[\u0E00-\u0E7F]/.test(c)));
+  assert.deepEqual(wordSearch(['ABCDEFGHIJKLMNOPQRSTU'], 8, false, rand).skipped, ['ABCDEFGHIJKLMNOPQRSTU']);
+});
+
+t('สร้างสื่อ: กระดาษคำตอบ สูตรคูณ และค่าตัวเลขของสื่อคณิตอยู่ในช่วงที่วาดได้', () => {
+  const a = answerSheet(45, 4, 'th');
+  assert.equal(a.length, 3);
+  assert.deepEqual(a[0][0], ['ข้อ', 'ก', 'ข', 'ค', 'ง']);
+  assert.equal(a[2].length, 6);
+  assert.deepEqual(answerSheet(3, 5, 'en')[0][0], ['No.', 'A', 'B', 'C', 'D', 'E']);
+  assert.deepEqual(timesTable(3, 12)[11], ['3 × 12 =', '']);
+  assert.deepEqual(timesTable(3, 2, true)[1], ['3 × 2 =', '6']);
+  assert.deepEqual(clampEdu('clock', 99, -5, 0), [12, 0, 0]);
+  assert.deepEqual(clampEdu('pie', 4, 9, 0), [4, 4, 0]);
+  const nl = clampEdu('numberline', 0, 100000, 1);
+  assert.ok(nl[1] - nl[0] <= 40);
+  for (const k of EDU_KINDS) {
+    const e = makeEdu(k.kind);
+    assert.deepEqual(clampEdu(e.kind, e.a, e.b, e.c), [e.a, e.b, e.c], k.kind);
+    const back = sanitizeDesign({ pages: [{ items: [e] }] }).pages[0].items[0];
+    assert.equal(back.type, 'edu', k.kind);
+  }
+});
+
+t('สร้างสื่อ: ตัวละครแต่งเอง กรองค่าแปลกปลอม และกติกาเครื่องประดับ', () => {
+  const bad = cleanLook({ skin: 'url(x)', hair: '<script>', eyes: 'big', accs: ['cap', 'beanie', 'glasses', 'sunglasses', 'book', 'nope'], l: { sh: 9999, el: -9999 } });
+  assert.equal(bad.skin, CHAR_PRESETS[0].look.skin);
+  assert.equal(bad.hair, 'short');
+  assert.equal(bad.eyes, 'big');
+  assert.deepEqual(bad.accs.sort(), ['beanie', 'book', 'sunglasses']);
+  assert.deepEqual(bad.l, { sh: 180, el: -160 });
+  assert.deepEqual(toggleAcc(['cap'], 'gradcap'), ['gradcap']);
+  assert.deepEqual(toggleAcc(['cap', 'bow'], 'cap'), ['bow']);
+  assert.ok(ACCS.length >= 15 && POSES.length >= 8);
+  for (const p of CHAR_PRESETS) assert.deepEqual(cleanLook(JSON.parse(JSON.stringify(p.look))), p.look, p.id);
+  const it = sanitizeDesign({ pages: [{ items: [{ type: 'char', look: { hairColor: '#123456' } }] }] }).pages[0].items[0];
+  assert.ok(it.type === 'char' && it.look.hairColor === '#123456');
 });
 
 console.log(`\n${passed} tests passed`);

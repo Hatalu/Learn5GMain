@@ -1,7 +1,7 @@
 import { MODES } from '@/lib/game-creator/modes';
 
 /**
- * ทัวร์แนะนำเว็บหลังสมัครบัญชี: หน้าหลัก > คลังเกม > วิดีโอ > เอกสาร/ใบงาน > ระบบสร้างเกม (ภาพรวมรูปแบบเกม) > สมัครสมาชิก
+ * ทัวร์แนะนำเว็บหลังสมัครบัญชี: หน้าหลัก > คลังเกม > วิดีโอ > เอกสาร/ใบงาน > ระบบสร้างเกม (ภาพรวมรูปแบบเกม) > ระบบสร้างสื่อ > สมัครสมาชิก
  * target / click / via คือค่า data-tour="..." ของ element ในหน้านั้น ๆ
  */
 export type TourChapter = 'start' | 'home' | 'library' | 'create' | 'member';
@@ -32,7 +32,7 @@ export const CHAPTERS: Record<TourChapter, { label: string; color: string }> = {
   start: { label: 'เริ่มต้น', color: '#8660fb' },
   home: { label: 'หน้าหลัก', color: '#4a7bf0' },
   library: { label: 'คลังสื่อ', color: '#7c4dff' },
-  create: { label: 'ระบบสร้างเกม', color: '#14b8a6' },
+  create: { label: 'สร้างเกมและสื่อ', color: '#14b8a6' },
   member: { label: 'สมาชิก', color: '#f5a524' },
 };
 
@@ -119,6 +119,17 @@ export const STEPS: TourStep[] = [
     text: 'ชุดคำถามเดียว เลือกเล่นได้ทุกแบบ ทั้งห้องเล่นพร้อมกัน',
     ms: 6400,
     accent: '#14b8a6',
+  },
+  {
+    id: 'studio',
+    path: '/studio',
+    chapter: 'create',
+    via: 'nav-studio',
+    target: 'studio-sizes',
+    title: 'ระบบสร้างสื่อการสอน',
+    text: 'ออกแบบใบงาน ป้าย เกียรติบัตรเอง แล้วโหลดเป็น PDF',
+    ms: 5800,
+    accent: '#ec4899',
   },
   {
     id: 'member',

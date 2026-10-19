@@ -14,6 +14,9 @@ export type CreatorTier = 'guest' | 'free' | 'member';
 export const FREE_SET_LIMIT = 2;
 export const MEMBER_SET_LIMIT = 300;
 
+/** ระบบสร้างสื่อการสอน (Studio): บัญชีฟรี 1 สื่อตลอดอายุบัญชี (profiles.designs_created) สมาชิกไม่จำกัด (เพดานกันสแปม 500 ใน migration 023) */
+export const FREE_DESIGN_LIMIT = 1;
+
 /**
  * โควต้าไฟล์รูป/คลิปรวมต่อบัญชี (MB) คิดจากพื้นที่ Supabase แบบฟรี 1 GB ที่ใช้ร่วมกันทั้งเว็บ
  * รูปที่ย่อแล้วราว 100-250 KB, คลิป 5 วินาทีราว 1-3 MB
@@ -48,6 +51,7 @@ export const TIER_ROWS: { label: string; free: string; member: string }[] = [
   { label: 'สร้างชุดคำถามของตัวเอง', free: `${FREE_SET_LIMIT} ชุดตลอดอายุบัญชี ลบแล้วไม่คืนสิทธิ์`, member: 'ไม่จำกัด' },
   { label: 'เปิดห้องให้คนอื่นเล่น', free: 'ได้ เฉพาะชุดของตัวเอง', member: 'ได้ทุกชุด' },
   { label: 'ชุดคำถามของคนอื่น (Discover)', free: 'เปิดดู/ใช้ไม่ได้', member: 'ดู ทำสำเนา เปิดห้องได้' },
+  { label: 'สร้างสื่อการสอน (ใบงาน ใบความรู้ ป้าย)', free: `${FREE_DESIGN_LIMIT} สื่อตลอดอายุบัญชี ลบแล้วไม่คืนสิทธิ์`, member: 'ไม่จำกัด ดู/ทำสำเนาสื่อใน Discover ได้' },
   { label: 'พื้นที่อัปโหลดรูปและคลิป', free: `รวมไม่เกิน ${FREE_UPLOAD_MB} MB`, member: `รวมไม่เกิน ${MEMBER_UPLOAD_MB} MB` },
   { label: 'เล่นเกมเต็มในคลังเกมหลัก', free: 'ทดลองเล่นเท่านั้น', member: 'เล่นได้ไม่จำกัด' },
 ];

@@ -10,7 +10,7 @@ import { CountUp } from '@/components/fx/CountUp';
 import { buddyStage } from '@/lib/companion';
 import { hasMembership } from '@/lib/membership';
 import { cn } from '@/lib/utils/cn';
-import { CalendarDays, ChevronDown, ChevronRight, Compass, Crown, Gamepad2, Heart, LogOut, ShieldCheck, Sticker, Sparkles } from 'lucide-react';
+import { CalendarDays, ChevronDown, ChevronRight, Compass, Crown, Gamepad2, Heart, LogOut, Palette, ShieldCheck, Sticker, Sparkles } from 'lucide-react';
 import s from './userMenu.module.css';
 import { JoinButton } from '@/components/membership/JoinButton';
 import { useMembership } from '@/components/membership/MembershipProvider';
@@ -229,6 +229,15 @@ export function UserMenu() {
               >
                 <Heart className="w-4 h-4 text-pink-500" />
                 <span className="flex-1">คู่หูและสมุดสติกเกอร์</span>
+                <ChevronRight className="w-4 h-4 text-gray-400 transition-transform group-hover/item:translate-x-0.5" />
+              </Link>
+              <Link
+                href="/studio"
+                onClick={() => setIsOpen(false)}
+                className="group/item flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-colors"
+              >
+                <Palette className="w-4 h-4 text-rose-500" />
+                <span className="flex-1">สร้างสื่อการสอน</span>
                 <ChevronRight className="w-4 h-4 text-gray-400 transition-transform group-hover/item:translate-x-0.5" />
               </Link>
               <button
