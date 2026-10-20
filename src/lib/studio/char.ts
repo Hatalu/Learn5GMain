@@ -9,6 +9,27 @@ export interface Opt {
 }
 const o = (pairs: [string, string][]): Opt[] => pairs.map(([id, label]) => ({ id, label }));
 
+/** ชนิดตัวละคร: คน หรือสัตว์ (ใช้ตัว เสื้อผ้า เครื่องประดับ และท่าทางชุดเดียวกัน) fur = สีขนหลัก fur2 = สีรอง (ปาก/หูด้านใน/แผงคอ/ลาย) */
+export const SPECIES: (Opt & { fur: string; fur2: string })[] = [
+  { id: 'human', label: 'คน', fur: '#ffd1aa', fur2: '#ffffff' },
+  { id: 'cat', label: 'แมว', fur: '#f6b35e', fur2: '#fff3e0' },
+  { id: 'dog', label: 'หมา', fur: '#c98a5a', fur2: '#fff3e0' },
+  { id: 'rabbit', label: 'กระต่าย', fur: '#f4f1f6', fur2: '#ffc2d6' },
+  { id: 'bear', label: 'หมี', fur: '#a46a3f', fur2: '#e8c39e' },
+  { id: 'panda', label: 'แพนด้า', fur: '#ffffff', fur2: '#2a2350' },
+  { id: 'fox', label: 'จิ้งจอก', fur: '#f28c38', fur2: '#ffffff' },
+  { id: 'pig', label: 'หมู', fur: '#ffc4cf', fur2: '#ff8fab' },
+  { id: 'mouse', label: 'หนู', fur: '#b9b6c8', fur2: '#ffc2d6' },
+  { id: 'lion', label: 'สิงโต', fur: '#f2b450', fur2: '#b85a1f' },
+  { id: 'tiger', label: 'เสือ', fur: '#f59a3a', fur2: '#2a2350' },
+  { id: 'monkey', label: 'ลิง', fur: '#a8693d', fur2: '#f3cfa6' },
+  { id: 'frog', label: 'กบ', fur: '#7ed37a', fur2: '#ffffff' },
+  { id: 'koala', label: 'โคอาล่า', fur: '#a9a9b8', fur2: '#ffffff' },
+  { id: 'elephant', label: 'ช้าง', fur: '#a9b4c8', fur2: '#ffc2d6' },
+  { id: 'chick', label: 'ลูกเจี๊ยบ', fur: '#ffd84d', fur2: '#ff9a3d' },
+  { id: 'penguin', label: 'เพนกวิน', fur: '#2f3557', fur2: '#ffffff' },
+];
+
 export const FACES = o([
   ['round', 'กลม'],
   ['oval', 'รี'],
@@ -127,7 +148,10 @@ export const POSES: { id: string; label: string; l: Arm; r: Arm; legs: string }[
 ];
 
 export interface CharLook {
+  species: string;
+  /** สีผิว (คน) หรือสีขนหลัก (สัตว์) */
   skin: string;
+  fur2: string;
   face: string;
   eyes: string;
   brows: string;
@@ -154,7 +178,9 @@ export const HAIR_COLORS = ['#2b1d16', '#4a2e1f', '#7a4a2a', '#b07a3c', '#e8c372
 export const CLOTH_COLORS = ['#ffffff', '#2a2350', '#1e3a8a', '#3b82f6', '#7cc6ff', '#22a06b', '#6ee7b7', '#ffd166', '#ff9a3d', '#ff6b7a', '#ff8fb8', '#a78bfa', '#7c5cf0', '#b07a4f', '#475569', '#e8456b'];
 
 export const DEFAULT_LOOK: CharLook = {
+  species: 'human',
   skin: SKINS[1],
+  fur2: '#ffffff',
   face: 'round',
   eyes: 'big',
   brows: 'soft',
@@ -198,7 +224,9 @@ export function cleanLook(raw: unknown): CharLook {
   let accs: string[] = [];
   if (Array.isArray(r.accs)) for (const a of r.accs.slice(0, 8)) if (typeof a === 'string' && ACCS.some((x) => x.id === a) && !accs.includes(a)) accs = toggleAcc(accs, a);
   return {
+    species: pick(r.species, SPECIES, d.species),
     skin: col(r.skin, d.skin),
+    fur2: col(r.fur2, d.fur2),
     face: pick(r.face, FACES, d.face),
     eyes: pick(r.eyes, EYES, d.eyes),
     brows: pick(r.brows, BROWS, d.brows),
@@ -221,8 +249,21 @@ export function cleanLook(raw: unknown): CharLook {
   };
 }
 
+/** เปลี่ยนชนิดตัวละคร: ใช้สีขนตั้งต้นของชนิดนั้น สัตว์เริ่มแบบไม่มีผม (เพิ่มผมเองได้) */
+export function withSpecies(look: CharLook, id: string): CharLook {
+  const sp = SPECIES.find((x) => x.id === id) ?? SPECIES[0];
+  const human = sp.id === 'human';
+  return cleanLook({
+    ...look,
+    species: sp.id,
+    skin: human ? (look.species === 'human' ? look.skin : SKINS[1]) : sp.fur,
+    fur2: sp.fur2,
+    hair: human ? (look.hair === 'bald' ? 'short' : look.hair) : 'bald',
+  });
+}
+
 const rnd = <T,>(a: T[]) => a[Math.floor(Math.random() * a.length)];
-export function randomLook(): CharLook {
+function randomHuman(): CharLook {
   const pose = rnd(POSES);
   const top = rnd(TOPS).id;
   return cleanLook({
@@ -248,6 +289,10 @@ export function randomLook(): CharLook {
     legs: pose.legs,
   });
 }
+export function randomLook(): CharLook {
+  const base = randomHuman();
+  return Math.random() < 0.45 ? withSpecies(base, rnd(SPECIES.slice(1)).id) : base;
+}
 
 /** ตัวละครสำเร็จรูป (กดใส่ได้ทันที แล้วค่อยแต่งต่อ) */
 export const CHAR_PRESETS: { id: string; label: string; look: CharLook }[] = [
@@ -259,4 +304,21 @@ export const CHAR_PRESETS: { id: string; label: string; look: CharLook }[] = [
   { id: 'grad', label: 'บัณฑิต', look: cleanLook({ ...DEFAULT_LOOK, hair: 'long', hairColor: '#2b1d16', top: 'dress', topColor: '#2a2350', topColor2: '#ffd166', accs: ['gradcap'], accColor: '#ffd166', eyes: 'happy', mouth: 'grin', l: POSES[2].l, r: POSES[2].r, legs: 'jump' }) },
   { id: 'sport', label: 'นักกีฬา', look: cleanLook({ ...DEFAULT_LOOK, hair: 'spiky', hairColor: '#2b1d16', top: 'tshirt', topColor: '#ff6b7a', bottom: 'shorts', bottomColor: '#2a2350', shoes: 'sneakers', shoesColor: '#ffffff', accs: ['cap', 'ball'], accColor: '#ff9a3d', brows: 'angry', mouth: 'grin', l: POSES[8].l, r: POSES[8].r, legs: 'step' }) },
   { id: 'reader', label: 'หนอนหนังสือ', look: cleanLook({ ...DEFAULT_LOOK, hair: 'bun', hairColor: '#b07a3c', top: 'sweater', topColor: '#a78bfa', topColor2: '#ffffff', bottom: 'pants', bottomColor: '#1e3a8a', accs: ['glasses', 'book'], accColor: '#ff8fb8', eyes: 'dot', l: POSES[5].l, r: POSES[5].r }) },
+];
+
+const pet = (id: string, over: Partial<CharLook>) => cleanLook({ ...withSpecies(DEFAULT_LOOK, id), ...over });
+/** สัตว์สำเร็จรูป */
+export const ANIMAL_PRESETS: { id: string; label: string; look: CharLook }[] = [
+  { id: 'catStudent', label: 'น้องแมวนักเรียน', look: pet('cat', { eyes: 'sparkle', bottom: 'pleated', shoes: 'shoes', accs: ['bow'], accColor: '#ff6b7a', l: POSES[1].l, r: POSES[1].r }) },
+  { id: 'dogTeacher', label: 'คุณครูหมา', look: pet('dog', { top: 'teacher', topColor: '#7cc6ff', topColor2: '#1e3a8a', bottom: 'pants', bottomColor: '#2a2350', shoes: 'shoes', accs: ['squares', 'book'], accColor: '#ff9a3d', l: POSES[7].l, r: POSES[7].r, legs: 'step' }) },
+  { id: 'rabbitReader', label: 'กระต่ายนักอ่าน', look: pet('rabbit', { top: 'sweater', topColor: '#ff8fb8', topColor2: '#ffffff', bottom: 'skirt', bottomColor: '#a78bfa', accs: ['book'], accColor: '#7c5cf0', eyes: 'happy', l: POSES[5].l, r: POSES[5].r }) },
+  { id: 'bearScientist', label: 'หมีนักวิทยาศาสตร์', look: pet('bear', { top: 'labcoat', topColor2: '#6ee7b7', bottom: 'pants', bottomColor: '#475569', accs: ['glasses', 'flask'], accColor: '#6ee7b7', mouth: 'grin', l: POSES[3].l, r: POSES[5].r }) },
+  { id: 'pandaSport', label: 'แพนด้านักกีฬา', look: pet('panda', { top: 'tshirt', topColor: '#22a06b', bottom: 'shorts', bottomColor: '#2a2350', shoesColor: '#ffffff', accs: ['headband', 'ball'], accColor: '#ff6b7a', brows: 'angry', mouth: 'grin', l: POSES[8].l, r: POSES[8].r, legs: 'step' }) },
+  { id: 'foxGrad', label: 'จิ้งจอกบัณฑิต', look: pet('fox', { top: 'dress', topColor: '#2a2350', topColor2: '#ffd166', accs: ['gradcap'], accColor: '#ffd166', eyes: 'happy', mouth: 'grin', l: POSES[2].l, r: POSES[2].r, legs: 'jump' }) },
+  { id: 'frogExplorer', label: 'กบนักสำรวจ', look: pet('frog', { top: 'overall', topColor2: '#ffd166', bottomColor: '#3b82f6', shoes: 'boots', shoesColor: '#ff9a3d', accs: ['flask'], accColor: '#7cc6ff', mouth: 'open', l: POSES[1].l, r: POSES[1].r }) },
+  { id: 'chickKid', label: 'ลูกเจี๊ยบตัวน้อย', look: pet('chick', { top: 'tshirt', topColor: '#7cc6ff', bottom: 'shorts', bottomColor: '#ff6b7a', accs: ['backpack'], accColor: '#7c5cf0', eyes: 'sparkle', l: POSES[9].l, r: POSES[9].r }) },
+  { id: 'lionKing', label: 'สิงโตจ้าวป่า', look: pet('lion', { top: 'hoodie', topColor: '#e8456b', bottom: 'pants', bottomColor: '#2a2350', accs: ['crown'], mouth: 'grin', brows: 'up', l: POSES[6].l, r: POSES[6].r, legs: 'wide' }) },
+  { id: 'elephantArtist', label: 'ช้างนักวาด', look: pet('elephant', { top: 'overall', topColor2: '#ffffff', bottomColor: '#7c5cf0', accs: ['beanie', 'pencil'], accColor: '#ff6b7a', l: POSES[3].l, r: POSES[3].r }) },
+  { id: 'monkeyFun', label: 'ลิงจอมซน', look: pet('monkey', { top: 'tshirt', topColor: '#ffd166', bottom: 'shorts', bottomColor: '#22a06b', accs: ['cap', 'star'], accColor: '#ff9a3d', mouth: 'tongue', eyes: 'wink', l: POSES[2].l, r: POSES[2].r, legs: 'jump' }) },
+  { id: 'penguinCool', label: 'เพนกวินเท่ๆ', look: pet('penguin', { top: 'hoodie', topColor: '#7cc6ff', bottom: 'pants', bottomColor: '#2a2350', shoesColor: '#ff9a3d', accs: ['sunglasses', 'headphones'], accColor: '#ff6b7a', l: POSES[0].l, r: POSES[0].r }) },
 ];

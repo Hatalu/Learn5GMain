@@ -70,3 +70,58 @@ export function timesTable(n: number, upTo = 12, withAnswer = false): string[][]
   const m = Math.max(1, Math.min(25, Math.round(n)));
   return Array.from({ length: Math.max(1, Math.min(20, upTo)) }, (_, i) => [`${m} × ${i + 1} =`, withAnswer ? String(m * (i + 1)) : '']);
 }
+
+export interface Problem {
+  a: number;
+  b: number;
+  sym: string;
+  ans: number;
+}
+const between = (lo: number, hi: number, rand: () => number) => lo + Math.floor(rand() * (hi - lo + 1));
+
+/** โจทย์เลขสุ่ม: ลบไม่ติดลบ หารลงตัวเสมอ คูณ/หารใช้ตัวคูณ/ตัวหาร 2-9 */
+export function arithProblems(op: string, digits: number, count: number, rand: () => number = Math.random): Problem[] {
+  const d = Math.max(1, Math.min(4, Math.round(digits)));
+  const lo = d === 1 ? 1 : 10 ** (d - 1);
+  const hi = 10 ** d - 1;
+  const ops = op === 'mix' ? ['+', '-', 'x', '/'] : [op];
+  return Array.from({ length: Math.max(1, Math.min(40, Math.round(count))) }, () => {
+    const o = ops[Math.floor(rand() * ops.length)];
+    if (o === '-') {
+      const x = between(lo, hi, rand);
+      const y = between(lo, hi, rand);
+      return { a: Math.max(x, y), b: Math.min(x, y), sym: '−', ans: Math.abs(x - y) };
+    }
+    if (o === 'x') {
+      const a = between(lo, hi, rand);
+      const b = between(2, 9, rand);
+      return { a, b, sym: '×', ans: a * b };
+    }
+    if (o === '/') {
+      const b = between(2, 9, rand);
+      const q = between(lo, hi, rand);
+      return { a: b * q, b, sym: '÷', ans: q };
+    }
+    const a = between(lo, hi, rand);
+    const b = between(lo, hi, rand);
+    return { a, b, sym: '+', ans: a + b };
+  });
+}
+
+/** สลับตัวอักษรของคำ (ไทยสลับทีละพยางค์ย่อยด้วย cellsOf) พยายามไม่ให้ซ้ำกับคำเดิม */
+export function scrambleWord(word: string, rand: () => number = Math.random): string[] {
+  const cs = cellsOf(word);
+  for (let t = 0; t < 12; t++) {
+    const a = [...cs];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(rand() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    if (a.join('') !== cs.join('') || cs.length < 2) return a;
+  }
+  return [...cs].reverse();
+}
+
+/** พยัญชนะไทย 44 ตัว พร้อมชื่อเรียก */
+export const THAI_CONSONANTS = 'ก ไก่,ข ไข่,ฃ ขวด,ค ควาย,ฅ คน,ฆ ระฆัง,ง งู,จ จาน,ฉ ฉิ่ง,ช ช้าง,ซ โซ่,ฌ เฌอ,ญ หญิง,ฎ ชฎา,ฏ ปฏัก,ฐ ฐาน,ฑ มณโฑ,ฒ ผู้เฒ่า,ณ เณร,ด เด็ก,ต เต่า,ถ ถุง,ท ทหาร,ธ ธง,น หนู,บ ใบไม้,ป ปลา,ผ ผึ้ง,ฝ ฝา,พ พาน,ฟ ฟัน,ภ สำเภา,ม ม้า,ย ยักษ์,ร เรือ,ล ลิง,ว แหวน,ศ ศาลา,ษ ฤๅษี,ส เสือ,ห หีบ,ฬ จุฬา,อ อ่าง,ฮ นกฮูก'.split(',');
+export const ABC_WORDS = 'apple,ball,cat,dog,egg,fish,goat,hat,ice cream,jam,kite,lion,moon,nest,orange,pig,queen,rabbit,sun,tiger,umbrella,van,watch,xylophone,yo-yo,zebra'.split(',');

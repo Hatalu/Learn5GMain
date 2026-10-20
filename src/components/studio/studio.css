@@ -782,6 +782,46 @@ html.dark .st-save {
   padding: 4px;
   width: 100%;
 }
+.st-cell-deco {
+  aspect-ratio: auto;
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 6px;
+  overflow: hidden;
+}
+.st-cell-deco:hover {
+  border-color: var(--st-acc);
+}
+/* ปุ่มเลือกเอฟเฟกต์ (ตัวอย่างเป็นก้อนสีที่ใส่ filter จริง) */
+.st-fx {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 2px 6px;
+  border-radius: 10px;
+  border: 1.5px solid var(--st-line);
+  background: var(--st-card);
+  color: var(--st-ink);
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.st-fx > span {
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #a78bfa, #ff8fab);
+}
+.st-fx:hover {
+  border-color: var(--st-acc-line);
+}
+.st-fx[data-on='true'] {
+  border-color: var(--st-acc);
+  background: var(--st-acc-soft);
+}
 .st-wa-btn {
   height: 62px;
   border-radius: 10px;

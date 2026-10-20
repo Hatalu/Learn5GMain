@@ -62,9 +62,10 @@ import { mediaSchema } from '../src/lib/validations/media';
 import { FREE_DESIGN_LIMIT } from '../src/lib/game-creator/quota';
 import { blankDesign, cleanSrc, designMediaPaths, MAX_PAGES, sanitizeDesign, SIZES } from '../src/lib/studio/doc';
 import { buildPdf, jpegSize } from '../src/lib/studio/pdf';
-import { answerSheet, cellsOf, timesTable, wordSearch } from '../src/lib/studio/gen';
-import { ACCS, CHAR_PRESETS, POSES, cleanLook, toggleAcc } from '../src/lib/studio/char';
-import { clampEdu, EDU_KINDS, makeEdu } from '../src/lib/studio/doc';
+import { answerSheet, arithProblems, cellsOf, scrambleWord, THAI_CONSONANTS, timesTable, wordSearch } from '../src/lib/studio/gen';
+import { KITS, kitDefaults } from '../src/lib/studio/kits';
+import { ACCS, ANIMAL_PRESETS, CHAR_PRESETS, POSES, SPECIES, cleanLook, toggleAcc, withSpecies } from '../src/lib/studio/char';
+import { clampEdu, DECO_IDS, EDU_KINDS, makeDeco, makeEdu } from '../src/lib/studio/doc';
 import { mediaPrefix } from '../src/lib/game-creator/prefix';
 import { TEMPLATES } from '../src/components/studio/templates';
 import { STICKERS } from '../src/components/studio/stickers';
@@ -985,7 +986,7 @@ t('สร้างสื่อ: ตัวกรองข้อมูลกัน
   // จำนวนหน้า/ชิ้นมีเพดาน
   assert.equal(sanitizeDesign({ pages: Array.from({ length: 50 }, () => ({})) }).pages.length, MAX_PAGES);
   assert.equal(sanitizeDesign(null).pages.length, 1);
-  assert.equal(FREE_DESIGN_LIMIT, 1);
+  assert.equal(FREE_DESIGN_LIMIT, 3);
 });
 
 t('สร้างสื่อ: ค่าเริ่มต้น A4 แนวตั้ง และแม่แบบทุกอันผ่านตัวกรองครบไม่ตกหล่น', () => {
@@ -1095,6 +1096,53 @@ t('เอกสารไฟล์ใหญ่: แบ่งชิ้นต่ำ
   assert.equal(row(-5), 1);
   assert.equal(row(9999), DOC_MAX_PARTS);
   assert.equal(row('abc'), 1);
+});
+
+t('สร้างสื่อ: สัตว์แต่งเองได้ ชนิดแปลกปลอมกลายเป็นคน และสัตว์สำเร็จรูปผ่านตัวกรอง', () => {
+  assert.equal(cleanLook({ species: 'dragon' }).species, 'human');
+  assert.equal(cleanLook({}).species, 'human');
+  const cat = withSpecies(cleanLook({}), 'cat');
+  assert.equal(cat.species, 'cat');
+  assert.equal(cat.skin, SPECIES.find((x) => x.id === 'cat')!.fur);
+  assert.equal(cat.hair, 'bald');
+  assert.equal(withSpecies(cat, 'human').hair, 'short');
+  assert.ok(SPECIES.length >= 15);
+  for (const p of ANIMAL_PRESETS) {
+    assert.notEqual(p.look.species, 'human', p.id);
+    assert.deepEqual(cleanLook(JSON.parse(JSON.stringify(p.look))), p.look, p.id);
+  }
+});
+
+t('สร้างสื่อ: เครื่องมือสร้างใบงานทุกตัวสร้างชิ้นงานที่ผ่านตัวกรองครบทุกชิ้น', () => {
+  let seed = 11;
+  const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  assert.ok(KITS.length >= 30);
+  assert.equal(new Set(KITS.map((k) => k.id)).size, KITS.length);
+  for (const k of KITS) {
+    const out = k.build(kitDefaults(k), 794, 1123, rand);
+    assert.ok(out.items.length > 0, k.id);
+    const back = sanitizeDesign({ size: { id: 'a4p', w: 794, h: 1123 }, pages: [{ items: out.items }] }).pages[0].items;
+    assert.equal(back.length, out.items.length, k.id);
+  }
+});
+
+t('สร้างสื่อ: โจทย์เลขลบไม่ติดลบ หารลงตัว สลับตัวอักษรครบ และของตกแต่ง/เอฟเฟกต์ถูกกรอง', () => {
+  let seed = 3;
+  const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  for (const p of arithProblems('-', 3, 40, rand)) assert.ok(p.ans >= 0 && p.a - p.b === p.ans);
+  for (const p of arithProblems('/', 2, 40, rand)) assert.ok(p.a === p.b * p.ans && p.ans >= 10 && p.ans <= 99);
+  for (const p of arithProblems('+', 1, 40, rand)) assert.ok(p.a >= 1 && p.a <= 9 && p.ans === p.a + p.b);
+  assert.deepEqual(scrambleWord('teacher', rand).sort(), cellsOf('teacher').sort());
+  assert.deepEqual(scrambleWord('โรงเรียน', rand).sort(), cellsOf('โรงเรียน').sort());
+  assert.equal(THAI_CONSONANTS.length, 44);
+  for (const id of DECO_IDS) assert.equal(sanitizeDesign({ pages: [{ items: [makeDeco(id)] }] }).pages[0].items[0].type, 'deco', id);
+  assert.equal(sanitizeDesign({ pages: [{ items: [{ type: 'deco', style: 'evil' }] }] }).pages[0].items.length, 0);
+  const fx = (v: unknown, c?: unknown) => sanitizeDesign({ pages: [{ items: [{ type: 'sticker', sticker: 'star', fx: v, fxColor: c }] }] }).pages[0].items[0];
+  assert.equal(fx('glow', '#ff0000').fx, 'glow');
+  assert.equal(fx('glow', 'red;x').fxColor, '#2a2350');
+  assert.equal(fx('url(x)').fx, 'none');
+  assert.equal(FREE_DESIGN_LIMIT, 3);
+  assert.ok(EDU_KINDS.length >= 19 && EDU_KINDS.every((k) => k.params.length > 0));
 });
 
 console.log(`\n${passed} tests passed`);

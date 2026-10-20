@@ -14,8 +14,8 @@ export type CreatorTier = 'guest' | 'free' | 'member';
 export const FREE_SET_LIMIT = 2;
 export const MEMBER_SET_LIMIT = 300;
 
-/** ระบบสร้างสื่อการสอน (Studio): บัญชีฟรี 1 สื่อตลอดอายุบัญชี (profiles.designs_created) สมาชิกไม่จำกัด (เพดานกันสแปม 500 ใน migration 023) */
-export const FREE_DESIGN_LIMIT = 1;
+/** ระบบสร้างสื่อการสอน (Studio): บัญชีฟรี 3 สื่อตลอดอายุบัญชี (ต้องตรงกับ trigger ใน migration 024) (profiles.designs_created) สมาชิกไม่จำกัด (เพดานกันสแปม 500 ใน migration 023) */
+export const FREE_DESIGN_LIMIT = 3;
 
 /**
  * โควต้าไฟล์รูป/คลิปรวมต่อบัญชี (MB) คิดจากพื้นที่ Supabase แบบฟรี 1 GB ที่ใช้ร่วมกันทั้งเว็บ

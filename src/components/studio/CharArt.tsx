@@ -264,10 +264,299 @@ function Held({ id, at, c }: { id: string; at: P; c: string }) {
   }
 }
 
+/* ------------------------------------------------------------------ สัตว์ */
+
+/** ทำสีเข้มขึ้น (k < 0) หรืออ่อนลง (k > 0) */
+function shade(hex: string, k: number) {
+  const n = parseInt(hex.slice(1, 7), 16);
+  const ch = (v: number) => Math.round(Math.min(255, Math.max(0, k < 0 ? v * (1 + k) : v + (255 - v) * k)));
+  return '#' + [n >> 16, (n >> 8) & 255, n & 255].map((v) => ch(v).toString(16).padStart(2, '0')).join('');
+}
+
+/** ส่วนที่อยู่หลังหัว: หู แผงคอ ตาโปนของกบ */
+function AnimalBack({ sp, c, c2 }: { sp: string; c: string; c2: string }) {
+  const p = { fill: c, stroke: O, strokeWidth: 3.5, strokeLinejoin: 'round' as const };
+  const inner = (d: string, fill = c2) => <path d={d} fill={fill} />;
+  switch (sp) {
+    case 'cat':
+    case 'fox':
+      return (
+        <g>
+          <path d="M54,66 L46,16 L88,42 Z" {...p} />
+          <path d="M146,66 L154,16 L112,42 Z" {...p} />
+          {inner('M58,56 L54,28 L78,44 Z', sp === 'cat' ? '#ffb3c6' : c2)}
+          {inner('M142,56 L146,28 L122,44 Z', sp === 'cat' ? '#ffb3c6' : c2)}
+        </g>
+      );
+    case 'rabbit':
+      return (
+        <g>
+          <ellipse cx="78" cy="22" rx="14" ry="38" transform="rotate(-10 78 22)" {...p} />
+          <ellipse cx="122" cy="22" rx="14" ry="38" transform="rotate(10 122 22)" {...p} />
+          <ellipse cx="78" cy="24" rx="7" ry="28" transform="rotate(-10 78 24)" fill={c2} />
+          <ellipse cx="122" cy="24" rx="7" ry="28" transform="rotate(10 122 24)" fill={c2} />
+        </g>
+      );
+    case 'bear':
+    case 'panda':
+    case 'tiger':
+      return (
+        <g>
+          <circle cx="58" cy="46" r="18" {...p} fill={sp === 'panda' ? c2 : c} />
+          <circle cx="142" cy="46" r="18" {...p} fill={sp === 'panda' ? c2 : c} />
+          {sp !== 'panda' && <circle cx="58" cy="46" r="9" fill={sp === 'tiger' ? '#ffffff' : c2} />}
+          {sp !== 'panda' && <circle cx="142" cy="46" r="9" fill={sp === 'tiger' ? '#ffffff' : c2} />}
+        </g>
+      );
+    case 'mouse':
+      return (
+        <g>
+          <circle cx="50" cy="50" r="28" {...p} />
+          <circle cx="150" cy="50" r="28" {...p} />
+          <circle cx="50" cy="50" r="17" fill={c2} />
+          <circle cx="150" cy="50" r="17" fill={c2} />
+        </g>
+      );
+    case 'koala':
+      return (
+        <g>
+          <circle cx="46" cy="66" r="28" {...p} />
+          <circle cx="154" cy="66" r="28" {...p} />
+          <circle cx="48" cy="68" r="16" fill={c2} />
+          <circle cx="152" cy="68" r="16" fill={c2} />
+        </g>
+      );
+    case 'monkey':
+      return (
+        <g>
+          <circle cx="44" cy="94" r="18" {...p} />
+          <circle cx="156" cy="94" r="18" {...p} />
+          <circle cx="44" cy="94" r="10" fill={c2} />
+          <circle cx="156" cy="94" r="10" fill={c2} />
+        </g>
+      );
+    case 'lion': {
+      const dots = Array.from({ length: 14 }, (_, i) => {
+        const a = rad(i * (360 / 14));
+        return <circle key={i} cx={100 + 62 * Math.cos(a)} cy={90 + 60 * Math.sin(a)} r="20" fill={c2} stroke={O} strokeWidth="3" />;
+      });
+      return (
+        <g>
+          {dots}
+          <circle cx="100" cy="90" r="64" fill={c2} />
+          <circle cx="62" cy="44" r="13" {...p} />
+          <circle cx="138" cy="44" r="13" {...p} />
+        </g>
+      );
+    }
+    case 'elephant':
+      return (
+        <g>
+          <ellipse cx="38" cy="94" rx="32" ry="40" {...p} />
+          <ellipse cx="162" cy="94" rx="32" ry="40" {...p} />
+          <ellipse cx="40" cy="94" rx="19" ry="27" fill={c2} />
+          <ellipse cx="160" cy="94" rx="19" ry="27" fill={c2} />
+        </g>
+      );
+    case 'pig':
+      return (
+        <g>
+          <path d="M56,54 L52,22 L84,40 Z" {...p} />
+          <path d="M144,54 L148,22 L116,40 Z" {...p} />
+          {inner('M60,46 L58,30 L76,40 Z')}
+          {inner('M140,46 L142,30 L124,40 Z')}
+        </g>
+      );
+    case 'frog':
+      return (
+        <g>
+          <circle cx="76" cy="46" r="24" {...p} />
+          <circle cx="124" cy="46" r="24" {...p} />
+        </g>
+      );
+    case 'chick':
+      return <path d="M92,40 Q88,18 100,22 Q104,8 110,24 Q122,16 112,40 Z" {...p} />;
+    case 'dog':
+      return null;
+    default:
+      return null;
+  }
+}
+
+/** ลวดลายบนหน้า (ก่อนวาดตา): ปาก จมูก ลาย หนวด */
+function AnimalFace({ sp, c, c2 }: { sp: string; c: string; c2: string }) {
+  const nose = (fill = O) => <path d="M93,104 Q100,99 107,104 Q103,112 100,112 Q97,112 93,104 Z" fill={fill} stroke={O} strokeWidth="1.5" strokeLinejoin="round" />;
+  const whiskers = (
+    <path d="M76,112 L50,106 M76,118 L50,120 M124,112 L150,106 M124,118 L150,120" {...stroke(2.2, O)} />
+  );
+  const muzzle = (fill: string, rx = 22, ry = 15) => <ellipse cx="100" cy="115" rx={rx} ry={ry} fill={fill} />;
+  switch (sp) {
+    case 'cat':
+      return (
+        <g>
+          {muzzle(c2, 20, 13)}
+          {nose('#ff8fab')}
+          {whiskers}
+          <path d="M86,40 L90,52 M100,36 V50 M114,40 L110,52" {...stroke(4, shade(c, -0.25))} />
+        </g>
+      );
+    case 'dog':
+      return (
+        <g>
+          <ellipse cx="54" cy="96" rx="15" ry="34" transform="rotate(16 54 96)" fill={shade(c, -0.28)} stroke={O} strokeWidth="3.5" />
+          <ellipse cx="146" cy="96" rx="15" ry="34" transform="rotate(-16 146 96)" fill={shade(c, -0.28)} stroke={O} strokeWidth="3.5" />
+          {muzzle(c2)}
+          {nose()}
+        </g>
+      );
+    case 'bear':
+      return (
+        <g>
+          {muzzle(c2)}
+          {nose()}
+        </g>
+      );
+    case 'panda':
+      return (
+        <g>
+          <ellipse cx="78" cy="100" rx="14" ry="17" transform="rotate(-28 78 100)" fill={c2} />
+          <ellipse cx="122" cy="100" rx="14" ry="17" transform="rotate(28 122 100)" fill={c2} />
+          {nose()}
+        </g>
+      );
+    case 'fox':
+      return (
+        <g>
+          <path d="M48,100 Q72,96 100,126 Q128,96 152,100 Q144,138 100,142 Q56,138 48,100 Z" fill={c2} />
+          {nose()}
+        </g>
+      );
+    case 'lion':
+      return (
+        <g>
+          {muzzle('#fff3e0')}
+          {nose()}
+        </g>
+      );
+    case 'tiger':
+      return (
+        <g>
+          {muzzle('#ffffff')}
+          {nose('#ff8fab')}
+          {whiskers}
+          <path d="M100,36 V54 M84,40 L88,54 M116,40 L112,54 M48,92 L64,96 M46,104 L62,104 M152,92 L136,96 M154,104 L138,104" {...stroke(4.5, c2)} />
+        </g>
+      );
+    case 'mouse':
+      return (
+        <g>
+          {nose('#ff8fab')}
+          {whiskers}
+        </g>
+      );
+    case 'rabbit':
+      return (
+        <g>
+          {nose('#ff8fab')}
+          <path d="M80,112 L58,108 M80,118 L58,120 M120,112 L142,108 M120,118 L142,120" {...stroke(2, O)} />
+        </g>
+      );
+    case 'monkey':
+      return (
+        <g>
+          <path d="M100,72 C70,58 54,84 66,104 C58,126 80,140 100,138 C120,140 142,126 134,104 C146,84 130,58 100,72 Z" fill={c2} />
+          <circle cx="96" cy="108" r="2.4" fill={O} />
+          <circle cx="104" cy="108" r="2.4" fill={O} />
+        </g>
+      );
+    case 'koala':
+      return <ellipse cx="100" cy="106" rx="11" ry="14" fill="#3b3561" stroke={O} strokeWidth="2" />;
+    case 'pig':
+      return (
+        <g>
+          <ellipse cx="100" cy="108" rx="17" ry="12" fill={c2} stroke={O} strokeWidth="3" />
+          <ellipse cx="94" cy="108" rx="3" ry="4.5" fill={O} />
+          <ellipse cx="106" cy="108" rx="3" ry="4.5" fill={O} />
+        </g>
+      );
+    case 'frog':
+      return (
+        <g>
+          <circle cx="76" cy="46" r="15" fill={c2} />
+          <circle cx="124" cy="46" r="15" fill={c2} />
+        </g>
+      );
+    case 'penguin':
+      return <path d="M100,80 C86,60 56,68 60,98 C62,122 84,134 100,134 C116,134 138,122 140,98 C144,68 114,60 100,80 Z" fill={c2} />;
+    default:
+      return null;
+  }
+}
+
+/** ส่วนที่วาดทับหน้า (แทนปาก): จะงอยปาก งวงช้าง */
+function AnimalFront({ sp, c, c2 }: { sp: string; c: string; c2: string }) {
+  if (sp === 'chick' || sp === 'penguin')
+    return <path d="M86,111 L100,103 L114,111 L100,121 Z" fill={sp === 'chick' ? c2 : '#ff9a3d'} stroke={O} strokeWidth="3" strokeLinejoin="round" />;
+  if (sp === 'elephant')
+    return <path d="M90,100 C88,128 94,152 114,154 C124,154 124,142 116,141 C104,139 108,124 110,100 Z" fill={c} stroke={O} strokeWidth="3.5" strokeLinejoin="round" />;
+  return null;
+}
+/** ชนิดที่ไม่วาดปากปกติ */
+const NO_MOUTH = ['chick', 'penguin', 'elephant'];
+
+function Tail({ sp, c, c2 }: { sp: string; c: string; c2: string }) {
+  const tube = (d: string, w: number, fill = c) => (
+    <g>
+      <path d={d} {...stroke(w + 6, O)} />
+      <path d={d} {...stroke(w, fill)} />
+    </g>
+  );
+  switch (sp) {
+    case 'cat':
+    case 'tiger':
+      return tube('M124,214 C160,216 170,184 158,160', 9);
+    case 'dog':
+      return tube('M124,206 Q150,198 154,176', 11);
+    case 'fox':
+      return (
+        <g>
+          <ellipse cx="152" cy="196" rx="18" ry="38" transform="rotate(38 152 196)" fill={c} stroke={O} strokeWidth="3.5" />
+          <ellipse cx="170" cy="172" rx="10" ry="14" transform="rotate(38 170 172)" fill={c2} />
+        </g>
+      );
+    case 'lion':
+      return (
+        <g>
+          {tube('M124,214 C156,226 168,202 162,184', 6)}
+          <circle cx="162" cy="182" r="10" fill={c2} stroke={O} strokeWidth="3" />
+        </g>
+      );
+    case 'monkey':
+      return tube('M124,214 C172,222 176,168 150,170 C136,172 140,190 152,188', 7);
+    case 'pig':
+      return tube('M126,212 C142,210 146,198 138,196 C130,194 132,206 144,204', 4);
+    case 'mouse':
+      return tube('M124,216 C170,238 178,196 188,188', 4, c2);
+    case 'rabbit':
+      return <circle cx="136" cy="214" r="13" fill="#ffffff" stroke={O} strokeWidth="3" />;
+    case 'bear':
+    case 'panda':
+    case 'koala':
+      return <circle cx="134" cy="214" r="10" fill={sp === 'panda' ? c2 : c} stroke={O} strokeWidth="3" />;
+    case 'elephant':
+      return tube('M124,212 Q144,222 144,236', 4);
+    default:
+      return null;
+  }
+}
+
 /* ------------------------------------------------------------------ ตัวละคร */
 export function CharArt({ look, viewBox = '0 0 200 300', className, title }: { look: CharLook; viewBox?: string; className?: string; title?: string }) {
   const L = look;
   const skin = L.skin;
+  const sp = L.species;
+  const animal = sp !== 'human';
+  const frog = sp === 'frog';
   const has = (a: string) => L.accs.includes(a);
   const held = L.accs.find((a) => ['book', 'pencil', 'flask', 'star', 'ball'].includes(a));
   const dress = L.top === 'dress';
@@ -334,6 +623,7 @@ export function CharArt({ look, viewBox = '0 0 200 300', className, title }: { l
   return (
     <svg viewBox={viewBox} className={className} preserveAspectRatio="xMidYMid meet" aria-hidden={title ? undefined : true} style={{ overflow: viewBox === '0 0 200 300' ? 'visible' : 'hidden' }}>
       {title && <title>{title}</title>}
+      {animal && <Tail sp={sp} c={skin} c2={L.fur2} />}
       {hairBack(L.hair, L.hairColor)}
       {has('backpack') && <rect x="62" y="150" width="76" height="66" rx="14" fill={L.accColor} stroke={O} strokeWidth="3.5" />}
 
@@ -425,20 +715,31 @@ export function CharArt({ look, viewBox = '0 0 200 300', className, title }: { l
       {held && <Held id={held} at={ra.h} c={L.accColor} />}
       {drawArm(ra, 'ra')}
 
-      {/* หัว */}
-      <circle cx={100 - face.rx + 2} cy="94" r="10" fill={skin} stroke={O} strokeWidth="3" />
-      <circle cx={100 + face.rx - 2} cy="94" r="10" fill={skin} stroke={O} strokeWidth="3" />
+      {/* หัว (สัตว์: หู/แผงคอหลังหัว แทนหูคน) */}
+      {animal ? (
+        <AnimalBack sp={sp} c={skin} c2={L.fur2} />
+      ) : (
+        <>
+          <circle cx={100 - face.rx + 2} cy="94" r="10" fill={skin} stroke={O} strokeWidth="3" />
+          <circle cx={100 + face.rx - 2} cy="94" r="10" fill={skin} stroke={O} strokeWidth="3" />
+        </>
+      )}
       <ellipse cx="100" cy="88" rx={face.rx} ry={face.ry} fill={skin} stroke={O} strokeWidth="3.5" />
+      {animal && <AnimalFace sp={sp} c={skin} c2={L.fur2} />}
       {L.blush && (
         <g>
           <ellipse cx="68" cy="112" rx="8" ry="5" fill="#ff8fab" opacity="0.55" />
           <ellipse cx="132" cy="112" rx="8" ry="5" fill="#ff8fab" opacity="0.55" />
         </g>
       )}
-      <Eyes id={L.eyes} />
-      <Brows id={L.brows} c={L.hair === 'bald' ? '#6b4a33' : L.hairColor === '#f2f2f2' ? '#8a8a8a' : L.hairColor} />
-      <Mouth id={L.mouth} />
-      {hairFront(L.hair, L.hairColor)}
+      {/* กบ: ตาอยู่บนตาโปนด้านบนหัว */}
+      <g transform={frog ? 'translate(0 -52)' : undefined}>
+        <Eyes id={L.eyes} />
+        <Brows id={L.brows} c={animal && L.hair === 'bald' ? shade(skin, -0.5) : L.hair === 'bald' ? '#6b4a33' : L.hairColor === '#f2f2f2' ? '#8a8a8a' : L.hairColor} />
+      </g>
+      {!NO_MOUTH.includes(sp) && <Mouth id={L.mouth} />}
+      {animal && <AnimalFront sp={sp} c={skin} c2={L.fur2} />}
+      {!(animal && L.hair === 'bald') && hairFront(L.hair, L.hairColor)}
       {L.hair === 'ponytail' && <circle cx="148" cy="66" r="6" fill={L.accColor} stroke={O} strokeWidth="2.5" />}
       {L.hair === 'twintails' && (
         <>

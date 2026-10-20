@@ -38,7 +38,17 @@ export type Dash = 'solid' | 'dash' | 'dot';
 export type Cap = 'none' | 'arrow' | 'dot';
 export type WriteKind = 'lines' | 'dotted' | 'four' | 'grid' | 'dots' | 'box';
 export type Pattern = 'none' | 'dots' | 'grid' | 'lines' | 'stripes' | 'checks';
-export type BorderStyle = 'none' | 'line' | 'double' | 'dash' | 'round' | 'dots' | 'stars' | 'wave' | 'corner';
+export const BORDER_IDS = ['none', 'line', 'double', 'dash', 'round', 'dots', 'stars', 'wave', 'corner', 'hearts', 'flowers', 'zigzag', 'stamp', 'checker', 'rainbow', 'bubbles', 'ribbon', 'leaves', 'scallop'] as const;
+export type BorderStyle = (typeof BORDER_IDS)[number];
+/** ของตกแต่ง: กรอบ (ใช้ลายเดียวกับกรอบหน้า) เส้นคั่น เทปตกแต่ง มุมประดับ */
+export const DIVIDER_IDS = ['d-dots', 'd-wave', 'd-zigzag', 'd-stars', 'd-hearts', 'd-ornament', 'd-scallop', 'd-flowers', 'd-arrows', 'd-stitch', 'd-vine', 'd-double'] as const;
+export const TAPE_IDS = ['t-stripes', 't-dots', 't-grid', 't-plain'] as const;
+export const CORNER_IDS = ['c-swirl', 'c-floral', 'c-triangle', 'c-dots'] as const;
+export const DECO_IDS = [...BORDER_IDS.filter((x) => x !== 'none'), ...DIVIDER_IDS, ...TAPE_IDS, ...CORNER_IDS] as const;
+export type DecoStyle = (typeof DECO_IDS)[number];
+/** เอฟเฟกต์ที่ใส่ได้กับทุกชิ้น (CSS filter) */
+export const FX_IDS = ['none', 'shadow', 'soft', 'lift', 'glow', 'neon', 'outline', 'echo', 'retro', 'gray', 'sepia', 'blur'] as const;
+export type Fx = (typeof FX_IDS)[number];
 
 interface Base {
   id: string;
@@ -49,6 +59,8 @@ interface Base {
   rot: number;
   opacity: number;
   locked: boolean;
+  fx: Fx;
+  fxColor: string;
 }
 export interface TextItem extends Base {
   type: 'text';
@@ -115,7 +127,8 @@ export interface WriteItem extends Base {
   sw: number;
 }
 /** สื่อคณิต/วิทย์สำเร็จรูป ค่า a b c ใช้ต่างกันตามชนิด (ดู EDU_KINDS) */
-export type EduKind = 'numberline' | 'clock' | 'pie' | 'bar' | 'tenframe' | 'dice' | 'tally' | 'ruler' | 'coord';
+export const EDU_IDS = ['numberline', 'clock', 'pie', 'bar', 'tenframe', 'dice', 'tally', 'ruler', 'coord', 'protractor', 'bond', 'blocks', 'money', 'hundred', 'balance', 'thermo', 'cylinder', 'moon', 'magnet'] as const;
+export type EduKind = (typeof EDU_IDS)[number];
 export interface EduItem extends Base {
   type: 'edu';
   kind: EduKind;
@@ -132,7 +145,15 @@ export interface CharItem extends Base {
   look: CharLook;
   flip: boolean;
 }
-export type Item = TextItem | ShapeItem | LineItem | ImageItem | StickerItem | TableItem | WriteItem | EduItem | CharItem;
+/** ของตกแต่ง (กรอบ เส้นคั่น เทป มุมประดับ) */
+export interface DecoItem extends Base {
+  type: 'deco';
+  style: DecoStyle;
+  color: string;
+  color2: string;
+  sw: number;
+}
+export type Item = TextItem | ShapeItem | LineItem | ImageItem | StickerItem | TableItem | WriteItem | EduItem | CharItem | DecoItem;
 export type ItemType = Item['type'];
 
 export interface PageBg {
@@ -171,7 +192,7 @@ export function blankDesign(size: { id: string; w: number; h: number } = DEFAULT
   return { v: 1, size: { id: size.id, w: size.w, h: size.h }, pages: [blankPage()] };
 }
 
-const base = (x: number, y: number, w: number, h: number): Base => ({ id: uid(), x, y, w, h, rot: 0, opacity: 1, locked: false });
+const base = (x: number, y: number, w: number, h: number): Base => ({ id: uid(), x, y, w, h, rot: 0, opacity: 1, locked: false, fx: 'none', fxColor: '#2a2350' });
 
 export function makeText(over: Partial<TextItem> = {}): TextItem {
   return {
@@ -239,23 +260,48 @@ export const makeWrite = (kind: WriteKind, over: Partial<WriteItem> = {}): Write
   ...over,
 });
 
-export const EDU_KINDS: { kind: EduKind; label: string; box: [number, number]; a: number; b: number; c: number; color: string }[] = [
-  { kind: 'numberline', label: 'เส้นจำนวน', box: [640, 90], a: 0, b: 10, c: 1, color: '#7c5cf0' },
-  { kind: 'clock', label: 'หน้าปัดนาฬิกา', box: [260, 260], a: 3, b: 0, c: 0, color: '#ffd166' },
-  { kind: 'pie', label: 'เศษส่วนวงกลม', box: [220, 220], a: 4, b: 1, c: 0, color: '#ff8fab' },
-  { kind: 'bar', label: 'เศษส่วนแถบ', box: [520, 70], a: 5, b: 2, c: 0, color: '#7cc6ff' },
-  { kind: 'tenframe', label: 'กรอบสิบ', box: [420, 170], a: 7, b: 0, c: 0, color: '#ff6b7a' },
-  { kind: 'dice', label: 'ลูกเต๋า', box: [120, 120], a: 5, b: 0, c: 0, color: '#ffffff' },
-  { kind: 'tally', label: 'รอยขีดนับ', box: [300, 100], a: 8, b: 0, c: 0, color: '#2a2350' },
-  { kind: 'ruler', label: 'ไม้บรรทัด (ซม.)', box: [600, 80], a: 15, b: 0, c: 0, color: '#ffe066' },
-  { kind: 'coord', label: 'ระนาบพิกัด', box: [420, 420], a: 5, b: 0, c: 0, color: '#7c5cf0' },
+/** พารามิเตอร์ที่ปรับได้ในแถบด้านบน (ค่าจริงถูกบีบให้อยู่ในช่วงด้วย clampEdu อีกชั้น) */
+export interface EduParam {
+  k: 'a' | 'b' | 'c';
+  label: string;
+  min: number;
+  max: number;
+  step?: number;
+}
+export type EduSubject = 'math' | 'sci';
+export const EDU_KINDS: { kind: EduKind; label: string; subject: EduSubject; box: [number, number]; a: number; b: number; c: number; color: string; params: EduParam[]; labels?: boolean }[] = [
+  { kind: 'numberline', label: 'เส้นจำนวน', subject: 'math', box: [640, 90], a: 0, b: 10, c: 1, color: '#7c5cf0', labels: true, params: [{ k: 'a', label: 'เริ่ม', min: -1000, max: 1000 }, { k: 'b', label: 'ถึง', min: -999, max: 2000 }, { k: 'c', label: 'ทีละ', min: 1, max: 1000 }] },
+  { kind: 'clock', label: 'หน้าปัดนาฬิกา', subject: 'math', box: [260, 260], a: 3, b: 0, c: 0, color: '#ffd166', labels: true, params: [{ k: 'a', label: 'ชั่วโมง', min: 1, max: 12 }, { k: 'b', label: 'นาที', min: 0, max: 59, step: 5 }] },
+  { kind: 'pie', label: 'เศษส่วนวงกลม', subject: 'math', box: [220, 220], a: 4, b: 1, c: 0, color: '#ff8fab', params: [{ k: 'a', label: 'แบ่ง', min: 1, max: 24 }, { k: 'b', label: 'ระบาย', min: 0, max: 24 }] },
+  { kind: 'bar', label: 'เศษส่วนแถบ', subject: 'math', box: [520, 70], a: 5, b: 2, c: 0, color: '#7cc6ff', params: [{ k: 'a', label: 'แบ่ง', min: 1, max: 24 }, { k: 'b', label: 'ระบาย', min: 0, max: 24 }] },
+  { kind: 'tenframe', label: 'กรอบสิบ', subject: 'math', box: [420, 170], a: 7, b: 0, c: 0, color: '#ff6b7a', params: [{ k: 'a', label: 'จำนวน', min: 0, max: 20 }] },
+  { kind: 'dice', label: 'ลูกเต๋า', subject: 'math', box: [120, 120], a: 5, b: 0, c: 0, color: '#ffffff', params: [{ k: 'a', label: 'แต้ม', min: 1, max: 6 }] },
+  { kind: 'tally', label: 'รอยขีดนับ', subject: 'math', box: [300, 100], a: 8, b: 0, c: 0, color: '#2a2350', params: [{ k: 'a', label: 'จำนวน', min: 1, max: 50 }] },
+  { kind: 'ruler', label: 'ไม้บรรทัด (ซม.)', subject: 'math', box: [600, 80], a: 15, b: 0, c: 0, color: '#ffe066', labels: true, params: [{ k: 'a', label: 'ยาว (ซม.)', min: 5, max: 30 }] },
+  { kind: 'coord', label: 'ระนาบพิกัด', subject: 'math', box: [420, 420], a: 5, b: 0, c: 0, color: '#7c5cf0', labels: true, params: [{ k: 'a', label: 'ช่วง ±', min: 2, max: 10 }] },
+  { kind: 'protractor', label: 'ไม้โปรแทรกเตอร์', subject: 'math', box: [420, 230], a: 60, b: 0, c: 0, color: '#bde4ff', labels: true, params: [{ k: 'a', label: 'มุม (องศา)', min: 0, max: 180, step: 5 }] },
+  { kind: 'bond', label: 'แผนภาพจำนวน', subject: 'math', box: [300, 240], a: 10, b: 6, c: 0, color: '#ffd166', params: [{ k: 'a', label: 'ผลรวม', min: 0, max: 999 }, { k: 'b', label: 'ส่วนที่ 1', min: 0, max: 999 }, { k: 'c', label: 'เว้นช่อง (0-3)', min: 0, max: 3 }] },
+  { kind: 'blocks', label: 'บล็อกฐานสิบ', subject: 'math', box: [460, 240], a: 124, b: 0, c: 0, color: '#7cc6ff', labels: true, params: [{ k: 'a', label: 'จำนวน', min: 0, max: 999 }] },
+  { kind: 'money', label: 'เหรียญและธนบัตร', subject: 'math', box: [520, 240], a: 87, b: 0, c: 0, color: '#ffd166', params: [{ k: 'a', label: 'จำนวนเงิน (บาท)', min: 1, max: 2000 }] },
+  { kind: 'hundred', label: 'ตาราง 100 ช่อง', subject: 'math', box: [440, 440], a: 0, b: 0, c: 0, color: '#ffd166', params: [{ k: 'a', label: 'ระบายพหุคูณของ', min: 0, max: 20 }, { k: 'b', label: 'เว้นว่าง (%)', min: 0, max: 80, step: 10 }] },
+  { kind: 'balance', label: 'ตาชั่งสองแขน', subject: 'sci', box: [420, 260], a: 5, b: 3, c: 0, color: '#ffd166', labels: true, params: [{ k: 'a', label: 'ซ้าย', min: 0, max: 99 }, { k: 'b', label: 'ขวา', min: 0, max: 99 }] },
+  { kind: 'thermo', label: 'เทอร์โมมิเตอร์', subject: 'sci', box: [110, 360], a: 30, b: 0, c: 0, color: '#ff4d6d', labels: true, params: [{ k: 'a', label: 'อุณหภูมิ °C', min: -20, max: 50 }] },
+  { kind: 'cylinder', label: 'กระบอกตวง', subject: 'sci', box: [150, 360], a: 60, b: 100, c: 0, color: '#7cc6ff', labels: true, params: [{ k: 'a', label: 'ปริมาตร (มล.)', min: 0, max: 1000, step: 5 }, { k: 'b', label: 'ความจุ (มล.)', min: 50, max: 1000, step: 50 }] },
+  { kind: 'moon', label: 'ข้างขึ้นข้างแรม', subject: 'sci', box: [200, 240], a: 2, b: 0, c: 0, color: '#ffe680', labels: true, params: [{ k: 'a', label: 'ช่วง (0-7)', min: 0, max: 7 }] },
+  { kind: 'magnet', label: 'แม่เหล็ก', subject: 'sci', box: [320, 110], a: 0, b: 0, c: 0, color: '#ff4d6d', labels: true, params: [{ k: 'a', label: 'แบบ (0 แท่ง / 1 เกือกม้า)', min: 0, max: 1 }] },
 ];
+export const MOON_PHASES = ['เดือนมืด', 'ข้างขึ้นเสี้ยว', 'ข้างขึ้นครึ่งดวง', 'ข้างขึ้นค่อนดวง', 'เดือนเพ็ญ', 'ข้างแรมค่อนดวง', 'ข้างแรมครึ่งดวง', 'ข้างแรมเสี้ยว'];
 
 export function makeEdu(kind: EduKind): EduItem {
   const d = EDU_KINDS.find((x) => x.kind === kind) ?? EDU_KINDS[0];
   return { ...base(0, 0, d.box[0], d.box[1]), type: 'edu', kind, a: d.a, b: d.b, c: d.c, labels: true, color: d.color, stroke: '#2a2350' };
 }
 export const makeChar = (look: CharLook = DEFAULT_LOOK): CharItem => ({ ...base(0, 0, 200, 300), type: 'char', look: structuredClone(look), flip: false });
+/** กล่องเริ่มต้นของของตกแต่งแต่ละกลุ่ม */
+export function makeDeco(style: DecoStyle, color = '#7c5cf0', color2 = '#ffd166'): DecoItem {
+  const box: [number, number] = style.startsWith('d-') ? [560, 40] : style.startsWith('t-') ? [220, 54] : style.startsWith('c-') ? [150, 150] : [420, 300];
+  return { ...base(0, 0, box[0], box[1]), type: 'deco', style, color, color2, sw: style.startsWith('c-') ? 6 : 4 };
+}
 
 /** แก้ค่า a b c ให้อยู่ในช่วงที่วาดได้ของแต่ละชนิด */
 export function clampEdu(kind: EduKind, a: number, b: number, c: number): [number, number, number] {
@@ -284,6 +330,30 @@ export function clampEdu(kind: EduKind, a: number, b: number, c: number): [numbe
       return [i(a, 5, 30), 0, 0];
     case 'coord':
       return [i(a, 2, 10), 0, 0];
+    case 'protractor':
+      return [i(a, 0, 180), 0, 0];
+    case 'bond': {
+      const t = i(a, 0, 999);
+      return [t, i(b, 0, t), i(c, 0, 3)];
+    }
+    case 'blocks':
+      return [i(a, 0, 999), 0, 0];
+    case 'money':
+      return [i(a, 1, 2000), 0, 0];
+    case 'hundred':
+      return [i(a, 0, 20), i(b / 10, 0, 8) * 10, 0];
+    case 'balance':
+      return [i(a, 0, 99), i(b, 0, 99), 0];
+    case 'thermo':
+      return [i(a, -20, 50), 0, 0];
+    case 'cylinder': {
+      const cap = i(b / 50, 1, 20) * 50;
+      return [i(a, 0, cap), cap, 0];
+    }
+    case 'moon':
+      return [i(a, 0, 7), 0, 0];
+    case 'magnet':
+      return [i(a, 0, 1), 0, 0];
   }
 }
 
@@ -314,9 +384,7 @@ const CAP = ['none', 'arrow', 'dot'] as const;
 const ALIGN = ['left', 'center', 'right'] as const;
 const WRITE = ['lines', 'dotted', 'four', 'grid', 'dots', 'box'] as const;
 const PATTERN = ['none', 'dots', 'grid', 'lines', 'stripes', 'checks'] as const;
-const BORDER = ['none', 'line', 'double', 'dash', 'round', 'dots', 'stars', 'wave', 'corner'] as const;
 const ID = /^[a-z0-9-]{1,24}$/;
-const EDU = ['numberline', 'clock', 'pie', 'bar', 'tenframe', 'dice', 'tally', 'ruler', 'coord'] as const;
 
 function cleanBase(r: Record<string, unknown>, W: number, H: number): Base {
   return {
@@ -328,6 +396,8 @@ function cleanBase(r: Record<string, unknown>, W: number, H: number): Base {
     rot: num(r.rot, -360, 360, 0),
     opacity: num(r.opacity, 0.05, 1, 1),
     locked: bool(r.locked),
+    fx: pick(r.fx, FX_IDS, 'none'),
+    fxColor: cleanColor(r.fxColor, '#2a2350'),
   };
 }
 
@@ -392,12 +462,16 @@ export function cleanItem(raw: unknown, W: number, H: number): Item | null {
       };
     }
     case 'edu': {
-      const kind = pick(r.kind, EDU, 'numberline');
+      const kind = pick(r.kind, EDU_IDS, 'numberline');
       const [a, bb, c] = clampEdu(kind, num(r.a, -1000, 1000, 0), num(r.b, -1000, 2000, 0), num(r.c, 0, 1000, 1));
       return { ...b, type: 'edu', kind, a, b: bb, c, labels: r.labels !== false, color: cleanColor(r.color, '#7c5cf0'), stroke: cleanColor(r.stroke, '#2a2350') };
     }
     case 'char':
       return { ...b, type: 'char', look: cleanLook(r.look), flip: bool(r.flip) };
+    case 'deco':
+      return (DECO_IDS as readonly string[]).includes(r.style as string)
+        ? { ...b, type: 'deco', style: r.style as DecoStyle, color: cleanColor(r.color, '#7c5cf0'), color2: cleanColor(r.color2, '#ffd166'), sw: num(r.sw, 1, 40, 6) }
+        : null;
     case 'write':
       return { ...b, type: 'write', kind: pick(r.kind, WRITE, 'lines'), gap: num(r.gap, 12, 200, 44), stroke: cleanColor(r.stroke, '#9b8fd0'), sw: num(r.sw, 0.5, 12, 1.5) };
     default:
@@ -419,7 +493,7 @@ function cleanPage(raw: unknown, W: number, H: number): Page {
       pattern: pick(bg.pattern, PATTERN, 'none'),
       pcolor: cleanColor(bg.pcolor, '#d9d3f5'),
     },
-    border: { style: pick(bd.style, BORDER, 'none'), color: cleanColor(bd.color, '#7c5cf0'), w: num(bd.w, 1, 40, 4) },
+    border: { style: pick(bd.style, BORDER_IDS, 'none'), color: cleanColor(bd.color, '#7c5cf0'), w: num(bd.w, 1, 40, 4) },
     items: items.map((x) => cleanItem(x, W, H)).filter((x): x is Item => !!x),
   };
 }

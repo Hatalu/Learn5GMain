@@ -2,7 +2,7 @@
 -- 023: ระบบสร้างสื่อการสอน (Studio) ครูออกแบบใบงาน/ใบความรู้/ป้ายเองบนหน้ากระดาษ แล้วโหลดเป็นรูปหรือ PDF
 --
 -- user_designs  สื่อที่ครูสร้าง (เจ้าของอ่าน/เขียนเอง) ไม่เกี่ยวกับตาราง media จึงไม่ขึ้นในหน้าหลัก
---   * บัญชีฟรี (ไม่ใช่สมาชิก) สร้างได้ 1 สื่อ "ตลอดอายุบัญชี" ลบแล้วไม่คืนสิทธิ์ (profiles.designs_created)
+--   * บัญชีฟรี (ไม่ใช่สมาชิก) สร้างได้ 3 สื่อ "ตลอดอายุบัญชี" ลบแล้วไม่คืนสิทธิ์ (profiles.designs_created)
 --   * สมาชิก/Dev สร้างได้ไม่จำกัด (มีเพดานกันสแปม 500 สื่อที่มีอยู่ในคลังพร้อมกัน)
 --   * Discover: เจ้าของตั้ง Public/Private ได้ สมาชิกอ่านสื่อ Public ของทุกคนได้ (เหมือนชุดคำถาม migration 016)
 --   * Dev อ่าน/ลบได้ทุกสื่อ
@@ -35,7 +35,7 @@ create trigger set_user_designs_updated_at
   before update on public.user_designs
   for each row execute function public.handle_updated_at();
 
--- โควต้า: บัญชีฟรี 1 สื่อตลอดอายุบัญชี / สมาชิก 500 สื่อในคลัง
+-- โควต้า: บัญชีฟรี 3 สื่อตลอดอายุบัญชี (ปรับจาก 1 ใน migration 024) / สมาชิก 500 สื่อในคลัง
 create or replace function public.user_designs_quota()
 returns trigger
 language plpgsql
@@ -60,7 +60,7 @@ begin
     if n >= 500 then
       raise exception 'design quota exceeded' using errcode = 'P0001';
     end if;
-  elsif greatest(coalesce(made, 0), n) >= 1 then
+  elsif greatest(coalesce(made, 0), n) >= 3 then
     raise exception 'free design limit' using errcode = 'P0001';
   end if;
 

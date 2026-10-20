@@ -35,8 +35,10 @@ import {
   RotateCw,
   Wand2,
   Hash,
+  Sparkle,
 } from 'lucide-react';
-import { clampEdu, EDU_KINDS, FONT_IDS, type Cap, type Dash, type EduItem, type Item, type TableItem, type WriteKind } from '@/lib/studio/doc';
+import { clampEdu, EDU_KINDS, FONT_IDS, type Cap, type Dash, type DecoItem, type EduItem, type Fx, type Item, type TableItem, type WriteKind } from '@/lib/studio/doc';
+import { fxFilter } from './render';
 import { FONTS } from './fonts';
 import { ColorGrid, ColorPop, Pop, Seg, Slider, Stepper } from './ui';
 import type { Ctl } from './Editor';
@@ -51,6 +53,7 @@ const TYPE_LABEL: Record<Item['type'], string> = {
   write: 'บรรทัดใบงาน',
   edu: 'สื่อการสอน',
   char: 'ตัวละคร',
+  deco: 'ของตกแต่ง',
 };
 
 const DASHES: { id: Dash; label: React.ReactNode; title: string }[] = [
@@ -188,6 +191,8 @@ export function Inspector({ ctl }: { ctl: Ctl }) {
 
           {it.type === 'table' && <TableControls it={it} up={up} />}
 
+          {it.type === 'deco' && <DecoControls it={it} up={up} />}
+
           {it.type === 'write' && (
             <>
               <select className="st-select" value={it.kind} onChange={(e) => up({ kind: e.target.value as WriteKind })} aria-label="แบบบรรทัด">
@@ -231,6 +236,9 @@ export function Inspector({ ctl }: { ctl: Ctl }) {
                 </button>
               </>
             )}
+          </Pop>
+          <Pop title="เอฟเฟกต์" button={<Sparkle className="w-4 h-4" />} width={280} active={it.fx !== 'none'}>
+            <FxPicker it={it} up={up} />
           </Pop>
           <Pop title="ลำดับชั้นและความโปร่ง" button={<Layers className="w-4 h-4" />} width={236}>
             <div className="grid grid-cols-2 gap-1.5">
@@ -347,76 +355,78 @@ function TableControls({ it, up }: { it: TableItem; up: (p: Partial<Item>, k?: s
 }
 
 function EduControls({ it, up }: { it: EduItem; up: (p: Partial<Item>, k?: string) => void }) {
-  const set = (a: number, b: number, c: number, key: string) => {
-    const [na, nb, nc] = clampEdu(it.kind, a, b, c);
-    up({ a: na, b: nb, c: nc } as Partial<Item>, key);
+  const spec = EDU_KINDS.find((k) => k.kind === it.kind);
+  const set = (k: 'a' | 'b' | 'c', v: number) => {
+    const next = { a: it.a, b: it.b, c: it.c, [k]: v };
+    // เส้นจำนวน: เลื่อนจุดเริ่มเกินจุดจบ ให้จุดจบตามไปด้วย
+    if (it.kind === 'numberline' && k === 'a') next.b = Math.max(next.b, v + 1);
+    const [na, nb, nc] = clampEdu(it.kind, next.a, next.b, next.c);
+    up({ a: na, b: nb, c: nc } as Partial<Item>, k);
   };
-  const label = EDU_KINDS.find((k) => k.kind === it.kind)?.label;
-  const lbl = (t: string) => <span className="st-hint">{t}</span>;
-  const labelsBtn = (
-    <button type="button" className="st-tb" data-on={it.labels} onClick={() => up({ labels: !it.labels } as Partial<Item>)} title="แสดงตัวเลข" aria-label="แสดงตัวเลข">
-      <Hash className="w-4 h-4" />
-    </button>
-  );
   return (
     <>
-      <span className="st-hint">{label}</span>
-      {it.kind === 'numberline' && (
-        <>
-          {lbl('เริ่ม')}
-          <Stepper label="เริ่มที่" value={it.a} min={-1000} max={1000} onChange={(v) => set(v, Math.max(it.b, v + 1), it.c, 'a')} />
-          {lbl('ถึง')}
-          <Stepper label="ถึง" value={it.b} min={-999} max={2000} onChange={(v) => set(it.a, v, it.c, 'b')} />
-          {lbl('ทีละ')}
-          <Stepper label="ทีละ" value={it.c} min={1} max={1000} onChange={(v) => set(it.a, it.b, v, 'c')} />
-          {labelsBtn}
-        </>
-      )}
-      {it.kind === 'clock' && (
-        <>
-          {lbl('ชั่วโมง')}
-          <Stepper label="ชั่วโมง" value={it.a} min={1} max={12} onChange={(v) => set(v, it.b, 0, 'a')} />
-          {lbl('นาที')}
-          <Stepper label="นาที" value={it.b} min={0} max={59} step={5} onChange={(v) => set(it.a, v, 0, 'b')} />
-          {labelsBtn}
-        </>
-      )}
-      {(it.kind === 'pie' || it.kind === 'bar') && (
-        <>
-          {lbl('แบ่ง')}
-          <Stepper label="จำนวนส่วน" value={it.a} min={1} max={24} onChange={(v) => set(v, Math.min(it.b, v), 0, 'a')} />
-          {lbl('ระบาย')}
-          <Stepper label="ส่วนที่ระบาย" value={it.b} min={0} max={it.a} onChange={(v) => set(it.a, v, 0, 'b')} />
-        </>
-      )}
-      {(it.kind === 'tenframe' || it.kind === 'tally') && (
-        <>
-          {lbl('จำนวน')}
-          <Stepper label="จำนวน" value={it.a} min={it.kind === 'tally' ? 1 : 0} max={it.kind === 'tally' ? 50 : 20} onChange={(v) => set(v, 0, 0, 'a')} />
-        </>
-      )}
-      {it.kind === 'dice' && (
-        <>
-          {lbl('แต้ม')}
-          <Stepper label="แต้ม" value={it.a} min={1} max={6} onChange={(v) => set(v, 0, 0, 'a')} />
-        </>
-      )}
-      {it.kind === 'ruler' && (
-        <>
-          {lbl('ยาว (ซม.)')}
-          <Stepper label="ความยาว" value={it.a} min={5} max={30} onChange={(v) => set(v, 0, 0, 'a')} />
-          {labelsBtn}
-        </>
-      )}
-      {it.kind === 'coord' && (
-        <>
-          {lbl('ช่วง ±')}
-          <Stepper label="ช่วงแกน" value={it.a} min={2} max={10} onChange={(v) => set(v, 0, 0, 'a')} />
-          {labelsBtn}
-        </>
+      <span className="st-hint">{spec?.label}</span>
+      {spec?.params.map((p) => (
+        <React.Fragment key={p.k}>
+          <span className="st-hint">{p.label}</span>
+          <Stepper label={p.label} value={it[p.k]} min={p.min} max={p.max} step={p.step} onChange={(v) => set(p.k, v)} />
+        </React.Fragment>
+      ))}
+      {spec?.labels && (
+        <button type="button" className="st-tb" data-on={it.labels} onClick={() => up({ labels: !it.labels } as Partial<Item>)} title="แสดงตัวเลข/ป้าย" aria-label="แสดงตัวเลข">
+          <Hash className="w-4 h-4" />
+        </button>
       )}
       <ColorPop title="สีหลัก" value={it.color} onChange={(color) => up({ color: color || '#7c5cf0' } as Partial<Item>, 'color')} icon={<PaintBucket className="w-4 h-4" />} />
       <ColorPop title="สีเส้น" value={it.stroke} onChange={(stroke) => up({ stroke: stroke || '#2a2350' } as Partial<Item>, 'stroke')} />
+    </>
+  );
+}
+
+function DecoControls({ it, up }: { it: DecoItem; up: (p: Partial<Item>, k?: string) => void }) {
+  return (
+    <>
+      <ColorPop title="สีหลัก" value={it.color} onChange={(color) => up({ color: color || '#7c5cf0' } as Partial<Item>, 'color')} icon={<PaintBucket className="w-4 h-4" />} />
+      <ColorPop title="สีรอง" value={it.color2} onChange={(color2) => up({ color2: color2 || '#ffd166' } as Partial<Item>, 'color2')} />
+      {!it.style.startsWith('t-') && <Stepper label="ความหนา" value={it.sw} min={1} max={40} onChange={(sw) => up({ sw } as Partial<Item>, 'sw')} />}
+    </>
+  );
+}
+
+/** เอฟเฟกต์ที่เลือกได้ (สีเริ่มต้นเปลี่ยนตามแบบ แล้วค่อยปรับสีเอง) */
+export const FX_OPTS: { id: Fx; label: string; color?: string }[] = [
+  { id: 'none', label: 'ไม่มี' },
+  { id: 'shadow', label: 'เงาทึบ', color: '#2a2350' },
+  { id: 'soft', label: 'เงานุ่ม' },
+  { id: 'lift', label: 'ลอยขึ้น' },
+  { id: 'glow', label: 'เรืองแสง', color: '#ffd166' },
+  { id: 'neon', label: 'นีออน', color: '#ff4fd8' },
+  { id: 'outline', label: 'ขอบสติกเกอร์', color: '#ffffff' },
+  { id: 'echo', label: 'เงาซ้อน', color: '#7c5cf0' },
+  { id: 'retro', label: 'เรโทร', color: '#ff6b7a' },
+  { id: 'gray', label: 'ขาวดำ' },
+  { id: 'sepia', label: 'ภาพเก่า' },
+  { id: 'blur', label: 'เบลอ' },
+];
+
+export function FxPicker({ it, up }: { it: Pick<Item, 'fx' | 'fxColor'>; up: (p: Partial<Item>, k?: string) => void }) {
+  const cur = FX_OPTS.find((o) => o.id === it.fx);
+  return (
+    <>
+      <div className="grid grid-cols-4 gap-1.5">
+        {FX_OPTS.map((o) => (
+          <button key={o.id} type="button" className="st-fx" data-on={it.fx === o.id} onClick={() => up({ fx: o.id, ...(o.color ? { fxColor: o.color } : {}) } as Partial<Item>)} title={o.label}>
+            <span style={{ filter: fxFilter(o.id, o.color || '#2a2350') }} />
+            <small>{o.label}</small>
+          </button>
+        ))}
+      </div>
+      {cur?.color && (
+        <>
+          <p className="text-xs font-bold mb-1 mt-3">สีเอฟเฟกต์</p>
+          <ColorGrid value={it.fxColor} onChange={(fxColor) => up({ fxColor: fxColor || '#2a2350' } as Partial<Item>, 'fxc')} />
+        </>
+      )}
     </>
   );
 }

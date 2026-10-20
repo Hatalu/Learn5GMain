@@ -33,7 +33,7 @@ import { useAuth } from '@/context/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { uploadImage } from '@/lib/game-creator/media';
 import { cleanTitle } from '@/lib/game-creator/quiz';
-import { creatorTier } from '@/lib/game-creator/quota';
+import { FREE_DESIGN_LIMIT, creatorTier } from '@/lib/game-creator/quota';
 import { blankPage, makeChar, makeImage, makeText, MAX_PAGES, sanitizeDesign, sizeLabel, uid, type Design, type Item, type Page } from '@/lib/studio/doc';
 import type { CharLook } from '@/lib/studio/char';
 import { exportPdf, exportPng, makeThumb } from '@/lib/studio/export';
@@ -800,7 +800,7 @@ export function StudioEditor({ id }: { id: string }) {
       .select('id')
       .single();
     setCopying(false);
-    if (error || !data) return say(/free design limit/i.test(error?.message || '') ? 'บัญชีฟรีสร้างได้ 1 สื่อ สมัครสมาชิกเพื่อทำสำเนาเพิ่ม' : 'ทำสำเนาไม่สำเร็จ');
+    if (error || !data) return say(/free design limit/i.test(error?.message || '') ? `บัญชีฟรีสร้างได้ ${FREE_DESIGN_LIMIT} สื่อ สมัครสมาชิกเพื่อทำสำเนาเพิ่ม` : 'ทำสำเนาไม่สำเร็จ');
     supabase.rpc('design_copied', { p_id: id }).then(() => undefined);
     window.location.href = `/studio/edit?id=${data.id}`;
   };
@@ -817,7 +817,7 @@ export function StudioEditor({ id }: { id: string }) {
     if (!user) return false;
     const { error } = await supabase.from('user_characters').insert({ owner_id: user.id, name: name.slice(0, 30), look });
     if (error) {
-      say(/quota/i.test(error.message) ? 'เก็บตัวละครได้สูงสุด 60 ตัว ลบตัวเก่าก่อน' : /user_characters|schema cache/i.test(error.message) ? 'ต้องรัน migration 023 ก่อน' : 'บันทึกไม่สำเร็จ');
+      say(/quota/i.test(error.message) ? 'เก็บตัวละครได้สูงสุด 60 ตัว ลบตัวเก่าก่อน' : /user_characters|schema cache/i.test(error.message) ? 'ระบบตัวละครของฉันยังไม่พร้อม (ผู้ดูแลต้องรัน migration 024)' : 'บันทึกไม่สำเร็จ');
       return false;
     }
     window.dispatchEvent(new Event(CHARS_EVENT));
@@ -1121,7 +1121,7 @@ export function StudioEditor({ id }: { id: string }) {
 
       {tier === 'free' && !readOnly && (
         <div className="st-upsell">
-          <span>บัญชีฟรีมีสื่อได้ 1 ชิ้น สมัครสมาชิกเพื่อสร้างได้ไม่จำกัด</span>
+          <span>บัญชีฟรีสร้างสื่อได้ {FREE_DESIGN_LIMIT} ชิ้น สมัครสมาชิกเพื่อสร้างได้ไม่จำกัด</span>
           <JoinButton className="l5g-btn l5g-btn-go l5g-btn-sm">
             <Crown className="w-4 h-4" /> สมัครสมาชิก
           </JoinButton>

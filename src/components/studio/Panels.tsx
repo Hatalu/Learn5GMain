@@ -3,16 +3,20 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { BookOpenCheck, CloudUpload, LayoutTemplate, Loader2, PaintBucket, Pencil, QrCode, Search, Shapes, Smile, Sparkles, Square, Trash2, Type, Upload, UserRound, Wand2, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
-import { CHAR_PRESETS, DEFAULT_LOOK, cleanLook, type CharLook } from '@/lib/studio/char';
-import { answerSheet, timesTable, wordSearch } from '@/lib/studio/gen';
+import { ANIMAL_PRESETS, CHAR_PRESETS, DEFAULT_LOOK, SPECIES, cleanLook, withSpecies, type CharLook } from '@/lib/studio/char';
+import { KITS, KIT_SUBJECTS, kitDefaults, type Kit, type KitSubject, type KitValue } from '@/lib/studio/kits';
 import { CharArt } from './CharArt';
 import {
   blankBg,
   CUSTOM_MAX,
   CUSTOM_MIN,
   designMediaPaths,
+  CORNER_IDS,
+  DIVIDER_IDS,
   EDU_KINDS,
+  TAPE_IDS,
   makeChar,
+  makeDeco,
   makeEdu,
   makeImage,
   makeLine,
@@ -26,6 +30,7 @@ import {
   SIZES,
   uid,
   type BorderStyle,
+  type DecoStyle,
   type Design,
   type Item,
   type Page,
@@ -38,6 +43,7 @@ import { STICKERS, STICKER_CATS, StickerArt, type StickerCat } from './stickers'
 import { TEMPLATES } from './templates';
 import { BorderArt, ItemView, PageThumb, bgStyle, textCss } from './render';
 import { ColorGrid, Slider } from './ui';
+import { FxPicker } from './Inspector';
 import { UsageMeter } from '@/components/creator/UsageMeter';
 import type { Ctl } from './Editor';
 
@@ -56,7 +62,7 @@ export const RAIL: { id: PanelId; label: string; icon: React.ReactNode; color: s
 
 const TITLES: Record<PanelId, string> = {
   template: 'แม่แบบสำเร็จรูป',
-  shape: 'รูปทรงและเส้น',
+  shape: 'องค์ประกอบและของตกแต่ง',
   text: 'ข้อความ',
   sticker: 'สติกเกอร์',
   char: 'ตัวละครแต่งเอง',
@@ -242,9 +248,54 @@ const LINES: { label: string; it: () => Item }[] = [
   { label: 'เส้นหัวจุด', it: () => makeLine({ start: 'dot', end: 'dot' }) },
 ];
 
+const DECO_COLORS: [string, string][] = [
+  ['#7c5cf0', '#ffd166'],
+  ['#ff6b7a', '#7cc6ff'],
+  ['#2f9e6e', '#ffd166'],
+  ['#2a73d9', '#ff8fab'],
+  ['#e07a12', '#7c5cf0'],
+  ['#e8456b', '#6ee7b7'],
+];
+const FRAME_LABEL: Partial<Record<BorderStyle, string>> = {
+  line: 'เส้นเดียว', double: 'เส้นคู่', dash: 'เส้นประ', round: 'มุมมน', dots: 'จุดกลม', stars: 'ดาว', wave: 'คลื่น', corner: 'มุมหรู', hearts: 'หัวใจ', flowers: 'ดอกไม้', zigzag: 'ซิกแซก',
+  stamp: 'แสตมป์', checker: 'ตาหมากรุก', rainbow: 'สายรุ้ง', bubbles: 'ฟองสบู่', ribbon: 'ริบบิ้นเย็บ', leaves: 'ใบไม้', scallop: 'ขอบหยัก',
+};
+
+function DecoGrid({ ctl, ids, cols }: { ctl: Ctl; ids: readonly DecoStyle[]; cols: number }) {
+  return (
+    <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+      {ids.map((id, i) => {
+        const [c, c2] = DECO_COLORS[i % DECO_COLORS.length];
+        const it = makeDeco(id, c, c2);
+        return (
+          <button key={id} type="button" className="st-cell st-cell-deco" title={FRAME_LABEL[id as BorderStyle] || id} aria-label={FRAME_LABEL[id as BorderStyle] || 'ของตกแต่ง'} onClick={() => ctl.add(makeDeco(id, c, c2))}>
+            <Mini it={it} size={cols === 1 ? 230 : 64} />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function ShapePanel({ ctl }: { ctl: Ctl }) {
+  const frames = (Object.keys(FRAME_LABEL) as BorderStyle[]).filter((x) => x !== 'none') as unknown as DecoStyle[];
   return (
     <>
+      <Sec title="เอฟเฟกต์" note={ctl.sel ? 'ใช้กับชิ้นที่เลือกอยู่ (ใส่ได้ทุกชนิด: ข้อความ รูป สติกเกอร์ ตัวละคร)' : 'เลือกชิ้นงานบนหน้าก่อน แล้วกดเอฟเฟกต์ที่ชอบ'}>
+        {ctl.sel ? <FxPicker it={ctl.sel} up={(p, k) => ctl.update(ctl.sel!.id, p, k)} /> : null}
+      </Sec>
+      <Sec title="กรอบตกแต่ง" note="วางกรอบรอบเนื้อหาส่วนไหนก็ได้ ย่อขยายและเปลี่ยนสีได้">
+        <DecoGrid ctl={ctl} ids={frames} cols={3} />
+      </Sec>
+      <Sec title="เส้นคั่นสวยๆ">
+        <DecoGrid ctl={ctl} ids={DIVIDER_IDS} cols={2} />
+      </Sec>
+      <Sec title="เทปตกแต่ง">
+        <DecoGrid ctl={ctl} ids={TAPE_IDS} cols={2} />
+      </Sec>
+      <Sec title="มุมประดับ" note="หมุนหรือกลับด้านเพื่อวางมุมอื่น">
+        <DecoGrid ctl={ctl} ids={CORNER_IDS} cols={4} />
+      </Sec>
       <Sec title="รูปทรง">
         <div className="grid grid-cols-4 gap-2">
           {SHAPES.map((s, i) => (
@@ -525,6 +576,16 @@ const BORDERS: { id: BorderStyle; label: string }[] = [
   { id: 'stars', label: 'ดาว' },
   { id: 'wave', label: 'คลื่น' },
   { id: 'corner', label: 'มุมหรู' },
+  { id: 'hearts', label: 'หัวใจ' },
+  { id: 'flowers', label: 'ดอกไม้' },
+  { id: 'zigzag', label: 'ซิกแซก' },
+  { id: 'stamp', label: 'แสตมป์' },
+  { id: 'checker', label: 'ตาหมากรุก' },
+  { id: 'rainbow', label: 'สายรุ้ง' },
+  { id: 'bubbles', label: 'ฟองสบู่' },
+  { id: 'ribbon', label: 'ริบบิ้นเย็บ' },
+  { id: 'leaves', label: 'ใบไม้' },
+  { id: 'scallop', label: 'ขอบหยัก' },
 ];
 
 function BgPanel({ ctl }: { ctl: Ctl }) {
@@ -682,7 +743,16 @@ function CharPanel({ ctl }: { ctl: Ctl }) {
       <button type="button" className="st-big-add" onClick={() => ctl.openChar(DEFAULT_LOOK)}>
         <Wand2 className="w-5 h-5" /> สร้างตัวละครใหม่
       </button>
-      <p className="st-note mt-2">แต่งหน้า ตา ผม ชุด เครื่องประดับ เปลี่ยนสี และจัดท่าทางได้ บันทึกไว้ใช้ซ้ำเป็นสติกเกอร์ของคุณเอง</p>
+      <p className="st-note mt-2">เป็นคนหรือสัตว์ก็ได้ แต่งหน้า ตา ผม ชุด เครื่องประดับ เปลี่ยนสี และจัดท่าทางได้ บันทึกไว้ใช้ซ้ำเป็นสติกเกอร์ของคุณเอง</p>
+      <Sec title="เริ่มจากสัตว์" note="กดแล้วแต่งต่อได้ทันที">
+        <div className="grid grid-cols-4 gap-2">
+          {SPECIES.slice(1).map((s) => (
+            <button key={s.id} type="button" className="st-cell st-cell-char" title={s.label} aria-label={`แต่ง${s.label}`} onClick={() => ctl.openChar(withSpecies(DEFAULT_LOOK, s.id))}>
+              <CharArt look={withSpecies(DEFAULT_LOOK, s.id)} viewBox="6 0 188 180" className="w-full h-full" />
+            </button>
+          ))}
+        </div>
+      </Sec>
       <Sec title="ตัวละครของฉัน">
         {mine === null ? (
           <Loader2 className="w-5 h-5 animate-spin opacity-60" />
@@ -709,7 +779,19 @@ function CharPanel({ ctl }: { ctl: Ctl }) {
           </div>
         )}
       </Sec>
-      <Sec title="ตัวละครสำเร็จรูป" note="กดใส่ได้เลย ดับเบิลคลิกบนหน้าเพื่อแต่งต่อ">
+      <Sec title="สัตว์สำเร็จรูป" note="กดใส่ได้เลย ดับเบิลคลิกบนหน้าเพื่อแต่งต่อ">
+        <div className="grid grid-cols-3 gap-2">
+          {ANIMAL_PRESETS.map((p) => (
+            <div key={p.id} className="st-charcell">
+              <button type="button" className="st-cell st-cell-char" title={p.label} onClick={() => ctl.add(makeChar(p.look))}>
+                <CharArt look={p.look} className="w-full h-full" />
+              </button>
+              <span className="truncate">{p.label}</span>
+            </div>
+          ))}
+        </div>
+      </Sec>
+      <Sec title="คนสำเร็จรูป" note="กดใส่ได้เลย ดับเบิลคลิกบนหน้าเพื่อแต่งต่อ">
         <div className="grid grid-cols-3 gap-2">
           {CHAR_PRESETS.map((p) => (
             <div key={p.id} className="st-charcell">
@@ -731,153 +813,110 @@ export const CHARS_EVENT = 'l5g:chars-changed';
 /* ------------------------------------------------------------------ สื่อการสอน */
 
 function EduPanel({ ctl }: { ctl: Ctl }) {
-  const [words, setWords] = useState('CAT, DOG, BIRD, FISH, LION');
-  const [wsSize, setWsSize] = useState(10);
-  const [hard, setHard] = useState(false);
-  const [ans, setAns] = useState({ n: 20, k: 4, lang: 'th' as 'th' | 'en' });
-  const [mul, setMul] = useState({ n: 2, show: false });
-  const W = ctl.W;
-
-  const makeWordSearch = () => {
-    const ws = wordSearch(words.split(/[,\n]/), wsSize, hard);
-    const side = Math.min(W - 80, ctl.H * 0.55, wsSize * 46);
-    const t = makeTable(ws.grid.length, ws.grid.length, { head: '', size: Math.round((side / ws.grid.length) * 0.5), sw: 1.5, stroke: '#9b8fd0' });
-    t.cells = ws.grid;
-    const x = (W - side) / 2;
-    const items: Item[] = [
-      { ...makeText({ text: 'ค้นหาคำศัพท์', size: 34, bold: true, font: 'kanit', color: '#7c5cf0' }), x: (W - 500) / 2, y: 60, w: 500 },
-      { ...t, x, y: 130, w: side, h: side },
-      { ...makeText({ text: 'คำที่ต้องหา: ' + ws.placed.join('   '), size: 20, align: 'left' }), x, y: 150 + side, w: side },
-    ];
-    ctl.addMany(items);
-    if (ws.skipped.length) alert('ใส่ไม่ได้ (ยาวเกินตาราง): ' + ws.skipped.join(', '));
-  };
-  const makeAnswerSheet = () => {
-    const tables = answerSheet(ans.n, ans.k, ans.lang);
-    const cols = tables.length;
-    const tw = Math.min(300, (W - 80 - (cols - 1) * 24) / cols);
-    const items: Item[] = [{ ...makeText({ text: 'กระดาษคำตอบ', size: 32, bold: true, font: 'kanit' }), x: (W - 500) / 2, y: 50, w: 500 }];
-    tables.forEach((cells, i) => {
-      const t = makeTable(cells.length, cells[0].length, { size: 18, head: '#ede7ff' });
-      t.cells = cells;
-      items.push({ ...t, x: (W - (tw * cols + 24 * (cols - 1))) / 2 + i * (tw + 24), y: 120, w: tw, h: cells.length * 36 });
-    });
-    ctl.addMany(items);
-  };
-  const makeTimes = () => {
-    const cells = timesTable(mul.n, 12, mul.show);
-    const t = makeTable(cells.length, 2, { head: '', size: 24, align: 'left' });
-    t.cells = cells;
-    ctl.addMany([
-      { ...makeText({ text: `สูตรคูณแม่ ${mul.n}`, size: 36, bold: true, font: 'kanit', color: '#e07a12' }), x: (W - 400) / 2, y: 60, w: 400 },
-      { ...t, x: (W - 360) / 2, y: 130, w: 360, h: cells.length * 52 },
-    ]);
-  };
-
+  const [sub, setSub] = useState<KitSubject>('math');
+  const edu = EDU_KINDS.filter((k) => k.subject === sub);
+  const kits = KITS.filter((k) => k.subjects.includes(sub));
   return (
     <>
-      <Sec title="คณิตศาสตร์และวิทยาศาสตร์" note="กดใส่ แล้วปรับตัวเลขได้ที่แถบด้านบน">
-        <div className="grid grid-cols-3 gap-2">
-          {EDU_KINDS.map((k) => (
-            <button key={k.kind} type="button" className="st-wr" onClick={() => ctl.add(makeEdu(k.kind))} title={k.label}>
-              <span className="st-edu-prev">
-                <EduMini kind={k.kind} />
-              </span>
-              <span>{k.label}</span>
-            </button>
-          ))}
-        </div>
+      <div className="st-chips" role="tablist" aria-label="เลือกวิชา">
+        {KIT_SUBJECTS.map((x) => (
+          <button key={x.id} type="button" role="tab" aria-selected={sub === x.id} data-on={sub === x.id} onClick={() => setSub(x.id)}>
+            {x.label}
+          </button>
+        ))}
+      </div>
+      {edu.length > 0 && (
+        <Sec title={sub === 'math' ? 'สื่อคณิตศาสตร์' : 'สื่อวิทยาศาสตร์'} note="กดใส่ แล้วปรับตัวเลขได้ที่แถบด้านบน">
+          <div className="grid grid-cols-3 gap-2">
+            {edu.map((k) => (
+              <button key={k.kind} type="button" className="st-wr" onClick={() => ctl.add(makeEdu(k.kind))} title={k.label}>
+                <span className="st-edu-prev">
+                  <Mini it={makeEdu(k.kind)} size={70} />
+                </span>
+                <span>{k.label}</span>
+              </button>
+            ))}
+          </div>
+        </Sec>
+      )}
+      <Sec title="ตัวสร้างใบงานอัตโนมัติ" note="กรอกนิดเดียว ระบบจัดหน้าให้ ทุกชิ้นแก้ไขต่อได้">
+        {kits.map((k, i) => (
+          <KitForm key={`${sub}-${k.id}`} kit={k} ctl={ctl} open={i === 0} />
+        ))}
       </Sec>
-
-      <Sec title="ตัวสร้างใบงานอัตโนมัติ">
-        <details className="st-gen" open>
-          <summary>
-            <Sparkles className="w-4 h-4" /> ตารางค้นหาคำ
-          </summary>
-          <textarea className="st-input st-textarea" rows={2} value={words} onChange={(e) => setWords(e.target.value)} aria-label="คำศัพท์ คั่นด้วยจุลภาค" />
-          <div className="flex items-center gap-2 mt-2 flex-wrap">
-            <label className="text-xs font-bold">
-              ขนาด{' '}
-              <select className="st-select" value={wsSize} onChange={(e) => setWsSize(Number(e.target.value))}>
-                {[8, 10, 12, 14].map((n) => (
-                  <option key={n} value={n}>
-                    {n} x {n}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="st-check !mt-0">
-              <input type="checkbox" checked={hard} onChange={(e) => setHard(e.target.checked)} />
-              <span>ยาก (ย้อนกลับ/ทแยงทุกทิศ)</span>
-            </label>
-          </div>
-          <button type="button" className="st-btn-acc mt-2 w-full" onClick={makeWordSearch}>
-            สร้างตารางค้นหาคำ
-          </button>
-          <p className="st-note mt-1">ใช้ได้ทั้งคำภาษาไทยและอังกฤษ คั่นคำด้วยจุลภาค</p>
-        </details>
-        <details className="st-gen">
-          <summary>
-            <Sparkles className="w-4 h-4" /> กระดาษคำตอบแบบฝน
-          </summary>
-          <div className="flex items-center gap-2 flex-wrap">
-            <label className="text-xs font-bold">
-              จำนวนข้อ <input className="st-input w-16" inputMode="numeric" value={ans.n} onChange={(e) => setAns({ ...ans, n: Math.min(60, Number(e.target.value.replace(/\D/g, '')) || 1) })} />
-            </label>
-            <select className="st-select" value={ans.k} onChange={(e) => setAns({ ...ans, k: Number(e.target.value) })} aria-label="จำนวนตัวเลือก">
-              {[3, 4, 5].map((k) => (
-                <option key={k} value={k}>
-                  {k} ตัวเลือก
-                </option>
-              ))}
-            </select>
-            <select className="st-select" value={ans.lang} onChange={(e) => setAns({ ...ans, lang: e.target.value as 'th' | 'en' })} aria-label="ตัวอักษร">
-              <option value="th">ก ข ค ง</option>
-              <option value="en">A B C D</option>
-            </select>
-          </div>
-          <button type="button" className="st-btn-acc mt-2 w-full" onClick={makeAnswerSheet}>
-            สร้างกระดาษคำตอบ
-          </button>
-        </details>
-        <details className="st-gen">
-          <summary>
-            <Sparkles className="w-4 h-4" /> ตารางสูตรคูณ
-          </summary>
-          <div className="flex items-center gap-2 flex-wrap">
-            <label className="text-xs font-bold">
-              แม่{' '}
-              <select className="st-select" value={mul.n} onChange={(e) => setMul({ ...mul, n: Number(e.target.value) })}>
-                {Array.from({ length: 24 }, (_, i) => i + 2).map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="st-check !mt-0">
-              <input type="checkbox" checked={mul.show} onChange={(e) => setMul({ ...mul, show: e.target.checked })} />
-              <span>ใส่คำตอบ (ใช้เป็นเฉลย)</span>
-            </label>
-          </div>
-          <button type="button" className="st-btn-acc mt-2 w-full" onClick={makeTimes}>
-            สร้างตารางสูตรคูณ
-          </button>
-        </details>
-      </Sec>
-
-      <SheetPanel ctl={ctl} />
+      {sub === 'all' && <SheetPanel ctl={ctl} />}
     </>
   );
 }
 
-function EduMini({ kind }: { kind: (typeof EDU_KINDS)[number]['kind'] }) {
-  const e = { ...makeEdu(kind) };
-  const s = 70 / Math.max(e.w, e.h);
+function KitForm({ kit, ctl, open }: { kit: Kit; ctl: Ctl; open: boolean }) {
+  const [v, setV] = useState<Record<string, KitValue>>(() => kitDefaults(kit));
+  const [msg, setMsg] = useState('');
+  const run = () => {
+    const out = kit.build(v, ctl.W, ctl.H, Math.random);
+    if (out.items.length) ctl.addMany(out.items);
+    setMsg(out.warn || '');
+  };
   return (
-    <span style={{ display: 'block', width: e.w * s, height: e.h * s, overflow: 'visible' }}>
-      <span style={{ display: 'block', width: e.w, height: e.h, transform: `scale(${s})`, transformOrigin: '0 0' }}>
-        <ItemView it={e} />
+    <details className="st-gen" open={open}>
+      <summary>
+        <Sparkles className="w-4 h-4" /> {kit.label}
+      </summary>
+      <p className="st-note">{kit.note}</p>
+      <div className="flex flex-col gap-2 mt-1">
+        {kit.fields.map((f) => (
+          <label key={f.k} className={f.type === 'check' ? 'st-check !mt-0' : 'text-xs font-bold flex flex-col gap-1'}>
+            {f.type === 'check' ? (
+              <>
+                <input type="checkbox" checked={!!v[f.k]} onChange={(e) => setV({ ...v, [f.k]: e.target.checked })} />
+                <span>{f.label}</span>
+              </>
+            ) : (
+              <>
+                <span>{f.label}</span>
+                {f.type === 'text' ? (
+                  f.rows ? (
+                    <textarea className="st-input st-textarea" rows={f.rows} value={String(v[f.k])} maxLength={1200} onChange={(e) => setV({ ...v, [f.k]: e.target.value })} />
+                  ) : (
+                    <input className="st-input" value={String(v[f.k])} maxLength={200} onChange={(e) => setV({ ...v, [f.k]: e.target.value })} />
+                  )
+                ) : f.type === 'num' ? (
+                  <input
+                    className="st-input w-24"
+                    inputMode="numeric"
+                    value={String(v[f.k])}
+                    onChange={(e) => setV({ ...v, [f.k]: e.target.value.replace(/\D/g, '').slice(0, 4) })}
+                    onBlur={() => setV({ ...v, [f.k]: Math.min(f.max, Math.max(f.min, Number(v[f.k]) || f.def)) })}
+                  />
+                ) : (
+                  <select className="st-select" value={String(v[f.k])} onChange={(e) => setV({ ...v, [f.k]: e.target.value })}>
+                    {f.options.map(([val, lab]) => (
+                      <option key={val} value={val}>
+                        {lab}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </>
+            )}
+          </label>
+        ))}
+      </div>
+      <button type="button" className="st-btn-acc mt-2 w-full" onClick={run}>
+        สร้าง{kit.label}
+      </button>
+      {msg && <p className="text-xs font-bold text-rose-600 mt-1.5">{msg}</p>}
+    </details>
+  );
+}
+
+/** ภาพย่อของชิ้นงานใดๆ (วาดขนาดจริงแล้วย่อให้พอดีกรอบ) */
+function Mini({ it, size }: { it: Item; size: number }) {
+  const s = size / Math.max(it.w, it.h);
+  return (
+    <span style={{ display: 'block', position: 'relative', width: it.w * s, height: it.h * s, overflow: 'visible' }}>
+      <span style={{ display: 'block', position: 'absolute', left: 0, top: 0, width: it.w, height: it.h, transform: `scale(${s})`, transformOrigin: '0 0' }}>
+        <ItemView it={{ ...it, x: 0, y: 0 }} />
       </span>
     </span>
   );

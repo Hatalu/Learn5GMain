@@ -17,18 +17,21 @@ import {
   POSES,
   SHOES,
   SKINS,
+  SPECIES,
   TOPS,
   cleanLook,
   randomLook,
   toggleAcc,
+  withSpecies,
   type CharLook,
   type Opt,
 } from '@/lib/studio/char';
 import { CharArt } from './CharArt';
 import { Slider } from './ui';
 
-type Tab = 'face' | 'hair' | 'outfit' | 'acc' | 'pose';
+type Tab = 'kind' | 'face' | 'hair' | 'outfit' | 'acc' | 'pose';
 const TABS: { id: Tab; label: string }[] = [
+  { id: 'kind', label: 'คน/สัตว์' },
   { id: 'face', label: 'ใบหน้า' },
   { id: 'hair', label: 'ทรงผม' },
   { id: 'outfit', label: 'เสื้อผ้า' },
@@ -53,7 +56,8 @@ export function CharBuilder({
   onClose: () => void;
 }) {
   const [look, setLook] = useState<CharLook>(() => cleanLook(initial));
-  const [tab, setTab] = useState<Tab>('face');
+  const [tab, setTab] = useState<Tab>('kind');
+  const animal = look.species !== 'human';
   const [flip, setFlip] = useState(initialFlip);
   const [name, setName] = useState('');
   const [saving, setSaving] = useState<'idle' | 'busy' | 'done'>('idle');
@@ -122,9 +126,28 @@ export function CharBuilder({
               ))}
             </div>
             <div className="cb-body">
+              {tab === 'kind' && (
+                <>
+                  <p className="st-note">เลือกเป็นคนหรือสัตว์ แล้วแต่งหน้า ชุด เครื่องประดับ และท่าทางได้เหมือนกันทุกตัว</p>
+                  <div className="cb-grid">
+                    {SPECIES.map((o) => (
+                      <button key={o.id} type="button" className="cb-opt" data-on={look.species === o.id} onClick={() => (setLook(withSpecies(look, o.id)), setSaving('idle'))} title={o.label} aria-pressed={look.species === o.id}>
+                        <CharArt look={withSpecies(look, o.id)} viewBox="6 0 188 180" className="w-full h-16" />
+                        <small>{o.label}</small>
+                      </button>
+                    ))}
+                  </div>
+                  {animal && (
+                    <>
+                      <Swatches label="สีขน" list={[...new Set([SPECIES.find((x) => x.id === look.species)!.fur, ...SKINS.slice(0, 2), '#ffffff', '#f6b35e', '#c98a5a', '#a46a3f', '#2a2350', '#b9b6c8', '#7ed37a', '#ff8fb8', '#7cc6ff', '#a78bfa'])]} value={look.skin} onPick={(skin) => set({ skin })} />
+                      <Swatches label={look.species === 'lion' ? 'สีแผงคอ' : look.species === 'tiger' ? 'สีลาย' : 'สีรอง'} list={[...new Set([SPECIES.find((x) => x.id === look.species)!.fur2, '#ffffff', '#fff3e0', '#ffc2d6', '#2a2350', '#b85a1f', '#ff9a3d', '#ffd166', '#7cc6ff', '#a78bfa'])]} value={look.fur2} onPick={(fur2) => set({ fur2 })} />
+                    </>
+                  )}
+                </>
+              )}
               {tab === 'face' && (
                 <>
-                  <Swatches label="สีผิว" list={SKINS} value={look.skin} onPick={(skin) => set({ skin })} />
+                  <Swatches label={animal ? 'สีขน' : 'สีผิว'} list={animal ? [look.skin, '#ffffff', '#f6b35e', '#c98a5a', '#a46a3f', '#2a2350', '#b9b6c8', '#7ed37a', '#ff8fb8', '#7cc6ff'] : SKINS} value={look.skin} onPick={(skin) => set({ skin })} />
                   {sub('รูปหน้า')}
                   <Grid opts={FACES} value={look.face} onPick={(face) => set({ face })} view="34 24 132 132" />
                   {sub('ดวงตา')}
@@ -226,6 +249,7 @@ export function CharBuilder({
 
 /** รูปตัวอย่างของตัวเลือก: ใช้ตัวละครปัจจุบันแต่เปลี่ยนเฉพาะค่าที่กำลังดู */
 function previewFor(look: CharLook, tab: Tab, id: string): CharLook {
+  if (tab === 'kind') return withSpecies(look, id);
   if (FACES.some((x) => x.id === id) && tab === 'face') return { ...look, face: id };
   if (EYES.some((x) => x.id === id)) return { ...look, eyes: id };
   if (BROWS.some((x) => x.id === id)) return { ...look, brows: id };
