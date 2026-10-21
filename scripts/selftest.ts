@@ -3,6 +3,7 @@
  * รัน: npm run selftest
  */
 import assert from 'node:assert/strict';
+import { answerOf, quizPages } from '../src/lib/studio/fromQuiz';
 import { FREE_SET_LIMIT, FREE_UPLOAD_MB, MEMBER_UPLOAD_MB, creatorTier, fmtMB, quotaBytes, setsUsed } from '../src/lib/game-creator/quota';
 import { normalizeGmail, signupSchema } from '../src/lib/validations/signup';
 import {
@@ -1143,6 +1144,37 @@ t('สร้างสื่อ: โจทย์เลขลบไม่ติด
   assert.equal(fx('url(x)').fx, 'none');
   assert.equal(FREE_DESIGN_LIMIT, 3);
   assert.ok(EDU_KINDS.length >= 19 && EDU_KINDS.every((k) => k.params.length > 0));
+});
+
+t('ชุดคำถามเป็นใบงาน: แบ่งหน้าไม่ล้น ข้อความครบ เฉลยถูก และผ่านตัวกรองสื่อ', () => {
+  const rich = (v: string) => [{ t: 'x' as const, v }];
+  const qs = Array.from({ length: 23 }, (_, i) => ({
+    id: `q${i}`,
+    text: rich(i === 4 ? 'ข้อยาว '.repeat(60) : `โจทย์ข้อ ${i + 1}`),
+    media: null,
+    multi: i === 7,
+    time: 20,
+    points: 1 as const,
+    choices: ['ก', 'ข', 'ค', 'ง'].map((c, k) => ({ id: `c${i}${k}`, text: rich(`ตัวเลือก ${c}`), media: null, correct: k === i % 4 || (i === 7 && k === 3) })),
+  }));
+  qs.push({ ...qs[0], id: 'empty', text: [], choices: qs[0].choices.map((c) => ({ ...c, text: [] })) });
+  const pages = quizPages('ทดสอบ', { v: 1, questions: qs }, 794, 1123, { answers: true, header: true });
+  assert.ok(pages.length >= 3, `pages ${pages.length}`);
+  const body = pages.slice(0, -1);
+  for (const pg of body) for (const it of pg.items) assert.ok(it.y >= 0 && it.y + it.h <= 1123 + 200, `${it.type} y=${it.y}`);
+  const allText = body.flatMap((p) => p.items).map((it) => (it.type === 'text' ? it.text : '')).join('\n');
+  for (let i = 1; i <= 23; i++) assert.ok(allText.includes(`${i}. `), `ข้อ ${i}`);
+  assert.ok(!allText.includes('24. '), 'ข้อว่างต้องถูกข้าม');
+  assert.equal(answerOf(qs[1]), 'ข');
+  assert.equal(answerOf(qs[7]), 'ง');
+  assert.equal(answerOf({ ...qs[7], choices: qs[7].choices.map((c, k) => ({ ...c, correct: k === 0 || k === 3 })) }), 'ก, ง');
+  const key = pages[pages.length - 1].items.map((it) => (it.type === 'text' ? it.text : '')).join('\n');
+  assert.ok(key.includes('เฉลย') && key.includes('2. ข') && key.includes('23. ค'));
+  const back = sanitizeDesign({ size: { id: 'a4p', w: 794, h: 1123 }, pages });
+  assert.equal(back.pages.length, pages.length);
+  assert.equal(back.pages.reduce((n, p) => n + p.items.length, 0), pages.reduce((n, p) => n + p.items.length, 0));
+  assert.equal(quizPages('x', { v: 1, questions: [] }, 794, 1123, { answers: true, header: true }).length, 0);
+  assert.equal(quizPages('x', { v: 1, questions: qs }, 794, 1123, { answers: false, header: false }).length, pages.length - 1);
 });
 
 console.log(`\n${passed} tests passed`);

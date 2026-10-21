@@ -16,6 +16,7 @@ import {
   FileImage,
   FileText,
   Globe,
+  Keyboard,
   Loader2,
   Lock,
   Maximize,
@@ -34,7 +35,7 @@ import { createClient } from '@/lib/supabase/client';
 import { uploadImage } from '@/lib/game-creator/media';
 import { cleanTitle } from '@/lib/game-creator/quiz';
 import { FREE_DESIGN_LIMIT, creatorTier } from '@/lib/game-creator/quota';
-import { blankPage, makeChar, makeImage, makeText, MAX_PAGES, sanitizeDesign, sizeLabel, uid, type Design, type Item, type Page } from '@/lib/studio/doc';
+import { blankPage, makeChar, makeImage, makeLine, makeShape, makeText, MAX_PAGES, sanitizeDesign, sizeLabel, uid, type Design, type Item, type Page } from '@/lib/studio/doc';
 import type { CharLook } from '@/lib/studio/char';
 import { exportPdf, exportPng, makeThumb } from '@/lib/studio/export';
 import { PageView, type EditCell, type EditText } from './render';
@@ -42,6 +43,7 @@ import { Inspector } from './Inspector';
 import { CHARS_EVENT, Panels, RAIL, SizePicker, type PanelId } from './Panels';
 import { CharBuilder } from './CharBuilder';
 import { Presenter } from './Presenter';
+import { ShortcutHelp } from './Shortcuts';
 import { Pop } from './ui';
 import { JoinButton } from '@/components/membership/JoinButton';
 import './studio.css';
@@ -88,6 +90,9 @@ const isTyping = (t: EventTarget | null) => {
   const el = t as HTMLElement | null;
   return !!el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
 };
+/** สไตล์ของชิ้นงาน (สี เส้น ฟอนต์ เอฟเฟกต์) ไม่รวมตำแหน่งและเนื้อหา ใช้กับคัดลอก/วางสไตล์ */
+const NOT_STYLE = new Set(['id', 'x', 'y', 'w', 'h', 'rot', 'locked', 'flip', 'text', 'cells', 'src', 'look', 'sticker', 'shape', 'kind', 'a', 'b', 'c', 'style']);
+const styleOf = (it: Item): Partial<Item> => Object.fromEntries(Object.entries(it).filter(([k]) => !NOT_STYLE.has(k))) as Partial<Item>;
 const DESIGN_COLS = 'id, owner_id, owner_name, title, content, is_public, thumb';
 const mapItems = (d: Design, pi: number, fn: (items: Item[]) => Item[]): Design => ({ ...d, pages: d.pages.map((p, i) => (i === pi ? { ...p, items: fn(p.items) } : p)) });
 
@@ -131,6 +136,8 @@ export function StudioEditor({ id }: { id: string }) {
   const stageEl = useRef<HTMLDivElement>(null);
   const thumbEl = useRef<HTMLDivElement>(null);
   const clip = useRef<Item | null>(null);
+  const styleClip = useRef<Partial<Item> | null>(null);
+  const [help, setHelp] = useState(false);
   const lastThumb = useRef(0);
   const loaded = useRef(false);
   const needThumb = useRef(false);
@@ -675,32 +682,126 @@ export function StudioEditor({ id }: { id: string }) {
     else begin({ kind: 'resize', pi: ap, id: sel.id, h, sx: p.x, sy: p.y, o: sel, snap: doc, moved: false }, e);
   };
 
-  /* ------------------------------------------------------------ แป้นพิมพ์ + วาง */
+  /* ------------------------------------------------------------ แป้นพิมพ์ลัด (แบบ Canva) + วาง */
   useEffect(() => {
-    if (!ctl || readOnly || present !== null || charDlg) return;
+    if (!ctl || readOnly || present !== null || charDlg || help) return;
     const key = (e: KeyboardEvent) => {
-      if (isTyping(e.target)) return;
       const mod = e.ctrlKey || e.metaKey;
-      if (mod && e.key.toLowerCase() === 'z') {
+      const k = e.key.toLowerCase();
+      // กำลังพิมพ์ในกล่องข้อความ: Ctrl+B/I/U เปลี่ยนทั้งกล่อง (ข้อความเก็บแบบไม่มีรูปแบบในตัว)
+      if (mod && !e.shiftKey && !e.altKey && sel?.type === 'text' && e.target === editRef.current && (k === 'b' || k === 'i' || k === 'u')) {
+        e.preventDefault();
+        const f = k === 'b' ? 'bold' : k === 'i' ? 'italic' : 'underline';
+        ctl.update(sel.id, { [f]: !sel[f] } as Partial<Item>);
+        return;
+      }
+      if (isTyping(e.target)) return;
+      if (mod && k === 'z') {
         e.preventDefault();
         if (e.shiftKey) redo();
         else undo();
         return;
       }
-      if (mod && e.key.toLowerCase() === 'y') {
+      if (mod && k === 'y') {
         e.preventDefault();
         redo();
         return;
       }
-      if (!sel) return;
+      if (mod && k === 's') {
+        e.preventDefault();
+        doSave().then(() => say('บันทึกแล้ว'));
+        return;
+      }
+      if (mod && (e.key === '=' || e.key === '+' || e.key === '-' || e.key === '0')) {
+        e.preventDefault();
+        if (e.key === '0') {
+          setAutoFit(true);
+          fit();
+        } else {
+          setAutoFit(false);
+          setZoom((z) => Math.max(0.1, Math.min(3, z * (e.key === '-' ? 0.9 : 1.1))));
+        }
+        return;
+      }
+      if (mod && e.altKey && k === 'p') {
+        e.preventDefault();
+        finishEdit();
+        setSelId(null);
+        setPresent(ap);
+        return;
+      }
+      if ((e.key === '?' && !mod) || (mod && e.key === '/')) {
+        e.preventDefault();
+        setHelp(true);
+        return;
+      }
+      if (mod && e.key === 'Enter') {
+        e.preventDefault();
+        ctl.addPage();
+        return;
+      }
+      if (e.key === 'Tab') {
+        const items = ctl.page.items;
+        if (!items.length) return;
+        e.preventDefault();
+        const i = sel ? items.findIndex((x) => x.id === sel.id) : -1;
+        const n = items.length;
+        setSelId(items[(((e.shiftKey ? (i < 0 ? 0 : i) - 1 : i + 1) % n) + n) % n].id);
+        return;
+      }
+      if (!sel) {
+        if (mod || e.altKey) return;
+        // เพิ่มชิ้นงานเร็ว: T ข้อความ R สี่เหลี่ยม C วงกลม L เส้น
+        if (k === 't') ctl.add(makeText({ text: 'พิมพ์ข้อความ' }));
+        else if (k === 'r') ctl.add(makeShape('rect', { w: 240, h: 160 }));
+        else if (k === 'c') ctl.add(makeShape('circle', { fill: '#7dd3fc' }));
+        else if (k === 'l') ctl.add(makeLine());
+        else if (e.key === 'PageDown' || e.key === 'PageUp') ctl.goPage(ap + (e.key === 'PageDown' ? 1 : -1));
+        else return;
+        e.preventDefault();
+        return;
+      }
+      const code = e.code;
       if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault();
-        ctl.remove(sel.id);
-      } else if (mod && e.key.toLowerCase() === 'd') {
+        if (sel.locked) say('ชิ้นนี้ล็อกอยู่ ปลดล็อกก่อนลบ (Alt+Shift+L)');
+        else ctl.remove(sel.id);
+      } else if (mod && k === 'd') {
         e.preventDefault();
         ctl.duplicate(sel.id);
-      } else if (mod && e.key.toLowerCase() === 'c') {
+      } else if (mod && e.altKey && k === 'c') {
+        e.preventDefault();
+        styleClip.current = styleOf(sel);
+        say('คัดลอกสไตล์แล้ว เลือกชิ้นชนิดเดียวกันแล้วกด Ctrl+Alt+V');
+      } else if (mod && e.altKey && k === 'v') {
+        e.preventDefault();
+        const st = styleClip.current;
+        if (!st) say('ยังไม่ได้คัดลอกสไตล์ (Ctrl+Alt+C)');
+        else if (st.type !== sel.type) say('วางสไตล์ได้กับชิ้นชนิดเดียวกันเท่านั้น');
+        else ctl.update(sel.id, st as Partial<Item>);
+      } else if (mod && k === 'c') {
         clip.current = structuredClone(sel);
+      } else if (mod && k === 'x') {
+        clip.current = structuredClone(sel);
+        if (!sel.locked) ctl.remove(sel.id);
+      } else if (mod && (code === 'BracketRight' || code === 'BracketLeft')) {
+        e.preventDefault();
+        const up = code === 'BracketRight';
+        ctl.order(sel.id, e.altKey || e.shiftKey ? (up ? 'front' : 'back') : up ? 'up' : 'down');
+      } else if (e.altKey && e.shiftKey && k === 'l') {
+        e.preventDefault();
+        ctl.update(sel.id, { locked: !sel.locked });
+        say(sel.locked ? 'ปลดล็อกแล้ว' : 'ล็อกแล้ว');
+      } else if (sel.type === 'text' && mod && !e.shiftKey && (k === 'b' || k === 'i' || k === 'u')) {
+        e.preventDefault();
+        const f = k === 'b' ? 'bold' : k === 'i' ? 'italic' : 'underline';
+        ctl.update(sel.id, { [f]: !sel[f] } as Partial<Item>);
+      } else if (sel.type === 'text' && mod && e.shiftKey && (k === 'l' || k === 'e' || k === 'r')) {
+        e.preventDefault();
+        ctl.update(sel.id, { align: k === 'l' ? 'left' : k === 'e' ? 'center' : 'right' } as Partial<Item>);
+      } else if ((sel.type === 'text' || sel.type === 'table') && mod && e.shiftKey && (code === 'Comma' || code === 'Period')) {
+        e.preventDefault();
+        ctl.update(sel.id, { size: Math.max(6, Math.min(400, sel.size + (code === 'Period' ? 2 : -2))) } as Partial<Item>, 'size');
       } else if (e.key === 'Escape') {
         setSelId(null);
       } else if (e.key === 'Enter' && (sel.type === 'text' || sel.type === 'table')) {
@@ -741,7 +842,7 @@ export function StudioEditor({ id }: { id: string }) {
       window.removeEventListener('keydown', key);
       window.removeEventListener('paste', paste);
     };
-  }, [ctl, sel, readOnly, undo, redo, startEdit, ap, present, charDlg]);
+  }, [ctl, sel, readOnly, undo, redo, startEdit, ap, present, charDlg, help, doSave, say, fit, finishEdit]);
 
   /* ------------------------------------------------------------ แก้ข้อความ */
   useEffect(() => {
@@ -1098,6 +1199,11 @@ export function StudioEditor({ id }: { id: string }) {
               <span className="max-md:hidden opacity-70"> · {sizeLabel(doc.size)}</span>
             </span>
             <span className="flex-1" />
+            {!readOnly && (
+              <button type="button" className="st-tb st-keys-btn max-md:!hidden" onClick={() => setHelp(true)} title="แป้นพิมพ์ลัด (กด ?)">
+                <Keyboard className="w-4 h-4" /> แป้นลัด
+              </button>
+            )}
             <div className="st-zoom">
               <input
                 type="range"
@@ -1139,6 +1245,7 @@ export function StudioEditor({ id }: { id: string }) {
         </div>
       )}
 
+      {help && <ShortcutHelp onClose={() => setHelp(false)} />}
       {present !== null && <Presenter doc={doc} start={present} onClose={() => setPresent(null)} />}
       {charDlg && (
         <CharBuilder

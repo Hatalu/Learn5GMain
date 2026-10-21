@@ -3,6 +3,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { BookOpenCheck, CloudUpload, LayoutTemplate, Loader2, PaintBucket, Pencil, QrCode, Search, Shapes, Smile, Sparkles, Square, Trash2, Type, Upload, UserRound, Wand2, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { useAuth } from '@/context/AuthContext';
+import { sanitizeQuiz } from '@/lib/game-creator/quiz';
+import { mediaPrefix } from '@/lib/game-creator/prefix';
+import { quizPages } from '@/lib/studio/fromQuiz';
 import { ANIMAL_PRESETS, CHAR_PRESETS, DEFAULT_LOOK, SPECIES, cleanLook, withSpecies, type CharLook } from '@/lib/studio/char';
 import { KITS, KIT_SUBJECTS, kitDefaults, type Kit, type KitSubject, type KitValue } from '@/lib/studio/kits';
 import { CharArt } from './CharArt';
@@ -25,6 +29,7 @@ import {
   makeTable,
   makeText,
   makeWrite,
+  MAX_PAGES,
   mmToPx,
   pxToMm,
   SIZES,
@@ -825,6 +830,7 @@ function EduPanel({ ctl }: { ctl: Ctl }) {
           </button>
         ))}
       </div>
+      <QuizImport ctl={ctl} />
       {edu.length > 0 && (
         <Sec title={sub === 'math' ? 'สื่อคณิตศาสตร์' : 'สื่อวิทยาศาสตร์'} note="กดใส่ แล้วปรับตัวเลขได้ที่แถบด้านบน">
           <div className="grid grid-cols-3 gap-2">
@@ -905,6 +911,76 @@ function KitForm({ kit, ctl, open }: { kit: Kit; ctl: Ctl; open: boolean }) {
       <button type="button" className="st-btn-acc mt-2 w-full" onClick={run}>
         สร้าง{kit.label}
       </button>
+      {msg && <p className="text-xs font-bold text-rose-600 mt-1.5">{msg}</p>}
+    </details>
+  );
+}
+
+/** นำชุดคำถามของฉัน (ระบบสร้างเกม) มาเป็นหน้าใบงานปรนัย + เฉลย ต่อจากหน้าที่เลือกอยู่ */
+function QuizImport({ ctl }: { ctl: Ctl }) {
+  const { user } = useAuth();
+  const [sets, setSets] = useState<{ id: string; title: string; question_count: number }[] | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [answers, setAnswers] = useState(true);
+  const [msg, setMsg] = useState('');
+  const load = () => {
+    if (!user || sets) return;
+    createClient()
+      .from('user_games')
+      .select('id, title, question_count')
+      .eq('owner_id', user.id)
+      .order('updated_at', { ascending: false })
+      .limit(50)
+      .then(({ data }) => setSets(data || []));
+  };
+  const use = async (id: string, title: string) => {
+    setBusy(id);
+    setMsg('');
+    const { data } = await createClient().from('user_games').select('content').eq('id', id).maybeSingle();
+    setBusy(null);
+    const pages = data ? quizPages(title, sanitizeQuiz(data.content, mediaPrefix()), ctl.W, ctl.H, { answers, header: true }) : [];
+    if (!pages.length) return setMsg('ชุดคำถามนี้ยังไม่มีข้อคำถาม');
+    const room = MAX_PAGES - ctl.doc.pages.length;
+    if (room <= 0) return setMsg('สื่อนี้มีหน้าครบแล้ว ลบหน้าที่ไม่ใช้ก่อน');
+    const k = ctl.pageIdx + 1;
+    const add = pages.slice(0, room);
+    ctl.commit({ ...ctl.doc, pages: [...ctl.doc.pages.slice(0, k), ...add, ...ctl.doc.pages.slice(k)] });
+    ctl.goPage(k);
+    if (add.length < pages.length) setMsg(`ใส่ได้ ${add.length} หน้า (สื่อ 1 ชิ้นมีได้สูงสุด ${MAX_PAGES} หน้า)`);
+  };
+  return (
+    <details className="st-gen st-quizlink" onToggle={(e) => (e.currentTarget as HTMLDetailsElement).open && load()}>
+      <summary>
+        <BookOpenCheck className="w-4 h-4" /> ทำใบงานจากชุดคำถามของฉัน
+      </summary>
+      <p className="st-note">ข้อสอบที่สร้างไว้ในระบบสร้างเกม กลายเป็นใบงานปรนัยพร้อมเฉลยในคลิกเดียว</p>
+      {!user ? (
+        <p className="text-xs font-bold">เข้าสู่ระบบเพื่อใช้ชุดคำถามของคุณ</p>
+      ) : sets === null ? (
+        <Loader2 className="w-5 h-5 animate-spin mx-auto my-2" />
+      ) : sets.length === 0 ? (
+        <p className="text-xs font-bold">
+          ยังไม่มีชุดคำถาม{' '}
+          <a href="/create/edit" target="_blank" rel="noopener" className="underline">
+            สร้างชุดคำถาม
+          </a>
+        </p>
+      ) : (
+        <>
+          <label className="st-check !mt-0 mb-1.5">
+            <input type="checkbox" checked={answers} onChange={(e) => setAnswers(e.target.checked)} />
+            <span>เพิ่มหน้าเฉลยท้ายใบงาน</span>
+          </label>
+          <div className="flex flex-col gap-1.5 max-h-56 overflow-y-auto overflow-x-hidden pr-1">
+            {sets.map((g) => (
+              <button key={g.id} type="button" className="st-quizrow" disabled={!!busy || !g.question_count} onClick={() => use(g.id, g.title)}>
+                <span className="truncate">{g.title}</span>
+                <span className="shrink-0 opacity-70">{busy === g.id ? <Loader2 className="w-4 h-4 animate-spin" /> : `${g.question_count} ข้อ`}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
       {msg && <p className="text-xs font-bold text-rose-600 mt-1.5">{msg}</p>}
     </details>
   );

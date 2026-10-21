@@ -1,7 +1,7 @@
 'use client';
 
 /* eslint-disable @next/next/no-img-element */
-import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Check, Compass, Copy, Crown, Eye, FolderHeart, Globe, Loader2, Lock, LogIn, MoreVertical, Palette, Pencil, Plus, Search, ShieldCheck, Sparkles, Trash2, Wand2 } from 'lucide-react';
@@ -10,7 +10,9 @@ import { NightSky } from '@/components/fx/NightSky';
 import { useAuth } from '@/context/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { FREE_DESIGN_LIMIT, creatorTier, setsUsed } from '@/lib/game-creator/quota';
-import { cleanTitle } from '@/lib/game-creator/quiz';
+import { cleanTitle, sanitizeQuiz } from '@/lib/game-creator/quiz';
+import { mediaPrefix } from '@/lib/game-creator/prefix';
+import { quizPages } from '@/lib/studio/fromQuiz';
 import { removeMedia } from '@/lib/game-creator/media';
 import { gsfx } from '@/lib/game-creator/gsound';
 import { blankDesign, designMediaPaths, sanitizeDesign, SIZES, type Design } from '@/lib/studio/doc';
@@ -120,6 +122,29 @@ function StudioHub() {
     }
     router.push(`/studio/edit?id=${data.id}`);
   };
+
+  /* ---------------- ทำใบงานจากชุดคำถาม (/studio?fromSet=<id> จากหน้าชุดคำถาม) ---------------- */
+  const fromSet = useRef(sp.get('fromSet'));
+  useEffect(() => {
+    const sid = fromSet.current;
+    if (!sid || isLoading || creating) return;
+    if (!user) return setGate('guest');
+    if (mine === null) return;
+    fromSet.current = null;
+    window.history.replaceState(null, '', '/studio');
+    if (!/^[0-9a-f-]{36}$/i.test(sid)) return;
+    (async () => {
+      setCreating('set');
+      const { data } = await createClient().from('user_games').select('title, content').eq('id', sid).maybeSingle();
+      setCreating(null);
+      if (!data) return setErr('เปิดชุดคำถามนี้ไม่ได้ อาจถูกลบหรือตั้งเป็น Private');
+      const d = blankDesign();
+      const pages = quizPages(data.title, sanitizeQuiz(data.content, mediaPrefix()), d.size.w, d.size.h, { answers: true, header: true });
+      if (!pages.length) return setErr('ชุดคำถามนี้ยังไม่มีข้อคำถาม');
+      create('set', { ...d, pages }, `ใบงาน ${data.title}`);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, user, mine]);
 
   /* ---------------- Discover ---------------- */
   useEffect(() => {
@@ -314,6 +339,11 @@ function StudioHub() {
                 </>
               )}
               {err && <div className="l5g-tierbar">{err}</div>}
+              {creating === 'set' && (
+                <div className="l5g-tierbar">
+                  <Loader2 className="w-5 h-5 animate-spin" /> กำลังทำใบงานจากชุดคำถาม…
+                </div>
+              )}
             </div>
 
             {dbMissing && (

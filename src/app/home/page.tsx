@@ -45,6 +45,9 @@ import { FacebookIcon } from '@/components/icons/FacebookIcon';
 import { cn } from '@/lib/utils/cn';
 import { OfferBanner } from '@/components/membership/Pricing';
 import { SocialProof } from '@/components/membership/SocialProof';
+import { PromoBanners } from '@/components/home/PromoBanners';
+import { AudiencePaths } from '@/components/home/AudiencePaths';
+import { useAudience } from '@/components/home/audience';
 
 export default function HomePage() {
   const { user, isDev, isLoading: authLoading } = useAuth();
@@ -305,6 +308,17 @@ export default function HomePage() {
   const scrollToLibrary = () => {
     document.getElementById('library')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
+  // ปุ่มจากป้ายโฆษณา/ภารกิจลองใช้
+  const [audience, setAudience] = useAudience();
+  const openGames = () => {
+    switchLibrary('games');
+    scrollToLibrary();
+  };
+  const openDocs = () => {
+    switchLibrary('docs');
+    scrollToLibrary();
+  };
+  const scrollToDaily = () => document.getElementById('daily')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
   // เลือกวิชาจากป้ายหน้าแรก: กรองเฉพาะวิชานั้น แล้วเลื่อนลงไปที่คลังสื่อ
   const handlePickSubject = (subject: FilterState['subjects'][number]) => {
@@ -427,13 +441,23 @@ export default function HomePage() {
           />
         </div>
 
+        {/* ป้ายโฆษณาระบบต่างๆ ในเว็บ (กดปิดได้ ซ่อน 1 วัน) */}
+        <PromoBanners className="mt-6" audience={audience} onDocs={openDocs} onLibrary={openGames} />
+
         {/* ข้อเสนอสมาชิก (ส่วนลดบัญชีใหม่ / โบนัสต่ออายุ) + ตัวเลขผู้ใช้จริง */}
         <OfferBanner className="mt-6" />
         <SocialProof className="mt-5" />
 
+        {/* เลือกกลุ่ม ผู้ปกครอง / คุณครู แล้วได้ภารกิจลองใช้ + ความคุ้มของสมาชิก */}
+        <Reveal className="mt-8 sm:mt-10">
+          <AudiencePaths audience={audience} onPick={setAudience} onDocs={openDocs} onLibrary={openGames} onDaily={scrollToDaily} />
+        </Reveal>
+
         {/* เกมประจำวัน: เปลี่ยนทุกวัน แอดมินกำหนดได้ที่หน้า Dev */}
         <Reveal className="mt-6 sm:mt-8">
-          <DailyGameCard onSelect={handleSelectMedia} />
+          <div id="daily" className="scroll-mt-24">
+            <DailyGameCard onSelect={handleSelectMedia} />
+          </div>
         </Reveal>
 
         {/* เข้าร่วมเกมที่สมาชิกสร้างด้วยเลขห้อง 6 หลัก */}

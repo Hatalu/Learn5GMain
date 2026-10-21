@@ -4,7 +4,7 @@ import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'reac
 import Link from 'next/link';
 import { NightSky } from '@/components/fx/NightSky';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Check, Compass, Copy, Crown, DoorOpen, FolderHeart, Globe, Loader2, Lock, LogIn, MoreVertical, Pencil, Play, Plus, Rocket, Search, Sparkles, Trash2, Wand2 } from 'lucide-react';
+import { Check, Compass, Copy, Crown, DoorOpen, FileText, FolderHeart, Globe, Loader2, Lock, LogIn, MoreVertical, Pencil, Play, Plus, Rocket, Search, Sparkles, Trash2, Wand2 } from 'lucide-react';
 import { Navbar } from '@/components/navbar/Navbar';
 import { useAuth } from '@/context/AuthContext';
 import { ShieldCheck } from 'lucide-react';
@@ -651,6 +651,11 @@ function CreateHub() {
                                     <button type="button" disabled={busy} onClick={() => (setMenu(null), duplicate(g))}>
                                       <Copy className="w-4 h-4" /> ทำสำเนา
                                     </button>
+                                    {g.question_count > 0 && (
+                                      <button type="button" onClick={() => router.push(`/studio?fromSet=${g.id}`)}>
+                                        <FileText className="w-4 h-4" /> ทำเป็นใบงาน (สร้างสื่อ)
+                                      </button>
+                                    )}
                                     <button type="button" className="l5g-menu-danger" onClick={() => (setMenu(null), setDel(g))}>
                                       <Trash2 className="w-4 h-4" /> ลบชุดคำถาม
                                     </button>
@@ -677,6 +682,11 @@ function CreateHub() {
                                 <Pencil className="w-5 h-5" />
                                 <span className="hidden min-[400px]:inline">แก้ไข</span>
                               </Link>
+                              {g.question_count > 0 && (
+                                <Link href={`/studio?fromSet=${g.id}`} className="l5g-btn l5g-btn-ghost" title="ทำเป็นใบงานพร้อมเฉลย ในระบบสร้างสื่อการสอน" aria-label="ทำเป็นใบงาน">
+                                  <FileText className="w-5 h-5" />
+                                </Link>
+                              )}
                             </div>
                           </div>
                         </article>

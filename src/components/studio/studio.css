@@ -1897,3 +1897,150 @@ html.dark .st-save {
     animation: none !important;
   }
 }
+
+/* ---------------- ทำใบงานจากชุดคำถาม ---------------- */
+.st-quizlink {
+  margin: 0 0 10px;
+  border-color: #f9a8d4;
+  background: linear-gradient(120deg, #fff1f8, #f3eeff);
+}
+html.dark .st-quizlink {
+  background: linear-gradient(120deg, #3a1530, #241a4a);
+  border-color: #9d3c78;
+}
+.st-quizrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  border: 1.5px solid var(--st-line);
+  background: var(--st-card);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+  transition: transform 0.12s, border-color 0.12s;
+}
+.st-quizrow:hover:not(:disabled) {
+  border-color: #db2777;
+  transform: translateX(2px);
+}
+.st-quizrow:disabled {
+  opacity: 0.55;
+}
+
+/* ---------------- แป้นพิมพ์ลัด ---------------- */
+.st-keys-btn {
+  width: auto !important;
+  padding: 0 10px;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 800;
+  margin-right: 8px;
+}
+.st-keys-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(20, 14, 48, 0.45);
+  backdrop-filter: blur(3px);
+}
+.st-keys {
+  width: min(860px, 100%);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  border-radius: 22px;
+  border: 3px solid #2a2350;
+  box-shadow: 0 8px 0 #2a2350;
+  background: var(--st-card);
+  color: var(--st-ink, #2a2350);
+  padding: 18px 20px 22px;
+  animation: st-keys-in 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes st-keys-in {
+  from {
+    transform: scale(0.92) translateY(10px);
+    opacity: 0;
+  }
+}
+.st-keys header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.st-keys h2 {
+  font-family: var(--font-display, inherit);
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+.st-keys header p {
+  font-size: 13px;
+  opacity: 0.7;
+  font-weight: 600;
+}
+.st-keys-ic {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: linear-gradient(135deg, #8b5cf6, #ec4899);
+  box-shadow: 0 3px 0 #2a2350;
+}
+.st-keys-x {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--st-line);
+}
+.st-keys-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
+}
+.st-keys section {
+  border-radius: 14px;
+  background: var(--st-tint);
+  border: 1.5px solid var(--st-line);
+  padding: 10px 12px;
+}
+.st-keys h3 {
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--st-acc-ink);
+  margin-bottom: 6px;
+}
+.st-keys section p {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 3px 0;
+}
+.st-keys kbd {
+  flex-shrink: 0;
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 7px;
+  border: 1.5px solid var(--st-line);
+  border-bottom-width: 3px;
+  background: var(--st-card);
+  white-space: nowrap;
+}
+.st-keys section p span {
+  text-align: right;
+}
