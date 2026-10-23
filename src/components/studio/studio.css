@@ -2127,6 +2127,29 @@ html.dark .st-quizlink {
   margin: 0 auto 0.4em;
   padding: 0;
 }
+/* การจัดวางรูป/กราฟกับข้อความแบบ Word (isolation ของ .st-flow ทำให้ "หลังข้อความ" ไม่หลุดไปหลังกระดาษ) */
+.st-flow {
+  isolation: isolate;
+}
+.st-flow [data-wrap='behind'],
+.st-flow [data-wrap='front'] {
+  position: absolute;
+  margin: 0;
+}
+.st-flow [data-wrap='behind'] {
+  z-index: -1;
+}
+.st-flow [data-wrap='front'] {
+  z-index: 2;
+}
+.st-flow [data-wrap='left'] {
+  float: left;
+  margin: 0 1em 0.4em 0;
+}
+.st-flow [data-wrap='right'] {
+  float: right;
+  margin: 0 0 0.4em 1em;
+}
 .st-flow span[data-tex] {
   display: inline-block;
   vertical-align: middle;
@@ -2208,12 +2231,30 @@ html.dark .st-quizlink {
   z-index: 2;
   pointer-events: none;
 }
+.st-word-ed [data-sel] {
+  cursor: move;
+  touch-action: none;
+}
 .st-word-ring {
   position: absolute;
   z-index: 3;
   border: 2.5px solid #7c3aed;
   border-radius: 6px;
   pointer-events: none;
+}
+.st-word-ring > i {
+  position: absolute;
+  box-sizing: border-box;
+  background: #fff;
+  border: 2px solid #7c3aed;
+  border-radius: 50%;
+  pointer-events: auto;
+  touch-action: none;
+  cursor: nwse-resize;
+}
+.st-word-ring > i[data-c='ne'],
+.st-word-ring > i[data-c='sw'] {
+  cursor: nesw-resize;
 }
 .st-wpop {
   position: absolute;

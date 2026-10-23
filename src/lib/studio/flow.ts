@@ -11,7 +11,9 @@ export const FLOW_GAP = 28;
 
 const TAGS = new Set(['p', 'div', 'br', 'h1', 'h2', 'h3', 'ul', 'ol', 'li', 'b', 'strong', 'i', 'em', 'u', 's', 'strike', 'sub', 'sup', 'span', 'font', 'table', 'thead', 'tbody', 'tr', 'td', 'th', 'hr', 'img', 'figure', 'blockquote']);
 const VOID = new Set(['br', 'hr', 'img']);
-const STYLE_PROPS = new Set(['color', 'background-color', 'font-size', 'font-family', 'font-weight', 'font-style', 'text-decoration', 'text-decoration-line', 'text-align', 'line-height', 'margin-left', 'padding-left', 'width', 'vertical-align']);
+const STYLE_PROPS = new Set(['color', 'background-color', 'font-size', 'font-family', 'font-weight', 'font-style', 'text-decoration', 'text-decoration-line', 'text-align', 'line-height', 'margin-left', 'padding-left', 'width', 'vertical-align', 'left', 'top']);
+/** การจัดวางรูป/กราฟกับข้อความ (แบบ Word): ล้อมซ้าย/ขวา, หลังข้อความ, หน้าข้อความ (ไม่มี = อยู่ในบรรทัด) */
+export const WRAPS = ['left', 'right', 'behind', 'front'] as const;
 
 const decode = (s: string) =>
   s
@@ -99,6 +101,8 @@ export function cleanFlowHtml(html: string, cleanSrc: SrcCheck): string {
         } catch {
           graph = '';
         }
+      } else if (name === 'data-wrap' && (tag === 'figure' || tag === 'img') && (WRAPS as readonly string[]).includes(val)) {
+        attrs.push(`data-wrap="${val}"`);
       } else if (name === 'data-pb' && tag === 'div') {
         attrs.push('data-pb="1"');
       } else if ((name === 'colspan' || name === 'rowspan') && /^\d{1,2}$/.test(val)) {
@@ -147,14 +151,17 @@ export const flowIsEmpty = (html: string) =>
 export function paginate(root: HTMLElement, pageH: number, gap: number, my: number): number {
   const P = pageH + gap;
   const units: HTMLElement[] = [];
+  const top0 = root.getBoundingClientRect().top;
+  const scale = root.getBoundingClientRect().height / (root.offsetHeight || 1) || 1;
+  // ชิ้นที่วางอิสระ (หลัง/หน้าข้อความ) ไม่ดันเนื้อหา แต่ต้องมีหน้ารองรับ
+  let free = 0;
   for (const el of Array.from(root.children) as HTMLElement[]) {
+    if (el.dataset.wrap === 'behind' || el.dataset.wrap === 'front') free = Math.max(free, (el.getBoundingClientRect().bottom - top0) / scale);
     // รายการตัดทีละข้อ (ตารางย้ายทั้งตาราง)
-    if (/^(UL|OL)$/.test(el.tagName)) units.push(...(Array.from(el.children) as HTMLElement[]));
+    else if (/^(UL|OL)$/.test(el.tagName)) units.push(...(Array.from(el.children) as HTMLElement[]));
     else units.push(el);
   }
   for (const u of units) u.style.marginTop = '';
-  const top0 = root.getBoundingClientRect().top;
-  const scale = root.getBoundingClientRect().height / (root.offsetHeight || 1) || 1;
   let forceNext = false;
   let last = my;
   for (const u of units) {
@@ -172,5 +179,5 @@ export function paginate(root: HTMLElement, pageH: number, gap: number, my: numb
     if (push > 0.5) u.style.marginTop = `${push}px`;
     last = t + push + h;
   }
-  return Math.max(1, Math.ceil((last + my) / P));
+  return Math.max(1, Math.ceil((last + my) / P), Math.ceil(free / P));
 }

@@ -1235,6 +1235,11 @@ t('โหมดเอกสาร: ตัวกรอง HTML ตัดสคร
   const g = c(`<figure data-graph='${JSON.stringify(GRAPH_TEMPLATES[0].make()).replace(/'/g, '&#39;')}'><svg><text>x</text></svg></figure><p>after</p>`);
   assert.ok(g.startsWith('<figure data-graph="') && g.endsWith('</figure><p>after</p>'));
   assert.equal(c('<figure data-graph="not json"></figure><p>z</p>'), '<p>z</p>');
+  // การจัดวางแบบ Word: เก็บตำแหน่ง/ขนาด และค่าจัดวางที่รู้จักเท่านั้น
+  assert.equal(c('<img src="https://ok/a.png" data-wrap="behind" style="left: 120px; top: 40px; width: 300px; z-index: 99">'), '<img src="https://ok/a.png" data-wrap="behind" style="left: 120px; top: 40px; width: 300px">');
+  assert.equal(c('<img src="https://ok/a.png" data-wrap="fixed">'), '<img src="https://ok/a.png">');
+  const gw = c(`<figure data-graph='${JSON.stringify(GRAPH_TEMPLATES[0].make()).replace(/'/g, '&#39;')}' data-wrap="front"></figure>`);
+  assert.ok(gw.includes('data-wrap="front"'));
   assert.ok(flowIsEmpty('<p><br></p>') && !flowIsEmpty('<p>ก</p>') && !flowIsEmpty('<span data-tex="x"></span>'));
   const d = sanitizeDesign({ mode: 'word', flow: '<h1>หัวเรื่อง</h1><script>x</script>' });
   assert.equal(d.mode, 'word');

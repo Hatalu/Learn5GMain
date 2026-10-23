@@ -567,6 +567,42 @@ export function StudioEditor({ id }: { id: string }) {
     return () => ro.disconnect();
   }, [fit, autoFit, status]);
 
+  /* ------------------------------------------------------------ Ctrl + ลูกกลิ้ง = ย่อ/ขยายกระดาษ รอบจุดใต้เมาส์ */
+  // React ผูก wheel แบบ passive จึง preventDefault ไม่ได้ (เบราว์เซอร์จะซูมทั้งหน้าเว็บแทน) ต้องผูกเอง
+  // จุดบนกระดาษ (หน่วยกระดาษ เทียบแผ่นแรก) ที่ต้องอยู่ใต้เมาส์หลังซูม
+  const zoomAt = useRef<{ mx: number; my: number; px: number; py: number } | null>(null);
+  const firstSheet = () => wrapEl.current?.querySelector<HTMLElement>('.st-word, .st-paper-wrap') ?? null;
+  useEffect(() => {
+    const el = wrapEl.current;
+    if (!el) return;
+    const wheel = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      const z0 = zoomRef.current;
+      const z1 = Math.max(0.1, Math.min(3, z0 * Math.exp(-Math.max(-60, Math.min(60, e.deltaY)) * 0.0025)));
+      if (z1 === z0) return;
+      const b = firstSheet()?.getBoundingClientRect();
+      // หลายครั้งก่อนวาดใหม่: ใช้จุดบนกระดาษของครั้งแรก (ตำแหน่งบนจอยังเป็นของซูมเดิม)
+      const px = zoomAt.current?.px ?? (b ? (e.clientX - b.left) / z0 : 0);
+      const py = zoomAt.current?.py ?? (b ? (e.clientY - b.top) / z0 : 0);
+      zoomAt.current = b ? { mx: e.clientX, my: e.clientY, px, py } : null;
+      zoomRef.current = z1;
+      setAutoFit(false);
+      setZoom(z1);
+    };
+    el.addEventListener('wheel', wheel, { passive: false });
+    return () => el.removeEventListener('wheel', wheel);
+  }, [status]);
+  useLayoutEffect(() => {
+    const a = zoomAt.current;
+    const el = wrapEl.current;
+    const b = firstSheet()?.getBoundingClientRect();
+    zoomAt.current = null;
+    if (!a || !el || !b) return;
+    el.scrollLeft += b.left + a.px * zoom - a.mx;
+    el.scrollTop += b.top + a.py * zoom - a.my;
+  }, [zoom]);
+
   /* ------------------------------------------------------------ หน้าที่กำลังดู ตามการเลื่อน (เหมือน Canva) */
   const onScroll = () => {
     if (drag.current || editing.current || selIds.length || !wrapEl.current) return;
@@ -1430,12 +1466,6 @@ export function StudioEditor({ id }: { id: string }) {
                 finishEdit();
                 setSelId(null);
               }
-            }}
-            onWheel={(e) => {
-              if (!e.ctrlKey) return;
-              e.preventDefault();
-              setAutoFit(false);
-              setZoom((z) => Math.max(0.1, Math.min(3, z * (e.deltaY < 0 ? 1.1 : 0.9))));
             }}
             onDragOver={(e) => {
               if (!readOnly && e.dataTransfer.types.includes('Files')) e.preventDefault();
