@@ -14,6 +14,8 @@ import {
   Download,
   Eye,
   FileImage,
+  Group,
+  LayoutDashboard,
   FileText,
   Globe,
   Keyboard,
@@ -27,6 +29,7 @@ import {
   Scaling,
   Trash2,
   Undo2,
+  Ungroup,
   Unlock,
   Wand2,
 } from 'lucide-react';
@@ -35,10 +38,16 @@ import { createClient } from '@/lib/supabase/client';
 import { uploadImage } from '@/lib/game-creator/media';
 import { cleanTitle } from '@/lib/game-creator/quiz';
 import { FREE_DESIGN_LIMIT, creatorTier } from '@/lib/game-creator/quota';
-import { blankPage, makeChar, makeImage, makeLine, makeShape, makeText, MAX_PAGES, sanitizeDesign, sizeLabel, uid, type Design, type Item, type Page } from '@/lib/studio/doc';
+import { blankPage, makeChar, makeGraph, makeImage, makeLine, makeMath, makeShape, makeText, MAX_PAGES, sanitizeDesign, sizeLabel, uid, type Design, type EditMode, type Item, type Page } from '@/lib/studio/doc';
+import { newSpec, type GraphSpec } from '@/lib/studio/graph';
+import { texToHtml } from '@/components/creator/math/MathText';
+import { MathPopover } from '@/components/creator/math/MathPopover';
+import '@/components/creator/creator.css';
 import type { CharLook } from '@/lib/studio/char';
 import { exportPdf, exportPng, makeThumb } from '@/lib/studio/export';
 import { PageView, type EditCell, type EditText } from './render';
+import { GraphEditor } from './GraphEditor';
+import { WordEditor, type WordHandle } from './WordEditor';
 import { Inspector } from './Inspector';
 import { CHARS_EVENT, Panels, RAIL, SizePicker, type PanelId } from './Panels';
 import { CharBuilder } from './CharBuilder';
@@ -49,8 +58,11 @@ import { JoinButton } from '@/components/membership/JoinButton';
 import './studio.css';
 
 type Handle = [-1 | 0 | 1, -1 | 0 | 1];
+type Box = { x: number; y: number; w: number; h: number };
 type Drag =
-  | { kind: 'move'; pi: number; id: string; sx: number; sy: number; ox: number; oy: number; snap: Design; moved: boolean; was: boolean; cell?: [number, number] }
+  | { kind: 'move'; pi: number; id: string; ids: string[]; orig: Record<string, [number, number]>; sx: number; sy: number; base: Design; snap: Design; moved: boolean; was: boolean; drill: boolean; cell?: [number, number] }
+  | { kind: 'gscale'; pi: number; ids: string[]; h: Handle; sx: number; sy: number; box: Box; orig: Item[]; snap: Design; moved: boolean }
+  | { kind: 'marquee'; pi: number; sx: number; sy: number; add: boolean; moved: boolean; snap: Design; id: string }
   | { kind: 'resize'; pi: number; id: string; h: Handle; sx: number; sy: number; o: Item; snap: Design; moved: boolean }
   | { kind: 'rotate'; pi: number; id: string; cx: number; cy: number; snap: Design; moved: boolean };
 
@@ -61,7 +73,21 @@ export interface Ctl {
   W: number;
   H: number;
   sel: Item | null;
+  /** ชิ้นที่เลือกทั้งหมด (เลือกหลายชิ้นด้วย Shift / ลากคลุม / Ctrl+A) */
+  sels: Item[];
   readOnly: boolean;
+  selectIds: (ids: string[]) => void;
+  removeMany: (ids: string[]) => void;
+  duplicateMany: (ids: string[]) => void;
+  group: (ids: string[]) => void;
+  ungroup: (ids: string[]) => void;
+  alignMany: (ids: string[], where: 'l' | 'c' | 'r' | 't' | 'm' | 'b') => void;
+  distribute: (ids: string[], axis: 'h' | 'v') => void;
+  lockMany: (ids: string[], locked: boolean) => void;
+  /** สมการ (itemId = แก้ชิ้นเดิม) */
+  openMath: (itemId?: string, tex?: string) => void;
+  /** กราฟ/รูปคณิต (spec = เริ่มจากแม่แบบ/สมการ) */
+  openGraph: (spec?: GraphSpec | null, itemId?: string) => void;
   add: (it: Item) => void;
   /** ใส่หลายชิ้นพร้อมกันที่ตำแหน่งที่กำหนดไว้แล้ว (ตัวสร้างใบงาน) */
   addMany: (items: Item[]) => void;
@@ -93,6 +119,32 @@ const isTyping = (t: EventTarget | null) => {
 /** สไตล์ของชิ้นงาน (สี เส้น ฟอนต์ เอฟเฟกต์) ไม่รวมตำแหน่งและเนื้อหา ใช้กับคัดลอก/วางสไตล์ */
 const NOT_STYLE = new Set(['id', 'x', 'y', 'w', 'h', 'rot', 'locked', 'flip', 'text', 'cells', 'src', 'look', 'sticker', 'shape', 'kind', 'a', 'b', 'c', 'style']);
 const styleOf = (it: Item): Partial<Item> => Object.fromEntries(Object.entries(it).filter(([k]) => !NOT_STYLE.has(k))) as Partial<Item>;
+/** กรอบรวมของหลายชิ้น (ไม่คิดการหมุน) */
+function boxOf(its: { x: number; y: number; w: number; h: number }[]): Box {
+  const x = Math.min(...its.map((i) => i.x));
+  const y = Math.min(...its.map((i) => i.y));
+  return { x, y, w: Math.max(...its.map((i) => i.x + i.w)) - x, h: Math.max(...its.map((i) => i.y + i.h)) - y };
+}
+/** เพิ่มชิ้นที่อยู่กลุ่มเดียวกัน (Ctrl+G) เข้าไปในชุดที่เลือก */
+function withGroups(items: Item[], ids: string[]): string[] {
+  const gs = new Set(items.filter((x) => ids.includes(x.id) && x.g).map((x) => x.g));
+  return items.filter((x) => ids.includes(x.id) || (x.g && gs.has(x.g))).map((x) => x.id);
+}
+function moveDrag(pi: number, id: string, ids: string[], pg: Page, base: Design, snap: Design, p: { x: number; y: number }, was: boolean, drill: boolean): Extract<Drag, { kind: 'move' }> {
+  const orig: Record<string, [number, number]> = {};
+  for (const x of pg.items) if (ids.includes(x.id) && !x.locked) orig[x.id] = [x.x, x.y];
+  return { kind: 'move', pi, id, ids: Object.keys(orig), orig, sx: p.x, sy: p.y, base, snap, moved: false, was, drill };
+}
+/** ขนาดกล่องของสมการ (วัดจากผล KaTeX จริง) */
+function measureTex(tex: string, size: number): [number, number] {
+  const el = document.createElement('div');
+  el.style.cssText = `position:fixed;left:-99999px;top:0;font-size:${size}px;line-height:1.2;white-space:nowrap`;
+  el.innerHTML = texToHtml(tex, false, true);
+  document.body.appendChild(el);
+  const r = [Math.ceil(el.offsetWidth) + 16, Math.ceil(el.offsetHeight) + 12] as [number, number];
+  el.remove();
+  return r;
+}
 const DESIGN_COLS = 'id, owner_id, owner_name, title, content, is_public, thumb';
 const mapItems = (d: Design, pi: number, fn: (items: Item[]) => Item[]): Design => ({ ...d, pages: d.pages.map((p, i) => (i === pi ? { ...p, items: fn(p.items) } : p)) });
 
@@ -108,10 +160,19 @@ export function StudioEditor({ id }: { id: string }) {
   const [ownerName, setOwnerName] = useState('');
   const [readOnly, setReadOnly] = useState(true);
   const [pageIdx, setPageIdx] = useState(0);
-  const [selId, setSelId] = useState<string | null>(null);
+  const [selIds, setSelIds] = useState<string[]>([]);
+  const selId = selIds.length === 1 ? selIds[0] : null;
+  const setSelId = useCallback((v: string | null) => setSelIds(v ? [v] : []), []);
+  const [marquee, setMarquee] = useState<(Box & { pi: number }) | null>(null);
+  const [mathDlg, setMathDlg] = useState<{ tex: string; itemId?: string; done?: (tex: string) => void } | null>(null);
+  const [graphDlg, setGraphDlg] = useState<{ spec: GraphSpec; itemId?: string; done?: (s: GraphSpec) => void } | null>(null);
+  const word = useRef<WordHandle>(null);
+  const [barEl, setBarEl] = useState<HTMLDivElement | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
   const [cell, setCell] = useState<[number, number] | null>(null);
   const [zoom, setZoom] = useState(0.5);
+  const zoomRef = useRef(0.5);
+  zoomRef.current = zoom;
   const [autoFit, setAutoFit] = useState(true);
   const [panel, setPanel] = useState<PanelId | null>('template');
   const [save, setSave] = useState<'saved' | 'dirty' | 'saving' | 'error'>('saved');
@@ -135,7 +196,7 @@ export function StudioEditor({ id }: { id: string }) {
   const editRef = useRef<HTMLDivElement>(null);
   const stageEl = useRef<HTMLDivElement>(null);
   const thumbEl = useRef<HTMLDivElement>(null);
-  const clip = useRef<Item | null>(null);
+  const clip = useRef<Item[] | null>(null);
   const styleClip = useRef<Partial<Item> | null>(null);
   const [help, setHelp] = useState(false);
   const lastThumb = useRef(0);
@@ -179,6 +240,8 @@ export function StudioEditor({ id }: { id: string }) {
   const ap = doc ? Math.min(pageIdx, doc.pages.length - 1) : 0;
   const page = doc ? doc.pages[ap] : null;
   const sel = (page && selId && page.items.find((i) => i.id === selId)) || null;
+  const sels = useMemo(() => (page ? page.items.filter((i) => selIds.includes(i.id)) : []), [page, selIds]);
+  const mode: EditMode = doc?.mode ?? 'canvas';
 
   /* ------------------------------------------------------------ ประวัติ (ย้อนกลับ/ทำซ้ำ) */
   const commit = useCallback((next: Design, key?: string) => {
@@ -410,8 +473,84 @@ export function StudioEditor({ id }: { id: string }) {
         setCharDlg({ look, itemId, flip: it?.type === 'char' ? it.flip : false });
       },
       canUpload: tier !== 'guest' && !readOnly,
+      sels,
+      selectIds: (ids) => setSelIds(ids),
+      removeMany: (ids) => {
+        finishEdit();
+        mapPage((p) => ({ ...p, items: p.items.filter((x) => !ids.includes(x.id) || x.locked) }));
+        setSelIds([]);
+      },
+      duplicateMany: (ids) => {
+        const groups = new Map<string, string>();
+        const copies = page.items
+          .filter((x) => ids.includes(x.id))
+          .map((o) => {
+            const c = { ...structuredClone(o), id: uid(), x: o.x + 24, y: o.y + 24, locked: false } as Item;
+            if (o.g) {
+              if (!groups.has(o.g)) groups.set(o.g, uid().slice(0, 10));
+              c.g = groups.get(o.g);
+            }
+            return c;
+          });
+        mapPage((p) => ({ ...p, items: [...p.items, ...copies] }));
+        setSelIds(copies.map((c) => c.id));
+      },
+      group: (ids) => {
+        if (ids.length < 2) return;
+        const g = uid().slice(0, 10);
+        mapPage((p) => ({ ...p, items: p.items.map((x) => (ids.includes(x.id) ? ({ ...x, g } as Item) : x)) }));
+      },
+      ungroup: (ids) =>
+        mapPage((p) => ({
+          ...p,
+          items: p.items.map((x) => {
+            if (!ids.includes(x.id) || !x.g) return x;
+            const { g: _g, ...rest } = x;
+            void _g;
+            return rest as Item;
+          }),
+        })),
+      alignMany: (ids, where) => {
+        const its = page.items.filter((x) => ids.includes(x.id) && !x.locked);
+        if (!its.length) return;
+        const b = boxOf(its);
+        mapPage((p) => ({
+          ...p,
+          items: p.items.map((x) => {
+            if (!its.includes(x)) return x;
+            const d: Partial<Item> =
+              where === 'l' ? { x: b.x } : where === 'c' ? { x: b.x + (b.w - x.w) / 2 } : where === 'r' ? { x: b.x + b.w - x.w } : where === 't' ? { y: b.y } : where === 'm' ? { y: b.y + (b.h - x.h) / 2 } : { y: b.y + b.h - x.h };
+            return { ...x, ...d } as Item;
+          }),
+        }));
+      },
+      distribute: (ids, axis) => {
+        const its = page.items.filter((x) => ids.includes(x.id) && !x.locked).sort((a, b) => (axis === 'h' ? a.x - b.x : a.y - b.y));
+        if (its.length < 3) return;
+        const first = its[0];
+        const last = its[its.length - 1];
+        const span = axis === 'h' ? last.x + last.w - first.x : last.y + last.h - first.y;
+        const total = its.reduce((n, x) => n + (axis === 'h' ? x.w : x.h), 0);
+        const gap = (span - total) / (its.length - 1);
+        let at = axis === 'h' ? first.x : first.y;
+        const pos = new Map<string, number>();
+        for (const x of its) {
+          pos.set(x.id, at);
+          at += (axis === 'h' ? x.w : x.h) + gap;
+        }
+        mapPage((p) => ({ ...p, items: p.items.map((x) => (pos.has(x.id) ? ({ ...x, [axis === 'h' ? 'x' : 'y']: pos.get(x.id) } as Item) : x)) }));
+      },
+      lockMany: (ids, locked) => mapPage((p) => ({ ...p, items: p.items.map((x) => (ids.includes(x.id) ? ({ ...x, locked } as Item) : x)) })),
+      openMath: (itemId, tex) => {
+        const it = itemId ? page.items.find((x) => x.id === itemId) : undefined;
+        setMathDlg({ tex: it?.type === 'math' ? it.tex : tex ?? '', itemId });
+      },
+      openGraph: (spec, itemId) => {
+        const it = itemId ? page.items.find((x) => x.id === itemId) : undefined;
+        setGraphDlg({ spec: it?.type === 'graph' ? it.spec : spec ?? newSpec('grid'), itemId });
+      },
     };
-  }, [doc, page, ap, pageIdx, W, H, sel, readOnly, mapPage, commit, user, uploading, say, tier, finishEdit, startEdit, scrollToPage]);
+  }, [doc, page, ap, pageIdx, W, H, sel, sels, readOnly, mapPage, commit, user, uploading, say, tier, finishEdit, startEdit, scrollToPage]);
 
   /* ------------------------------------------------------------ ซูมพอดีจอ */
   const fit = useCallback(() => {
@@ -430,7 +569,7 @@ export function StudioEditor({ id }: { id: string }) {
 
   /* ------------------------------------------------------------ หน้าที่กำลังดู ตามการเลื่อน (เหมือน Canva) */
   const onScroll = () => {
-    if (drag.current || editing.current || selId || !wrapEl.current) return;
+    if (drag.current || editing.current || selIds.length || !wrapEl.current) return;
     const r = wrapEl.current.getBoundingClientRect();
     let best = ap;
     let bestV = -1;
@@ -449,20 +588,30 @@ export function StudioEditor({ id }: { id: string }) {
   useLayoutEffect(() => {
     const d = docRef.current;
     if (!d) return;
-    const fix = new Map<number, Map<string, number>>();
+    const fix = new Map<number, Map<string, Partial<Item>>>();
+    const put = (pi: number, id: string, patch: Partial<Item>) => {
+      if (!fix.has(pi)) fix.set(pi, new Map());
+      fix.get(pi)!.set(id, patch);
+    };
     pageEls.current.forEach((el, pi) => {
       const pg = d.pages[pi];
       if (!pg) return;
       el.querySelectorAll<HTMLElement>('[data-item][data-type="text"]').forEach((node) => {
         const it = pg.items.find((x) => x.id === node.dataset.item);
         const h = node.offsetHeight;
-        if (it && h && Math.abs(it.h - h) > 0.5) {
-          if (!fix.has(pi)) fix.set(pi, new Map());
-          fix.get(pi)!.set(it.id, h);
-        }
+        if (it && h && Math.abs(it.h - h) > 0.5) put(pi, it.id, { h });
+      });
+      // สมการ: กล่องพอดีผลวาดจริง (ฟอนต์สูตรโหลดเสร็จทีหลังขนาดเปลี่ยนได้) ยึดกึ่งกลางเดิม
+      el.querySelectorAll<HTMLElement>('[data-item][data-type="math"]').forEach((node) => {
+        const it = pg.items.find((x) => x.id === node.dataset.item);
+        const inner = node.querySelector<HTMLElement>('[data-math]');
+        if (!it || !inner || !inner.offsetWidth) return;
+        const w = inner.offsetWidth + 16;
+        const h = inner.offsetHeight + 12;
+        if (Math.abs(it.w - w) > 1 || Math.abs(it.h - h) > 1) put(pi, it.id, { w, h, x: it.x + (it.w - w) / 2, y: it.y + (it.h - h) / 2 });
       });
     });
-    if (fix.size) setDoc({ ...d, pages: d.pages.map((p, i) => (fix.has(i) ? { ...p, items: p.items.map((x) => (fix.get(i)!.has(x.id) ? { ...x, h: fix.get(i)!.get(x.id)! } : x)) } : p)) });
+    if (fix.size) setDoc({ ...d, pages: d.pages.map((p, i) => (fix.has(i) ? { ...p, items: p.items.map((x) => (fix.get(i)!.has(x.id) ? ({ ...x, ...fix.get(i)!.get(x.id)! } as Item) : x)) } : p)) });
   });
 
   /* ------------------------------------------------------------ บันทึกอัตโนมัติ */
@@ -519,7 +668,34 @@ export function StudioEditor({ id }: { id: string }) {
       if (!g || !el) return;
       const r = el.getBoundingClientRect();
       const p = { x: (e.clientX - r.left) / zoom, y: (e.clientY - r.top) / zoom };
-      const base = g.snap.pages[g.pi];
+      if (g.kind === 'marquee') {
+        const dx = p.x - g.sx;
+        const dy = p.y - g.sy;
+        if (!g.moved && Math.hypot(dx * zoom, dy * zoom) < 4) return;
+        g.moved = true;
+        setMarquee({ pi: g.pi, x: Math.min(g.sx, p.x), y: Math.min(g.sy, p.y), w: Math.abs(dx), h: Math.abs(dy) });
+        return;
+      }
+      if (g.kind === 'gscale') {
+        g.moved = true;
+        const [hx, hy] = g.h;
+        const b = g.box;
+        const dx = p.x - g.sx;
+        const dy = p.y - g.sy;
+        const s = Math.max(0.05, 1 + (hx * dx * b.w + hy * dy * b.h) / (b.w * b.w + b.h * b.h));
+        const ax = hx > 0 ? b.x : b.x + b.w;
+        const ay = hy > 0 ? b.y : b.y + b.h;
+        const scaled = new Map(
+          g.orig.map((o) => {
+            const q: Record<string, unknown> = { x: ax + (o.x - ax) * s, y: ay + (o.y - ay) * s, w: o.w * s, h: o.h * s };
+            if ('size' in o) q.size = Math.max(6, Math.round((o as { size: number }).size * s * 10) / 10);
+            return [o.id, q];
+          })
+        );
+        setDoc(mapItems(g.snap, g.pi, (items) => items.map((x) => (scaled.has(x.id) ? ({ ...x, ...scaled.get(x.id) } as Item) : x))));
+        return;
+      }
+      const base = (g.kind === 'move' ? g.base : g.snap).pages[g.pi];
       const o = base?.items.find((x) => x.id === g.id);
       if (!o) return;
       let patch: Partial<Item> = {};
@@ -530,11 +706,14 @@ export function StudioEditor({ id }: { id: string }) {
         const dy = p.y - g.sy;
         if (!g.moved && Math.hypot(dx * zoom, dy * zoom) < 4) return;
         g.moved = true;
-        let nx = g.ox + dx;
-        let ny = g.oy + dy;
-        if (!e.altKey) {
+        const moving = base.items.filter((x) => g.ids.includes(x.id));
+        const ob = boxOf(moving.map((x) => ({ ...x, x: g.orig[x.id][0], y: g.orig[x.id][1] })));
+        let nx = ob.x + dx;
+        let ny = ob.y + dy;
+        // Ctrl ค้าง = ปิดการดูดเข้าแนว (Alt ใช้ลากทำสำเนาแบบ Canva)
+        if (!(e.ctrlKey || e.metaKey)) {
           const th = 7 / zoom;
-          const others = base.items.filter((x) => x.id !== o.id);
+          const others = base.items.filter((x) => !g.ids.includes(x.id));
           const cx = [0, W / 2, W, ...others.flatMap((x) => [x.x, x.x + x.w / 2, x.x + x.w])];
           const cy = [0, H / 2, H, ...others.flatMap((x) => [x.y, x.y + x.h / 2, x.y + x.h])];
           const best = (cands: number[], lines: number[]) => {
@@ -546,18 +725,22 @@ export function StudioEditor({ id }: { id: string }) {
               }
             return b;
           };
-          const bx = best(cx, [nx, nx + o.w / 2, nx + o.w]);
+          const bx = best(cx, [nx, nx + ob.w / 2, nx + ob.w]);
           if (bx) {
             nx += bx.off;
             gx.push(bx.c);
           }
-          const by = best(cy, [ny, ny + o.h / 2, ny + o.h]);
+          const by = best(cy, [ny, ny + ob.h / 2, ny + ob.h]);
           if (by) {
             ny += by.off;
             gy.push(by.c);
           }
         }
-        patch = { x: Math.round(nx * 10) / 10, y: Math.round(ny * 10) / 10 };
+        const mx = nx - ob.x;
+        const my = ny - ob.y;
+        setGuides({ x: gx, y: gy });
+        setDoc(mapItems(g.base, g.pi, (items) => items.map((x) => (g.ids.includes(x.id) ? ({ ...x, x: Math.round((g.orig[x.id][0] + mx) * 10) / 10, y: Math.round((g.orig[x.id][1] + my) * 10) / 10 } as Item) : x))));
+        return;
       } else if (g.kind === 'resize') {
         g.moved = true;
         const t = (g.o.rot * Math.PI) / 180;
@@ -569,7 +752,7 @@ export function StudioEditor({ id }: { id: string }) {
         const ow = g.o.w;
         const oh = g.o.h;
         const corner = hx !== 0 && hy !== 0;
-        const ratioType = ['image', 'sticker', 'char', 'edu'].includes(g.o.type);
+        const ratioType = ['image', 'sticker', 'char', 'edu', 'math', 'graph'].includes(g.o.type);
         const keep = g.o.type === 'text' ? corner : ratioType ? corner && !e.shiftKey : e.shiftKey && corner;
         let w = ow + hx * lx;
         let h = oh + hy * ly;
@@ -590,8 +773,8 @@ export function StudioEditor({ id }: { id: string }) {
           const size = keep ? Math.max(6, Math.round(g.o.size * s * 10) / 10) : g.o.size;
           // ข้อความ: ความสูงตามเนื้อหา ยึดขอบบนไว้ (ไม่เลื่อนแกนตั้ง)
           patch = { w, x: cx - w / 2, y: keep ? cy - h / 2 : g.o.y, size } as Partial<Item>;
-        } else if (g.o.type === 'table') {
-          patch = { w, h, x: cx - w / 2, y: cy - h / 2, size: keep ? Math.max(6, Math.round(g.o.size * s)) : g.o.size } as Partial<Item>;
+        } else if (g.o.type === 'table' || g.o.type === 'math') {
+          patch = { w, h, x: cx - w / 2, y: cy - h / 2, size: keep ? Math.max(6, Math.round(g.o.size * s * 10) / 10) : g.o.size } as Partial<Item>;
         } else patch = { w, h, x: cx - w / 2, y: cy - h / 2 };
       } else {
         g.moved = true;
@@ -615,12 +798,33 @@ export function StudioEditor({ id }: { id: string }) {
       window.removeEventListener('pointerup', onUp);
       window.removeEventListener('pointercancel', onUp);
       setGuides({ x: [], y: [] });
+      setMarquee(null);
       if (!g) return;
+      if (g.kind === 'marquee') {
+        if (!g.moved) {
+          if (!g.add) setSelIds([]);
+          return;
+        }
+        const el = pageEls.current.get(g.pi);
+        const r = el?.getBoundingClientRect();
+        if (!r) return;
+        const ex = (e.clientX - r.left) / zoomRef.current;
+        const ey = (e.clientY - r.top) / zoomRef.current;
+        const box = { x: Math.min(g.sx, ex), y: Math.min(g.sy, ey), w: Math.abs(ex - g.sx), h: Math.abs(ey - g.sy) };
+        const items = docRef.current?.pages[g.pi]?.items || [];
+        const hit = items.filter((x) => x.x < box.x + box.w && x.x + x.w > box.x && x.y < box.y + box.h && x.y + x.h > box.y);
+        const ids = withGroups(items, hit.map((x) => x.id));
+        setSelIds((prev) => (g.add ? [...new Set([...prev, ...ids])] : ids));
+        return;
+      }
       if (g.moved) {
         past.current.push(g.snap);
         if (past.current.length > HISTORY) past.current.shift();
         future.current = [];
         lastKey.current = null;
+      } else if (g.kind === 'move' && g.drill && e.type === 'pointerup') {
+        // กลุ่มถูกเลือกอยู่แล้ว แตะซ้ำ = เลือกชิ้นเดียวข้างในกลุ่ม
+        setSelIds([g.id]);
       } else if (g.kind === 'move' && g.was && e.type === 'pointerup') {
         // แตะชิ้นที่เลือกอยู่แล้วซ้ำ = แก้ข้อความ/ช่องตาราง
         const it = docRef.current?.pages[g.pi]?.items.find((x) => x.id === g.id);
@@ -648,19 +852,56 @@ export function StudioEditor({ id }: { id: string }) {
     if (pi !== ap) setPageIdx(pi);
     if (!el) {
       finishEdit();
-      setSelId(null);
       setPanel((p) => (p && window.innerWidth < 768 ? null : p));
+      // ลากบนพื้นที่ว่าง = ลากคลุมเลือกหลายชิ้น (แตะเฉยๆ = เลิกเลือก)
+      const p = ptIn(pi, e);
+      begin({ kind: 'marquee', pi, sx: p.x, sy: p.y, add: e.shiftKey, moved: false, snap: doc, id: '' }, e);
       return;
     }
     const it = pg.items.find((x) => x.id === el.dataset.item);
     if (!it) return;
+    const cur = pi === ap ? selIds : [];
+    const grp = withGroups(pg.items, [it.id]);
+    if (e.shiftKey) {
+      // Shift + คลิก = เพิ่ม/เอาออกจากชุดที่เลือก
+      finishEdit();
+      const inSel = cur.includes(it.id);
+      const next = inSel ? cur.filter((x) => !grp.includes(x)) : [...new Set([...cur, ...grp])];
+      setSelIds(next);
+      if (inSel || it.locked) return;
+      const p = ptIn(pi, e);
+      begin(moveDrag(pi, it.id, next, pg, doc, doc, p, false, false), e);
+      return;
+    }
     const was = selId === it.id && pi === ap;
+    const already = cur.includes(it.id);
+    const drill = already && cur.length > 1 && !!it.g && grp.every((x) => cur.includes(x)) && cur.length === grp.length;
     if (editing.current && editing.current.id !== it.id) finishEdit();
-    setSelId(it.id);
+    const ids = already ? cur : grp;
+    if (!already) setSelIds(ids);
     const c = target.closest<HTMLElement>('[data-cell]')?.dataset.cell?.split('-').map(Number) as [number, number] | undefined;
     if (it.locked) return;
     const p = ptIn(pi, e);
-    begin({ kind: 'move', pi, id: it.id, sx: p.x, sy: p.y, ox: it.x, oy: it.y, snap: doc, moved: false, was, cell: c }, e);
+    if (e.altKey) {
+      // Alt + ลาก = ทำสำเนาแล้วลากสำเนาออกไป (แบบ Canva)
+      const groups = new Map<string, string>();
+      const copies = pg.items
+        .filter((x) => ids.includes(x.id))
+        .map((o) => {
+          const cp = { ...structuredClone(o), id: uid(), locked: false } as Item;
+          if (o.g) {
+            if (!groups.has(o.g)) groups.set(o.g, uid().slice(0, 10));
+            cp.g = groups.get(o.g);
+          }
+          return cp;
+        });
+      const base = mapItems(doc, pi, (items) => [...items, ...copies]);
+      setDoc(base);
+      setSelIds(copies.map((x) => x.id));
+      begin(moveDrag(pi, copies[ids.indexOf(it.id)]?.id ?? copies[0].id, copies.map((x) => x.id), base.pages[pi], base, doc, p, false, false), e);
+      return;
+    }
+    begin({ ...moveDrag(pi, it.id, ids, pg, doc, doc, p, was, drill), cell: c }, e);
   };
 
   const onDbl = (e: React.MouseEvent, pi: number) => {
@@ -670,10 +911,18 @@ export function StudioEditor({ id }: { id: string }) {
     if (!it || it.locked) return;
     if (it.type === 'text') startEdit(it.id, pi);
     if (it.type === 'char') setCharDlg({ look: it.look, itemId: it.id, flip: it.flip });
+    if (it.type === 'math') setMathDlg({ tex: it.tex, itemId: it.id });
+    if (it.type === 'graph') setGraphDlg({ spec: it.spec, itemId: it.id });
     const c = (e.target as HTMLElement).closest<HTMLElement>('[data-cell]')?.dataset.cell?.split('-').map(Number) as [number, number] | undefined;
     if (it.type === 'table' && c) startEdit(it.id, pi, c);
   };
 
+  const onGroupHandle = (h: Handle, e: React.PointerEvent) => {
+    e.stopPropagation();
+    if (!doc || sels.length < 2 || sels.some((x) => x.locked)) return;
+    const p = ptIn(ap, e);
+    begin({ kind: 'gscale', pi: ap, ids: sels.map((x) => x.id), h, sx: p.x, sy: p.y, box: boxOf(sels), orig: structuredClone(sels), snap: doc, moved: false }, e);
+  };
   const onHandle = (h: Handle | 'rot', e: React.PointerEvent) => {
     e.stopPropagation();
     if (!sel || !doc || sel.locked) return;
@@ -684,7 +933,7 @@ export function StudioEditor({ id }: { id: string }) {
 
   /* ------------------------------------------------------------ แป้นพิมพ์ลัด (แบบ Canva) + วาง */
   useEffect(() => {
-    if (!ctl || readOnly || present !== null || charDlg || help) return;
+    if (!ctl || readOnly || present !== null || charDlg || help || mathDlg || graphDlg) return;
     const key = (e: KeyboardEvent) => {
       const mod = e.ctrlKey || e.metaKey;
       const k = e.key.toLowerCase();
@@ -698,12 +947,14 @@ export function StudioEditor({ id }: { id: string }) {
       if (isTyping(e.target)) return;
       if (mod && k === 'z') {
         e.preventDefault();
+        if (mode === 'word') return e.shiftKey ? word.current?.redo() : word.current?.undo();
         if (e.shiftKey) redo();
         else undo();
         return;
       }
       if (mod && k === 'y') {
         e.preventDefault();
+        if (mode === 'word') return word.current?.redo();
         redo();
         return;
       }
@@ -740,79 +991,120 @@ export function StudioEditor({ id }: { id: string }) {
         ctl.addPage();
         return;
       }
+      if (mode === 'word') return;
       if (e.key === 'Tab') {
         const items = ctl.page.items;
         if (!items.length) return;
         e.preventDefault();
         const i = sel ? items.findIndex((x) => x.id === sel.id) : -1;
         const n = items.length;
-        setSelId(items[(((e.shiftKey ? (i < 0 ? 0 : i) - 1 : i + 1) % n) + n) % n].id);
+        setSelIds([items[(((e.shiftKey ? (i < 0 ? 0 : i) - 1 : i + 1) % n) + n) % n].id]);
         return;
       }
-      if (!sel) {
+      if ((mod || e.altKey) && !e.shiftKey && k === 'a') {
+        // Ctrl+A / Alt+A = เลือกทุกชิ้นในหน้านี้
+        e.preventDefault();
+        setSelIds(ctl.page.items.map((x) => x.id));
+        return;
+      }
+      const many = ctl.sels;
+      if (!many.length) {
         if (mod || e.altKey) return;
-        // เพิ่มชิ้นงานเร็ว: T ข้อความ R สี่เหลี่ยม C วงกลม L เส้น
+        // เพิ่มชิ้นงานเร็ว: T ข้อความ R สี่เหลี่ยม C วงกลม L เส้น E สมการ G กราฟ
         if (k === 't') ctl.add(makeText({ text: 'พิมพ์ข้อความ' }));
         else if (k === 'r') ctl.add(makeShape('rect', { w: 240, h: 160 }));
         else if (k === 'c') ctl.add(makeShape('circle', { fill: '#7dd3fc' }));
         else if (k === 'l') ctl.add(makeLine());
+        else if (k === 'e') ctl.openMath();
+        else if (k === 'g') ctl.openGraph();
         else if (e.key === 'PageDown' || e.key === 'PageUp') ctl.goPage(ap + (e.key === 'PageDown' ? 1 : -1));
         else return;
         e.preventDefault();
         return;
       }
+      const ids = many.map((x) => x.id);
+      const one = many.length === 1 ? many[0] : null;
       const code = e.code;
       if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault();
-        if (sel.locked) say('ชิ้นนี้ล็อกอยู่ ปลดล็อกก่อนลบ (Alt+Shift+L)');
-        else ctl.remove(sel.id);
+        if (many.every((x) => x.locked)) say('ชิ้นที่เลือกล็อกอยู่ ปลดล็อกก่อนลบ (Alt+Shift+L)');
+        else ctl.removeMany(ids);
       } else if (mod && k === 'd') {
         e.preventDefault();
-        ctl.duplicate(sel.id);
+        ctl.duplicateMany(ids);
+      } else if (mod && e.shiftKey && k === 'g') {
+        e.preventDefault();
+        ctl.ungroup(ids);
+        say('แยกกลุ่มแล้ว');
+      } else if (mod && k === 'g') {
+        e.preventDefault();
+        if (many.length < 2) say('เลือกอย่างน้อย 2 ชิ้นก่อนจัดกลุ่ม (Shift + คลิก)');
+        else {
+          ctl.group(ids);
+          say('จัดกลุ่มแล้ว คลิกครั้งเดียวจะเลือกทั้งกลุ่ม');
+        }
       } else if (mod && e.altKey && k === 'c') {
         e.preventDefault();
-        styleClip.current = styleOf(sel);
+        if (!one) return say('เลือกชิ้นเดียวเพื่อคัดลอกสไตล์');
+        styleClip.current = styleOf(one);
         say('คัดลอกสไตล์แล้ว เลือกชิ้นชนิดเดียวกันแล้วกด Ctrl+Alt+V');
       } else if (mod && e.altKey && k === 'v') {
         e.preventDefault();
         const st = styleClip.current;
-        if (!st) say('ยังไม่ได้คัดลอกสไตล์ (Ctrl+Alt+C)');
-        else if (st.type !== sel.type) say('วางสไตล์ได้กับชิ้นชนิดเดียวกันเท่านั้น');
-        else ctl.update(sel.id, st as Partial<Item>);
+        if (!st) return say('ยังไม่ได้คัดลอกสไตล์ (Ctrl+Alt+C)');
+        const same = many.filter((x) => x.type === st.type && !x.locked);
+        if (!same.length) return say('วางสไตล์ได้กับชิ้นชนิดเดียวกันเท่านั้น');
+        commit(mapItems(docRef.current!, ap, (items) => items.map((x) => (same.includes(x) ? ({ ...x, ...st } as Item) : x))));
       } else if (mod && k === 'c') {
-        clip.current = structuredClone(sel);
+        clip.current = structuredClone(many);
       } else if (mod && k === 'x') {
-        clip.current = structuredClone(sel);
-        if (!sel.locked) ctl.remove(sel.id);
+        clip.current = structuredClone(many);
+        ctl.removeMany(ids);
       } else if (mod && (code === 'BracketRight' || code === 'BracketLeft')) {
         e.preventDefault();
         const up = code === 'BracketRight';
-        ctl.order(sel.id, e.altKey || e.shiftKey ? (up ? 'front' : 'back') : up ? 'up' : 'down');
+        const to = e.altKey || e.shiftKey ? (up ? 'front' : 'back') : up ? 'up' : 'down';
+        if (one) ctl.order(one.id, to);
+        else
+          commit(
+            mapItems(docRef.current!, ap, (items) => {
+              const picked = items.filter((x) => ids.includes(x.id));
+              const rest = items.filter((x) => !ids.includes(x.id));
+              return to === 'back' || to === 'down' ? [...picked, ...rest] : [...rest, ...picked];
+            })
+          );
       } else if (e.altKey && e.shiftKey && k === 'l') {
         e.preventDefault();
-        ctl.update(sel.id, { locked: !sel.locked });
-        say(sel.locked ? 'ปลดล็อกแล้ว' : 'ล็อกแล้ว');
-      } else if (sel.type === 'text' && mod && !e.shiftKey && (k === 'b' || k === 'i' || k === 'u')) {
+        const lock = !many.every((x) => x.locked);
+        ctl.lockMany(ids, lock);
+        say(lock ? 'ล็อกแล้ว' : 'ปลดล็อกแล้ว');
+      } else if (one?.type === 'text' && mod && !e.shiftKey && (k === 'b' || k === 'i' || k === 'u')) {
         e.preventDefault();
         const f = k === 'b' ? 'bold' : k === 'i' ? 'italic' : 'underline';
-        ctl.update(sel.id, { [f]: !sel[f] } as Partial<Item>);
-      } else if (sel.type === 'text' && mod && e.shiftKey && (k === 'l' || k === 'e' || k === 'r')) {
+        ctl.update(one.id, { [f]: !one[f] } as Partial<Item>);
+      } else if (one?.type === 'text' && mod && e.shiftKey && (k === 'l' || k === 'e' || k === 'r')) {
         e.preventDefault();
-        ctl.update(sel.id, { align: k === 'l' ? 'left' : k === 'e' ? 'center' : 'right' } as Partial<Item>);
-      } else if ((sel.type === 'text' || sel.type === 'table') && mod && e.shiftKey && (code === 'Comma' || code === 'Period')) {
+        ctl.update(one.id, { align: k === 'l' ? 'left' : k === 'e' ? 'center' : 'right' } as Partial<Item>);
+      } else if (one && (one.type === 'text' || one.type === 'table' || one.type === 'math') && mod && e.shiftKey && (code === 'Comma' || code === 'Period')) {
         e.preventDefault();
-        ctl.update(sel.id, { size: Math.max(6, Math.min(400, sel.size + (code === 'Period' ? 2 : -2))) } as Partial<Item>, 'size');
+        ctl.update(one.id, { size: Math.max(6, Math.min(400, one.size + (code === 'Period' ? 2 : -2))) } as Partial<Item>, 'size');
       } else if (e.key === 'Escape') {
-        setSelId(null);
-      } else if (e.key === 'Enter' && (sel.type === 'text' || sel.type === 'table')) {
+        setSelIds([]);
+      } else if (e.key === 'Enter' && one && (one.type === 'text' || one.type === 'table')) {
         e.preventDefault();
-        startEdit(sel.id, ap, sel.type === 'table' ? [0, 0] : null);
-      } else if (e.key.startsWith('Arrow') && !sel.locked) {
+        startEdit(one.id, ap, one.type === 'table' ? [0, 0] : null);
+      } else if (e.key === 'Enter' && one?.type === 'math') {
+        e.preventDefault();
+        ctl.openMath(one.id);
+      } else if (e.key === 'Enter' && one?.type === 'graph') {
+        e.preventDefault();
+        ctl.openGraph(null, one.id);
+      } else if (e.key.startsWith('Arrow')) {
         e.preventDefault();
         const st = e.shiftKey ? 10 : 1;
         const dx = e.key === 'ArrowLeft' ? -st : e.key === 'ArrowRight' ? st : 0;
         const dy = e.key === 'ArrowUp' ? -st : e.key === 'ArrowDown' ? st : 0;
-        ctl.update(sel.id, { x: sel.x + dx, y: sel.y + dy }, 'nudge');
+        commit(mapItems(docRef.current!, ap, (items) => items.map((x) => (ids.includes(x.id) && !x.locked ? ({ ...x, x: x.x + dx, y: x.y + dy } as Item) : x))), 'nudge');
       }
     };
     const paste = (e: ClipboardEvent) => {
@@ -824,11 +1116,21 @@ export function StudioEditor({ id }: { id: string }) {
         return;
       }
       const txt = e.clipboardData?.getData('text/plain')?.trim();
-      if (clip.current && !txt) {
+      if (mode === 'word') return;
+      if (clip.current?.length && !txt) {
         e.preventDefault();
-        const c = clip.current;
-        ctl.add({ ...structuredClone(c), x: c.x + 24, y: c.y + 24 } as Item);
-        clip.current = { ...c, x: c.x + 24, y: c.y + 24 } as Item;
+        const groups = new Map<string, string>();
+        const copies = clip.current.map((o) => {
+          const c = { ...structuredClone(o), id: uid(), x: o.x + 24, y: o.y + 24, locked: false } as Item;
+          if (o.g) {
+            if (!groups.has(o.g)) groups.set(o.g, uid().slice(0, 10));
+            c.g = groups.get(o.g);
+          }
+          return c;
+        });
+        commit(mapItems(docRef.current!, ap, (items) => [...items, ...copies]));
+        setSelIds(copies.map((x) => x.id));
+        clip.current = copies;
         return;
       }
       if (txt) {
@@ -842,7 +1144,7 @@ export function StudioEditor({ id }: { id: string }) {
       window.removeEventListener('keydown', key);
       window.removeEventListener('paste', paste);
     };
-  }, [ctl, sel, readOnly, undo, redo, startEdit, ap, present, charDlg, help, doSave, say, fit, finishEdit]);
+  }, [ctl, sel, readOnly, undo, redo, startEdit, ap, present, charDlg, help, doSave, say, fit, finishEdit, mode, commit, mathDlg, graphDlg]);
 
   /* ------------------------------------------------------------ แก้ข้อความ */
   useEffect(() => {
@@ -925,6 +1227,63 @@ export function StudioEditor({ id }: { id: string }) {
     return true;
   };
 
+  /* ------------------------------------------------------------ สมการ / กราฟ / โหมดเอกสาร */
+  const mathDone = (tex: string) => {
+    const dlg = mathDlg;
+    setMathDlg(null);
+    if (!dlg || !ctl) return;
+    if (dlg.done) return dlg.done(tex);
+    const it = dlg.itemId ? ctl.page.items.find((x) => x.id === dlg.itemId) : undefined;
+    if (it?.type === 'math') {
+      if (!tex.trim()) return ctl.remove(it.id);
+      const [w, h] = measureTex(tex, it.size);
+      ctl.update(it.id, { tex, w, h, x: it.x + (it.w - w) / 2 } as Partial<Item>);
+    } else if (tex.trim()) {
+      const size = Math.round(Math.min(W, H) / 22);
+      const [w, h] = measureTex(tex, size);
+      ctl.add(makeMath(tex, w, h, size));
+    }
+  };
+  const graphDone = (spec: GraphSpec) => {
+    const dlg = graphDlg;
+    setGraphDlg(null);
+    if (!dlg || !ctl) return;
+    if (dlg.done) return dlg.done(spec);
+    const it = dlg.itemId ? ctl.page.items.find((x) => x.id === dlg.itemId) : undefined;
+    if (it?.type === 'graph') ctl.update(it.id, { spec, h: (it.w * spec.h) / spec.w } as Partial<Item>);
+    else ctl.add(makeGraph(spec, Math.round(Math.min(W, H) * 0.62)));
+  };
+  const setMode = (m: EditMode) => {
+    if (!doc || doc.mode === m) return;
+    finishEdit();
+    setSelIds([]);
+    setDoc({ ...doc, mode: m });
+    if (m === 'word') say('โหมดเอกสาร: พิมพ์ต่อเนื่องได้เลย ขึ้นหน้าใหม่ให้เอง ชิ้นงานแบบ Canva แสดงอยู่แต่แก้ได้ในโหมด Canva');
+  };
+  const needPages = (n: number) =>
+    setDoc((d) => {
+      if (!d || d.pages.length >= n) return d;
+      const last = d.pages[d.pages.length - 1];
+      const add = Array.from({ length: Math.min(MAX_PAGES, n) - d.pages.length }, () => ({ ...blankPage(), bg: { ...last.bg }, border: { ...last.border } }));
+      return add.length ? { ...d, pages: [...d.pages, ...add] } : d;
+    });
+  const wordUpload = async (f: File) => {
+    if (!user || tier === 'guest') {
+      say('ต้องเข้าสู่ระบบก่อนจึงอัปโหลดรูปได้');
+      return null;
+    }
+    try {
+      setUploading(true);
+      const m = await uploadImage(user.id, f, 1600);
+      return m.url;
+    } catch (e) {
+      say(e instanceof Error ? e.message : 'อัปโหลดรูปไม่สำเร็จ');
+      return null;
+    } finally {
+      setUploading(false);
+    }
+  };
+
   /* ------------------------------------------------------------ หน้าจอ */
   if (status !== 'ready' || !doc || !page || !ctl) {
     return (
@@ -972,6 +1331,13 @@ export function StudioEditor({ id }: { id: string }) {
           ];
   const exportLabel = exporting ? (exporting.kind === 'png1' ? 'กำลังทำรูป…' : `กำลังทำหน้า ${exporting.step + 1}/${doc.pages.length}`) : '';
   const floatBelow = sel ? sel.y * zoom < 70 : false;
+  const mbox = sels.length > 1 ? boxOf(sels) : null;
+  const CORNERS: Handle[] = [
+    [-1, -1],
+    [1, -1],
+    [-1, 1],
+    [1, 1],
+  ];
 
   return (
     <div className="st-shell" data-readonly={readOnly}>
@@ -989,10 +1355,10 @@ export function StudioEditor({ id }: { id: string }) {
         <span className="st-top-sep max-sm:hidden" />
         {!readOnly && (
           <>
-            <button type="button" className="st-topbtn st-topicon" onClick={undo} disabled={!past.current.length} title="ย้อนกลับ (Ctrl+Z)" aria-label="ย้อนกลับ">
+            <button type="button" className="st-topbtn st-topicon" onClick={() => (mode === 'word' ? word.current?.undo() : undo())} disabled={mode !== 'word' && !past.current.length} title="ย้อนกลับ (Ctrl+Z)" aria-label="ย้อนกลับ">
               <Undo2 className="w-5 h-5" />
             </button>
-            <button type="button" className="st-topbtn st-topicon max-sm:!hidden" onClick={redo} disabled={!future.current.length} title="ทำซ้ำ (Ctrl+Y)" aria-label="ทำซ้ำ">
+            <button type="button" className="st-topbtn st-topicon max-sm:!hidden" onClick={() => (mode === 'word' ? word.current?.redo() : redo())} disabled={mode !== 'word' && !future.current.length} title="ทำซ้ำ (Ctrl+Y)" aria-label="ทำซ้ำ">
               <Redo2 className="w-5 h-5" />
             </button>
             <span className="st-save" data-s={save} title={save === 'error' ? 'บันทึกไม่สำเร็จ กดเพื่อลองใหม่' : undefined} onClick={() => save === 'error' && doSave()}>
@@ -1011,6 +1377,16 @@ export function StudioEditor({ id }: { id: string }) {
           )}
         </div>
         {!readOnly && (
+          <div className="st-mode" role="radiogroup" aria-label="โหมดแก้ไข">
+            <button type="button" role="radio" aria-checked={mode === 'canvas'} data-on={mode === 'canvas'} onClick={() => setMode('canvas')} title="ออกแบบอิสระ ลากวางได้ทุกอย่าง (แบบ Canva)">
+              <LayoutDashboard className="w-4 h-4" /> <span className="max-sm:hidden">Canva</span>
+            </button>
+            <button type="button" role="radio" aria-checked={mode === 'word'} data-on={mode === 'word'} onClick={() => setMode('word')} title="พิมพ์เอกสารต่อเนื่อง ขึ้นหน้าใหม่เอง (แบบ Word)">
+              <FileText className="w-4 h-4" /> <span className="max-sm:hidden">Word</span>
+            </button>
+          </div>
+        )}
+        {!readOnly && (
           <button type="button" className={`st-topbtn st-g ${isPublic ? 'st-g-mint' : 'st-g-slate'}`} data-on={isPublic} onClick={() => setIsPublic(!isPublic)} title={isPublic ? 'Public: สมาชิกคนอื่นเห็นใน Discover แตะเพื่อเปลี่ยนเป็น Private' : 'Private: เห็นเฉพาะคุณ แตะเพื่อเปลี่ยนเป็น Public'}>
             {isPublic ? <Globe className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
             <span className="max-md:hidden">{isPublic ? 'Public' : 'Private'}</span>
@@ -1028,7 +1404,7 @@ export function StudioEditor({ id }: { id: string }) {
       </header>
 
       <div className="st-body">
-        {!readOnly && (
+        {!readOnly && mode === 'canvas' && (
           <>
             <nav className="st-rail" aria-label="เครื่องมือ">
               {RAIL.map((r) => (
@@ -1043,7 +1419,8 @@ export function StudioEditor({ id }: { id: string }) {
         )}
 
         <div className="st-work">
-          {!readOnly && <Inspector ctl={ctl} />}
+          {!readOnly && mode === 'canvas' && <Inspector ctl={ctl} />}
+          {mode === 'word' && <div ref={setBarEl} className="contents" />}
           <div
             ref={wrapEl}
             className="st-canvas"
@@ -1070,6 +1447,25 @@ export function StudioEditor({ id }: { id: string }) {
               ctl.upload(e.dataTransfer.files);
             }}
           >
+            {mode === 'word' ? (
+              <div className="st-pages">
+                <WordEditor
+                  ref={word}
+                  html={doc.flow}
+                  pages={doc.pages}
+                  W={W}
+                  H={H}
+                  zoom={zoom}
+                  readOnly={readOnly}
+                  barEl={barEl}
+                  onChange={(flow) => commit({ ...docRef.current!, flow }, 'flow')}
+                  onNeedPages={needPages}
+                  openMath={(tex, done) => setMathDlg({ tex, done })}
+                  openGraph={(spec, done) => setGraphDlg({ spec: spec ?? newSpec('book', { axes: true, grid: true, numbers: true, origin: false }), done })}
+                  upload={wordUpload}
+                />
+              </div>
+            ) : (
             <div className="st-pages">
               {doc.pages.map((p, i) => {
                 const active = i === ap;
@@ -1116,7 +1512,61 @@ export function StudioEditor({ id }: { id: string }) {
                         onPointerDown={(e) => onPagePointer(e, i)}
                         onDoubleClick={(e) => onDbl(e, i)}
                       >
-                        <PageView page={p} W={W} H={H} editText={active ? editText : undefined} editCell={active ? editCell : undefined} editId={active ? editId : null}>
+                        <PageView page={p} W={W} H={H} editText={active ? editText : undefined} editCell={active ? editCell : undefined} editId={active ? editId : null} flow={doc.flow} index={i}>
+                          {marquee && marquee.pi === i && <span className="st-marquee" style={{ left: marquee.x, top: marquee.y, width: marquee.w, height: marquee.h }} />}
+                          {active &&
+                            mbox &&
+                            !readOnly &&
+                            sels.map((x) => <span key={`ms${x.id}`} className="st-msel" style={{ left: x.x, top: x.y, width: x.w, height: x.h, transform: x.rot ? `rotate(${x.rot}deg)` : undefined, ['--hs' as string]: `${hs}px` }} />)}
+                          {active && mbox && !readOnly && (
+                            <>
+                              <div className="st-sel" data-locked={sels.some((x) => x.locked)} style={{ left: mbox.x, top: mbox.y, width: mbox.w, height: mbox.h, ['--hs' as string]: `${hs}px` }}>
+                                {!sels.some((x) => x.locked) &&
+                                  CORNERS.map(([hx, hy]) => (
+                                    <span
+                                      key={`${hx}${hy}`}
+                                      className="st-h"
+                                      data-side={false}
+                                      style={{ left: `${(hx + 1) * 50}%`, top: `${(hy + 1) * 50}%`, cursor: hx === hy ? 'nwse-resize' : 'nesw-resize' }}
+                                      onPointerDown={(e) => onGroupHandle([hx, hy], e)}
+                                    />
+                                  ))}
+                              </div>
+                              {!drag.current && (
+                                <div
+                                  data-float
+                                  className="st-float"
+                                  style={{
+                                    left: mbox.x + mbox.w / 2,
+                                    top: mbox.y * zoom < 70 ? mbox.y + mbox.h : mbox.y,
+                                    transform: `translate(-50%, ${mbox.y * zoom < 70 ? '0' : '-100%'}) translateY(${mbox.y * zoom < 70 ? 46 * hs : -44 * hs}px) scale(${hs})`,
+                                    transformOrigin: mbox.y * zoom < 70 ? '50% 0' : '50% 100%',
+                                  }}
+                                  onPointerDown={(e) => e.stopPropagation()}
+                                >
+                                  <span className="st-float-n">{sels.length} ชิ้น</span>
+                                  {sels.every((x) => x.g && x.g === sels[0].g) ? (
+                                    <button type="button" onClick={() => ctl.ungroup(selIds)} title="แยกกลุ่ม (Ctrl+Shift+G)">
+                                      <Ungroup className="w-4 h-4" />
+                                    </button>
+                                  ) : (
+                                    <button type="button" onClick={() => ctl.group(selIds)} title="จัดกลุ่ม (Ctrl+G)">
+                                      <Group className="w-4 h-4" />
+                                    </button>
+                                  )}
+                                  <button type="button" onClick={() => ctl.duplicateMany(selIds)} title="ทำสำเนา (Ctrl+D)">
+                                    <Copy className="w-4 h-4" />
+                                  </button>
+                                  <button type="button" onClick={() => ctl.lockMany(selIds, !sels.every((x) => x.locked))} title="ล็อก/ปลดล็อก (Alt+Shift+L)">
+                                    {sels.every((x) => x.locked) ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
+                                  </button>
+                                  <button type="button" onClick={() => ctl.removeMany(selIds)} title="ลบ (Delete)">
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              )}
+                            </>
+                          )}
                           {active &&
                             guides.x.map((x, k) => <span key={`gx${k}`} className="st-guide" style={{ left: x, top: 0, width: hs, height: H }} />)}
                           {active &&
@@ -1160,6 +1610,16 @@ export function StudioEditor({ id }: { id: string }) {
                                       <Pencil className="w-4 h-4" />
                                     </button>
                                   )}
+                                  {sel.type === 'math' && !sel.locked && (
+                                    <button type="button" onClick={() => ctl.openMath(sel.id)} title="แก้สมการ (Enter)">
+                                      <Pencil className="w-4 h-4" />
+                                    </button>
+                                  )}
+                                  {sel.type === 'graph' && !sel.locked && (
+                                    <button type="button" onClick={() => ctl.openGraph(null, sel.id)} title="แก้กราฟ (Enter)">
+                                      <Pencil className="w-4 h-4" />
+                                    </button>
+                                  )}
                                   {sel.type === 'char' && !sel.locked && (
                                     <button type="button" onClick={() => setCharDlg({ look: sel.look, itemId: sel.id, flip: sel.flip })} title="แต่งตัว/จัดท่า">
                                       <Wand2 className="w-4 h-4" />
@@ -1190,6 +1650,7 @@ export function StudioEditor({ id }: { id: string }) {
                 </button>
               )}
             </div>
+            )}
           </div>
 
           {/* ---------------- แถบล่าง ---------------- */}
@@ -1247,6 +1708,8 @@ export function StudioEditor({ id }: { id: string }) {
 
       {help && <ShortcutHelp onClose={() => setHelp(false)} />}
       {present !== null && <Presenter doc={doc} start={present} onClose={() => setPresent(null)} />}
+      {mathDlg && <MathPopover initial={mathDlg.tex} editing={!!mathDlg.itemId || (!!mathDlg.done && !!mathDlg.tex)} extended onDone={mathDone} onCancel={() => setMathDlg(null)} />}
+      {graphDlg && <GraphEditor initial={graphDlg.spec} editing={!!graphDlg.itemId || !!graphDlg.spec.objs.length} onDone={graphDone} onClose={() => setGraphDlg(null)} />}
       {charDlg && (
         <CharBuilder
           initial={charDlg.look}
@@ -1263,12 +1726,12 @@ export function StudioEditor({ id }: { id: string }) {
         createPortal(
           <div aria-hidden="true" style={{ position: 'fixed', left: -100000, top: 0, pointerEvents: 'none' }}>
             <div ref={thumbEl} style={{ width: W, height: H }}>
-              <PageView page={doc.pages[0]} W={W} H={H} />
+              <PageView page={doc.pages[0]} W={W} H={H} flow={doc.flow} index={0} />
             </div>
             {exporting && (
               <div ref={stageEl}>
-                {doc.pages.map((p) => (
-                  <PageView key={p.id} page={p} W={W} H={H} />
+                {doc.pages.map((p, i) => (
+                  <PageView key={p.id} page={p} W={W} H={H} flow={doc.flow} index={i} />
                 ))}
               </div>
             )}

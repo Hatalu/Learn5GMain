@@ -36,6 +36,16 @@ import {
   Wand2,
   Hash,
   Sparkle,
+  AlignStartVertical,
+  AlignCenterVertical,
+  AlignEndVertical,
+  AlignStartHorizontal,
+  AlignCenterHorizontal,
+  AlignEndHorizontal,
+  AlignHorizontalSpaceAround,
+  AlignVerticalSpaceAround,
+  Group,
+  Ungroup,
 } from 'lucide-react';
 import { clampEdu, EDU_KINDS, FONT_IDS, type Cap, type Dash, type DecoItem, type EduItem, type Fx, type Item, type TableItem, type WriteKind } from '@/lib/studio/doc';
 import { fxFilter } from './render';
@@ -54,6 +64,8 @@ const TYPE_LABEL: Record<Item['type'], string> = {
   edu: 'สื่อการสอน',
   char: 'ตัวละคร',
   deco: 'ของตกแต่ง',
+  math: 'สมการ',
+  graph: 'กราฟ/รูปคณิต',
 };
 
 const DASHES: { id: Dash; label: React.ReactNode; title: string }[] = [
@@ -76,6 +88,7 @@ const CAPS: { id: Cap; label: React.ReactNode; title: string }[] = [
 
 export function Inspector({ ctl }: { ctl: Ctl }) {
   const it = ctl.sel;
+  if (ctl.sels.length > 1) return <MultiBar ctl={ctl} />;
   if (!it) {
     return (
       <div className="st-insp st-insp-empty">
@@ -190,6 +203,32 @@ export function Inspector({ ctl }: { ctl: Ctl }) {
           )}
 
           {it.type === 'table' && <TableControls it={it} up={up} />}
+
+          {it.type === 'math' && (
+            <>
+              <button type="button" className="st-tb st-tb-text" onClick={() => ctl.openMath(it.id)} title="แก้สมการ (ดับเบิลคลิกหรือ Enter)">
+                <Pencil className="w-4 h-4" /> แก้สมการ
+              </button>
+              <Stepper
+                label="ขนาดสมการ"
+                value={it.size}
+                min={8}
+                max={300}
+                step={2}
+                onChange={(size) => {
+                  const k = size / it.size;
+                  up({ size, w: it.w * k, h: it.h * k, x: it.x - (it.w * k - it.w) / 2 }, 'size');
+                }}
+              />
+              <ColorPop title="สีสมการ" value={it.color} onChange={(color) => up({ color }, 'color')} icon={<Type className="w-4 h-4" />} />
+            </>
+          )}
+
+          {it.type === 'graph' && (
+            <button type="button" className="st-tb st-tb-text" onClick={() => ctl.openGraph(null, it.id)} title="แก้ไขกราฟ (ดับเบิลคลิกหรือ Enter)">
+              <Pencil className="w-4 h-4" /> แก้ไขกราฟ/รูป
+            </button>
+          )}
 
           {it.type === 'deco' && <DecoControls it={it} up={up} />}
 
@@ -428,5 +467,59 @@ export function FxPicker({ it, up }: { it: Pick<Item, 'fx' | 'fxColor'>; up: (p:
         </>
       )}
     </>
+  );
+}
+
+/** แถบเมื่อเลือกหลายชิ้น: จัดแนว กระจาย จัดกลุ่ม */
+function MultiBar({ ctl }: { ctl: Ctl }) {
+  const ids = ctl.sels.map((x) => x.id);
+  const grouped = ctl.sels.every((x) => x.g && x.g === ctl.sels[0].g);
+  const A = ({ w, t, children }: { w: 'l' | 'c' | 'r' | 't' | 'm' | 'b'; t: string; children: React.ReactNode }) => (
+    <button type="button" className="st-tb" onClick={() => ctl.alignMany(ids, w)} title={t} aria-label={t}>
+      {children}
+    </button>
+  );
+  return (
+    <div className="st-insp" role="toolbar" aria-label="ตั้งค่าหลายชิ้น">
+      <span className="st-insp-tag">เลือก {ids.length} ชิ้น</span>
+      <A w="l" t="ชิดซ้ายเท่ากัน">
+        <AlignStartVertical className="w-4 h-4" />
+      </A>
+      <A w="c" t="กึ่งกลางแนวตั้งเท่ากัน">
+        <AlignCenterVertical className="w-4 h-4" />
+      </A>
+      <A w="r" t="ชิดขวาเท่ากัน">
+        <AlignEndVertical className="w-4 h-4" />
+      </A>
+      <A w="t" t="ชิดบนเท่ากัน">
+        <AlignStartHorizontal className="w-4 h-4" />
+      </A>
+      <A w="m" t="กึ่งกลางแนวนอนเท่ากัน">
+        <AlignCenterHorizontal className="w-4 h-4" />
+      </A>
+      <A w="b" t="ชิดล่างเท่ากัน">
+        <AlignEndHorizontal className="w-4 h-4" />
+      </A>
+      <span className="st-insp-sep" />
+      <button type="button" className="st-tb" disabled={ids.length < 3} onClick={() => ctl.distribute(ids, 'h')} title="เว้นระยะแนวนอนเท่ากัน (3 ชิ้นขึ้นไป)" aria-label="เว้นระยะแนวนอนเท่ากัน">
+        <AlignHorizontalSpaceAround className="w-4 h-4" />
+      </button>
+      <button type="button" className="st-tb" disabled={ids.length < 3} onClick={() => ctl.distribute(ids, 'v')} title="เว้นระยะแนวตั้งเท่ากัน (3 ชิ้นขึ้นไป)" aria-label="เว้นระยะแนวตั้งเท่ากัน">
+        <AlignVerticalSpaceAround className="w-4 h-4" />
+      </button>
+      <span className="st-insp-sep" />
+      <button type="button" className="st-tb st-tb-text" onClick={() => (grouped ? ctl.ungroup(ids) : ctl.group(ids))} title={grouped ? 'แยกกลุ่ม (Ctrl+Shift+G)' : 'จัดกลุ่ม (Ctrl+G)'}>
+        {grouped ? <Ungroup className="w-4 h-4" /> : <Group className="w-4 h-4" />} {grouped ? 'แยกกลุ่ม' : 'จัดกลุ่ม'}
+      </button>
+      <button type="button" className="st-tb" onClick={() => ctl.duplicateMany(ids)} title="ทำสำเนา (Ctrl+D)" aria-label="ทำสำเนา">
+        <Copy className="w-4 h-4" />
+      </button>
+      <button type="button" className="st-tb" onClick={() => ctl.lockMany(ids, !ctl.sels.every((x) => x.locked))} title="ล็อก/ปลดล็อก (Alt+Shift+L)" aria-label="ล็อก">
+        {ctl.sels.every((x) => x.locked) ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
+      </button>
+      <button type="button" className="st-tb" onClick={() => ctl.removeMany(ids)} title="ลบ (Delete)" aria-label="ลบ">
+        <Trash2 className="w-4 h-4" />
+      </button>
+    </div>
   );
 }

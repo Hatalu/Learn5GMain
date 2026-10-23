@@ -4,6 +4,8 @@
  */
 import assert from 'node:assert/strict';
 import { answerOf, quizPages } from '../src/lib/studio/fromQuiz';
+import { cleanGraph, compileExpr, graphToSvg, GRAPH_TEMPLATES, intersections, parseEquation } from '../src/lib/studio/graph';
+import { cleanFlowHtml, flowIsEmpty } from '../src/lib/studio/flow';
 import { FREE_SET_LIMIT, FREE_UPLOAD_MB, MEMBER_UPLOAD_MB, creatorTier, fmtMB, quotaBytes, setsUsed } from '../src/lib/game-creator/quota';
 import { normalizeGmail, signupSchema } from '../src/lib/validations/signup';
 import {
@@ -1175,6 +1177,68 @@ t('ชุดคำถามเป็นใบงาน: แบ่งหน้า
   assert.equal(back.pages.reduce((n, p) => n + p.items.length, 0), pages.reduce((n, p) => n + p.items.length, 0));
   assert.equal(quizPages('x', { v: 1, questions: [] }, 794, 1123, { answers: true, header: true }).length, 0);
   assert.equal(quizPages('x', { v: 1, questions: qs }, 794, 1123, { answers: false, header: false }).length, pages.length - 1);
+});
+
+t('กราฟ: ตัวแปลสมการแบบ Desmos, ตัวกรองข้อมูลกราฟ และแม่แบบทุกแบบวาดได้', () => {
+  const ev = (s: string, x = 0, y = 0, p: Record<string, number> = {}) => compileExpr(s).fn(x, y, p);
+  assert.equal(ev('2x^2', 3), 18);
+  assert.equal(ev('-x^2', 3), -9);
+  assert.ok(Math.abs(ev('sin 2x', Math.PI / 4) - 1) < 1e-12);
+  assert.equal(ev('3/4x', 4), 3);
+  assert.equal(ev('2|x|', -3), 6);
+  assert.equal(ev('(x+1)(x-1)', 3), 8);
+  assert.equal(ev('ax+b', 2, 0, { a: 3, b: 1 }), 7);
+  assert.equal(ev('xy', 2, 5), 10);
+  const k = (s: string) => {
+    const r = parseEquation(s);
+    return r.ok ? r.kind : 'err';
+  };
+  assert.equal(k('y = x^2'), 'y');
+  assert.equal(k('x = y^2'), 'x');
+  assert.equal(k('x^2/9 + y^2/4 = 1'), 'implicit');
+  assert.equal(k('f(x) = 2x'), 'y');
+  assert.equal(k('y = (x'), 'err');
+  assert.equal(k('y = 2 $ 3'), 'err');
+  assert.equal(k('alert(1)'), 'y');
+  const r = parseEquation('y = a x^2 + b x + c');
+  assert.ok(r.ok && r.params.join() === 'a,b,c');
+  const hits = intersections('y = x^2', 'y = x + 2', -5, 5);
+  assert.deepEqual(hits.map((h) => Math.round(h[0] * 1e6) / 1e6), [-1, 2]);
+  const evil = cleanGraph({ w: 1e9, objs: [{ kind: 'text', x: 0, y: 0, text: '<script>alert(1)</script>', color: 'red;x' }, { kind: 'seg', a: 'zz', b: 'yy' }, { kind: 'bogus' }] });
+  assert.equal(evil.objs.length, 1);
+  assert.equal(evil.w, 2400);
+  assert.equal(evil.objs[0].color, '#111111');
+  const svg = graphToSvg(evil);
+  assert.ok(!svg.includes('<script') && svg.includes('&lt;script&gt;'));
+  for (const tpl of GRAPH_TEMPLATES) {
+    const g = tpl.make();
+    const c = cleanGraph(JSON.parse(JSON.stringify(g)));
+    assert.equal(c.objs.length, g.objs.length, tpl.id);
+    assert.ok(!/NaN|Infinity/.test(graphToSvg(c)), tpl.id);
+  }
+  const d = sanitizeDesign({ pages: [{ items: [{ type: 'graph', spec: GRAPH_TEMPLATES[0].make() }, { type: 'math', tex: '\\frac{1}{2}' }, { type: 'math', tex: '   ' }] }] });
+  assert.deepEqual(d.pages[0].items.map((x) => x.type), ['graph', 'math']);
+});
+
+t('โหมดเอกสาร: ตัวกรอง HTML ตัดสคริปต์/ลิงก์/รูปภายนอก เก็บสมการและกราฟ', () => {
+  const ok = (v: string) => (v.startsWith('https://ok/') ? v : '');
+  const c = (h: string) => cleanFlowHtml(h, ok);
+  assert.equal(c('<p>a<script>alert(1)</script>b</p>'), '<p>ab</p>');
+  assert.equal(c('<img src="x" onerror="alert(1)">'), '');
+  assert.equal(c('<img src="https://ok/a.png" onerror="alert(1)">'), '<img src="https://ok/a.png">');
+  assert.equal(c('<a href="javascript:alert(1)">x</a>'), 'x');
+  assert.equal(c('<p style="color: red; background: url(x); position: fixed">t</p>'), '<p style="color: red">t</p>');
+  assert.equal(c('<iframe src="x"></iframe><p>ok</p>'), '<p>ok</p>');
+  assert.equal(c('1 < 2 & 3'), '1 &lt; 2 & 3');
+  const math = c('<p>x <span data-tex="\\frac{1}{2}" contenteditable="false"><span class="katex"><span>1</span></span></span> y</p>');
+  assert.equal(math, '<p>x <span data-tex="\\frac{1}{2}" contenteditable="false"></span> y</p>');
+  const g = c(`<figure data-graph='${JSON.stringify(GRAPH_TEMPLATES[0].make()).replace(/'/g, '&#39;')}'><svg><text>x</text></svg></figure><p>after</p>`);
+  assert.ok(g.startsWith('<figure data-graph="') && g.endsWith('</figure><p>after</p>'));
+  assert.equal(c('<figure data-graph="not json"></figure><p>z</p>'), '<p>z</p>');
+  assert.ok(flowIsEmpty('<p><br></p>') && !flowIsEmpty('<p>ก</p>') && !flowIsEmpty('<span data-tex="x"></span>'));
+  const d = sanitizeDesign({ mode: 'word', flow: '<h1>หัวเรื่อง</h1><script>x</script>' });
+  assert.equal(d.mode, 'word');
+  assert.equal(d.flow, '<h1>หัวเรื่อง</h1>');
 });
 
 console.log(`\n${passed} tests passed`);

@@ -107,6 +107,100 @@ const TABS: { id: string; name: string; keys: Key[] }[] = [
   },
 ];
 
+/** แท็บเพิ่มสำหรับระบบสร้างสื่อ (แบบ MathType) */
+const k = (show: string, ins = show, label?: string, wide?: boolean): Key => ({ show, ins, label, wide });
+const EXTRA_TABS: { id: string; name: string; keys: Key[] }[] = [
+  {
+    id: 'calc',
+    name: 'แคลคูลัส',
+    keys: [
+      k(`\\lim_{x\\to ${B}}`, '\\lim_{#?\\to #?}', 'ลิมิต', true),
+      k(`\\int ${B}\\,dx`, '\\int #0\\,d#?', 'อินทิกรัล', true),
+      k(`\\int_{${B}}^{${B}}`, '\\int_{#?}^{#?}#0\\,d#?', 'มีขอบเขต', true),
+      k('\\frac{d}{dx}', '\\frac{d}{d#?}', 'อนุพันธ์', true),
+      k(`\\frac{d^2y}{dx^2}`, '\\frac{d^{2}#?}{d#?^{2}}', 'อันดับสอง'),
+      k('\\partial', '\\partial '),
+      k(`\\sum_{${B}}^{${B}}`, '\\sum_{#?}^{#?}', 'ผลรวม'),
+      k(`\\prod_{${B}}^{${B}}`, '\\prod_{#?}^{#?}', 'ผลคูณ'),
+      k("f'(x)", "#?'\\left(#?\\right)", 'ดิฟ'),
+      k('\\infty', '\\infty'),
+      k('\\Delta x', '\\Delta '),
+      k('\\to', '\\to '),
+      k('e^{x}', 'e^{#?}'),
+      k('\\ln', '\\ln\\left(#?\\right)'),
+      k(`\\log_{${B}}`, '\\log_{#?}\\left(#?\\right)'),
+      k('\\left.\\right|_{a}^{b}', '\\left.#0\\right|_{#?}^{#?}', 'แทนค่า'),
+    ],
+  },
+  {
+    id: 'mat',
+    name: 'เมทริกซ์',
+    keys: [
+      k('\\begin{bmatrix}a&b\\\\c&d\\end{bmatrix}', '\\begin{bmatrix}#?&#?\\\\#?&#?\\end{bmatrix}', '2x2', true),
+      k('\\begin{bmatrix}a&b&c\\\\d&e&f\\\\g&h&i\\end{bmatrix}', '\\begin{bmatrix}#?&#?&#?\\\\#?&#?&#?\\\\#?&#?&#?\\end{bmatrix}', '3x3', true),
+      k('\\begin{vmatrix}a&b\\\\c&d\\end{vmatrix}', '\\begin{vmatrix}#?&#?\\\\#?&#?\\end{vmatrix}', 'ดีเทอร์มิแนนต์', true),
+      k('\\begin{pmatrix}a\\\\b\\end{pmatrix}', '\\begin{pmatrix}#?\\\\#?\\end{pmatrix}', 'เวกเตอร์หลัก', true),
+      k('\\begin{cases}a\\\\b\\end{cases}', '\\begin{cases}#?&#?\\\\#?&#?\\end{cases}', 'แยกกรณี', true),
+      k('A^{-1}', '#0^{-1}', 'ผกผัน'),
+      k('A^{T}', '#0^{T}', 'ทรานสโพส'),
+      k('\\det', '\\det\\left(#?\\right)'),
+    ],
+  },
+  {
+    id: 'vec',
+    name: 'เวกเตอร์',
+    keys: [
+      k('\\overrightarrow{AB}', '\\overrightarrow{#0}', 'เวกเตอร์ AB', true),
+      k('\\vec{u}', '\\vec{#0}', 'ลูกศรบน'),
+      k('\\bar{u}', '\\bar{#0}', 'ขีดบน'),
+      k('\\hat{i}', '\\hat{#0}', 'หมวก'),
+      k('\\left|\\vec{u}\\right|', '\\left|\\vec{#0}\\right|', 'ขนาด'),
+      k('\\cdot', '\\cdot ', 'ดอท'),
+      k('\\times', '\\times ', 'ครอส'),
+      k('\\vec{i}', '\\vec{i}'),
+      k('\\vec{j}', '\\vec{j}'),
+      k('\\vec{k}', '\\vec{k}'),
+      k('\\parallel', '\\parallel '),
+      k('\\perp', '\\perp '),
+    ],
+  },
+  {
+    id: 'trig',
+    name: 'ตรีโกณ',
+    keys: ['\\sin', '\\cos', '\\tan', '\\cot', '\\sec', '\\csc', '\\arcsin', '\\arccos', '\\arctan']
+      .map((f) => k(f, `${f}\\left(#?\\right)`))
+      .concat([k('\\theta'), k('\\alpha'), k('\\beta'), k('{}^{\\circ}', '^{\\circ}', 'องศา'), k('\\pi'), k(`\\sin^{2}${B}`, '\\sin^{2}#?')]),
+  },
+  {
+    id: 'stat',
+    name: 'สถิติ',
+    keys: [
+      k('\\bar{x}', '\\bar{#0}', 'ค่าเฉลี่ย'),
+      k('\\mu', '\\mu', 'มิว'),
+      k('\\sigma', '\\sigma', 'ซิกมา'),
+      k('\\sigma^{2}', '\\sigma^{2}', 'ความแปรปรวน'),
+      k('\\sum_{i=1}^{n}x_i', '\\sum_{i=1}^{n}#?_{i}', 'ผลรวม', true),
+      k('\\binom{n}{r}', '\\binom{#?}{#?}', 'จัดหมู่'),
+      k('P(A)', 'P\\left(#?\\right)', 'ความน่าจะเป็น'),
+      k('n!', '#0!', 'แฟกทอเรียล'),
+      k('Q_{1}', 'Q_{#?}', 'ควอร์ไทล์'),
+      k('x_{i}', '#0_{i}'),
+      k('\\tilde{x}', '\\tilde{#0}', 'มัธยฐาน'),
+      k('P_{n,r}', 'P_{#?,#?}', 'เรียงสับเปลี่ยน'),
+    ],
+  },
+  {
+    id: 'set',
+    name: 'เซต/ตรรกะ',
+    keys: ['\\in', '\\notin', '\\subset', '\\subseteq', '\\cup', '\\cap', '\\emptyset', "A'", '\\forall', '\\exists', '\\sim', '\\wedge', '\\vee', '\\to', '\\leftrightarrow', '\\equiv', '\\mathbb{R}', '\\mathbb{N}', '\\mathbb{Z}', '\\mathbb{Q}'].map((x) => k(x, x === "A'" ? "#0'" : `${x} `)),
+  },
+  {
+    id: 'greek',
+    name: 'อักษรกรีก',
+    keys: ['\\alpha', '\\beta', '\\gamma', '\\delta', '\\varepsilon', '\\theta', '\\lambda', '\\mu', '\\pi', '\\rho', '\\sigma', '\\tau', '\\phi', '\\omega', '\\Delta', '\\Sigma', '\\Omega', '\\Phi', '\\Gamma', '\\Pi'].map((x) => k(x)),
+  },
+];
+
 const DIGITS: Key[] = ['7', '8', '9', '4', '5', '6', '1', '2', '3', '0', '.', ','].map((d) => ({ show: d, ins: d }));
 const OPS: Key[] = [
   { show: '+', ins: '+' },
@@ -150,7 +244,7 @@ function KeyFace({ k }: { k: Key }) {
   );
 }
 
-export function MathPopover({ initial, editing, onDone, onCancel }: { initial: string; editing: boolean; onDone: (tex: string) => void; onCancel: () => void }) {
+export function MathPopover({ initial, editing, onDone, onCancel, extended = false }: { initial: string; editing: boolean; onDone: (tex: string) => void; onCancel: () => void; extended?: boolean }) {
   const host = useRef<HTMLDivElement>(null);
   const mf = useRef<MF | null>(null);
   const [ready, setReady] = useState(false);
@@ -226,7 +320,8 @@ export function MathPopover({ initial, editing, onDone, onCancel }: { initial: s
   };
 
   if (!mounted) return null;
-  const keys = TABS.find((t) => t.id === tab)!.keys;
+  const tabs = extended ? [...TABS, ...EXTRA_TABS] : TABS;
+  const keys = tabs.find((t) => t.id === tab)!.keys;
 
   return createPortal(
     <div className="l5g-math-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onCancel()}>
@@ -246,7 +341,7 @@ export function MathPopover({ initial, editing, onDone, onCancel }: { initial: s
         </div>
 
         <div className="l5g-tabs" role="tablist">
-          {TABS.map((t) => (
+          {tabs.map((t) => (
             <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} className="l5g-tab" data-on={tab === t.id} onClick={() => setTab(t.id)}>
               {t.name}
             </button>

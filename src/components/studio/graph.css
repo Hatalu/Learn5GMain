@@ -1,0 +1,557 @@
+/* หน้าต่างสร้างกราฟ/รูปคณิต (ธีมขอบหมึกของเว็บ) */
+.ge-back {
+  --ink: #2a2350;
+  --paper: #fff8ec;
+  --card: #ffffff;
+  --line: #e2dcf5;
+  --acc: #7c5cf0;
+  position: fixed;
+  inset: 0;
+  z-index: 130;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  background: rgba(30, 24, 56, 0.55);
+  backdrop-filter: blur(4px);
+}
+.ge {
+  width: min(1320px, 100%);
+  height: min(860px, 100%);
+  display: flex;
+  flex-direction: column;
+  border-radius: 24px;
+  border: 3px solid var(--ink);
+  box-shadow: 0 8px 0 var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  overflow: hidden;
+  animation: gePop 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes gePop {
+  from {
+    transform: scale(0.94);
+    opacity: 0;
+  }
+}
+.ge-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 3px solid var(--ink);
+  background: linear-gradient(100deg, #e9e1ff, #ffe3f1);
+  flex-wrap: wrap;
+}
+.ge-head h2 {
+  font-weight: 800;
+  font-size: 18px;
+}
+.ge-badge {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: linear-gradient(135deg, #7c5cf0, #e8456b);
+  border: 2.5px solid var(--ink);
+}
+.ge-themes {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.ge-themes button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 5px;
+  border-radius: 999px;
+  border: 2px solid var(--ink);
+  background: #fff;
+  font-weight: 700;
+  font-size: 12.5px;
+}
+.ge-themes button[data-on='true'] {
+  background: var(--ink);
+  color: #fff;
+}
+.ge-themes button > span {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 2px solid;
+  display: grid;
+  place-items: center;
+}
+.ge-themes i {
+  width: 10px;
+  height: 3px;
+  border-radius: 2px;
+}
+.ge-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 14px;
+  border: 2.5px solid var(--ink);
+  background: #fff;
+  font-weight: 800;
+  font-size: 14px;
+  box-shadow: 0 3px 0 var(--ink);
+  transition: transform 0.12s;
+}
+.ge-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+.ge-btn:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--ink);
+}
+.ge-btn:disabled {
+  opacity: 0.5;
+}
+.ge-btn-go {
+  background: linear-gradient(180deg, #ffe066, #ffb020);
+}
+.ge-btn-sm {
+  padding: 4px 10px;
+  font-size: 13px;
+  border-radius: 11px;
+  box-shadow: 0 2px 0 var(--ink);
+}
+.ge-danger {
+  color: #c0264d;
+}
+.ge-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 340px 1fr;
+}
+@media (max-width: 860px) {
+  .ge-body {
+    grid-template-columns: 1fr;
+    grid-template-rows: 46% 54%;
+  }
+  .ge-side {
+    order: 2;
+    border-right: 0 !important;
+    border-top: 3px solid var(--ink);
+  }
+}
+.ge-side {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 3px solid var(--ink);
+  background: #fffdf8;
+}
+.ge-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px;
+  border-bottom: 2px solid var(--line);
+}
+.ge-tabs button {
+  flex: 1;
+  padding: 6px 4px;
+  border-radius: 10px;
+  font-weight: 800;
+  font-size: 13.5px;
+  border: 2px solid transparent;
+}
+.ge-tabs button[data-on='true'] {
+  background: var(--acc);
+  color: #fff;
+  border-color: var(--ink);
+}
+.ge-pane {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+}
+.ge-h {
+  font-weight: 800;
+  font-size: 13px;
+  margin: 6px 0;
+  color: #5b4bb0;
+}
+.ge-tip {
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.7;
+  margin: 8px 2px;
+  line-height: 1.5;
+}
+.ge-card {
+  border-radius: 14px;
+  border: 2px solid var(--line);
+  background: var(--card);
+  padding: 7px;
+  margin-bottom: 7px;
+}
+.ge-card[data-on='true'] {
+  border-color: var(--acc);
+  box-shadow: 0 2px 0 #c9bbff;
+}
+.ge-eq {
+  flex: 1;
+  min-width: 0;
+  font-family: 'Cambria Math', 'Times New Roman', serif;
+  font-size: 17px;
+  padding: 5px 8px;
+  border-radius: 10px;
+  border: 2px solid var(--line);
+  background: #fbfaff;
+}
+.ge-eq:focus,
+.ge-in:focus {
+  outline: none;
+  border-color: var(--acc);
+}
+.ge-err {
+  margin: 4px 2px 0 34px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #c0264d;
+}
+.ge-swatch {
+  position: relative;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2.5px solid var(--ink);
+  cursor: pointer;
+  overflow: hidden;
+}
+.ge-swatch input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.ge-ico {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+}
+.ge-ico:hover {
+  background: #f1edff;
+}
+.ge-more {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1.5px dashed var(--line);
+}
+.ge-rowf {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 5px 0;
+  font-size: 13px;
+}
+.ge-lbl {
+  flex: none;
+  width: 78px;
+  font-weight: 700;
+  opacity: 0.8;
+}
+.ge-rowf input[type='range'] {
+  flex: 1;
+  accent-color: var(--acc);
+}
+.ge-in {
+  min-width: 0;
+  flex: 1;
+  padding: 4px 8px;
+  border-radius: 9px;
+  border: 2px solid var(--line);
+  background: #fff;
+  font-size: 13.5px;
+}
+.ge-num {
+  width: 74px;
+  flex: none;
+}
+.ge-seg {
+  display: inline-flex;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.ge-seg button {
+  padding: 3px 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.ge-seg button + button {
+  border-left: 1.5px solid var(--line);
+}
+.ge-seg button[data-on='true'] {
+  background: var(--ink);
+  color: #fff;
+}
+.ge-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 700;
+  margin: 5px 0;
+  cursor: pointer;
+}
+.ge-check input {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--acc);
+}
+.ge-add {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 13px;
+  border: 2.5px dashed #b6a6f2;
+  font-weight: 800;
+  color: #5b4bb0;
+}
+.ge-add:hover {
+  background: #f4f0ff;
+}
+.ge-params {
+  margin-top: 10px;
+  padding: 8px;
+  border-radius: 13px;
+  background: #f4f0ff;
+}
+.ge-param {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0;
+}
+.ge-param b {
+  font-family: 'Cambria Math', 'Times New Roman', serif;
+  font-style: italic;
+  font-size: 16px;
+  width: 30px;
+}
+.ge-param input[type='range'] {
+  flex: 1;
+  accent-color: var(--acc);
+}
+.ge-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.ge-presets button,
+.ge-chip {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 2px solid var(--ink);
+  background: #fff;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.ge-presets button:hover,
+.ge-chip:hover {
+  background: #fff3c4;
+}
+.ge-presets button[data-on='true'] {
+  background: var(--ink);
+  color: #fff;
+}
+.ge-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ge-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+.ge-row:hover {
+  background: #f4f0ff;
+}
+.ge-row[data-on='true'] {
+  border-color: var(--acc);
+  background: #f4f0ff;
+}
+.ge-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1.5px solid var(--ink);
+}
+.ge-props {
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 14px;
+  border: 2px solid var(--acc);
+  background: #fff;
+}
+.ge-colorbtn {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--ink);
+}
+.ge-colorbtn[data-on='true'] {
+  outline: 3px solid #ffcf3f;
+}
+.ge-none {
+  background: repeating-linear-gradient(45deg, #fff 0 4px, #e8456b 4px 6px);
+}
+.ge-pos {
+  display: grid;
+  grid-template-columns: repeat(3, 18px);
+  gap: 3px;
+}
+.ge-pos button {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  border: 2px solid var(--line);
+}
+.ge-pos button:nth-child(5) {
+  grid-column: 3;
+}
+.ge-pos button[data-on='true'] {
+  background: var(--acc);
+  border-color: var(--ink);
+}
+.ge-tpls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.ge-tpl {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  border-radius: 13px;
+  border: 2px solid var(--line);
+  background: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+  transition: transform 0.12s, border-color 0.12s;
+}
+.ge-tpl:hover {
+  border-color: var(--acc);
+  transform: translateY(-2px);
+}
+.ge-tpl-img {
+  display: block;
+  aspect-ratio: 4 / 3;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #eee;
+}
+.ge-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.ge-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 8px 10px;
+  border-bottom: 2px solid var(--line);
+  background: #fff;
+}
+.ge-tools button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 9px;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  font-size: 13px;
+  font-weight: 700;
+}
+.ge-tools button:hover {
+  background: #f4f0ff;
+}
+.ge-tools button[data-on='true'] {
+  background: var(--acc);
+  color: #fff;
+  border-color: var(--ink);
+}
+.ge-sep {
+  width: 2px;
+  background: var(--line);
+  margin: 2px 4px;
+}
+.ge-stagewrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  container-type: size;
+  background: repeating-conic-gradient(#f3f0fa 0 25%, #fbfaff 0 50%) 0 0 / 22px 22px;
+}
+.ge-stage {
+  position: relative;
+  flex: none;
+  width: min(calc(100cqw - 28px), calc((100cqh - 28px) * var(--r)));
+  border: 2.5px solid var(--ink);
+  border-radius: 6px;
+  box-shadow: 0 5px 0 rgba(42, 35, 80, 0.25);
+  touch-action: none;
+  user-select: none;
+  background: #fff;
+}
+.ge-stage[data-tool='move'] {
+  cursor: grab;
+}
+.ge-stage:not([data-tool='move']) {
+  cursor: crosshair;
+}
+.ge-svg,
+.ge-over {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.ge-handle {
+  fill: rgba(124, 92, 240, 0.12);
+  stroke: rgba(124, 92, 240, 0.55);
+  stroke-width: 1.5;
+}
+.ge-handle[data-on='true'] {
+  fill: rgba(255, 207, 63, 0.45);
+  stroke: #2a2350;
+  stroke-width: 2;
+}
+.ge-foot {
+  display: flex;
+  gap: 10px;
+  padding: 6px 12px;
+  border-top: 2px solid var(--line);
+  background: #fff;
+  font-size: 12.5px;
+  font-weight: 600;
+}

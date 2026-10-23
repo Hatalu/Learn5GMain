@@ -1,6 +1,10 @@
 /* eslint-disable @next/next/no-img-element */
-import React from 'react';
-import { MOON_PHASES, type Dash, type DecoItem, type EduItem, type Fx, type Item, type LineItem, type Page, type PageBg, type PageBorder, type TableItem, type TextItem, type WriteItem } from '@/lib/studio/doc';
+import React, { useLayoutEffect, useMemo, useRef } from 'react';
+import { MOON_PHASES, type Dash, type DecoItem, type EduItem, type Fx, type GraphItem, type Item, type LineItem, type MathItem, type Page, type PageBg, type PageBorder, type TableItem, type TextItem, type WriteItem } from '@/lib/studio/doc';
+import { graphToSvg } from '@/lib/studio/graph';
+import { FLOW_GAP, FLOW_MARGIN, paginate } from '@/lib/studio/flow';
+import { texToHtml } from '@/components/creator/math/MathText';
+import { hydrateFlow } from './flowDom';
 import { CharArt } from './CharArt';
 import { FONTS } from './fonts';
 import { shapeById } from './shapes';
@@ -9,7 +13,8 @@ import { pastePlain } from './ui';
 
 /**
  * วาดหน้าสื่อ 1 หน้าที่ขนาดจริง (พิกเซล) ใช้ร่วมกันทั้งตัวแก้ไข รูปย่อ และตอนส่งออกเป็นรูป/PDF
- * ทุกอย่างเป็น DOM/SVG ธรรมดา ข้อความแสดงแบบ text (ไม่มี innerHTML) จึงไม่มีทางแทรกสคริปต์ได้
+ * ข้อความแสดงแบบ text ธรรมดา ส่วนที่ใช้ innerHTML มีแค่ สมการ (KaTeX trust:false), กราฟ (SVG ที่ escape ทุกข้อความ)
+ * และเนื้อหาโหมดเอกสาร (ผ่าน cleanFlowHtml แบบรายการอนุญาตทุกครั้งที่โหลด)
  */
 
 export function bgStyle(bg: PageBg): React.CSSProperties {
@@ -1143,7 +1148,44 @@ function ItemBody({ it, editText, editCell }: { it: Item; editText?: EditText; e
       );
     case 'deco':
       return <DecoView d={it} />;
+    case 'math':
+      return <MathView m={it} />;
+    case 'graph':
+      return <GraphView g={it} />;
   }
+}
+
+function MathView({ m }: { m: MathItem }) {
+  const html = useMemo(() => texToHtml(m.tex, false, true), [m.tex]);
+  return (
+    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: m.color, fontSize: m.size, lineHeight: 1.2, whiteSpace: 'nowrap' }}>
+      <span data-math dangerouslySetInnerHTML={{ __html: html }} />
+    </div>
+  );
+}
+
+function GraphView({ g }: { g: GraphItem }) {
+  const svg = useMemo(() => graphToSvg(g.spec), [g.spec]);
+  return <div style={{ width: '100%', height: '100%' }} dangerouslySetInnerHTML={{ __html: svg }} />;
+}
+
+/** เนื้อหาโหมดเอกสาร 1 หน้า: วางเนื้อหาทั้งหมดแล้วเลื่อนขึ้นตามเลขหน้า (ตัดหน้าแบบเดียวกับจอแก้ไข) */
+export function FlowLayer({ html, index, W, H }: { html: string; index: number; W: number; H: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.innerHTML = html;
+    hydrateFlow(el);
+    paginate(el, H, FLOW_GAP, FLOW_MARGIN.y);
+    let off = false;
+    // ฟอนต์โหลดเสร็จทีหลังทำให้ความสูงเปลี่ยน
+    document.fonts?.ready.then(() => !off && paginate(el, H, FLOW_GAP, FLOW_MARGIN.y));
+    return () => {
+      off = true;
+    };
+  }, [html, H]);
+  return <div ref={ref} className="st-flow" aria-hidden="true" style={{ position: 'absolute', left: 0, top: -index * (H + FLOW_GAP), width: W, padding: `0 ${FLOW_MARGIN.x}px`, pointerEvents: 'none', fontFamily: FONTS.sarabun.family }} />;
 }
 
 export function ItemView({ it, editText, editCell }: { it: Item; editText?: EditText; editCell?: EditCell }) {
@@ -1175,6 +1217,8 @@ export function PageView({
   editText,
   editCell,
   editId,
+  flow,
+  index = 0,
   children,
 }: {
   page: Page;
@@ -1183,11 +1227,15 @@ export function PageView({
   editText?: EditText;
   editCell?: EditCell;
   editId?: string | null;
+  /** เนื้อหาโหมดเอกสาร (แสดงใต้ชิ้นงาน) */
+  flow?: string;
+  index?: number;
   children?: React.ReactNode;
 }) {
   return (
     <div data-page={page.id} style={{ position: 'relative', width: W, height: H, overflow: 'hidden', ...bgStyle(page.bg) }}>
       <BorderArt b={page.border} W={W} H={H} />
+      {flow ? <FlowLayer html={flow} index={index} W={W} H={H} /> : null}
       {page.items.map((it) => (
         <ItemView key={it.id} it={it} editText={editId === it.id ? editText : undefined} editCell={editId === it.id ? editCell : undefined} />
       ))}

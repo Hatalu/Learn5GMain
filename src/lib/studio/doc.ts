@@ -4,6 +4,8 @@
  * ข้อมูลทุกชิ้นผ่าน sanitizeDesign() ก่อนแสดงผลเสมอ (ทั้งของตัวเองและของคนอื่นใน Discover)
  */
 import { mediaPrefix } from '@/lib/game-creator/prefix';
+import { cleanGraph, type GraphSpec } from './graph';
+import { cleanFlowHtml } from './flow';
 import { cleanLook, DEFAULT_LOOK, type CharLook } from './char';
 
 export const MAX_PAGES = 30;
@@ -61,6 +63,8 @@ interface Base {
   locked: boolean;
   fx: Fx;
   fxColor: string;
+  /** กลุ่ม (Ctrl+G) ชิ้นที่ g เดียวกันถูกเลือก/ย้ายพร้อมกัน */
+  g?: string;
 }
 export interface TextItem extends Base {
   type: 'text';
@@ -153,7 +157,19 @@ export interface DecoItem extends Base {
   color2: string;
   sw: number;
 }
-export type Item = TextItem | ShapeItem | LineItem | ImageItem | StickerItem | TableItem | WriteItem | EduItem | CharItem | DecoItem;
+/** สมการคณิตศาสตร์ (LaTeX วาดด้วย KaTeX) */
+export interface MathItem extends Base {
+  type: 'math';
+  tex: string;
+  color: string;
+  size: number;
+}
+/** กราฟ/รูปคณิตศาสตร์ (ดู lib/studio/graph.ts) */
+export interface GraphItem extends Base {
+  type: 'graph';
+  spec: GraphSpec;
+}
+export type Item = TextItem | ShapeItem | LineItem | ImageItem | StickerItem | TableItem | WriteItem | EduItem | CharItem | DecoItem | MathItem | GraphItem;
 export type ItemType = Item['type'];
 
 export interface PageBg {
@@ -174,10 +190,15 @@ export interface Page {
   border: PageBorder;
   items: Item[];
 }
+export type EditMode = 'canvas' | 'word';
 export interface Design {
   v: 1;
   size: { id: string; w: number; h: number };
   pages: Page[];
+  /** โหมดที่เปิดค้างไว้ล่าสุด: ออกแบบอิสระ (Canva) / เอกสาร (Word) */
+  mode: EditMode;
+  /** เนื้อหาโหมดเอกสาร (HTML ที่กรองแล้ว) ไหลต่อเนื่องทุกหน้า อยู่ใต้ชิ้นงานของโหมด Canva */
+  flow: string;
 }
 
 export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-3);
@@ -189,7 +210,7 @@ export const blankBorder = (): PageBorder => ({ style: 'none', color: '#7c5cf0',
 export const blankPage = (): Page => ({ id: uid(), bg: blankBg(), border: blankBorder(), items: [] });
 
 export function blankDesign(size: { id: string; w: number; h: number } = DEFAULT_SIZE): Design {
-  return { v: 1, size: { id: size.id, w: size.w, h: size.h }, pages: [blankPage()] };
+  return { v: 1, size: { id: size.id, w: size.w, h: size.h }, pages: [blankPage()], mode: 'canvas', flow: '' };
 }
 
 const base = (x: number, y: number, w: number, h: number): Base => ({ id: uid(), x, y, w, h, rot: 0, opacity: 1, locked: false, fx: 'none', fxColor: '#2a2350' });
@@ -298,6 +319,9 @@ export function makeEdu(kind: EduKind): EduItem {
 }
 export const makeChar = (look: CharLook = DEFAULT_LOOK): CharItem => ({ ...base(0, 0, 200, 300), type: 'char', look: structuredClone(look), flip: false });
 /** กล่องเริ่มต้นของของตกแต่งแต่ละกลุ่ม */
+export const makeMath = (tex: string, w: number, h: number, size = 36): MathItem => ({ ...base(0, 0, w, h), type: 'math', tex, color: '#2a2350', size });
+export const makeGraph = (spec: GraphSpec, width = 420): GraphItem => ({ ...base(0, 0, width, (width * spec.h) / spec.w), type: 'graph', spec });
+
 export function makeDeco(style: DecoStyle, color = '#7c5cf0', color2 = '#ffd166'): DecoItem {
   const box: [number, number] = style.startsWith('d-') ? [560, 40] : style.startsWith('t-') ? [220, 54] : style.startsWith('c-') ? [150, 150] : [420, 300];
   return { ...base(0, 0, box[0], box[1]), type: 'deco', style, color, color2, sw: style.startsWith('c-') ? 6 : 4 };
@@ -398,6 +422,7 @@ function cleanBase(r: Record<string, unknown>, W: number, H: number): Base {
     locked: bool(r.locked),
     fx: pick(r.fx, FX_IDS, 'none'),
     fxColor: cleanColor(r.fxColor, '#2a2350'),
+    ...(typeof r.g === 'string' && /^[a-z0-9]{4,16}$/.test(r.g) ? { g: r.g } : {}),
   };
 }
 
@@ -474,6 +499,12 @@ export function cleanItem(raw: unknown, W: number, H: number): Item | null {
         : null;
     case 'write':
       return { ...b, type: 'write', kind: pick(r.kind, WRITE, 'lines'), gap: num(r.gap, 12, 200, 44), stroke: cleanColor(r.stroke, '#9b8fd0'), sw: num(r.sw, 0.5, 12, 1.5) };
+    case 'math': {
+      const tex = str(r.tex, 2000);
+      return tex.trim() ? { ...b, type: 'math', tex, color: cleanColor(r.color, '#2a2350'), size: num(r.size, 8, 300, 36) } : null;
+    }
+    case 'graph':
+      return { ...b, type: 'graph', spec: cleanGraph(r.spec) };
     default:
       return null;
   }
@@ -506,13 +537,14 @@ export function sanitizeDesign(raw: unknown): Design {
   const h = Math.round(num(s.h, CUSTOM_MIN, CUSTOM_MAX, preset?.h ?? DEFAULT_SIZE.h));
   const size = { id: preset && preset.w === w && preset.h === h ? preset.id : 'custom', w, h };
   const pages = (Array.isArray(r.pages) ? r.pages.slice(0, MAX_PAGES) : []).map((p) => cleanPage(p, w, h));
-  return { v: 1, size, pages: pages.length ? pages : [blankPage()] };
+  return { v: 1, size, pages: pages.length ? pages : [blankPage()], mode: r.mode === 'word' ? 'word' : 'canvas', flow: cleanFlowHtml(typeof r.flow === 'string' ? r.flow : '', cleanSrc) };
 }
 
 /** ไฟล์รูปในที่เก็บของเราที่สื่อชิ้นนี้ใช้ (ใช้ตอนลบสื่อ) */
 export function designMediaPaths(d: Design): string[] {
   const pre = mediaPrefix();
-  return [...new Set(d.pages.flatMap((p) => p.items).flatMap((i) => (i.type === 'image' && pre && i.src.startsWith(pre) ? [i.src.slice(pre.length)] : [])))];
+  const flowImgs = [...(d.flow || '').matchAll(/<img src="([^"]+)"/g)].map((m) => m[1].replace(/&amp;/g, '&'));
+  return [...new Set([...d.pages.flatMap((p) => p.items).flatMap((i) => (i.type === 'image' ? [i.src] : [])), ...flowImgs].flatMap((src) => (pre && src.startsWith(pre) ? [src.slice(pre.length)] : [])))];
 }
 
 export const sizeLabel = (s: Design['size']) => SIZES.find((x) => x.id === s.id)?.label ?? `กำหนดเอง ${s.w} x ${s.h}`;

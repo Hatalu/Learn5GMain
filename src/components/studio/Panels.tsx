@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { BookOpenCheck, CloudUpload, LayoutTemplate, Loader2, PaintBucket, Pencil, QrCode, Search, Shapes, Smile, Sparkles, Square, Trash2, Type, Upload, UserRound, Wand2, X } from 'lucide-react';
+import { Sigma, BookOpenCheck, CloudUpload, LayoutTemplate, Loader2, PaintBucket, Pencil, QrCode, Search, Shapes, Smile, Sparkles, Square, Trash2, Type, Upload, UserRound, Wand2, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { sanitizeQuiz } from '@/lib/game-creator/quiz';
 import { mediaPrefix } from '@/lib/game-creator/prefix';
 import { quizPages } from '@/lib/studio/fromQuiz';
+import { GRAPH_PRESETS, GRAPH_TEMPLATES, graphToSvg, mkExpr, newSpec, themeOf, type GraphSpec } from '@/lib/studio/graph';
+import { texToHtml } from '@/components/creator/math/MathText';
 import { ANIMAL_PRESETS, CHAR_PRESETS, DEFAULT_LOOK, SPECIES, cleanLook, withSpecies, type CharLook } from '@/lib/studio/char';
 import { KITS, KIT_SUBJECTS, kitDefaults, type Kit, type KitSubject, type KitValue } from '@/lib/studio/kits';
 import { CharArt } from './CharArt';
@@ -52,12 +54,13 @@ import { FxPicker } from './Inspector';
 import { UsageMeter } from '@/components/creator/UsageMeter';
 import type { Ctl } from './Editor';
 
-export type PanelId = 'template' | 'shape' | 'text' | 'sticker' | 'char' | 'edu' | 'image' | 'bg';
+export type PanelId = 'template' | 'shape' | 'text' | 'math' | 'sticker' | 'char' | 'edu' | 'image' | 'bg';
 
 export const RAIL: { id: PanelId; label: string; icon: React.ReactNode; color: string }[] = [
   { id: 'template', label: 'แม่แบบ', icon: <LayoutTemplate className="w-5 h-5" />, color: '#8b3dff' },
   { id: 'shape', label: 'องค์ประกอบ', icon: <Shapes className="w-5 h-5" />, color: '#2a73d9' },
   { id: 'text', label: 'ข้อความ', icon: <Type className="w-5 h-5" />, color: '#e8456b' },
+  { id: 'math', label: 'คณิต/กราฟ', icon: <Sigma className="w-5 h-5" />, color: '#4f46e5' },
   { id: 'sticker', label: 'สติกเกอร์', icon: <Smile className="w-5 h-5" />, color: '#e07a12' },
   { id: 'char', label: 'ตัวละคร', icon: <UserRound className="w-5 h-5" />, color: '#db2777' },
   { id: 'edu', label: 'สื่อการสอน', icon: <BookOpenCheck className="w-5 h-5" />, color: '#0f766e' },
@@ -69,6 +72,7 @@ const TITLES: Record<PanelId, string> = {
   template: 'แม่แบบสำเร็จรูป',
   shape: 'องค์ประกอบและของตกแต่ง',
   text: 'ข้อความ',
+  math: 'สมการ กราฟ และรูปคณิตศาสตร์',
   sticker: 'สติกเกอร์',
   char: 'ตัวละครแต่งเอง',
   edu: 'เครื่องมือสร้างสื่อการสอน',
@@ -88,6 +92,7 @@ export function Panels({ id, ctl, onClose }: { id: PanelId; ctl: Ctl; onClose: (
       <div className="st-panel-body">
         {id === 'template' && <TemplatePanel ctl={ctl} />}
         {id === 'text' && <TextPanel ctl={ctl} />}
+        {id === 'math' && <MathPanel ctl={ctl} />}
         {id === 'shape' && <ShapePanel ctl={ctl} />}
         {id === 'sticker' && <StickerPanel ctl={ctl} />}
         {id === 'char' && <CharPanel ctl={ctl} />}
@@ -913,6 +918,79 @@ function KitForm({ kit, ctl, open }: { kit: Kit; ctl: Ctl; open: boolean }) {
       </button>
       {msg && <p className="text-xs font-bold text-rose-600 mt-1.5">{msg}</p>}
     </details>
+  );
+}
+
+/* ------------------------------------------------------------------ คณิต/กราฟ */
+
+const QUICK_TEX = [
+  String.raw`\frac{a}{b}`,
+  String.raw`x^{2}+y^{2}=r^{2}`,
+  String.raw`\sqrt{b^{2}-4ac}`,
+  String.raw`x=\frac{-b\pm\sqrt{b^{2}-4ac}}{2a}`,
+  String.raw`\overrightarrow{AB}`,
+  String.raw`\sum_{i=1}^{n} x_i`,
+  String.raw`\int_{a}^{b} f(x)\,dx`,
+  String.raw`\begin{bmatrix}a&b\\c&d\end{bmatrix}`,
+  String.raw`\lim_{x\to 0}\frac{\sin x}{x}`,
+  String.raw`a^{2}+b^{2}=c^{2}`,
+];
+
+function MathPanel({ ctl }: { ctl: Ctl }) {
+  return (
+    <>
+      <Sec title="สมการ (แบบ MathType)" note="พิมพ์สูตรได้ทุกแบบ เศษส่วน ราก เมทริกซ์ เวกเตอร์ อินทิกรัล ลิมิต สถิติ อักษรกรีก">
+        <button type="button" className="st-btn-acc w-full" onClick={() => ctl.openMath()}>
+          <Sigma className="w-4 h-4" /> เขียนสมการใหม่ (E)
+        </button>
+        <div className="grid grid-cols-2 gap-2 mt-2">
+          {QUICK_TEX.map((t) => (
+            <QuickTex key={t} tex={t} ctl={ctl} />
+          ))}
+        </div>
+      </Sec>
+      <Sec title="กราฟคณิตศาสตร์" note="ใส่สมการแล้วได้กราฟทันที ปรับช่วง x, y เส้นกริด ชื่อแกน สไตล์ได้ ลากจุด เพิ่มป้ายได้">
+        <button type="button" className="st-btn-acc w-full" onClick={() => ctl.openGraph()}>
+          <Sparkles className="w-4 h-4" /> สร้างกราฟ/รูปใหม่ (G)
+        </button>
+        <div className="flex flex-wrap gap-1.5 mt-2">
+          {GRAPH_PRESETS.slice(0, 12).map((p) => (
+            <button key={p.label} type="button" className="st-chip-btn" onClick={() => ctl.openGraph({ ...newSpec('grid'), objs: [mkExpr(p.text, themeOf('grid').colors[0])] })}>
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </Sec>
+      <Sec title="รูปคณิตศาสตร์สำเร็จรูป" note="แบบในหนังสือเรียน แก้ไขต่อได้ทุกส่วน">
+        <div className="grid grid-cols-2 gap-2">
+          {GRAPH_TEMPLATES.map((t) => (
+            <TplThumb key={t.id} label={t.label} make={t.make} onPick={(s) => ctl.openGraph(s)} />
+          ))}
+        </div>
+      </Sec>
+    </>
+  );
+}
+function QuickTex({ tex, ctl }: { tex: string; ctl: Ctl }) {
+  const html = React.useMemo(() => texToHtml(tex, false, true), [tex]);
+  return (
+    <button
+      type="button"
+      className="st-wr st-texbtn"
+      title="ใส่สมการนี้แล้วแก้ไขต่อ"
+      onClick={() => ctl.openMath(undefined, tex)}
+    >
+      <span dangerouslySetInnerHTML={{ __html: html }} />
+    </button>
+  );
+}
+function TplThumb({ label, make, onPick }: { label: string; make: () => GraphSpec; onPick: (s: GraphSpec) => void }) {
+  const svg = React.useMemo(() => graphToSvg(make()), [make]);
+  return (
+    <button type="button" className="st-wr" onClick={() => onPick(make())} title={label}>
+      <span className="st-tplg" dangerouslySetInnerHTML={{ __html: svg }} />
+      <span>{label}</span>
+    </button>
   );
 }
 
