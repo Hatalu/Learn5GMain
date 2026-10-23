@@ -25,7 +25,7 @@ import { FilterSidebar } from '@/components/media/FilterSidebar';
 import { MobileFilterDrawer } from '@/components/media/MobileFilterDrawer';
 import { SortDropdown } from '@/components/media/SortDropdown';
 import { EmptyState } from '@/components/media/EmptyState';
-import { HeroCarousel } from '@/components/hero/HeroCarousel';
+import { HomeHero } from '@/components/home/HomeHero';
 import { FeatureStrip } from '@/components/media/FeatureStrip';
 import { DailyGameCard } from '@/components/media/DailyGameCard';
 import { JoinRoomBanner } from '@/components/media/JoinRoomBanner';
@@ -426,23 +426,22 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground transition-colors duration-200">
+    <div className="min-h-screen flex flex-col bg-[#fff8ec] dark:bg-[#1f1a56] text-foreground transition-colors duration-200">
       <Navbar />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div data-tour="hero">
-          <HeroCarousel
-            media={allMedia}
-            isLoading={isLoadingMedia}
-            selectedSubjects={filters.subjects}
-            onPickSubject={handlePickSubject}
-            onSelectMedia={handleSelectMedia}
-            onBrowseAll={scrollToLibrary}
-          />
-        </div>
+      {/* ส่วนหัว: น้องไฟว์จี 3D + แถบภาพปกเกม (พื้นท้ายฉากสีเดียวกับพื้นหน้า) */}
+      <HomeHero
+        media={allMedia}
+        isLoading={isLoadingMedia}
+        onPickSubject={handlePickSubject}
+        onSelectMedia={handleSelectMedia}
+        onBrowseAll={scrollToLibrary}
+        onDaily={scrollToDaily}
+      />
 
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-2 pb-6">
         {/* ป้ายโฆษณาระบบต่างๆ ในเว็บ (กดปิดได้ ซ่อน 1 วัน) */}
-        <PromoBanners className="mt-6" audience={audience} onDocs={openDocs} onLibrary={openGames} />
+        <PromoBanners className="mt-2" audience={audience} onDocs={openDocs} onLibrary={openGames} />
 
         {/* ข้อเสนอสมาชิก (ส่วนลดบัญชีใหม่ / โบนัสต่ออายุ) + ตัวเลขผู้ใช้จริง */}
         <OfferBanner className="mt-6" />

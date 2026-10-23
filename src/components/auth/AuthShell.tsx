@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { ArrowLeft } from 'lucide-react';
 import { ThemeToggle } from '@/components/navbar/ThemeToggle';
 import { ChoiceShape, choiceStyle } from '@/components/creator/ChoiceShape';
+import { FiveG3D } from '@/components/mascot/FiveG3D';
 import s from './auth.module.css';
 
 export type Mood = 'idle' | 'focus' | 'secret' | 'error' | 'happy';
@@ -13,7 +14,7 @@ export type Mood = 'idle' | 'focus' | 'secret' | 'error' | 'happy';
 const SAY: Record<Mood, string> = {
   idle: 'สวัสดี! มาเล่นด้วยกันนะ',
   focus: 'พิมพ์ได้เลย ไม่ต้องรีบ',
-  secret: 'ปิดตาแล้ว ไม่แอบดูนะ!',
+  secret: 'หันหลังให้แล้ว ไม่แอบดูนะ!',
   error: 'อุ๊ย ลองอีกครั้งนะ',
   happy: 'เย้! ยินดีต้อนรับ',
 };
@@ -80,7 +81,7 @@ const STARS = [
 
 /**
  * ฉากหน้าเข้าสู่ระบบ/สมัครบัญชี: ท้องฟ้าไล่สี เมฆ ดาว ชิ้นตัวเลือกเกมลอยขึ้น เนินเขา (ขยับตามเมาส์เล็กน้อย)
- * + น้องไฟว์จียืนบนเกาะ ทำท่าตามสถานะของฟอร์ม (พิมพ์ / ปิดตาตอนพิมพ์รหัส / ผิด / สำเร็จ)
+ * + น้องไฟว์จี 3D ยืนบนเกาะ ทำท่าตามสถานะของฟอร์ม (พิมพ์ = หันมองฟอร์ม / พิมพ์รหัส = หันหลัง / ผิด = ส่ายหัว / สำเร็จ = ดีใจ)
  */
 export function AuthShell({
   mode,
@@ -129,14 +130,6 @@ export function AuthShell({
       window.removeEventListener('pointermove', onMove);
     };
   }, []);
-
-  const mascot = (
-    <div className={s.mascot} data-mood={mood}>
-      <Image src="/plans/fiveg-kid.webp" alt="น้องไฟว์จี" fill sizes="250px" priority draggable={false} />
-      <span className={`${s.paw} ${s.pawL}`} aria-hidden="true" />
-      <span className={`${s.paw} ${s.pawR}`} aria-hidden="true" />
-    </div>
-  );
 
   return (
     <div ref={ref} className={s.world}>
@@ -207,8 +200,6 @@ export function AuthShell({
           )}
 
           <div className={`${s.mascotWrap} ${s.bigMascot}`}>
-            <div className={s.island} />
-            <div className={s.shadow} />
             <div className={s.orbit} aria-hidden="true">
               {[0, 1, 2, 3].map((i) => (
                 <span
@@ -220,7 +211,7 @@ export function AuthShell({
                 </span>
               ))}
             </div>
-            {mascot}
+            <FiveG3D mood={mood} className={s.mascot3d} />
             <span key={mood} className={s.bubble} role="status">
               {SAY[mood]}
             </span>

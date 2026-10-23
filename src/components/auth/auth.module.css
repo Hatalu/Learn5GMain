@@ -302,66 +302,13 @@
 
 .mascotWrap {
   position: relative;
-  width: clamp(170px, 24vw, 250px);
-  aspect-ratio: 367 / 515;
-  margin-top: 26px;
+  width: clamp(250px, 30vw, 340px);
+  aspect-ratio: 0.82;
+  margin-top: 18px;
 }
-.island {
-  position: absolute;
-  left: 50%;
-  bottom: -26px;
-  width: 150%;
-  height: 54px;
-  transform: translateX(-50%);
-  border-radius: 50%;
-  background: radial-gradient(ellipse at 50% 35%, #7ce0a8 0%, #3fbf86 60%, #2a9e6c 100%);
-  border: 3px solid var(--ink);
-  box-shadow: 0 7px 0 var(--ink);
-}
-.island::after {
-  content: '';
-  position: absolute;
-  left: 18%;
-  right: 18%;
-  top: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.35);
-}
-.shadow {
-  position: absolute;
-  left: 50%;
-  bottom: -6px;
-  width: 64%;
-  height: 16px;
-  border-radius: 50%;
-  background: rgba(20, 60, 40, 0.35);
-  transform: translateX(-50%);
-  animation: shadowPulse 2.6s ease-in-out infinite;
-}
-@keyframes shadowPulse {
-  0%,
-  100% {
-    transform: translateX(-50%) scale(1);
-  }
-  50% {
-    transform: translateX(-50%) scale(0.78);
-    opacity: 0.7;
-  }
-}
-.mascot {
+.mascot3d {
   position: absolute;
   inset: 0;
-  transform-origin: 50% 100%;
-  animation: bob 2.6s ease-in-out infinite;
-}
-.mascot img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  filter: drop-shadow(0 6px 0 rgba(42, 35, 80, 0.18));
-  user-select: none;
-  -webkit-user-drag: none;
 }
 @keyframes bob {
   0%,
@@ -374,87 +321,6 @@
   90% {
     transform: translateY(0) scale(1.04, 0.96);
   }
-}
-.mascot[data-mood='focus'] {
-  animation: lean 1.8s ease-in-out infinite;
-}
-@keyframes lean {
-  0%,
-  100% {
-    transform: rotate(5deg) translateX(6px);
-  }
-  50% {
-    transform: rotate(7deg) translate(8px, -6px);
-  }
-}
-.mascot[data-mood='error'] {
-  animation: shake 0.5s ease-in-out 2;
-}
-@keyframes shake {
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-  20% {
-    transform: translateX(-10px) rotate(-4deg);
-  }
-  40% {
-    transform: translateX(9px) rotate(3deg);
-  }
-  60% {
-    transform: translateX(-6px) rotate(-2deg);
-  }
-  80% {
-    transform: translateX(4px);
-  }
-}
-.mascot[data-mood='happy'] {
-  animation: hop 0.6s cubic-bezier(0.3, 0.7, 0.4, 1.4) infinite;
-}
-@keyframes hop {
-  0%,
-  100% {
-    transform: translateY(0) scale(1.06, 0.94);
-  }
-  50% {
-    transform: translateY(-34px) scale(0.95, 1.06) rotate(-4deg);
-  }
-}
-/* มือปิดตาตอนพิมพ์รหัสผ่าน */
-.paw {
-  position: absolute;
-  top: 31%;
-  width: 30%;
-  aspect-ratio: 1.15;
-  border-radius: 50% 50% 46% 46%;
-  background: #d8ecff;
-  border: 3px solid var(--ink);
-  transform: translateY(160%) scale(0.6);
-  opacity: 0;
-  transition: transform 0.35s cubic-bezier(0.3, 1.5, 0.5, 1), opacity 0.2s ease;
-}
-.paw::after {
-  content: '';
-  position: absolute;
-  left: 22%;
-  right: 22%;
-  top: 22%;
-  height: 22%;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.7);
-}
-.pawL {
-  left: 17%;
-}
-.pawR {
-  right: 18%;
-}
-.mascot[data-mood='secret'] .paw {
-  opacity: 1;
-  transform: translateY(0) scale(1);
-}
-.mascot[data-mood='secret'] .pawR {
-  transition-delay: 0.06s;
 }
 .bubble {
   position: absolute;
