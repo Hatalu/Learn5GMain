@@ -2,7 +2,8 @@
 .world {
   --ink: #2a2350;
   --paper: #fff8ec;
-  --ground: #fff8ec;
+  /* ต้องตรงกับสีบนสุดของพื้นหน้าหลัก (home-page.module.css .world) */
+  --ground: #d4efff;
   position: relative;
   isolation: isolate;
   overflow: hidden;
@@ -11,7 +12,7 @@
   padding-bottom: 64px;
 }
 :global(.dark) .world {
-  --ground: #1f1a56;
+  --ground: #2d2670;
   color: #fff8ec;
   background: linear-gradient(180deg, #0a0a2c 0%, #1b1858 55%, #2d2670 100%);
 }
@@ -537,7 +538,7 @@
   fill: var(--ground);
 }
 :global(.dark) .hillBack {
-  fill: #2b2470;
+  fill: #3d3494;
 }
 
 @media (prefers-reduced-motion: reduce) {

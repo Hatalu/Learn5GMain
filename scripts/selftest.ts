@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { answerOf, quizPages } from '../src/lib/studio/fromQuiz';
 import { cleanGraph, compileExpr, graphToSvg, GRAPH_TEMPLATES, intersections, parseEquation } from '../src/lib/studio/graph';
 import { cleanFlowHtml, flowIsEmpty } from '../src/lib/studio/flow';
+import { MATH_DEFAULTS, WORD_KEYS, assignMath, comboLabel, comboOf, conflictOf, mathKeyOf } from '../src/lib/studio/keys';
 import { FREE_SET_LIMIT, FREE_UPLOAD_MB, MEMBER_UPLOAD_MB, creatorTier, fmtMB, quotaBytes, setsUsed } from '../src/lib/game-creator/quota';
 import { normalizeGmail, signupSchema } from '../src/lib/validations/signup';
 import {
@@ -60,7 +61,6 @@ import { MODE_MUSIC, TRACKS, cleanMusicSetting, roomTrack } from '../src/lib/mus
 import { MODES } from '../src/lib/game-creator/modes';
 import { ALL_MEDIA_TYPES, ALL_SUBJECTS, GAME_FILTER_TYPES } from '../src/types/database';
 import { CHAPTERS, STEPS } from '../src/components/tour/steps';
-import { isVideoMedia, youTubeEmbedUrl, youTubeId, youTubeStart } from '../src/lib/youtube';
 import { mediaSchema } from '../src/lib/validations/media';
 import { FREE_DESIGN_LIMIT } from '../src/lib/game-creator/quota';
 import { blankDesign, cleanSrc, designMediaPaths, MAX_PAGES, sanitizeDesign, SIZES } from '../src/lib/studio/doc';
@@ -72,21 +72,6 @@ import { clampEdu, DECO_IDS, EDU_KINDS, makeDeco, makeEdu } from '../src/lib/stu
 import { mediaPrefix } from '../src/lib/game-creator/prefix';
 import { TEMPLATES } from '../src/components/studio/templates';
 import { STICKERS } from '../src/components/studio/stickers';
-import {
-  fileKindOf,
-  filesForFormat,
-  formatsOf,
-  isMissingTable,
-  normalizeDocument,
-  DOC_MAX_BYTES,
-  DOC_MAX_PARTS,
-  DOC_PART_BYTES,
-  partPaths,
-  previewPathFor,
-  safeFileName,
-  storagePathFor,
-  uniqueNames,
-} from '../src/lib/documents';
 
 let passed = 0;
 const t = (name: string, fn: () => void) => {
@@ -818,56 +803,11 @@ t('บัญชีฟรี: สิทธิ์ 2 ชุดนับจากท
   assert.equal(setsUsed(1, 2), 2, 'ตัวเลขที่เคยสร้างน้อยกว่าที่มีอยู่จริง ใช้ค่าที่มากกว่า');
 });
 
-t('เอกสาร/ใบงาน: ชนิดไฟล์ รูปแบบดาวน์โหลด และชื่อไฟล์', () => {
-  assert.equal(fileKindOf('ใบงาน.PDF'), 'pdf');
-  assert.equal(fileKindOf('a.docx'), 'word');
-  assert.equal(fileKindOf('a.doc'), 'word');
-  assert.equal(fileKindOf('a.pdf.exe'), null);
-  assert.equal(fileKindOf('noext'), null);
-
-  const files = [{ kind: 'pdf' as const }, { kind: 'word' as const }, { kind: 'pdf' as const }];
-  assert.equal(filesForFormat(files, 'pdf').length, 2);
-  assert.equal(filesForFormat(files, 'word').length, 1);
-  assert.equal(filesForFormat(files, 'both').length, 3);
-  assert.deepEqual(formatsOf(files), { pdf: true, word: true, both: true });
-  // มีแต่ PDF: เลือก Word หรือ Word + PDF ไม่ได้
-  const onlyPdf = [{ kind: 'pdf' as const }];
-  assert.equal(filesForFormat(onlyPdf, 'word').length, 0);
-  assert.equal(filesForFormat(onlyPdf, 'both').length, 0);
-  assert.deepEqual(formatsOf(onlyPdf), { pdf: true, word: false, both: false });
-
-  // พาธใน storage ไม่มีอักษรไทย/ช่องว่าง และไม่หลุดออกนอกโฟลเดอร์ของเอกสาร
-  const p = storagePathFor('doc-1', 'fabc', 'ใบงาน ชุด/../1.DOCX');
-  assert.equal(p, 'doc-1/fabc.docx');
-  assert.equal(previewPathFor('doc-1', 'fabc', 3), 'doc-1/fabc-003.webp');
-
-  assert.equal(safeFileName('ใบงาน: ชุด/1?.pdf'), 'ใบงาน ชุด 1 .pdf');
-  assert.equal(safeFileName('   '), 'file');
-  assert.deepEqual(uniqueNames(['a.pdf', 'A.pdf', 'a.pdf', 'b.docx']), ['a.pdf', 'A (2).pdf', 'a (3).pdf', 'b.docx']);
-});
-
-t('เอกสาร/ใบงาน: แถวจากฐานข้อมูลที่เพี้ยนไม่ทำให้หน้าเว็บพัง', () => {
-  const d = normalizeDocument({
-    id: 'x',
-    title: 'T',
-    doc_type: 'แปลก',
-    files: [{ id: 'a', kind: 'pdf', name: 'a.pdf', path: 'x/a.pdf', preview: ['x/a-001.webp'] }, { kind: 'exe', path: 'x/b.exe' }, null, 'bad'],
-    grade_level: null,
-  });
-  assert.equal(d.doc_type, 'เอกสาร');
-  assert.equal(d.files.length, 1);
-  assert.deepEqual(d.grade_level, []);
-  assert.equal(d.is_public, true);
-  assert.ok(isMissingTable({ code: 'PGRST205' }));
-  assert.ok(!isMissingTable({ code: '23505', message: 'duplicate' }));
-});
-
 t('คลังเกม: ตัวกรองประเภทไม่มีแบบทดสอบ/แบบฝึกหัด', () => {
   assert.ok(!GAME_FILTER_TYPES.includes('แบบทดสอบ'));
   assert.ok(!GAME_FILTER_TYPES.includes('แบบฝึกหัด'));
   assert.ok(GAME_FILTER_TYPES.includes('เกม'));
-  assert.ok(!GAME_FILTER_TYPES.includes('วิดีโอ'));
-  assert.equal(GAME_FILTER_TYPES.length, ALL_MEDIA_TYPES.length - 3);
+  assert.equal(GAME_FILTER_TYPES.length, ALL_MEDIA_TYPES.length - 2);
 });
 
 t('ทัวร์แนะนำเว็บ: ลำดับหน้า ภาพรวมรูปแบบเกม และจบที่ฉากเลือก', () => {
@@ -878,10 +818,8 @@ t('ทัวร์แนะนำเว็บ: ลำดับหน้า ภ�
   const seq = STEPS.map((x) => order.indexOf(x.path));
   assert.ok(seq.every((v) => v >= 0));
   assert.ok(seq.every((v, i) => i === 0 || v >= seq[i - 1]));
-  // คลังเรียงตามปุ่ม: เกมการเรียนรู้ > วิดีโอ > เอกสาร/ใบงาน
-  assert.ok(ids.indexOf('games') < ids.indexOf('videos'));
-  assert.ok(ids.indexOf('videos') < ids.indexOf('docs'));
-  assert.equal(STEPS.find((x) => x.id === 'videos')?.click, 'lib-videos');
+  // ไม่มีคลังวิดีโอ/เอกสารแล้ว
+  assert.ok(!ids.includes('videos') && !ids.includes('docs'));
   // รูปแบบเกมโชว์แค่ภาพรวมขั้นเดียว ไม่ไล่ทีละแบบ
   assert.ok(ids.includes('modes'));
   assert.ok(!ids.some((id) => id.startsWith('mode-')));
@@ -896,36 +834,6 @@ t('ทัวร์แนะนำเว็บ: ลำดับหน้า ภ�
   // ไม่ช้า/ไม่เร็วเกิน: เวลาโชว์รวมราว 1 นาที
   const total = STEPS.reduce((a, x) => a + x.ms, 0);
   assert.ok(total >= 35_000 && total <= 90_000, String(total));
-});
-
-t('วิดีโอ: อ่านลิงก์ YouTube ทุกแบบ และบังคับลิงก์ YouTube เมื่อเลือกประเภทวิดีโอ', () => {
-  const id = 'dQw4w9WgXcQ';
-  for (const u of [
-    'https://www.youtube.com/watch?v=' + id,
-    'https://youtube.com/watch?v=' + id + '&list=PL123&index=2',
-    'https://m.youtube.com/watch?v=' + id,
-    'https://youtu.be/' + id + '?si=abc',
-    'https://www.youtube.com/shorts/' + id,
-    'https://www.youtube.com/embed/' + id,
-    'https://www.youtube.com/live/' + id,
-    'youtu.be/' + id,
-  ]) assert.equal(youTubeId(u), id, u);
-  for (const u of ['https://evil.com/watch?v=' + id, 'https://www.youtube.com/watch?v=short', 'https://youtube.com.evil.com/watch?v=' + id, 'not a url', ''])
-    assert.equal(youTubeId(u), null, u);
-  assert.equal(youTubeStart('https://youtu.be/' + id + '?t=90'), 90);
-  assert.equal(youTubeStart('https://www.youtube.com/watch?v=' + id + '&t=1m30s'), 90);
-  assert.equal(youTubeStart('https://youtu.be/' + id), 0);
-  assert.match(youTubeEmbedUrl(id, 90), /^https:\/\/www\.youtube-nocookie\.com\/embed\/dQw4w9WgXcQ\?.*autoplay=1.*start=90/);
-  assert.ok(isVideoMedia({ media_type: 'วิดีโอ' }));
-  assert.ok(!isVideoMedia({ media_type: 'เกม' }));
-
-  const base = { title: 'คลิปทดสอบ', subject: ALL_SUBJECTS[0], grade_level: ['ป.1'], access_tier: 'premium', icon_url: 'x' };
-  assert.ok(mediaSchema.safeParse({ ...base, media_type: 'วิดีโอ', game_url: 'https://youtu.be/' + id }).success);
-  const bad = mediaSchema.safeParse({ ...base, media_type: 'วิดีโอ', game_url: 'https://hatalu.github.io/Learn5G/game/' });
-  assert.ok(!bad.success);
-  assert.equal(bad.error?.issues[0].path[0], 'game_url');
-  // ประเภทเกมยังใช้ลิงก์เว็บไซต์ได้ตามเดิม
-  assert.ok(mediaSchema.safeParse({ ...base, media_type: 'เกม', game_url: 'https://hatalu.github.io/Learn5G/game/' }).success);
 });
 
 t('สร้างสื่อ: ตัวกรองข้อมูลกันสคริปต์/สไตล์แปลกปลอม และรูปจากเว็บอื่น', () => {
@@ -1088,19 +996,6 @@ t('สร้างสื่อ: ตัวละครแต่งเอง ก�
   assert.ok(it.type === 'char' && it.look.hairColor === '#123456');
 });
 
-t('เอกสารไฟล์ใหญ่: แบ่งชิ้นต่ำกว่าเพดาน 50MB ของ Storage และพาธทุกชิ้นถูกต้อง', () => {
-  assert.ok(DOC_PART_BYTES < 50 * 1024 * 1024);
-  assert.deepEqual(partPaths({ path: 'd/f1.pdf', parts: 1 }), ['d/f1.pdf']);
-  assert.deepEqual(partPaths({ path: 'd/f1.pdf', parts: 3 }), ['d/f1.pdf.1', 'd/f1.pdf.2', 'd/f1.pdf.3']);
-  assert.equal(Math.ceil(DOC_MAX_BYTES / DOC_PART_BYTES), DOC_MAX_PARTS);
-  const row = (parts: unknown) => normalizeDocument({ id: 'x', files: [{ id: 'f', kind: 'pdf', name: 'a.pdf', path: 'x/f.pdf', parts }] }).files[0].parts;
-  assert.equal(row(undefined), 1);
-  assert.equal(row(2), 2);
-  assert.equal(row(-5), 1);
-  assert.equal(row(9999), DOC_MAX_PARTS);
-  assert.equal(row('abc'), 1);
-});
-
 t('สร้างสื่อ: สัตว์แต่งเองได้ ชนิดแปลกปลอมกลายเป็นคน และสัตว์สำเร็จรูปผ่านตัวกรอง', () => {
   assert.equal(cleanLook({ species: 'dragon' }).species, 'human');
   assert.equal(cleanLook({}).species, 'human');
@@ -1244,6 +1139,26 @@ t('โหมดเอกสาร: ตัวกรอง HTML ตัดสคร
   const d = sanitizeDesign({ mode: 'word', flow: '<h1>หัวเรื่อง</h1><script>x</script>' });
   assert.equal(d.mode, 'word');
   assert.equal(d.flow, '<h1>หัวเรื่อง</h1>');
+});
+
+t('แป้นลัด: แปลงปุ่ม เช็กซ้ำ/ห้ามใช้ และตั้งแม่แบบสมการ', () => {
+  const ev = (code: string, m: Partial<{ ctrlKey: boolean; altKey: boolean; shiftKey: boolean; metaKey: boolean }> = {}) => ({ ctrlKey: false, altKey: false, shiftKey: false, metaKey: false, code, ...m });
+  assert.equal(comboOf(ev('KeyE', { ctrlKey: true })), 'Ctrl+KeyE');
+  assert.equal(comboOf(ev('KeyE', { metaKey: true, shiftKey: true })), 'Ctrl+Shift+KeyE');
+  assert.equal(comboOf(ev('ControlLeft', { ctrlKey: true })), null);
+  assert.equal(comboLabel('Ctrl+Shift+Period'), 'Ctrl + Shift + .');
+  assert.equal(new Set(WORD_KEYS.map((k) => k.combo)).size, WORD_KEYS.length, 'แป้นลัด Word ห้ามซ้ำกันเอง');
+  const s = { ...MATH_DEFAULTS };
+  assert.equal(conflictOf(s, 'Ctrl+KeyC', 'x')?.kind, 'reserved');
+  assert.equal(conflictOf(s, 'KeyQ', 'x')?.kind, 'reserved');
+  assert.equal(conflictOf(s, 'Enter', 'x')?.kind, 'reserved');
+  const frac = '\\frac{#0}{#?}';
+  assert.deepEqual(conflictOf(s, s[frac], '\\sqrt{#0}'), { kind: 'math', ins: frac });
+  assert.equal(conflictOf(s, s[frac], frac), null, 'ปุ่มเดิมของตัวเองไม่นับว่าซ้ำ');
+  const s2 = assignMath(s, '\\sqrt{#0}', s[frac]);
+  assert.equal(s2['\\sqrt{#0}'], 'Ctrl+KeyF');
+  assert.equal(s2[frac], undefined, 'ตัวที่ซ้ำถูกปิด');
+  assert.equal(mathKeyOf(s2, 'Ctrl+KeyF'), '\\sqrt{#0}');
 });
 
 console.log(`\n${passed} tests passed`);

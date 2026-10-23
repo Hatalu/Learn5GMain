@@ -31,7 +31,6 @@ import { useTrial } from '@/components/trial/TrialProvider';
 import { CONTACT_PAGE_URL, hasMembership } from '@/lib/membership';
 import { JoinButton } from '@/components/membership/JoinButton';
 import { useMembership } from '@/components/membership/MembershipProvider';
-import { isVideoMedia, youTubeId, youTubeThumb } from '@/lib/youtube';
 
 interface MediaDetailModalProps {
   media: MediaItem | null;
@@ -53,7 +52,7 @@ export function MediaDetailModal({
   const { user, profile, isDev } = useAuth();
   const { fromPrice, openCheckout } = useMembership();
   const { dailyUnlockedId } = useCompanion();
-  const { openTrial, openPlay, openVideo } = useTrial();
+  const { openTrial, openPlay } = useTrial();
   const { success, error } = useToast();
   const [copiedPage, setCopiedPage] = useState(false);
   const [hasClickedRecently, setHasClickedRecently] = useState(false);
@@ -83,24 +82,6 @@ export function MediaDetailModal({
   }, [isOpen, onClose]);
 
   if (!isOpen || !media) return null;
-
-  // วิดีโอ (คลิป YouTube): ทุกคนดูได้ ไม่ต้องล็อกอิน/เป็นสมาชิก ไม่มีทดลองเล่น
-  if (isVideoMedia(media)) {
-    return (
-      <VideoDetail
-        media={media}
-        views={localViews}
-        onClose={onClose}
-        onWatch={() => {
-          onClose();
-          openVideo(media);
-        }}
-        isFavorite={isFavorite}
-        canFavorite={Boolean(user)}
-        onToggleFavorite={() => onToggleFavorite(media.id, isFavorite)}
-      />
-    );
-  }
 
   // เกมประจำวันที่แอดมินตั้งให้ "เปิดให้ทุกคนเล่นเฉพาะวันนั้น" (โปรโมต) ทุกคนเล่นได้
   const isDailyFree = dailyUnlockedId === media.id;
@@ -375,125 +356,6 @@ export function MediaDetailModal({
               </button>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ป๊อปอัปรายละเอียดของวิดีโอ: ภาพปกคลิป + ปุ่มดูได้ทันที (ไม่มีกล่องสมาชิก/ทดลองเล่น) */
-function VideoDetail({
-  media,
-  views,
-  onClose,
-  onWatch,
-  isFavorite,
-  canFavorite,
-  onToggleFavorite,
-}: {
-  media: MediaItem;
-  views: number;
-  onClose: () => void;
-  onWatch: () => void;
-  isFavorite: boolean;
-  canFavorite: boolean;
-  onToggleFavorite: () => void;
-}) {
-  const id = youTubeId(media.game_url);
-  const cover = id ? youTubeThumb(id) : media.icon_url;
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-indigo-950/70 backdrop-blur-md animate-fade-in overflow-y-auto"
-      onClick={onClose}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={media.title}
-        className="relative w-full max-w-2xl bg-white dark:bg-gray-900 rounded-[2rem] p-4 sm:p-6 shadow-toy-lg border-2 border-rose-200 dark:border-rose-900/70 animate-pop-in my-auto overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button
-          onClick={onClose}
-          className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 rounded-full bg-black/45 text-white hover:bg-black/65 backdrop-blur-md transition-colors z-20"
-          aria-label="ปิดหน้าต่าง"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
-        {/* ภาพปกคลิป กดแล้วเล่นเลย */}
-        <button
-          type="button"
-          onClick={onWatch}
-          className="group relative block w-full aspect-video rounded-2xl overflow-hidden bg-black border-2 border-rose-200/70 dark:border-rose-900/60 shadow-md"
-          aria-label={`ดูวิดีโอ ${media.title}`}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={cover} alt="" className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-          <span className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-          <span className="absolute inset-0 m-auto w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br from-rose-500 to-pink-500 text-white flex items-center justify-center shadow-[0_6px_0_0_rgba(136,19,55,0.55),0_18px_40px_-10px_rgba(244,63,94,0.8)] ring-4 ring-white/80 transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:scale-110">
-            <Play className="w-9 h-9 sm:w-11 sm:h-11 fill-current ml-1.5" />
-          </span>
-          <span className="absolute top-3 left-3 inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-md ring-2 ring-white/70">
-            <Unlock className="w-3.5 h-3.5" /> ดูฟรีได้ทุกคน
-          </span>
-          <span className="absolute bottom-3 left-3 px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur-md text-white text-xs font-medium inline-flex items-center gap-1.5">
-            <Eye className="w-3.5 h-3.5 opacity-90" /> {views.toLocaleString('th-TH')} ครั้ง
-          </span>
-        </button>
-
-        <div className="mt-4 flex flex-wrap items-center gap-1.5">
-          <SubjectTag subject={media.subject} size="md" />
-          {media.grade_level?.map((grade) => (
-            <span
-              key={grade}
-              className="px-2 py-0.5 rounded-md text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200/60 dark:border-gray-700/60"
-            >
-              {grade}
-            </span>
-          ))}
-          <span className="px-2 py-0.5 rounded-md text-xs font-medium bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200/70 dark:border-rose-800/60 flex items-center gap-1">
-            <Layers className="w-3 h-3" />
-            <span>{media.media_type}</span>
-          </span>
-        </div>
-
-        <h2 className="mt-2 text-lg sm:text-xl font-bold text-gray-900 dark:text-white leading-snug">{media.title}</h2>
-        {media.description && (
-          <p className="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-line line-clamp-4">{media.description}</p>
-        )}
-        <p className="mt-2 flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
-          <Calendar className="w-3.5 h-3.5" />
-          เผยแพร่: {new Date(media.created_at).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' })}
-        </p>
-
-        <div className="mt-4 grid grid-cols-[1fr_auto] gap-2.5">
-          <button
-            type="button"
-            onClick={onWatch}
-            className="btn-jelly w-full py-3.5 px-6 rounded-2xl font-display text-base sm:text-lg text-white flex items-center justify-center gap-2 bg-gradient-to-r from-rose-500 via-pink-500 to-fuchsia-500 shadow-[0_4px_0_0_rgba(159,18,57,0.5),0_14px_26px_-10px_rgba(244,63,94,0.65)] hover:brightness-110"
-          >
-            <Play className="w-5 h-5 fill-current" />
-            <span>ดูวิดีโอเลย!</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => canFavorite && onToggleFavorite()}
-            disabled={!canFavorite}
-            title={!canFavorite ? 'เข้าสู่ระบบเพื่อกดถูกใจ' : isFavorite ? 'เลิกถูกใจ' : 'ถูกใจวิดีโอนี้'}
-            aria-label={!canFavorite ? 'เข้าสู่ระบบเพื่อกดถูกใจ' : isFavorite ? 'เลิกถูกใจ' : 'ถูกใจวิดีโอนี้'}
-            aria-pressed={isFavorite}
-            className={cn(
-              'btn-jelly w-14 rounded-2xl flex items-center justify-center border-2',
-              !canFavorite && 'opacity-50 cursor-not-allowed',
-              isFavorite
-                ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-500'
-                : 'bg-gray-50 dark:bg-gray-800/60 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-300'
-            )}
-          >
-            <Heart className={cn('w-5 h-5', isFavorite && 'fill-current')} />
-          </button>
         </div>
       </div>
     </div>

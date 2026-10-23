@@ -2,12 +2,14 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Check, Delete, Trash2, X } from 'lucide-react';
+import { Check, Delete, Keyboard, Trash2, X } from 'lucide-react';
 import { texToHtml } from './MathText';
 import { gsfx } from '@/lib/game-creator/gsound';
+import { comboLabel, comboOf, loadMathKeys, mathKeyOf, type MathKeys } from '@/lib/studio/keys';
+import { MathKeysDialog } from './MathKeys';
 
 /** ปุ่มในแผงสัญลักษณ์: show = ภาพที่แสดงบนปุ่ม, ins = LaTeX ที่ใส่ (#0 = ส่วนที่เลือกอยู่, #? = ช่องว่างให้กรอก) */
-interface Key {
+export interface Key {
   show: string;
   ins: string;
   label?: string;
@@ -201,6 +203,9 @@ const EXTRA_TABS: { id: string; name: string; keys: Key[] }[] = [
   },
 ];
 
+/** แม่แบบทุกแท็บ (ใช้ตั้งแป้นลัด) */
+export const MATH_TABS = [...TABS, ...EXTRA_TABS];
+
 const DIGITS: Key[] = ['7', '8', '9', '4', '5', '6', '1', '2', '3', '0', '.', ','].map((d) => ({ show: d, ins: d }));
 const OPS: Key[] = [
   { show: '+', ins: '+' },
@@ -234,7 +239,7 @@ function loadMathLive(): Promise<void> {
   return mlReady;
 }
 
-function KeyFace({ k }: { k: Key }) {
+export function KeyFace({ k }: { k: Key }) {
   const html = useMemo(() => texToHtml(k.show, false, false), [k.show]);
   return (
     <>
@@ -244,13 +249,36 @@ function KeyFace({ k }: { k: Key }) {
   );
 }
 
-export function MathPopover({ initial, editing, onDone, onCancel, extended = false }: { initial: string; editing: boolean; onDone: (tex: string) => void; onCancel: () => void; extended?: boolean }) {
+export function MathPopover({
+  initial,
+  editing,
+  onDone,
+  onCancel,
+  extended = false,
+  insert,
+}: {
+  initial: string;
+  editing: boolean;
+  onDone: (tex: string) => void;
+  onCancel: () => void;
+  extended?: boolean;
+  /** แม่แบบที่ใส่ให้ทันทีตอนเปิด (เช่น สมการแยกบรรทัด) */
+  insert?: string;
+}) {
   const host = useRef<HTMLDivElement>(null);
   const mf = useRef<MF | null>(null);
   const [ready, setReady] = useState(false);
   const [tab, setTab] = useState('pop');
   const [empty, setEmpty] = useState(!initial);
   const [mounted, setMounted] = useState(false);
+  // แป้นลัดแม่แบบ (แบบ MathType) ตั้งเองได้ เฉพาะระบบสร้างสื่อ
+  const [mkeys, setMkeys] = useState<MathKeys>({});
+  const [keyDlg, setKeyDlg] = useState(false);
+  const mkeysRef = useRef(mkeys);
+  mkeysRef.current = mkeys;
+  useEffect(() => {
+    if (extended) setMkeys(loadMathKeys());
+  }, [extended]);
   const cb = useRef({ onDone, onCancel });
   cb.current = { onDone, onCancel };
 
@@ -275,6 +303,20 @@ export function MathPopover({ initial, editing, onDone, onCancel, extended = fal
         el.smartFence = true;
         el.value = initial;
         el.addEventListener('input', () => setEmpty(!el.value.trim()));
+        // capture: แป้นลัดแม่แบบมาก่อนแป้นลัดในตัวของช่องสูตร
+        el.addEventListener(
+          'keydown',
+          (e: KeyboardEvent) => {
+            const c = comboOf(e);
+            const ins = c ? mathKeyOf(mkeysRef.current, c) : null;
+            if (!ins) return;
+            e.preventDefault();
+            e.stopPropagation();
+            el.executeCommand(['insert', ins, { focus: true, feedback: false, selectionMode: 'placeholder', format: 'latex' }]);
+            setEmpty(!el.value.trim());
+          },
+          true
+        );
         el.addEventListener('keydown', (e: KeyboardEvent) => {
           if (e.key === 'Enter') {
             e.preventDefault();
@@ -284,7 +326,13 @@ export function MathPopover({ initial, editing, onDone, onCancel, extended = fal
         });
         mf.current = el;
         setReady(true);
-        setTimeout(() => el.focus(), 60);
+        setTimeout(() => {
+          el.focus();
+          if (insert) {
+            el.executeCommand(['insert', insert, { focus: true, feedback: false, selectionMode: 'placeholder', format: 'latex' }]);
+            setEmpty(!el.value.trim());
+          }
+        }, 60);
       })
       .catch(() => setReady(false));
     return () => {
@@ -329,6 +377,11 @@ export function MathPopover({ initial, editing, onDone, onCancel, extended = fal
         <div className="l5g-math-head">
           <span className="l5g-fx-badge">f(x)</span>
           <h3>{editing ? 'แก้ไขสูตร' : 'ใส่สูตรคณิตศาสตร์'}</h3>
+          {extended && (
+            <button type="button" className="l5g-btn l5g-btn-ghost l5g-mk-open" onClick={() => setKeyDlg(true)} title="ตั้งแป้นลัดของแม่แบบเอง (แบบ MathType)">
+              <Keyboard className="w-4 h-4" /> <span className="max-sm:hidden">แป้นลัด</span>
+            </button>
+          )}
           <button type="button" className="l5g-icon-btn" onClick={onCancel} aria-label="ปิด">
             <X className="w-5 h-5" />
           </button>
@@ -351,8 +404,17 @@ export function MathPopover({ initial, editing, onDone, onCancel, extended = fal
         <div className="l5g-math-body">
           <div className="l5g-keys">
             {keys.map((k, i) => (
-              <button key={tab + i} type="button" className="l5g-key" data-wide={k.wide ? 'true' : 'false'} onMouseDown={(e) => e.preventDefault()} onClick={() => press(k)}>
+              <button
+                key={tab + i}
+                type="button"
+                className="l5g-key"
+                data-wide={k.wide ? 'true' : 'false'}
+                title={mkeys[k.ins] ? `${k.label || ''} (${comboLabel(mkeys[k.ins])})`.trim() : k.label}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => press(k)}
+              >
                 <KeyFace k={k} />
+                {mkeys[k.ins] && <span className="l5g-key-kbd">{comboLabel(mkeys[k.ins])}</span>}
               </button>
             ))}
           </div>
@@ -394,6 +456,15 @@ export function MathPopover({ initial, editing, onDone, onCancel, extended = fal
           </button>
         </div>
       </div>
+      {keyDlg && (
+        <MathKeysDialog
+          onClose={() => {
+            setKeyDlg(false);
+            setTimeout(() => mf.current?.focus(), 30);
+          }}
+          onChange={setMkeys}
+        />
+      )}
     </div>,
     document.body
   );

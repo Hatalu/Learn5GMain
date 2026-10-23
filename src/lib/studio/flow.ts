@@ -11,7 +11,7 @@ export const FLOW_GAP = 28;
 
 const TAGS = new Set(['p', 'div', 'br', 'h1', 'h2', 'h3', 'ul', 'ol', 'li', 'b', 'strong', 'i', 'em', 'u', 's', 'strike', 'sub', 'sup', 'span', 'font', 'table', 'thead', 'tbody', 'tr', 'td', 'th', 'hr', 'img', 'figure', 'blockquote']);
 const VOID = new Set(['br', 'hr', 'img']);
-const STYLE_PROPS = new Set(['color', 'background-color', 'font-size', 'font-family', 'font-weight', 'font-style', 'text-decoration', 'text-decoration-line', 'text-align', 'line-height', 'margin-left', 'padding-left', 'width', 'vertical-align', 'left', 'top']);
+const STYLE_PROPS = new Set(['color', 'background-color', 'font-size', 'font-family', 'font-weight', 'font-style', 'text-decoration', 'text-decoration-line', 'text-align', 'line-height', 'margin-left', 'padding-left', 'width', 'vertical-align', 'left', 'top', 'list-style-type', 'text-indent']);
 /** การจัดวางรูป/กราฟกับข้อความ (แบบ Word): ล้อมซ้าย/ขวา, หลังข้อความ, หน้าข้อความ (ไม่มี = อยู่ในบรรทัด) */
 export const WRAPS = ['left', 'right', 'behind', 'front'] as const;
 

@@ -20,9 +20,6 @@ import { SiteSettingsAdmin } from '@/components/dev/SiteSettingsAdmin';
 import { AddMediaModal } from '@/components/dev/AddMediaModal';
 import { EditMediaModal } from '@/components/dev/EditMediaModal';
 import { DeleteConfirmModal } from '@/components/dev/DeleteConfirmModal';
-import { DocumentsAdmin } from '@/components/dev/DocumentsAdmin';
-import { DocumentFormModal } from '@/components/dev/DocumentFormModal';
-import type { DocumentItem } from '@/lib/documents';
 import {
   ShieldCheck,
   BookOpen,
@@ -42,7 +39,6 @@ import {
   Globe,
   Lock,
   CalendarCheck2,
-  FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
@@ -53,16 +49,7 @@ export default function DevDashboardPage() {
   const supabase = createClient();
 
   const [unreadIdeas, setUnreadIdeas] = useState(0);
-  const [activeTab, setActiveTab] = useState<'media' | 'docs' | 'members' | 'trial' | 'daily' | 'ideas' | 'payments' | 'settings'>('media');
-  // เอกสาร/ใบงาน
-  const [docForm, setDocForm] = useState<{ open: boolean; editing: DocumentItem | null }>({ open: false, editing: null });
-  const [docsRefresh, setDocsRefresh] = useState(0);
-  const [docsCount, setDocsCount] = useState<number | null>(null);
-
-  // เปิดแท็บจากลิงก์ เช่น /dev?tab=docs
-  useEffect(() => {
-    if (new URLSearchParams(window.location.search).get('tab') === 'docs') setActiveTab('docs');
-  }, []);
+  const [activeTab, setActiveTab] = useState<'media' | 'members' | 'trial' | 'daily' | 'ideas' | 'payments' | 'settings'>('media');
   const [stats, setStats] = useState<SystemStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
 
@@ -233,13 +220,6 @@ export default function DevDashboardPage() {
               <Plus className="w-4 h-4" />
               <span>+ เพิ่มสื่อการสอน</span>
             </button>
-            <button
-              onClick={() => setDocForm({ open: true, editing: null })}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white shadow-md shadow-sky-600/25 active:scale-95 transition-all"
-            >
-              <FileText className="w-4 h-4" />
-              <span>+ เพิ่มเอกสาร/ใบงาน</span>
-            </button>
           </div>
         </div>
 
@@ -260,19 +240,6 @@ export default function DevDashboardPage() {
           >
             <BookOpen className="w-4 h-4" />
             <span>จัดการสื่อ ({mediaList.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('docs')}
-            className={cn(
-              'flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 transition-all whitespace-nowrap',
-              activeTab === 'docs'
-                ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
-                : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'
-            )}
-          >
-            <FileText className="w-4 h-4" />
-            <span>เอกสาร/ใบงาน{docsCount !== null ? ` (${docsCount})` : ''}</span>
           </button>
 
           <button
@@ -603,15 +570,6 @@ export default function DevDashboardPage() {
           </div>
         )}
 
-        {activeTab === 'docs' && (
-          <DocumentsAdmin
-            refreshKey={docsRefresh}
-            onCount={setDocsCount}
-            onAdd={() => setDocForm({ open: true, editing: null })}
-            onEdit={(d) => setDocForm({ open: true, editing: d })}
-          />
-        )}
-
         {/* Tab 2: Member Management */}
         {activeTab === 'members' && <MemberManagement />}
         {activeTab === 'trial' && <TrialAccountsAdmin />}
@@ -633,16 +591,6 @@ export default function DevDashboardPage() {
         isOpen={!!editingMedia}
         onClose={() => setEditingMedia(null)}
         onSuccess={handleMediaChanged}
-      />
-
-      <DocumentFormModal
-        isOpen={docForm.open}
-        editing={docForm.editing}
-        onClose={() => setDocForm({ open: false, editing: null })}
-        onSuccess={() => {
-          setDocsRefresh((n) => n + 1);
-          setActiveTab('docs');
-        }}
       />
 
       <MediaStatsModal media={statsMedia} onClose={() => setStatsMedia(null)} />

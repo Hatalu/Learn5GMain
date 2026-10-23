@@ -10,7 +10,6 @@ import { NightSky } from '@/components/fx/NightSky';
 import { ChoiceShape, choiceStyle } from '@/components/creator/ChoiceShape';
 import { FiveG3D, type ShowPose } from '@/components/mascot/FiveG3D';
 import { sfx } from '@/lib/sound';
-import { isVideoMedia } from '@/lib/youtube';
 import s from './home-hero.module.css';
 
 const SAY: Record<ShowPose, string> = {
@@ -66,7 +65,7 @@ export function HomeHero({
   const { user } = useAuth();
   const [pose, setPose] = useState<ShowPose>('wave');
 
-  const games = useMemo(() => media.filter((m) => m.icon_url && !isVideoMedia(m)).slice(0, 16), [media]);
+  const games = useMemo(() => media.filter((m) => m.icon_url && m.media_type !== 'วิดีโอ').slice(0, 16), [media]);
   // แถบต้องยาวกว่าจอเสมอ: ของน้อยก็วนซ้ำให้พอ แล้วต่อท้ายอีกชุดให้เลื่อนวนได้ไม่สะดุด
   const strip = useMemo(() => {
     if (!games.length) return [];
@@ -74,7 +73,7 @@ export function HomeHero({
     while (base.length < 10) base.push(...games);
     return [...base, ...base];
   }, [games]);
-  const gameCount = media.filter((m) => !isVideoMedia(m)).length;
+  const gameCount = media.filter((m) => m.media_type !== 'วิดีโอ').length;
 
   return (
     <section className={s.world} data-tour="hero" aria-label="ยินดีต้อนรับสู่สื่อการสอน 5G">

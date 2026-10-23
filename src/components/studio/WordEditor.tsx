@@ -36,6 +36,8 @@ import { FONTS } from './fonts';
 import { ItemView, PageView } from './render';
 import { hydrateFlow } from './flowDom';
 import { ColorPop } from './ui';
+import { SIZES, SYMBOLS, WordPanel, WordRail, type TableOp, type WordApi, type WordPanelId } from './WordPanels';
+import { WORD_KEYS, comboOf, type WordKeyId } from '@/lib/studio/keys';
 
 export interface WordHandle {
   undo: () => void;
@@ -43,8 +45,6 @@ export interface WordHandle {
   focus: () => void;
 }
 
-const SIZES = [12, 14, 16, 18, 21, 24, 28, 32, 40, 48, 64];
-const SYMBOLS = ['°', '±', '×', '÷', '≤', '≥', '≠', '≈', '≡', 'π', '√', '∞', '∠', '△', '⊥', '∥', '∴', '∵', '→', '⇒', '⇔', '∈', '∉', '⊂', '∪', '∩', '∅', 'ℝ', 'α', 'β', 'θ', 'Δ', 'Σ', 'μ', 'σ', '½', '¼', '¾', '²', '³'];
 
 /**
  * โหมดเอกสาร (แบบ Word): พิมพ์ต่อเนื่อง ขึ้นหน้าใหม่เอง แทรกสมการ/กราฟ/รูป/ตาราง ได้
@@ -61,19 +61,29 @@ export const WordEditor = forwardRef<
     readOnly: boolean;
     /** ที่วางแถบเครื่องมือ (แทนที่แถบตั้งค่าของโหมด Canva) */
     barEl: HTMLElement | null;
+    /** ที่วางแถบเครื่องมือด้านข้าง (แบบโหมด Canva) */
+    railEl: HTMLElement | null;
+    /** ตัวเลือกขนาดกระดาษ (แผงเค้าโครง) */
+    layoutExtra?: React.ReactNode;
     onChange: (html: string) => void;
     onNeedPages: (n: number) => void;
-    openMath: (tex: string, done: (tex: string) => void) => void;
+    openMath: (tex: string, done: (tex: string) => void, insert?: string) => void;
     openGraph: (spec: GraphSpec | null, done: (s: GraphSpec) => void) => void;
     upload: (file: File) => Promise<string | null>;
   }
->(function WordEditor({ html, pages, W, H, zoom, readOnly, barEl, onChange, onNeedPages, openMath, openGraph, upload }, ref) {
+>(function WordEditor({ html, pages, W, H, zoom, readOnly, barEl, railEl, layoutExtra, onChange, onNeedPages, openMath, openGraph, upload }, ref) {
   const ed = useRef<HTMLDivElement>(null);
   const emitted = useRef<string | null>(null);
   const saved = useRef<Range | null>(null);
   const timer = useRef<number>(0);
   const [active, setActive] = useState<HTMLElement | null>(null);
   const [, force] = useState(0);
+  // แผงเครื่องมือด้านข้าง: จอใหญ่เปิดแผงหน้าแรกไว้ก่อน
+  const [panel, setPanel] = useState<WordPanelId | null>(null);
+  const [findFocus, setFindFocus] = useState(0);
+  useEffect(() => {
+    if (window.matchMedia('(min-width: 1024px)').matches) setPanel('home');
+  }, []);
   const zoomRef = useRef(zoom);
   zoomRef.current = zoom;
   const P = H + FLOW_GAP;
@@ -208,6 +218,101 @@ export const WordEditor = forwardRef<
     setSize(Math.round(Math.max(8, Math.min(96, next))));
   };
 
+  /** ตั้งสไตล์ย่อหน้าที่เลือก (ค่าว่าง = เอาออก) */
+  const blockStyle = (prop: string, v: string) => {
+    restore();
+    blocks().forEach((b) => b.style.setProperty(prop, v));
+    changed();
+  };
+  /** รายการแบบมีลำดับ/สัญลักษณ์ เลือกรูปแบบได้ */
+  const list = (ordered: boolean, type: string) => {
+    restore();
+    const tag = ordered ? 'OL' : 'UL';
+    const inList = () => {
+      const node = window.getSelection()?.anchorNode;
+      const el = node && (node.nodeType === 1 ? (node as HTMLElement) : node.parentElement);
+      return (el?.closest('ul,ol') as HTMLElement | null) ?? null;
+    };
+    if (inList()?.tagName !== tag) document.execCommand(ordered ? 'insertOrderedList' : 'insertUnorderedList');
+    const l = inList();
+    if (l && ed.current?.contains(l)) l.style.listStyleType = type;
+    keep();
+    changed();
+  };
+  const changeCase = (m: 'upper' | 'lower' | 'title') => {
+    restore();
+    const t = window.getSelection()?.toString() || '';
+    if (!t) return;
+    const out = m === 'upper' ? t.toUpperCase() : m === 'lower' ? t.toLowerCase() : t.toLowerCase().replace(/(^|\s)(\S)/g, (_, a: string, b: string) => a + b.toUpperCase());
+    document.execCommand('insertText', false, out);
+    keep();
+    changed();
+  };
+  /** ช่องตารางที่เคอร์เซอร์อยู่ */
+  const curCell = () => {
+    const node = saved.current?.startContainer ?? window.getSelection()?.anchorNode;
+    const el = node && (node.nodeType === 1 ? (node as HTMLElement) : node.parentElement);
+    const c = (el?.closest('td,th') as HTMLTableCellElement | null) ?? null;
+    return c && ed.current?.contains(c) ? c : null;
+  };
+  const table = (op: TableOp) => {
+    const cell = curCell();
+    const tr = cell?.parentElement as HTMLTableRowElement | null;
+    const tb = cell?.closest('table');
+    if (!cell || !tr || !tb) return;
+    const col = cell.cellIndex;
+    const rows = Array.from(tb.rows);
+    const blank = (tag = 'td') => {
+      const c = document.createElement(tag);
+      c.innerHTML = '<br>';
+      return c;
+    };
+    if (op === 'rowAbove' || op === 'rowBelow') {
+      const r = document.createElement('tr');
+      for (let i = 0; i < tr.cells.length; i++) r.appendChild(blank());
+      tr.parentElement!.insertBefore(r, op === 'rowAbove' ? tr : tr.nextSibling);
+    } else if (op === 'colLeft' || op === 'colRight') {
+      rows.forEach((r) => {
+        const at = r.cells[col];
+        const c = blank(at?.tagName === 'TH' ? 'th' : 'td');
+        r.insertBefore(c, op === 'colLeft' ? at ?? null : at?.nextSibling ?? null);
+      });
+    } else if (op === 'delRow') {
+      if (rows.length <= 1) tb.remove();
+      else tr.remove();
+    } else if (op === 'delCol') {
+      if (tr.cells.length <= 1) tb.remove();
+      else rows.forEach((r) => r.cells[col]?.remove());
+    } else if (op === 'delTable') {
+      tb.remove();
+    } else if (op === 'header') {
+      // แถวแรก td <-> th
+      const first = rows[0];
+      const toTh = Array.from(first.cells).some((c) => c.tagName === 'TD');
+      Array.from(first.cells).forEach((c) => {
+        const c2 = document.createElement(toTh ? 'th' : 'td');
+        c2.innerHTML = c.innerHTML;
+        const st = c.getAttribute('style');
+        if (st) c2.setAttribute('style', st);
+        c.replaceWith(c2);
+      });
+    }
+    saved.current = null;
+    changed();
+    force((x) => x + 1);
+  };
+  const cellShade = (c: string) => {
+    const cell = curCell();
+    if (!cell) return;
+    cell.style.backgroundColor = c;
+    changed();
+  };
+  const insertTex = (tex: string) => insertHtml(`<span data-tex="${esc(tex)}" contenteditable="false"></span>&nbsp;`);
+  const openPanel = (p: WordPanelId) => {
+    setPanel(p);
+    if (p === 'find') setFindFocus((x) => x + 1);
+  };
+
   useImperativeHandle(ref, () => ({
     undo: () => {
       restore();
@@ -223,11 +328,12 @@ export const WordEditor = forwardRef<
   }));
 
   /* ---------------- แทรกของ ---------------- */
-  const addMath = () => {
+  const addMath = (display = false) => {
     keep();
     openMath('', (tex) => {
       if (!tex.trim()) return;
-      insertHtml(`<span data-tex="${esc(tex)}" contenteditable="false"></span>&nbsp;`);
+      const eq = `<span data-tex="${esc(tex)}" contenteditable="false"></span>`;
+      insertHtml(display ? `<p style="text-align: center">${eq}</p><p><br></p>` : `${eq}&nbsp;`);
     });
   };
   const addGraph = () => {
@@ -396,7 +502,6 @@ export const WordEditor = forwardRef<
   /** แป้นลัดแบบ Word (ใช้ e.code จะได้ทำงานตอนแป้นภาษาไทยด้วย) */
   const onKey = (e: React.KeyboardEvent) => {
     const mod = e.ctrlKey || e.metaKey;
-    const c = e.code;
     const run = (f: () => void) => {
       e.preventDefault();
       f();
@@ -417,7 +522,6 @@ export const WordEditor = forwardRef<
       setActive(null);
     }
     keep();
-    if (e.altKey && !mod && c === 'Equal') return run(addMath);
     if (e.key === 'Tab' && !mod && !e.altKey) {
       return run(() => {
         const node = window.getSelection()?.anchorNode;
@@ -441,32 +545,42 @@ export const WordEditor = forwardRef<
         }
       });
     }
-    if (!mod) return;
-    if (e.key === 'Enter') return run(() => insertHtml('<div data-pb="1"></div><p><br></p>'));
-    if (e.altKey) {
-      if (!e.shiftKey && /^Digit[123]$/.test(c)) run(() => cmd('formatBlock', `h${c.slice(-1)}`));
-      return;
-    }
-    if (e.shiftKey) {
-      if (c === 'KeyM') run(() => indent(-1));
-      else if (c === 'KeyL') run(() => cmd('insertUnorderedList'));
-      else if (c === 'Period') run(() => bumpSize(1, true));
-      else if (c === 'Comma') run(() => bumpSize(-1, true));
-      else if (c === 'Equal') run(() => cmd('superscript'));
-      return;
-    }
-    if (c === 'KeyE') run(() => cmd('justifyCenter'));
-    else if (c === 'KeyL') run(() => cmd('justifyLeft'));
-    else if (c === 'KeyR') run(() => cmd('justifyRight'));
-    else if (c === 'KeyJ') run(() => cmd('justifyFull'));
-    else if (c === 'KeyM') run(() => indent(1));
-    else if (c === 'Equal') run(() => cmd('subscript'));
-    else if (c === 'BracketRight') run(() => bumpSize(1, false));
-    else if (c === 'BracketLeft') run(() => bumpSize(-1, false));
-    else if (c === 'Digit1') run(() => setLine('1'));
-    else if (c === 'Digit2') run(() => setLine('2'));
-    else if (c === 'Digit5') run(() => setLine('1.5'));
-    else if (c === 'Space') run(() => cmd('removeFormat'));
+    const combo = comboOf(e.nativeEvent);
+    const id = combo ? WORD_KEYS.find((k) => k.combo === combo)?.id : undefined;
+    if (id) run(() => wordAction(id));
+  };
+  const wordAction = (id: WordKeyId) => {
+    const acts: Record<WordKeyId, () => void> = {
+      bold: () => cmd('bold'),
+      italic: () => cmd('italic'),
+      underline: () => cmd('underline'),
+      left: () => cmd('justifyLeft'),
+      center: () => cmd('justifyCenter'),
+      right: () => cmd('justifyRight'),
+      justify: () => cmd('justifyFull'),
+      sizeUp: () => bumpSize(1, true),
+      sizeDown: () => bumpSize(-1, true),
+      sizePlus: () => bumpSize(1, false),
+      sizeMinus: () => bumpSize(-1, false),
+      sub: () => cmd('subscript'),
+      sup: () => cmd('superscript'),
+      clear: () => cmd('removeFormat'),
+      line1: () => setLine('1'),
+      line2: () => setLine('2'),
+      line15: () => setLine('1.5'),
+      indent: () => indent(1),
+      outdent: () => indent(-1),
+      bullets: () => cmd('insertUnorderedList'),
+      h1: () => cmd('formatBlock', 'h1'),
+      h2: () => cmd('formatBlock', 'h2'),
+      h3: () => cmd('formatBlock', 'h3'),
+      pageBreak: () => insertHtml('<div data-pb="1"></div><p><br></p>'),
+      math: () => addMath(false),
+      mathDisplay: () => addMath(true),
+      find: () => openPanel('find'),
+      replace: () => openPanel('find'),
+    };
+    acts[id]();
   };
   const onPaste = (e: React.ClipboardEvent) => {
     const img = Array.from(e.clipboardData.files).find((f) => f.type.startsWith('image/'));
@@ -583,7 +697,7 @@ export const WordEditor = forwardRef<
             ))}
           </select>
           <span className="st-insp-sep" />
-          <button type="button" className="st-tb st-tb-wide" onMouseDown={(e) => e.preventDefault()} onClick={addMath} title="แทรกสมการ (Alt+=)">
+          <button type="button" className="st-tb st-tb-wide" onMouseDown={(e) => e.preventDefault()} onClick={() => addMath(false)} title="แทรกสมการ (Alt+=)">
             <Sigma className="w-4 h-4" /> สมการ
           </button>
           <button type="button" className="st-tb st-tb-wide" onMouseDown={(e) => e.preventDefault()} onClick={addGraph} title="แทรกกราฟ/รูปคณิตศาสตร์">
@@ -644,9 +758,41 @@ export const WordEditor = forwardRef<
         </div>
   );
 
+  const api: WordApi = {
+    cmd,
+    insertHtml,
+    setSize,
+    bumpSize,
+    setLine,
+    indent,
+    blockStyle,
+    list,
+    changeCase,
+    addMath,
+    insertTex,
+    addGraph,
+    pickImage: () => {
+      keep();
+      fileIn.current?.click();
+    },
+    table,
+    cellShade,
+    inTable: () => !!curCell(),
+    root: () => ed.current,
+    changed,
+    pages: n,
+  };
+  const side = !readOnly && (
+    <>
+      <WordRail panel={panel} onPick={(p) => (p ? openPanel(p) : setPanel(null))} />
+      {panel && <WordPanel id={panel} api={api} onClose={() => setPanel(null)} layoutExtra={layoutExtra} findFocus={findFocus} />}
+    </>
+  );
+
   return (
     <>
       {bar && (barEl ? createPortal(bar, barEl) : bar)}
+      {side && railEl && createPortal(side, railEl)}
       <div className="st-word" style={{ width: W * zoom, height: totalH * zoom }}>
         <div style={{ width: W, height: totalH, transform: `scale(${zoom})`, transformOrigin: '0 0', position: 'relative' }}>
           {pages.map((p, i) => (

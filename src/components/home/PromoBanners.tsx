@@ -12,7 +12,6 @@ import { ANIMAL_PRESETS } from '@/lib/studio/char';
 import { CharArt } from '@/components/studio/CharArt';
 import { Buddy } from '@/components/companion/Buddy';
 import { ChoiceShape } from '@/components/creator/ChoiceShape';
-import { PaperStackIcon } from '@/components/docs/DocIcons';
 import { useMembership } from '@/components/membership/MembershipProvider';
 import { hidePromo, promoHidden, type Audience } from './audience';
 
@@ -106,17 +105,6 @@ const ArtBuddy = () => (
   </div>
 );
 
-const ArtDocs = () => (
-  <div className="relative w-full h-full">
-    <span className="absolute left-[10%] top-[14%] w-[42%] aspect-square rounded-[28%] bg-gradient-to-br from-sky-400 to-indigo-500 border-[3px] border-[#2a2350] shadow-[0_5px_0_#2a2350] text-white flex items-center justify-center rotate-[-6deg]">
-      <PaperStackIcon className="w-[62%] h-[62%]" />
-    </span>
-    <div className="absolute right-[2%] bottom-[-8%] w-[38%] animate-float-slow">
-      <CharArt look={preset('rabbitReader')} />
-    </div>
-  </div>
-);
-
 function ArtOffer({ perDay }: { perDay: string }) {
   return (
     <div className="relative w-full h-full flex items-end justify-center">
@@ -130,7 +118,7 @@ function ArtOffer({ perDay }: { perDay: string }) {
 
 /* ---------------------------------------------------------------- ป้าย */
 
-export function PromoBanners({ audience, onDocs, onLibrary, className = '' }: { audience: Audience | null; onDocs: () => void; onLibrary: () => void; className?: string }) {
+export function PromoBanners({ audience, onLibrary, className = '' }: { audience: Audience | null; onLibrary: () => void; className?: string }) {
   const { user, profile } = useAuth();
   const { ready, offer } = useMembership();
   const member = hasMembership(profile);
@@ -191,17 +179,6 @@ export function PromoBanners({ audience, onDocs, onLibrary, className = '' }: { 
         bg: 'linear-gradient(115deg,#ffc2e2 0%,#ffe9a8 100%)',
         art: <ArtBuddy />,
       },
-      {
-        id: 'docs',
-        who: 'all',
-        tag: TAG.all,
-        title: 'ใบงานพร้อมพิมพ์ ใช้ได้ทั้งในห้องและที่บ้าน',
-        desc: 'คลังเอกสารและใบงานแยกวิชาและชั้น เปิดดูได้ทันที สมาชิกดาวน์โหลดได้ไม่จำกัด',
-        cta: 'เปิดคลังใบงาน',
-        act: onDocs,
-        bg: 'linear-gradient(115deg,#bfe8ff 0%,#d9d3ff 100%)',
-        art: <ArtDocs />,
-      },
     ];
     if (!member && ready)
       all.push({
@@ -218,7 +195,7 @@ export function PromoBanners({ audience, onDocs, onLibrary, className = '' }: { 
     // เลือกกลุ่มไว้แล้ว: เรื่องของกลุ่มนั้นขึ้นก่อน
     if (!audience) return all;
     return [...all.filter((s) => s.who === audience), ...all.filter((s) => s.who !== audience)];
-  }, [audience, member, ready, welcome, perDay, grown, user, onDocs, onLibrary]);
+  }, [audience, member, ready, welcome, perDay, grown, user, onLibrary]);
 
   const n = slides.length;
   const go = useCallback((k: number) => setI(((k % n) + n) % n), [n]);

@@ -10,7 +10,6 @@ import { SubjectTag } from '@/components/media/SubjectTag';
 import { useCompanionOptional } from '@/components/companion/CompanionProvider';
 import { useTrial } from '@/components/trial/TrialProvider';
 import { hasMembership } from '@/lib/membership';
-import { isVideoMedia } from '@/lib/youtube';
 
 interface MediaCardProps {
   media: MediaItem;
@@ -28,15 +27,13 @@ export function MediaCard({
   priority = false,
 }: MediaCardProps) {
   const { user, profile } = useAuth();
-  const { openTrial, openVideo } = useTrial();
+  const { openTrial } = useTrial();
   const [imgError, setImgError] = useState(false);
   const localViews = media.view_count;
 
   // ทุกสื่อสำหรับสมาชิก: ล็อกถ้ายังไม่ใช่สมาชิก (เกมประจำวันที่แอดมินเปิดให้ทุกคนเล่นเฉพาะวันนั้นไม่ล็อก)
-  // ยกเว้นวิดีโอ: ทุกคนดูได้เลย
-  const video = isVideoMedia(media);
   const dailyFree = useCompanionOptional()?.dailyUnlockedId === media.id;
-  const isLocked = !video && !dailyFree && !(user && hasMembership(profile));
+  const isLocked = !dailyFree && !(user && hasMembership(profile));
 
   const openDetail = () => onSelectMedia?.(media);
 
@@ -56,14 +53,9 @@ export function MediaCard({
       {/* 1:1 Thumbnail */}
       <div className="relative aspect-square w-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
         {/* ป้ายสถานะ */}
-        {(video || dailyFree || isLocked) && (
+        {(dailyFree || isLocked) && (
           <div className="absolute top-3 left-3 z-10 pointer-events-none">
-            {video ? (
-              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-md shadow-rose-500/40 ring-2 ring-white/70">
-                <PlayCircle className="w-3 h-3" />
-                <span>ดูฟรี</span>
-              </span>
-            ) : dailyFree ? (
+            {dailyFree ? (
               <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-mint-500 text-white shadow-md shadow-mint-500/40 ring-2 ring-white/70">
                 <Unlock className="w-3 h-3" />
                 <span>ฟรีวันนี้</span>
@@ -165,21 +157,6 @@ export function MediaCard({
           )}
         </div>
 
-        {video ? (
-          <div className="mt-1 flex">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                openVideo(media);
-              }}
-              className="btn-jelly flex-1 inline-flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl text-sm font-bold text-white bg-gradient-to-r from-rose-500 via-pink-500 to-fuchsia-500 shadow-[0_4px_0_0_rgba(159,18,57,0.5),0_12px_22px_-8px_rgba(244,63,94,0.6)] hover:brightness-110"
-            >
-              <PlayCircle className="w-4 h-4 shrink-0" />
-              <span className="truncate">ดูวิดีโอ</span>
-            </button>
-          </div>
-        ) : (
           <div className="mt-1 flex flex-wrap items-stretch gap-2">
             <button
               type="button"
@@ -211,7 +188,6 @@ export function MediaCard({
               <span>ทดลองเล่น</span>
             </button>
           </div>
-        )}
       </div>
     </article>
   );

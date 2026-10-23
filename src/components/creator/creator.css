@@ -1262,3 +1262,164 @@
     animation: none !important;
   }
 }
+
+/* ---------------- แป้นลัดแม่แบบสมการ (แบบ MathType) ---------------- */
+.l5g-key-kbd {
+  position: absolute;
+  top: 3px;
+  right: 4px;
+  font-size: 0.56rem;
+  font-weight: 800;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 6px;
+  background: var(--l5g-sun);
+  color: var(--l5g-ink);
+  pointer-events: none;
+}
+.l5g-mk-open {
+  margin-left: auto;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+}
+.l5g-mk-bg {
+  z-index: 140;
+}
+.l5g-mk {
+  width: min(620px, 100%);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.l5g-mk-hint {
+  margin: 4px 2px 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  opacity: 0.75;
+}
+.l5g-mk-tools {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.l5g-mk-search {
+  flex: 1;
+  min-width: 0;
+  height: 42px;
+  padding: 0 14px;
+  border-radius: 14px;
+  border: 3px solid var(--l5g-ink);
+  background: #fff;
+  font-weight: 700;
+  outline: none;
+}
+.l5g-mk-search:focus {
+  border-color: var(--l5g-violet);
+}
+.l5g-mk-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  max-height: 52vh;
+  padding-right: 4px;
+}
+.l5g-mk-list h4 {
+  margin: 12px 2px 6px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  opacity: 0.6;
+}
+.l5g-mk-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 14px;
+  border: 2px solid transparent;
+}
+.l5g-mk-row:hover {
+  background: rgba(155, 108, 240, 0.08);
+}
+.l5g-mk-row[data-on='true'] {
+  border-color: var(--l5g-violet);
+  background: rgba(155, 108, 240, 0.12);
+}
+.l5g-mk-face {
+  width: 64px;
+  min-height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: #fff;
+  border: 2px solid rgba(42, 35, 80, 0.15);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.l5g-mk-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+.l5g-mk-kbd {
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 0.8rem;
+  padding: 4px 9px;
+  border-radius: 9px;
+  background: var(--l5g-ink);
+  color: #fff;
+  white-space: nowrap;
+}
+.l5g-mk-none {
+  font-size: 0.8rem;
+  font-weight: 700;
+  opacity: 0.45;
+}
+.l5g-mk-wait {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--l5g-violet);
+  animation: l5gMkBlink 1s ease-in-out infinite;
+}
+@keyframes l5gMkBlink {
+  50% {
+    opacity: 0.45;
+  }
+}
+.l5g-mk-set {
+  padding: 5px 12px;
+  font-size: 0.82rem;
+}
+.l5g-mk-err {
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: #ffe1e5;
+  color: #b4233a;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+.l5g-mk-clash {
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 3px solid var(--l5g-ink);
+  background: #fff3c4;
+  animation: l5gPop 0.28s var(--l5g-jelly);
+}
+.l5g-mk-clash p {
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.l5g-mk-clash-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .l5g-mk-wait,
+  .l5g-mk-clash {
+    animation: none;
+  }
+}

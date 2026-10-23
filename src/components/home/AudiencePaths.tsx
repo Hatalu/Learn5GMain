@@ -32,14 +32,12 @@ const teacherLook = ANIMAL_PRESETS.find((p) => p.id === 'dogTeacher')?.look ?? A
 export function AudiencePaths({
   audience,
   onPick,
-  onDocs,
   onLibrary,
   onDaily,
   className = '',
 }: {
   audience: Audience | null;
   onPick: (a: Audience) => void;
-  onDocs: () => void;
   onLibrary: () => void;
   onDaily: () => void;
   className?: string;
@@ -54,14 +52,13 @@ export function AudiencePaths({
       { id: 'p-daily', title: 'ให้ลูกเล่นเกมประจำวัน', desc: 'เกมใหม่ทุกวัน ใช้เวลาไม่กี่นาที', act: onDaily },
       { id: 'p-grade', title: 'เลือกเกมตามชั้นของลูก', desc: 'กรองตามวิชาและชั้น ป.1 - ป.6', act: onLibrary },
       { id: 'p-buddy', title: 'พบคู่หูของลูก', desc: 'เล่นแล้วได้ดาว คู่หูโตขึ้นเรื่อยๆ', href: '/buddy' },
-      { id: 'p-docs', title: 'หาใบงานให้ลูกฝึกที่บ้าน', desc: 'เปิดดูใบงานแยกวิชาและชั้น', act: onDocs },
+      { id: 'p-sheet', title: 'ทำใบงานให้ลูกฝึกที่บ้าน', desc: 'ใช้ตัวช่วยสร้างใบงานแยกวิชาในระบบสร้างสื่อ', href: '/studio' },
     ],
     teacher: [
       { id: 't-quiz', title: 'สร้างชุดคำถามชุดแรก', desc: 'ใส่รูปและสูตรคณิตได้ ใช้ซ้ำได้ทั้งปี', href: '/create' },
       { id: 't-live', title: 'เปิดเกมเล่นสดทั้งห้อง', desc: 'นักเรียนเข้าห้องด้วยเลข 6 หลัก บนมือถือหรือแท็บเล็ต', href: '/create?tab=library' },
       { id: 't-sheet', title: 'เปลี่ยนชุดคำถามเป็นใบงาน', desc: 'กดปุ่มใบงานที่การ์ดชุดคำถาม ได้ใบงานพร้อมเฉลย', href: '/create?tab=library' },
       { id: 't-studio', title: 'ออกแบบสื่อด้วยตัวช่วยแยกวิชา', desc: 'ตัวละครคนและสัตว์ แป้นลัดแบบ Canva', href: '/studio' },
-      { id: 't-docs', title: 'หยิบใบงานสำเร็จรูปไปใช้', desc: 'คลังเอกสารแยกวิชาและชั้น', act: onDocs },
     ],
   };
 
@@ -69,13 +66,12 @@ export function AudiencePaths({
   const q = quote(grown, offer);
   const perDay = (q.amount / grown.days).toFixed(2).replace(/\.?0+$/, '');
   const perks: Record<Audience, string[]> = {
-    parent: ['เล่นเกมเต็มทุกเกมในคลัง (บัญชีฟรีได้ทดลองเล่น)', 'ครอบคลุม ป.1 - ป.6 แยกวิชาและชั้น', 'ไม่มีโฆษณา ไม่มีแชท ปลอดภัยสำหรับเด็ก', 'ดาวน์โหลดใบงานให้ลูกฝึกที่บ้าน'],
+    parent: ['เล่นเกมเต็มทุกเกมในคลัง (บัญชีฟรีได้ทดลองเล่น)', 'ครอบคลุม ป.1 - ป.6 แยกวิชาและชั้น', 'ไม่มีโฆษณา ไม่มีแชท ปลอดภัยสำหรับเด็ก', 'สร้างใบงานให้ลูกฝึกที่บ้านได้ไม่จำกัด'],
     teacher: [
       `สร้างชุดคำถามได้ไม่จำกัด (บัญชีฟรี ${FREE_SET_LIMIT} ชุด)`,
       `สร้างสื่อการสอนได้ไม่จำกัด (บัญชีฟรี ${FREE_DESIGN_LIMIT} ชิ้น)`,
       'ใช้และทำสำเนางานของครูท่านอื่นใน Discover',
       'เปิดห้องเล่นสดได้ทุกชุดคำถาม',
-      'ดาวน์โหลดเอกสารและใบงานในคลังได้',
     ],
   };
 

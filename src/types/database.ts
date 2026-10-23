@@ -17,12 +17,11 @@ export const ALL_MEDIA_TYPES: MediaType[] = [
   'แบบฝึกหัด',
   'แบบทดสอบ',
   'สื่อ Interactive',
-  'วิดีโอ',
   'อื่น ๆ',
 ];
 
-/** ตัวกรอง "ประเภทสื่อ" ของคลังเกมการเรียนรู้ (แบบทดสอบ/แบบฝึกหัด ย้ายไปอยู่ฝั่งเอกสาร/ใบงาน จึงไม่มีในตัวกรองนี้) */
-export const GAME_FILTER_TYPES: MediaType[] = ALL_MEDIA_TYPES.filter((t) => t !== 'แบบฝึกหัด' && t !== 'แบบทดสอบ' && t !== 'วิดีโอ');
+/** ตัวกรอง "ประเภทสื่อ" ของคลังเกมการเรียนรู้ (ไม่มีแบบทดสอบ/แบบฝึกหัด) */
+export const GAME_FILTER_TYPES: MediaType[] = ALL_MEDIA_TYPES.filter((t) => t !== 'แบบฝึกหัด' && t !== 'แบบทดสอบ');
 
 export const ALL_ACCESS_TIERS: AccessTier[] = ['free', 'premium'];
 

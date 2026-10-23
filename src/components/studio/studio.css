@@ -2381,3 +2381,254 @@ html.dark .st-mode {
   overflow: hidden;
   border: 1px solid var(--st-line);
 }
+
+/* ---------------- แผงเครื่องมือด้านข้างของโหมดเอกสาร (Word) ---------------- */
+.st-wtools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.st-wtool {
+  min-width: 40px;
+  height: 40px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 10px;
+  background: var(--st-soft);
+  font-size: 13px;
+  font-weight: 700;
+  transition: background 0.15s, transform 0.15s;
+}
+.st-wtool:hover {
+  background: var(--st-acc-soft);
+  color: var(--st-acc-ink);
+}
+.st-wtool:active {
+  transform: scale(0.94);
+}
+.st-wstyles {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.st-wstyle {
+  text-align: left;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1.5px solid var(--st-line);
+  background: var(--st-card);
+  line-height: 1.25;
+  transition: border-color 0.15s, background 0.15s;
+}
+.st-wstyle:hover {
+  border-color: var(--st-acc);
+  background: var(--st-tint);
+}
+.st-ws-p {
+  font-size: 14px;
+}
+.st-ws-h1 {
+  font-size: 22px;
+  font-weight: 800;
+}
+.st-ws-h2 {
+  font-size: 18px;
+  font-weight: 800;
+}
+.st-ws-h3 {
+  font-size: 15.5px;
+  font-weight: 800;
+}
+.st-ws-q {
+  font-size: 14px;
+  border-left: 4px solid #c4b5fd;
+}
+.st-wfonts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.st-wfonts button {
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--st-soft);
+  font-size: 15px;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.st-wfonts button:hover {
+  background: var(--st-acc-soft);
+}
+.st-wsw {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.st-wsw button {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 0, 0, 0.08);
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.st-wsw button:hover {
+  transform: scale(1.15);
+}
+.st-wsw .st-wsw-none {
+  display: grid;
+  place-items: center;
+  background: var(--st-card);
+  color: var(--st-muted);
+  border-style: dashed;
+}
+.st-wlists {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.st-wlists button,
+.st-wbig button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: var(--st-soft);
+  font-size: 13.5px;
+  font-weight: 700;
+  text-align: left;
+  transition: background 0.15s, transform 0.15s;
+}
+.st-wlists button:hover,
+.st-wbig button:hover:not(:disabled) {
+  background: var(--st-acc-soft);
+  color: var(--st-acc-ink);
+}
+.st-wbig button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.st-wbig button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.st-wbig {
+  display: grid;
+  gap: 6px;
+}
+.st-wbig-2 {
+  grid-template-columns: 1fr 1fr;
+}
+.st-wbig kbd {
+  margin-left: auto;
+  font-family: inherit;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--st-card);
+  border: 1px solid var(--st-line);
+  color: var(--st-muted);
+}
+.st-wgrid-lg {
+  grid-template-columns: repeat(10, 1fr);
+  gap: 4px;
+}
+.st-wgrid-lg button {
+  width: auto;
+  height: auto;
+  aspect-ratio: 1;
+}
+.st-wsym-panel {
+  grid-template-columns: repeat(auto-fill, minmax(36px, 1fr));
+}
+.st-wformulas {
+  display: grid;
+  gap: 6px;
+}
+.st-wformulas button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 8px 6px;
+  border-radius: 12px;
+  border: 1.5px solid var(--st-line);
+  background: #fff;
+  color: #1f1b36;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+.st-wformulas button:hover {
+  border-color: var(--st-acc);
+}
+.st-wformulas small {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #6b6590;
+}
+.st-wformula {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 15px;
+}
+.st-wstats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.st-wstats span {
+  padding: 10px;
+  border-radius: 12px;
+  background: var(--st-soft);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--st-muted);
+}
+.st-wstats b {
+  display: block;
+  font-size: 22px;
+  color: var(--st-ink);
+}
+.st-wkeys p {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 0;
+  border-bottom: 1px dashed var(--st-line);
+  font-size: 13px;
+  font-weight: 600;
+}
+.st-wkeys kbd {
+  min-width: 118px;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 800;
+  padding: 3px 7px;
+  border-radius: 7px;
+  background: var(--st-soft);
+  border: 1px solid var(--st-line);
+}
+.st-wwarn {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fff7d6;
+  color: #7a5a00;
+}
+html.dark .st-wwarn {
+  background: rgba(250, 204, 21, 0.12);
+  color: #fde68a;
+}
+
+/* กราฟที่สร้างในโหมด Word: ในโหมด Canva แตะเพื่อยกออกมาเป็นชิ้นงาน */
+.st-shell[data-readonly='false'] .st-paper .st-flow figure[data-graph] {
+  pointer-events: auto;
+  cursor: move;
+}
+.st-shell[data-readonly='false'] .st-paper .st-flow figure[data-graph]:hover {
+  outline: 2px dashed #8b3dff;
+  outline-offset: 3px;
+}

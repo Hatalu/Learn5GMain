@@ -38,8 +38,9 @@ import { createClient } from '@/lib/supabase/client';
 import { uploadImage } from '@/lib/game-creator/media';
 import { cleanTitle } from '@/lib/game-creator/quiz';
 import { FREE_DESIGN_LIMIT, creatorTier } from '@/lib/game-creator/quota';
-import { blankPage, makeChar, makeGraph, makeImage, makeLine, makeMath, makeShape, makeText, MAX_PAGES, sanitizeDesign, sizeLabel, uid, type Design, type EditMode, type Item, type Page } from '@/lib/studio/doc';
-import { newSpec, type GraphSpec } from '@/lib/studio/graph';
+import { blankPage, cleanSrc, makeChar, makeGraph, makeImage, makeLine, makeMath, makeShape, makeText, MAX_PAGES, sanitizeDesign, sizeLabel, uid, type Design, type EditMode, type Item, type Page } from '@/lib/studio/doc';
+import { cleanGraph, newSpec, type GraphSpec } from '@/lib/studio/graph';
+import { cleanFlowHtml } from '@/lib/studio/flow';
 import { texToHtml } from '@/components/creator/math/MathText';
 import { MathPopover } from '@/components/creator/math/MathPopover';
 import '@/components/creator/creator.css';
@@ -164,10 +165,11 @@ export function StudioEditor({ id }: { id: string }) {
   const selId = selIds.length === 1 ? selIds[0] : null;
   const setSelId = useCallback((v: string | null) => setSelIds(v ? [v] : []), []);
   const [marquee, setMarquee] = useState<(Box & { pi: number }) | null>(null);
-  const [mathDlg, setMathDlg] = useState<{ tex: string; itemId?: string; done?: (tex: string) => void } | null>(null);
+  const [mathDlg, setMathDlg] = useState<{ tex: string; itemId?: string; done?: (tex: string) => void; insert?: string } | null>(null);
   const [graphDlg, setGraphDlg] = useState<{ spec: GraphSpec; itemId?: string; done?: (s: GraphSpec) => void } | null>(null);
   const word = useRef<WordHandle>(null);
   const [barEl, setBarEl] = useState<HTMLDivElement | null>(null);
+  const [railEl, setRailEl] = useState<HTMLDivElement | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
   const [cell, setCell] = useState<[number, number] | null>(null);
   const [zoom, setZoom] = useState(0.5);
@@ -879,6 +881,38 @@ export function StudioEditor({ id }: { id: string }) {
     window.addEventListener('pointercancel', onUp);
   };
 
+  /**
+   * กราฟที่สร้างในโหมด Word แสดงเป็นเนื้อหาเอกสาร (กดไม่ได้) แตะในโหมด Canva = ยกออกมาเป็นชิ้นงาน
+   * ที่ตำแหน่งเดิม แล้วลาก ย่อขยาย ดับเบิลคลิกแก้ได้เหมือนชิ้นอื่น (ข้อความรอบๆ ไหลเข้ามาแทนที่)
+   */
+  const liftFlowGraph = (pi: number, e: React.MouseEvent): { item: Item; doc: Design } | null => {
+    const d = docRef.current;
+    const paper = e.currentTarget as HTMLElement;
+    if (!d?.flow) return null;
+    const figs = Array.from(paper.querySelectorAll<HTMLElement>('.st-flow figure[data-graph]'));
+    const k = figs.findIndex((f) => {
+      const r = f.getBoundingClientRect();
+      return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+    });
+    if (k < 0) return null;
+    let spec: GraphSpec;
+    try {
+      spec = cleanGraph(JSON.parse(figs[k].dataset.graph || ''));
+    } catch {
+      return null;
+    }
+    const pr = paper.getBoundingClientRect();
+    const fr = figs[k].getBoundingClientRect();
+    const item = { ...makeGraph(spec, fr.width / zoom), x: (fr.left - pr.left) / zoom, y: (fr.top - pr.top) / zoom };
+    // ลบกราฟลำดับที่ k ออกจากเนื้อหาเอกสาร (ลำดับใน HTML ตรงกับที่วาด)
+    const t = document.createElement('template');
+    t.innerHTML = d.flow;
+    t.content.querySelectorAll('figure[data-graph]')[k]?.remove();
+    const next = mapItems({ ...d, flow: cleanFlowHtml(t.innerHTML, cleanSrc) }, pi, (items) => [...items, item]);
+    commit(next);
+    return { item, doc: next };
+  };
+
   const onPagePointer = (e: React.PointerEvent, pi: number) => {
     if (readOnly || !doc || e.button > 0) return;
     const target = e.target as HTMLElement;
@@ -888,6 +922,12 @@ export function StudioEditor({ id }: { id: string }) {
     if (pi !== ap) setPageIdx(pi);
     if (!el) {
       finishEdit();
+      const lifted = liftFlowGraph(pi, e);
+      if (lifted) {
+        setSelIds([lifted.item.id]);
+        begin(moveDrag(pi, lifted.item.id, [lifted.item.id], lifted.doc.pages[pi], lifted.doc, lifted.doc, ptIn(pi, e), false, false), e);
+        return;
+      }
       setPanel((p) => (p && window.innerWidth < 768 ? null : p));
       // ลากบนพื้นที่ว่าง = ลากคลุมเลือกหลายชิ้น (แตะเฉยๆ = เลิกเลือก)
       const p = ptIn(pi, e);
@@ -944,6 +984,12 @@ export function StudioEditor({ id }: { id: string }) {
     if (readOnly || !doc) return;
     const el = (e.target as HTMLElement).closest<HTMLElement>('[data-item]');
     const it = doc.pages[pi].items.find((x) => x.id === el?.dataset.item);
+    if (!el) {
+      // กราฟจากโหมด Word (แตะครั้งแรกถูกยกออกมาแล้ว กรณีนี้คือยังไม่ถูกยก)
+      const lifted = liftFlowGraph(pi, e);
+      if (lifted?.item.type === 'graph') setGraphDlg({ spec: lifted.item.spec, itemId: lifted.item.id });
+      return;
+    }
     if (!it || it.locked) return;
     if (it.type === 'text') startEdit(it.id, pi);
     if (it.type === 'char') setCharDlg({ look: it.look, itemId: it.id, flip: it.flip });
@@ -1454,6 +1500,8 @@ export function StudioEditor({ id }: { id: string }) {
           </>
         )}
 
+        {!readOnly && mode === 'word' && <div ref={setRailEl} className="contents" />}
+
         <div className="st-work">
           {!readOnly && mode === 'canvas' && <Inspector ctl={ctl} />}
           {mode === 'word' && <div ref={setBarEl} className="contents" />}
@@ -1488,9 +1536,11 @@ export function StudioEditor({ id }: { id: string }) {
                   zoom={zoom}
                   readOnly={readOnly}
                   barEl={barEl}
+                  railEl={railEl}
+                  layoutExtra={<SizePicker ctl={ctl} onDone={() => undefined} />}
                   onChange={(flow) => commit({ ...docRef.current!, flow }, 'flow')}
                   onNeedPages={needPages}
-                  openMath={(tex, done) => setMathDlg({ tex, done })}
+                  openMath={(tex, done, insert) => setMathDlg({ tex, done, insert })}
                   openGraph={(spec, done) => setGraphDlg({ spec: spec ?? newSpec('book', { axes: true, grid: true, numbers: true, origin: false }), done })}
                   upload={wordUpload}
                 />
@@ -1738,7 +1788,7 @@ export function StudioEditor({ id }: { id: string }) {
 
       {help && <ShortcutHelp onClose={() => setHelp(false)} />}
       {present !== null && <Presenter doc={doc} start={present} onClose={() => setPresent(null)} />}
-      {mathDlg && <MathPopover initial={mathDlg.tex} editing={!!mathDlg.itemId || (!!mathDlg.done && !!mathDlg.tex)} extended onDone={mathDone} onCancel={() => setMathDlg(null)} />}
+      {mathDlg && <MathPopover initial={mathDlg.tex} editing={!!mathDlg.itemId || (!!mathDlg.done && !!mathDlg.tex)} extended insert={mathDlg.insert} onDone={mathDone} onCancel={() => setMathDlg(null)} />}
       {graphDlg && <GraphEditor initial={graphDlg.spec} editing={!!graphDlg.itemId || !!graphDlg.spec.objs.length} onDone={graphDone} onClose={() => setGraphDlg(null)} />}
       {charDlg && (
         <CharBuilder

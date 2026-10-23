@@ -1,7 +1,7 @@
 import { MODES } from '@/lib/game-creator/modes';
 
 /**
- * ทัวร์แนะนำเว็บหลังสมัครบัญชี: หน้าหลัก > คลังเกม > วิดีโอ > เอกสาร/ใบงาน > ระบบสร้างเกม (ภาพรวมรูปแบบเกม) > ระบบสร้างสื่อ > สมัครสมาชิก
+ * ทัวร์แนะนำเว็บหลังสมัครบัญชี: หน้าหลัก > คลังเกม > ระบบสร้างเกม (ภาพรวมรูปแบบเกม) > ระบบสร้างสื่อ > สมัครสมาชิก
  * target / click / via คือค่า data-tour="..." ของ element ในหน้านั้น ๆ
  */
 export type TourChapter = 'start' | 'home' | 'library' | 'create' | 'member';
@@ -62,7 +62,7 @@ export const STEPS: TourStep[] = [
     chapter: 'library',
     target: 'library-head',
     title: 'คลังสื่อการสอน ป.1 - ป.6',
-    text: 'เลือกได้ 3 คลัง เกมการเรียนรู้ วิดีโอ และเอกสาร/ใบงาน',
+    text: 'เกมการเรียนรู้ทุกวิชา กรองตามวิชาและชั้นได้',
     ms: 5200,
     accent: '#7c4dff',
   },
@@ -71,33 +71,10 @@ export const STEPS: TourStep[] = [
     path: '/home',
     chapter: 'library',
     target: 'library',
-    click: 'lib-games',
     title: 'เกมการเรียนรู้',
     text: 'กดเกมที่ชอบแล้วเล่นได้เลย กรองตามวิชาและชั้นได้',
     ms: 5600,
     accent: '#8b5cf6',
-  },
-  {
-    id: 'videos',
-    path: '/home',
-    chapter: 'library',
-    target: 'library',
-    click: 'lib-videos',
-    title: 'วิดีโอ',
-    text: 'คลิปการสอนดูฟรีทุกคน กดแล้วเล่นในหน้านี้เลย',
-    ms: 5400,
-    accent: '#f43f5e',
-  },
-  {
-    id: 'docs',
-    path: '/home',
-    chapter: 'library',
-    target: 'library',
-    click: 'lib-docs',
-    title: 'เอกสาร/ใบงาน',
-    text: 'เปิดดูได้ทุกหน้า สมาชิกโหลดเป็น PDF หรือ Word ได้',
-    ms: 6000,
-    accent: '#0ea5e9',
   },
   {
     id: 'create',
