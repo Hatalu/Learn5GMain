@@ -650,3 +650,60 @@
     animation: none !important;
   }
 }
+
+/* ---------------- คำถามแบบพิมพ์คำตอบ ---------------- */
+.l5g-typed {
+  width: 100%;
+  margin: 10px auto 4px;
+  max-width: 560px;
+}
+.l5g-typed-row {
+  display: flex;
+  gap: 8px;
+}
+.l5g-typed input {
+  flex: 1;
+  min-width: 0;
+  height: 50px;
+  padding: 0 16px;
+  border-radius: 16px;
+  border: 3px solid #2a2350;
+  background: #fff;
+  color: #2a2350;
+  font-size: 1.15rem;
+  font-weight: 800;
+  outline: none;
+  box-shadow: 0 4px 0 #2a2350;
+}
+.l5g-typed input:focus {
+  border-color: #9b6cf0;
+}
+.l5g-typed[data-big='true'] input {
+  height: 62px;
+  font-size: 1.4rem;
+}
+.l5g-typed[data-state='ok'] input {
+  background: #dcfaef;
+  border-color: #169a72;
+}
+.l5g-typed[data-state='no'] input {
+  background: #ffe1e5;
+  border-color: #c9354a;
+}
+.l5g-typed-ans {
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: #dcfaef;
+  color: #0f5f46;
+  font-weight: 700;
+  text-align: center;
+}
+.l5g-audio {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+.l5g-audio audio {
+  width: min(420px, 100%);
+}

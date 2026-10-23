@@ -51,6 +51,7 @@ export interface PlayerStateRes {
     game: GameMode;
     duration: number;
     goal: number;
+    teams?: number;
     startedAt: string | null;
     music?: string;
     musicPlayers?: boolean;

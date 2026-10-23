@@ -3,12 +3,12 @@
 /**
  * อัปโหลดรูป/คลิปของเกมที่ผู้ใช้สร้าง ไปที่ Supabase Storage (bucket game-media โฟลเดอร์ <user id>/)
  * - รูป: ย่อด้านยาวไม่เกิน 1400px แปลงเป็น webp (gif เก็บตามเดิมเพื่อให้ยังขยับได้)
- * - คลิป: เล่นได้ไม่เกิน 5 วินาที ถ้าคลิปยาวกว่านั้น ผู้ใช้เลือกช่วง แล้วตัดในเครื่องด้วย MediaRecorder
+ * - คลิป: เล่นได้ไม่เกิน VIDEO_MAX_SECONDS (30) วินาที ถ้าคลิปยาวกว่านั้น ผู้ใช้เลือกช่วง แล้วตัดในเครื่องด้วย MediaRecorder
  *   (เบราว์เซอร์ที่ตัดไม่ได้ จะอัปโหลดไฟล์เดิมพร้อมเก็บช่วงเวลา แล้วตัวเล่นบังคับเล่นแค่ช่วงนั้น)
  */
 import { createClient } from '@/lib/supabase/client';
 import type { MediaRef } from './types';
-import { VIDEO_MAX_SECONDS } from './quiz';
+import { AUDIO_MAX_SECONDS, VIDEO_MAX_SECONDS } from './quiz';
 import { MEDIA_BUCKET, mediaPrefix } from './prefix';
 
 export { MEDIA_BUCKET, mediaPrefix };
@@ -207,6 +207,33 @@ export async function uploadVideo(userId: string, blob: Blob, meta: { w: number;
   const r = await upload(userId, blob, ext, type.includes('quicktime') ? 'video/quicktime' : type.split(';')[0]);
   const len = Math.min(VIDEO_MAX_SECONDS, Math.max(0.2, meta.end - meta.start));
   return { kind: 'video', ...r, w: meta.w || undefined, h: meta.h || undefined, start: meta.start, end: meta.start + len };
+}
+
+export const AUDIO_MAX_MB = 10;
+const AUDIO_TYPES: Record<string, string> = { 'audio/mpeg': 'mp3', 'audio/mp3': 'mp3', 'audio/mp4': 'm4a', 'audio/x-m4a': 'm4a', 'audio/aac': 'aac', 'audio/ogg': 'ogg', 'audio/wav': 'wav', 'audio/x-wav': 'wav', 'audio/webm': 'weba' };
+
+/** คลิปเสียงในโจทย์ (MP3 M4A OGG WAV) ยาวไม่เกิน AUDIO_MAX_SECONDS */
+export async function uploadAudio(userId: string, file: File): Promise<MediaRef> {
+  const type = (file.type || '').toLowerCase();
+  const ext = AUDIO_TYPES[type];
+  if (!ext) throw new Error('รองรับไฟล์เสียง MP3 M4A OGG หรือ WAV');
+  if (file.size > AUDIO_MAX_MB * 1024 * 1024) throw new Error(`ไฟล์เสียงต้องไม่เกิน ${AUDIO_MAX_MB}MB`);
+  const url = URL.createObjectURL(file);
+  try {
+    const dur = await new Promise<number>((res, rej) => {
+      const a = document.createElement('audio');
+      a.preload = 'metadata';
+      a.onloadedmetadata = () => res(isFinite(a.duration) ? a.duration : 0);
+      a.onerror = () => rej(new Error('เปิดไฟล์เสียงนี้ไม่ได้ ลองไฟล์ MP3'));
+      a.src = url;
+    });
+    if (dur > AUDIO_MAX_SECONDS + 0.5) throw new Error(`คลิปเสียงยาวได้ไม่เกิน ${AUDIO_MAX_SECONDS} วินาที (ไฟล์นี้ ${Math.round(dur)} วินาที)`);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+  const sendType = type === 'audio/mp3' ? 'audio/mpeg' : type;
+  const r = await upload(userId, file, ext, sendType);
+  return { kind: 'audio', ...r };
 }
 
 /** อัปโหลดรูปพื้นหลังห้อง (ย่อใหญ่ขึ้นเพื่อจอโปรเจกเตอร์) */

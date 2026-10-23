@@ -13,7 +13,7 @@ import { hasMembership } from '@/lib/membership';
 import { mediaPrefix } from '@/lib/game-creator/prefix';
 import { cleanBackground } from '@/lib/game-creator/backgrounds';
 import { endlessIndex, publicQuestion, questionOrder, sanitizeQuiz } from '@/lib/game-creator/quiz';
-import { cleanModeSettings, isGameMode, modeById, type GameMode } from '@/lib/game-creator/modes';
+import { cleanModeSettings, isGameMode, isWorldMode, modeById, type GameMode } from '@/lib/game-creator/modes';
 import { cleanGear, type Gear } from '@/lib/game-creator/gear';
 import { cleanMusicSetting } from '@/lib/music-tracks';
 import type { PlayerPublic, PublicQuestion, QuizContent, QuizQuestion, RoomBackground, RoomSettings, RoomStatus } from '@/lib/game-creator/types';
@@ -359,6 +359,7 @@ export interface PlayerState {
     game: GameMode;
     duration: number;
     goal: number;
+    teams: number;
     startedAt: string | null;
     music: string;
     musicPlayers: boolean;
@@ -366,7 +367,7 @@ export interface PlayerState {
   serverNow: number;
   me: PlayerPublic & { rank: number; players: number; pos: number; slipAt: string | null };
   rivals: Rival[];
-  /** ห้องรอ: ทุกคนในห้อง */
+  /** ห้องรอ + โหมดโลกเดียวกันตอนเล่น: ทุกคนในห้อง (เรียงตามเวลาเข้า ใช้แบ่งทีม/สี) */
   roster: RosterEntry[];
   /** จบเกม: 3 อันดับแรก */
   podium: PodiumEntry[];
@@ -398,7 +399,7 @@ export async function playerState(db: SupabaseClient, room: RoomRow, p0: PlayerR
   const done = room.game === 'quiz' ? !!p.finished_at : room.game === 'racing' && !!p.finished_at;
   const showRank = room.status !== 'lobby';
   const ranking = showRank ? rankOf(db, room, p) : Promise.resolve({ rank: 0, players: 0, rivals: [] as Rival[], podium: [] as PodiumEntry[] });
-  const roster = room.status === 'lobby' ? rosterOf(db, room.id) : Promise.resolve([] as RosterEntry[]);
+  const roster = room.status === 'lobby' || (isWorldMode(room.game) && room.status === 'playing') ? rosterOf(db, room.id) : Promise.resolve([] as RosterEntry[]);
   if ((opts.withQuestion ?? true) && room.status === 'playing' && !done) {
     let started = p.q_started_at;
     if (!started && questionAt(room, p, p.q_pos)) {
@@ -429,6 +430,7 @@ export async function playerState(db: SupabaseClient, room: RoomRow, p0: PlayerR
       game: room.game,
       duration: room.settings.duration,
       goal: room.settings.goal,
+      teams: room.settings.teams,
       startedAt: room.started_at,
       music: room.settings.music,
       musicPlayers: room.settings.musicPlayers,

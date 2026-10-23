@@ -1423,3 +1423,32 @@
     animation: none;
   }
 }
+
+/* ---------------- คำถามแบบพิมพ์คำตอบ (หน้าแก้ไข) ---------------- */
+.l5g-ans-edit {
+  margin-top: 14px;
+  padding: 14px;
+}
+.l5g-ans-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  color: #169a72;
+}
+.l5g-ans-row input {
+  flex: 1;
+  min-width: 0;
+  height: 46px;
+  padding: 0 14px;
+  border-radius: 14px;
+  border: 3px solid var(--l5g-ink);
+  background: #fff;
+  color: var(--l5g-ink);
+  font-weight: 800;
+  font-size: 1.05rem;
+  outline: none;
+}
+.l5g-ans-row input:focus {
+  border-color: var(--l5g-mint);
+}

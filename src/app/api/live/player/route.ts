@@ -141,7 +141,8 @@ export async function POST(req: NextRequest) {
   /* ---------- ส่งคำตอบ ---------- */
   if (op === 'answer') {
     const pos = Number(body.pos);
-    const picks = Array.isArray(body.picks) ? body.picks.filter((x): x is string => typeof x === 'string').slice(0, 6) : [];
+    // คำตอบแบบพิมพ์ส่งมาเป็นข้อความใน picks[0] (ตัดความยาวกันข้อมูลใหญ่เกิน)
+    const picks = Array.isArray(body.picks) ? body.picks.filter((x): x is string => typeof x === 'string').slice(0, 6).map((x) => x.slice(0, 120)) : [];
     const doneQuiz = room.game === 'quiz' && !!p.finished_at;
     const doneRace = room.game === 'racing' && !!p.finished_at;
     if (room.status !== 'playing' || doneQuiz || doneRace || pos !== p.q_pos || isTimeUp(room, 2)) {
@@ -236,6 +237,7 @@ export async function POST(req: NextRequest) {
         points,
         // ปิด "เฉลยเมื่อตอบผิด": ตอบผิดจะไม่บอกข้อที่ถูก
         correctIds: correct || room.settings.revealAnswer ? correctIds(q) : [],
+        answer: q.kind === 'text' && (correct || room.settings.revealAnswer) ? q.answers?.[0] : undefined,
         score: me.score,
         streak,
         rank,

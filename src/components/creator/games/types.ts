@@ -1,5 +1,6 @@
 import type { Gear } from '@/lib/game-creator/gear';
 import type { QuizEngine } from '../quiz/QuizRunner';
+import type { WorldInfo } from './worldKit';
 
 /** สิ่งที่ตัวเกม (Café / Tower / Racing) ได้รับจากห้องเล่น */
 export interface GameProps {
@@ -15,4 +16,8 @@ export interface GameProps {
   preview?: boolean;
   /** ออกจากห้อง (แสดงปุ่มตอนเกมจบ) */
   onLeave?: () => void;
+  /** โหมดโลกเดียวกัน (ศึกยึดอาณาจักร / เกาะมหาสมบัติ): ข้อมูลห้องสำหรับเห็นกันสดๆ */
+  world?: WorldInfo;
+  /** คะแนนที่มีอยู่แล้ว (รีเฟรชกลางเกม) */
+  startScore?: number;
 }

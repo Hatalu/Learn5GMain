@@ -28,6 +28,64 @@ export function MineTag({ state }: { state: string }) {
   return <span className="l5g-choice-mine">คำตอบของฉัน</span>;
 }
 
+/** ช่องพิมพ์คำตอบสั้นๆ (คำถามแบบพิมพ์คำตอบ) ใช้ทั้งในเกมและควิซ */
+export function TextAnswer({
+  disabled,
+  big = false,
+  result,
+  onType,
+  onSubmit,
+}: {
+  disabled: boolean;
+  big?: boolean;
+  /** หลังส่ง: ถูกไหม + คำตอบที่ถูก (ถ้าเปิดเฉลย) */
+  result?: { correct: boolean; answer?: string } | null;
+  onType?: (v: string) => void;
+  onSubmit: (v: string) => void;
+}) {
+  const [v, setV] = useState('');
+  const box = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (!disabled) box.current?.focus({ preventScroll: true });
+  }, [disabled]);
+  const send = () => {
+    if (disabled || !v.trim()) return;
+    gsfx.pick();
+    onSubmit(v.trim());
+  };
+  return (
+    <div className="l5g-typed" data-big={big} data-state={result ? (result.correct ? 'ok' : 'no') : 'idle'}>
+      <div className="l5g-typed-row">
+        <input
+          ref={box}
+          value={v}
+          maxLength={60}
+          disabled={disabled}
+          onChange={(e) => {
+            setV(e.target.value);
+            onType?.(e.target.value);
+          }}
+          onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), send())}
+          placeholder="พิมพ์คำตอบ"
+          aria-label="พิมพ์คำตอบ"
+          autoComplete="off"
+          autoCorrect="off"
+          spellCheck={false}
+          enterKeyHint="send"
+        />
+        <button type="button" className="l5g-btn l5g-btn-go" disabled={disabled || !v.trim()} onClick={send}>
+          <Send className="w-4 h-4" /> ส่ง
+        </button>
+      </div>
+      {result && !result.correct && result.answer && (
+        <p className="l5g-typed-ans">
+          คำตอบที่ถูก: <b>{result.answer}</b>
+        </p>
+      )}
+    </div>
+  );
+}
+
 /**
  * ตอบคำถามต่อเนื่องไม่จำกัดจำนวน (ใช้ในโหมดเกม): โหลดข้อถัดไปเอง แสดงผลถูก/ผิดสั้นๆ แล้วแจ้งผลกลับให้ตัวเกมทันที
  * - lockMs ตอบผิดแล้วต้องรอ (สะดุด) ก่อนข้อถัดไป
@@ -158,8 +216,9 @@ export function QuestionPad({
   }
 
   const show = phase === 'feedback' && !!res;
-  const longest = Math.max(...q.choices.map((c) => richLength(c.text)));
+  const longest = Math.max(0, ...q.choices.map((c) => richLength(c.text)));
   const media = q.choices.some((c) => c.media);
+  const typed = q.kind === 'text';
   const one = q.choices.length <= 2 || (longest > 30 && !media);
 
   return (
@@ -173,7 +232,8 @@ export function QuestionPad({
         {q.text.length > 0 && <MathText value={q.text} className="l5g-qp-text" />}
         {q.multi && <span className="l5g-qmulti">เลือกได้มากกว่า 1 ข้อ</span>}
       </div>
-      <div className="l5g-qp-choices" data-one={one}>
+      {typed && <TextAnswer key={q.index} disabled={phase !== 'question'} result={show ? res : null} onSubmit={(t) => submit([t])} />}
+      <div className="l5g-qp-choices" data-one={one} hidden={typed}>
         {q.choices.map((c, i) => {
           const st = choiceStyle(i);
           const picked = picks.includes(c.id);
@@ -223,7 +283,7 @@ export function QuestionPad({
       )}
       {show && (
         <div className="l5g-qp-flash" data-kind={res!.correct ? 'ok' : 'no'}>
-          {res!.correct ? (rewardText ? rewardText(res!) : 'ถูกต้อง!') : lockMs && lockLeft > 0 ? `สะดุด! รอ ${lockLeft}` : res!.correctIds.length ? 'ดูข้อที่ถูกนะ' : 'ยังไม่ถูก ลองข้อต่อไปนะ'}
+          {res!.correct ? (rewardText ? rewardText(res!) : 'ถูกต้อง!') : lockMs && lockLeft > 0 ? `สะดุด! รอ ${lockLeft}` : res!.correctIds.length || res!.answer ? 'ดูคำตอบที่ถูกนะ' : 'ยังไม่ถูก ลองข้อต่อไปนะ'}
         </div>
       )}
       {err && phase === 'question' && <p className="l5g-err text-center">{err}</p>}

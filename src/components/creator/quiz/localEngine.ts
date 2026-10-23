@@ -35,7 +35,7 @@ export function localEngine(content: QuizContent, opts: { shuffleQuestions?: boo
       streak = correct ? streak + 1 : 0;
       score += points;
       pos++;
-      return { correct, timeout, points, correctIds: correctIds(q), score, streak, finished: !opts.endless && pos >= n };
+      return { correct, timeout, points, correctIds: correctIds(q), answer: q.kind === 'text' ? q.answers?.[0] : undefined, score, streak, finished: !opts.endless && pos >= n };
     },
   };
 }

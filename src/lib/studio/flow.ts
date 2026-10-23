@@ -62,7 +62,8 @@ export function cleanFlowHtml(html: string, cleanSrc: SrcCheck): string {
       continue;
     }
     if (m[4] !== undefined) {
-      if (!skip) out.push(m[4].replace(/>/g, '&gt;'));
+      // ช่องว่างไร้ความกว้าง (ตัวช่วยเคอร์เซอร์ตอนตั้งขนาดตัวอักษร) ไม่ต้องเก็บ
+      if (!skip) out.push(m[4].replace(/>/g, '&gt;').replace(/\u200b/g, ''));
       continue;
     }
     if (!m[2]) continue;

@@ -46,7 +46,10 @@ import { MathKeysDialog } from '@/components/creator/math/MathKeys';
 import { WORD_KEYS, comboLabel } from '@/lib/studio/keys';
 import { FONTS } from './fonts';
 
-export const SIZES = [12, 14, 16, 18, 21, 24, 28, 32, 40, 48, 64];
+/** ขนาดตัวอักษรหน่วย pt เหมือนรายการใน Word (ตัวปกติของเอกสาร = 16pt แบบ TH Sarabun) */
+export const SIZES = [8, 9, 10, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28, 32, 36, 40, 48, 60, 72];
+export const ptToPx = (pt: number) => Math.round(((pt * 4) / 3) * 100) / 100;
+export const pxToPt = (px: number) => Math.round(px * 0.75 * 2) / 2;
 export const SYMBOLS = ['°', '±', '×', '÷', '≤', '≥', '≠', '≈', '≡', 'π', '√', '∞', '∠', '△', '⊥', '∥', '∴', '∵', '→', '⇒', '⇔', '∈', '∉', '⊂', '∪', '∩', '∅', 'ℝ', 'α', 'β', 'θ', 'Δ', 'Σ', 'μ', 'σ', '½', '¼', '¾', '²', '³'];
 const MORE_SYMBOLS = ['←', '↑', '↓', '↔', '⇐', '∀', '∃', '¬', '∧', '∨', '⊆', '⊇', '∑', '∏', '∫', '∂', '∇', '∝', '‰', '℃', '℉', 'Ω', 'λ', 'φ', 'ω', 'γ', 'δ', 'ε', '⅓', '⅔', '⅛', '¹', '⁴', '•', '◦', '▪', '★', '☆', '✓', '✗', '□', '■', '○', '●', '◇', '◆', '♀', '♂', '“', '”', '…', '–', '—', '฿', '§', '¶', '©'];
 
@@ -100,7 +103,8 @@ export type TableOp = 'rowAbove' | 'rowBelow' | 'colLeft' | 'colRight' | 'delRow
 export interface WordApi {
   cmd: (c: string, v?: string) => void;
   insertHtml: (h: string) => void;
-  setSize: (px: number) => void;
+  /** หน่วย pt */
+  setSize: (pt: number) => void;
   bumpSize: (d: 1 | -1, step: boolean) => void;
   setLine: (v: string) => void;
   indent: (d: 1 | -1) => void;
@@ -218,7 +222,7 @@ function HomePanel({ api }: { api: WordApi }) {
           </Tool>
         </div>
       </Sec>
-      <Sec title="ขนาดตัวอักษร" note="คลุมข้อความก่อน แล้วเลือกขนาด">
+      <Sec title="ขนาดตัวอักษร (pt แบบ Word)" note="คลุมข้อความเพื่อเปลี่ยน หรือเลือกก่อนพิมพ์ ตัวที่พิมพ์ต่อจะใช้ขนาดนี้">
         <div className="st-chips">
           {SIZES.map((z) => (
             <button key={z} type="button" onMouseDown={noFocus} onClick={() => api.setSize(z)}>

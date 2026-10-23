@@ -25,6 +25,13 @@ import {
   ZoomOut,
 } from 'lucide-react';
 import {
+  SHAPE_KINDS,
+  cleanShape,
+  defaultShape,
+  shapeFacts,
+  shapeText,
+  type GShape,
+  type ShapeKind,
   GRAPH_PRESETS,
   GRAPH_TEMPLATES,
   GTHEMES,
@@ -416,7 +423,7 @@ export function GraphEditor({ initial, onDone, onClose, editing }: { initial: Gr
                         <input
                           className="ge-eq"
                           value={o.text}
-                          onChange={(e) => setSpec((s) => syncParams({ ...s, objs: s.objs.map((x) => (x.id === o.id ? { ...x, text: e.target.value.slice(0, 200) } : x)) }), false)}
+                          onChange={(e) => setSpec((s) => syncParams({ ...s, objs: s.objs.map((x) => (x.id === o.id ? { ...x, text: e.target.value.slice(0, 200), shape: undefined } : x)) }), false)}
                           onFocus={() => past.current.push(specRef.current)}
                           placeholder="เช่น y = x^2 หรือ x^2 + y^2 = 9"
                           aria-label={`สมการที่ ${i + 1}`}
@@ -430,6 +437,35 @@ export function GraphEditor({ initial, onDone, onClose, editing }: { initial: Gr
                         </button>
                       </div>
                       {!r.ok && o.text.trim() && <p className="ge-err">{r.error}</p>}
+                      <div className="ge-shape-pick" onClick={(e) => e.stopPropagation()}>
+                        <span>รูปทรง</span>
+                        <select
+                          value={o.shape?.k ?? ''}
+                          onChange={(e) => {
+                            const k = e.target.value as ShapeKind | '';
+                            const sh = k ? defaultShape(k) : undefined;
+                            setSpec((s2) => syncParams({ ...s2, objs: s2.objs.map((x) => (x.id === o.id ? { ...x, shape: sh, text: sh ? shapeText(sh) : x.kind === 'expr' ? x.text : '' } : x)) as GObj[] }));
+                            setSel(o.id);
+                          }}
+                          aria-label="ปรับแบบรูปทรงเฉพาะ"
+                        >
+                          <option value="">สมการพิมพ์เอง</option>
+                          {SHAPE_KINDS.map((k) => (
+                            <option key={k.k} value={k.k}>
+                              {k.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      {o.shape && (
+                        <ShapeKnobs
+                          s={o.shape}
+                          onChange={(sh, push = true) => {
+                            const c = cleanShape(sh)!;
+                            patch(o.id, { shape: c, text: shapeText(c) } as Partial<GObj>, push);
+                          }}
+                        />
+                      )}
                       {sel === o.id && (
                         <div className="ge-more">
                           <Row label="เส้น">
@@ -483,7 +519,7 @@ export function GraphEditor({ initial, onDone, onClose, editing }: { initial: Gr
                 <p className="ge-h mt-4">สมการสำเร็จรูป</p>
                 <div className="ge-presets">
                   {GRAPH_PRESETS.map((p) => (
-                    <button key={p.label} type="button" onClick={() => add(mkExpr(p.text, nextColor(exprs.length)))}>
+                    <button key={p.label} type="button" onClick={() => add(mkExpr(p.text, nextColor(exprs.length), p.shape ? { shape: defaultShape(p.shape), text: shapeText(defaultShape(p.shape)) } : {}))}>
                       {p.label}
                     </button>
                   ))}
@@ -650,6 +686,77 @@ export function GraphEditor({ initial, onDone, onClose, editing }: { initial: Gr
 }
 
 /* ---------------------------------------------------------------- ชิ้นส่วนฟอร์ม */
+
+/** แถบปรับเฉพาะทางของรูปทรง (รัศมี แกนเอก แกนโท จุดยอด ความชัน ...) + ค่าที่คำนวณได้ */
+function ShapeKnobs({ s, onChange }: { s: GShape; onChange: (s: GShape, push?: boolean) => void }) {
+  const K = ({ name, label, value, min, max, step = 0.1 }: { name: keyof GShape; label: string; value: number; min: number; max: number; step?: number }) => (
+    <div className="ge-param ge-knob">
+      <b title={label}>{label}</b>
+      <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange({ ...s, [name]: Number(e.target.value) }, false)} aria-label={label} />
+      <NumIn value={value} onChange={(v) => v !== null && onChange({ ...s, [name]: Math.min(max, Math.max(min, v)) })} />
+    </div>
+  );
+  const center = (what: string) => (
+    <>
+      <K name="h" label={`${what} x`} value={s.h} min={-20} max={20} />
+      <K name="v" label={`${what} y`} value={s.v} min={-20} max={20} />
+    </>
+  );
+  const flip = (a: string, b: string) => (
+    <div className="ge-knob-flip" role="radiogroup">
+      <button type="button" data-on={!s.vert} onClick={() => onChange({ ...s, vert: false })}>
+        {a}
+      </button>
+      <button type="button" data-on={s.vert} onClick={() => onChange({ ...s, vert: true })}>
+        {b}
+      </button>
+    </div>
+  );
+  return (
+    <div className="ge-params ge-knobs" onClick={(e) => e.stopPropagation()}>
+      <p className="ge-h">ปรับ{SHAPE_KINDS.find((x) => x.k === s.k)?.label}</p>
+      {s.k === 'line' && (
+        <>
+          <K name="a" label="ความชัน" value={s.a} min={-10} max={10} />
+          <K name="b" label="ตัดแกน y" value={s.b} min={-20} max={20} />
+        </>
+      )}
+      {s.k === 'circle' && (
+        <>
+          {center('ศูนย์กลาง')}
+          <K name="r" label="รัศมี" value={s.r} min={0.1} max={20} />
+        </>
+      )}
+      {s.k === 'ellipse' && (
+        <>
+          {flip('แกนเอกแนวนอน', 'แกนเอกแนวตั้ง')}
+          {center('ศูนย์กลาง')}
+          <K name="a" label="ครึ่งแกนเอก" value={s.a} min={0.1} max={20} />
+          <K name="b" label="ครึ่งแกนโท" value={Math.min(s.b, s.a)} min={0.1} max={s.a} />
+        </>
+      )}
+      {s.k === 'hyperbola' && (
+        <>
+          {flip('เปิดซ้าย-ขวา', 'เปิดบน-ล่าง')}
+          {center('ศูนย์กลาง')}
+          <K name="a" label="a (ครึ่งแกนตามขวาง)" value={s.a} min={0.1} max={20} />
+          <K name="b" label="b (ครึ่งแกนสังยุค)" value={s.b} min={0.1} max={20} />
+        </>
+      )}
+      {(s.k === 'parabola' || s.k === 'parabolaX') && (
+        <>
+          {center('จุดยอด')}
+          <K name="a" label={s.k === 'parabola' ? 'a (ลบ = คว่ำ)' : 'a (ลบ = เปิดซ้าย)'} value={s.a} min={-5} max={5} step={0.05} />
+        </>
+      )}
+      <ul className="ge-facts">
+        {shapeFacts(s).map((f) => (
+          <li key={f}>{f}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (

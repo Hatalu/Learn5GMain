@@ -17,7 +17,9 @@ import {
   FolderHeart,
   GripVertical,
   ImagePlus,
+  Keyboard,
   Loader2,
+  Music,
   Play,
   Plus,
   Rocket,
@@ -28,6 +30,9 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import type { MediaRef, PointsMode, QuizChoice, QuizContent, QuizQuestion, Rich } from '@/lib/game-creator/types';
 import {
+  ANSWER_CHARS,
+  ANSWER_MAX,
+  VIDEO_MAX_SECONDS,
   LIMITS,
   TIME_OPTIONS,
   choiceFilled,
@@ -44,7 +49,7 @@ import {
   timeLabel,
   uid,
 } from '@/lib/game-creator/quiz';
-import { mediaPrefix, probeVideo, uploadImage, type VideoProbe } from '@/lib/game-creator/media';
+import { mediaPrefix, probeVideo, uploadAudio, uploadImage, type VideoProbe } from '@/lib/game-creator/media';
 import { gsfx } from '@/lib/game-creator/gsound';
 import { UsageMeter } from '../UsageMeter';
 import { RichInput, type RichInputHandle } from '../math/RichInput';
@@ -61,6 +66,8 @@ import { BrawlGame } from '../games/BrawlGame';
 import { releaseMusic, setMusic } from '@/lib/music';
 import { MODE_MUSIC } from '@/lib/music-tracks';
 import { FishGame } from '../games/FishGame';
+import { TurfGame } from '../games/TurfGame';
+import { TreasureGame } from '../games/TreasureGame';
 import { ModePicker, ModeSteps } from '../OpenGameModal';
 import { modeById, modeQuiz, type GameMode } from '@/lib/game-creator/modes';
 import { localEngine } from './localEngine';
@@ -74,6 +81,41 @@ interface Props {
   gameId: string | null;
   userId: string;
   username: string;
+}
+
+/** คำตอบที่ยอมรับของข้อพิมพ์คำตอบ (ใส่ได้หลายแบบ เช่น 12 / สิบสอง) */
+function AnswersEdit({ answers, onChange }: { answers: string[]; onChange: (a: string[]) => void }) {
+  const list = answers.length ? answers : [''];
+  return (
+    <div className="l5g-card l5g-ans-edit">
+      <div className="l5g-choice-head">
+        <b>คำตอบที่ถูก</b>
+        <span className="text-sm font-semibold opacity-80">ผู้เล่นพิมพ์ตอบ ไม่สนตัวพิมพ์ใหญ่-เล็ก ช่องว่าง และเลขไทย/อารบิก</span>
+      </div>
+      {list.map((a, i) => (
+        <div key={i} className="l5g-ans-row">
+          <Check className="w-5 h-5 shrink-0" strokeWidth={4} />
+          <input
+            value={a}
+            maxLength={ANSWER_CHARS}
+            onChange={(e) => onChange(list.map((x, j) => (j === i ? e.target.value : x)))}
+            placeholder={i ? 'คำตอบแบบอื่นที่ยอมรับ (ไม่บังคับ)' : 'เช่น 12 หรือ สิบสอง'}
+            aria-label={`คำตอบที่ถูกแบบที่ ${i + 1}`}
+          />
+          {list.length > 1 && (
+            <button type="button" className="l5g-tool l5g-tool-sm l5g-tool-del" onClick={() => onChange(list.filter((_, j) => j !== i))} aria-label="ลบคำตอบนี้">
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      ))}
+      {list.length < ANSWER_MAX && (
+        <button type="button" className="l5g-linkbtn" onClick={() => onChange([...list, ''])}>
+          + เพิ่มคำตอบแบบอื่น
+        </button>
+      )}
+    </div>
+  );
 }
 
 function FxButton({ onClick, small }: { onClick: () => void; small?: boolean }) {
@@ -120,6 +162,7 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
   useEffect(() => () => releaseMusic('room'), []);
   const imgInput = useRef<HTMLInputElement>(null);
   const vidInput = useRef<HTMLInputElement>(null);
+  const audInput = useRef<HTMLInputElement>(null);
   const pickTarget = useRef<Target | null>(null);
   const qInput = useRef<RichInputHandle>(null);
   const cInputs = useRef<Record<string, RichInputHandle | null>>({});
@@ -286,18 +329,25 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
   const setMulti = (multi: boolean) => {
     if (!cur) return;
     gsfx.tap();
-    let choices = cur.choices;
+    let choices = cur.choices.length >= LIMITS.choicesMin ? cur.choices : [newChoice(true), newChoice(), newChoice(), newChoice()];
     if (!multi) {
       const first = choices.findIndex((c) => c.correct);
       choices = choices.map((c, i) => ({ ...c, correct: i === (first < 0 ? 0 : first) }));
     }
-    patchQ(cur.id, { multi, choices });
+    patchQ(cur.id, { multi, choices, kind: undefined });
   };
   const makeTrueFalse = () => {
     if (!cur) return;
     gsfx.pick();
-    patchQ(cur.id, { multi: false, choices: [newChoice(true, 'ถูก'), newChoice(false, 'ผิด')] });
+    patchQ(cur.id, { multi: false, choices: [newChoice(true, 'ถูก'), newChoice(false, 'ผิด')], kind: undefined });
   };
+  /** พิมพ์คำตอบสั้นๆ (ไม่มีตัวเลือก) */
+  const makeTyped = () => {
+    if (!cur) return;
+    gsfx.pick();
+    patchQ(cur.id, { kind: 'text', multi: false, answers: cur.answers?.length ? cur.answers : [''] });
+  };
+  const setAnswers = (answers: string[]) => cur && patchQ(cur.id, { answers });
   const timeAll = () => {
     if (!cur) return;
     gsfx.streak();
@@ -327,6 +377,26 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
   const pickImage = (t: Target) => {
     pickTarget.current = t;
     imgInput.current?.click();
+  };
+  const pickAudio = (t: Target) => {
+    pickTarget.current = t;
+    audInput.current?.click();
+  };
+  const onAudio = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    const t = pickTarget.current;
+    if (!f || !t) return;
+    setMediaErr('');
+    setUploading(tKey(t));
+    try {
+      setMedia(t, await uploadAudio(userId, f));
+      gsfx.join();
+    } catch (err) {
+      setMediaErr(err instanceof Error ? err.message : 'อัปโหลดไม่สำเร็จ');
+    } finally {
+      setUploading(null);
+    }
   };
   const pickVideo = (t: Target) => {
     pickTarget.current = t;
@@ -469,6 +539,7 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
     <div className="l5g-editor">
       <input ref={imgInput} type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden onChange={onImage} />
       <input ref={vidInput} type="file" accept="video/mp4,video/webm,video/quicktime,video/*" hidden onChange={onVideo} />
+      <input ref={audInput} type="file" accept="audio/mpeg,audio/mp4,audio/x-m4a,audio/aac,audio/ogg,audio/wav,audio/webm,.mp3,.m4a,.wav,.ogg" hidden onChange={onAudio} />
 
       {/* ---------- แถบบน ---------- */}
       <header className="l5g-ebar">
@@ -604,6 +675,8 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
                       {q.media.kind === 'image' ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={q.media.url} alt="" />
+                      ) : q.media.kind === 'audio' ? (
+                        <Music className="w-4 h-4" />
                       ) : (
                         <Clapperboard className="w-4 h-4" />
                       )}
@@ -635,7 +708,11 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
                 </button>
                 <button type="button" className="l5g-tool" onClick={() => pickVideo({ q: cur.id })} disabled={!!uploading}>
                   <Clapperboard className="w-5 h-5" />
-                  <span>คลิป 5 วิ</span>
+                  <span>คลิป {VIDEO_MAX_SECONDS} วิ</span>
+                </button>
+                <button type="button" className="l5g-tool" onClick={() => pickAudio({ q: cur.id })} disabled={!!uploading} title="คลิปเสียง ไม่เกิน 1 นาที (MP3 M4A WAV)">
+                  <Music className="w-5 h-5" />
+                  <span>เสียง</span>
                 </button>
               </div>
 
@@ -664,6 +741,7 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
                           <X className="w-4 h-4" strokeWidth={3} />
                         </button>
                         {cur.media.kind === 'video' && <span className="l5g-media-tag">คลิป {Math.round(((cur.media.end ?? 5) - (cur.media.start ?? 0)) * 10) / 10} วิ</span>}
+                        {cur.media.kind === 'audio' && <span className="l5g-media-tag">คลิปเสียง</span>}
                       </>
                     )
                   )}
@@ -676,7 +754,11 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
               )}
             </div>
 
+            {cur.kind === 'text' && <AnswersEdit answers={cur.answers || ['']} onChange={setAnswers} />}
+
             {/* ตัวเลือก */}
+            {cur.kind !== 'text' && (
+            <>
             <div className="l5g-choice-head">
               <b>ตัวเลือก</b>
               <span className="text-sm font-semibold opacity-80">{cur.multi ? 'แตะวงกลมเพื่อเลือกข้อที่ถูก (ได้หลายข้อ)' : 'แตะวงกลมเพื่อเลือกข้อที่ถูก'}</span>
@@ -708,7 +790,7 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
                       <button type="button" className="l5g-tool l5g-tool-sm" onClick={() => pickImage({ q: cur.id, c: c.id })} disabled={!!uploading} title="ใส่รูป">
                         <ImagePlus className="w-4 h-4" />
                       </button>
-                      <button type="button" className="l5g-tool l5g-tool-sm" onClick={() => pickVideo({ q: cur.id, c: c.id })} disabled={!!uploading} title="ใส่คลิป 5 วินาที">
+                      <button type="button" className="l5g-tool l5g-tool-sm" onClick={() => pickVideo({ q: cur.id, c: c.id })} disabled={!!uploading} title="ใส่คลิป">
                         <Clapperboard className="w-4 h-4" />
                       </button>
                       <button type="button" className="l5g-tool l5g-tool-sm l5g-tool-del" onClick={() => removeChoice(c.id)} disabled={cur.choices.length <= LIMITS.choicesMin} title="ลบตัวเลือก">
@@ -755,6 +837,8 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
                 </button>
               )}
             </div>
+            </>
+            )}
 
             {qIssues.length > 0 && (
               <div className="l5g-issues">
@@ -776,14 +860,17 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
 
               <p className="l5g-qset-label">แบบคำตอบ</p>
               <div className="l5g-chips">
-                <button type="button" className="l5g-chipbtn" data-on={!cur.multi} onClick={() => setMulti(false)}>
+                <button type="button" className="l5g-chipbtn" data-on={!cur.multi && cur.kind !== 'text'} onClick={() => setMulti(false)}>
                   ตอบข้อเดียว
                 </button>
-                <button type="button" className="l5g-chipbtn" data-on={cur.multi} onClick={() => setMulti(true)}>
+                <button type="button" className="l5g-chipbtn" data-on={cur.multi && cur.kind !== 'text'} onClick={() => setMulti(true)}>
                   ตอบได้หลายข้อ
                 </button>
                 <button type="button" className="l5g-chipbtn" onClick={makeTrueFalse}>
                   ถูก / ผิด
+                </button>
+                <button type="button" className="l5g-chipbtn" data-on={cur.kind === 'text'} onClick={makeTyped}>
+                  <Keyboard className="w-4 h-4 inline -mt-0.5" /> พิมพ์คำตอบ
                 </button>
               </div>
 
@@ -971,6 +1058,10 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
               <TowerGame key={preview.key} engine={preview.engine} deadline={preview.deadline} goal={0} me={{ nickname: 'ทดลอง', avatar: 0 }} preview />
             ) : preview.mode === 'brawl' ? (
               <BrawlGame key={preview.key} engine={preview.engine} deadline={preview.deadline} goal={0} me={{ nickname: 'ทดลอง', avatar: 5 }} preview />
+            ) : preview.mode === 'turf' ? (
+              <TurfGame key={preview.key} engine={preview.engine} deadline={preview.deadline} goal={0} me={{ nickname: 'ทดลอง', avatar: 2 }} preview />
+            ) : preview.mode === 'treasure' ? (
+              <TreasureGame key={preview.key} engine={preview.engine} deadline={preview.deadline} goal={0} me={{ nickname: 'ทดลอง', avatar: 9 }} preview />
             ) : preview.mode === 'fishing' ? (
               <FishGame key={preview.key} engine={preview.engine} deadline={preview.deadline} goal={0} me={{ nickname: 'ทดลอง', avatar: 7 }} preview />
             ) : preview.mode === 'racing' ? (

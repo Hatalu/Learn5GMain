@@ -15,6 +15,15 @@ const EXT: Record<string, string> = {
   'video/mp4': 'mp4',
   'video/webm': 'webm',
   'video/quicktime': 'mov',
+  // คลิปเสียงในโจทย์ (bucket ต้องอนุญาตด้วย: migration 025)
+  'audio/mpeg': 'mp3',
+  'audio/mp4': 'm4a',
+  'audio/x-m4a': 'm4a',
+  'audio/aac': 'aac',
+  'audio/ogg': 'ogg',
+  'audio/wav': 'wav',
+  'audio/x-wav': 'wav',
+  'audio/webm': 'weba',
 };
 /** ขนาดสูงสุดต่อไฟล์ (ตรงกับ bucket game-media 25MB) */
 const MAX_FILE = 25 * 1024 * 1024;

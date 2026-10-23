@@ -6,7 +6,10 @@
 import type { QuizContent } from './types';
 import { playableQuiz } from './quiz';
 
-export type GameMode = 'quiz' | 'cafe' | 'tower' | 'racing' | 'brawl' | 'fishing';
+export type GameMode = 'quiz' | 'cafe' | 'tower' | 'racing' | 'brawl' | 'fishing' | 'turf' | 'treasure';
+
+/** โหมดโลกเดียวกัน: ทุกคนเดินในแผนที่เดียว เห็นกันสดๆ (ส่งตำแหน่งผ่าน Realtime) */
+export const isWorldMode = (g: GameMode) => g === 'turf' || g === 'treasure';
 
 export interface ModeInfo {
   id: GameMode;
@@ -27,6 +30,8 @@ export interface ModeInfo {
   goals?: number[]; // จำนวนก้าวถึงเส้นชัย (Racing)
   defaultDuration?: number;
   defaultGoal?: number;
+  /** แบ่งทีมได้ (0 = ต่างคนต่างเล่น) */
+  teams?: number[];
   scoreLabel: string;
 }
 
@@ -125,6 +130,39 @@ export const MODES: ModeInfo[] = [
     defaultDuration: 300,
     scoreLabel: 'น้ำหนักปลา (ปอนด์)',
   },
+  {
+    id: 'turf',
+    name: 'ศึกยึดอาณาจักร',
+    genre: 'ระบายสียึดพื้นที่ (Turf Wars)',
+    tagline: 'เดินระบายสียึดแผนที่ หมึกหมดวิ่งเข้าป้อม ตอบถูกเติมหมึกพร้อมไอเท็ม',
+    steps: ['ทุกคนอยู่ในแผนที่เดียวกัน เดินไปตรงไหนพื้นเป็นสีของเรา', 'เดินระบายใช้หมึก หมึกหมดวิ่งเข้าป้อมเติมหมึก (ในป้อมไม่มีใครโจมตีได้)', 'ในป้อมตอบคำถาม ถูก = หมึกเต็มถัง + ไอเท็ม รองเท้าสปีด ระเบิดสี โล่ล็อกสี', 'หมดเวลา ใครยึดพื้นที่ได้มากสุดชนะ'],
+    color: '#ff4fa3',
+    dark: '#c21f72',
+    soft: '#ffe0f0',
+    minQuestions: 3,
+    noVideo: false,
+    endless: true,
+    durations: [180, 300, 420, 600],
+    defaultDuration: 300,
+    teams: [0, 2, 3, 4],
+    scoreLabel: 'ช่องที่ยึดได้',
+  },
+  {
+    id: 'treasure',
+    name: 'เกาะมหาสมบัติโจรสลัด',
+    genre: 'สำรวจล่าสมบัติ (Treasure Hunt)',
+    tagline: 'วิ่งหาหีบสมบัติบนเกาะ ถอดรหัสให้ถูก ได้เพชรและอาวุธโจรสลัด',
+    steps: ['เดินสำรวจเกาะ เห็นเพื่อนวิ่งแข่งหาหีบสมบัติ', 'ถึงหีบแล้วกดสำรวจ ตอบคำถามเพื่อถอดรหัส', 'ถูก = เพชรเพียบ + อาวุธ ปืนใหญ่น้ำแข็ง ตะขอดึงตัว หรือซื้อสัตว์เลี้ยงช่วยเก็บเพชร', 'ผิด = หีบระเบิดมึนงง เพื่อนข้างๆ แย่งตอบต่อได้ทันที!'],
+    color: '#e0a21b',
+    dark: '#9c6b00',
+    soft: '#fff2cc',
+    minQuestions: 3,
+    noVideo: false,
+    endless: true,
+    durations: [180, 300, 420, 600],
+    defaultDuration: 300,
+    scoreLabel: 'เพชร',
+  },
 ];
 
 export const modeById = (id: unknown): ModeInfo => MODES.find((m) => m.id === id) || MODES[0];
@@ -160,12 +198,13 @@ export function modeFit(content: QuizContent, mode: GameMode): ModeFit {
   return { ok: usable >= m.minQuestions, usable, skippedVideo, rules };
 }
 
-export function cleanModeSettings(mode: GameMode, input: unknown): { duration: number; goal: number } {
+export function cleanModeSettings(mode: GameMode, input: unknown): { duration: number; goal: number; teams: number } {
   const m = modeById(mode);
   const s = input && typeof input === 'object' ? (input as Record<string, unknown>) : {};
   const duration = m.durations?.includes(s.duration as number) ? (s.duration as number) : m.defaultDuration || 0;
   const goal = m.goals?.includes(s.goal as number) ? (s.goal as number) : m.defaultGoal || 0;
-  return { duration, goal };
+  const teams = m.teams?.includes(s.teams as number) ? (s.teams as number) : 0;
+  return { duration, goal, teams };
 }
 
 /* ------------------------------ เพดานคะแนน (กันโกงฝั่งเบราว์เซอร์) ------------------------------ */
@@ -177,8 +216,17 @@ export function scoreCap(mode: GameMode, correct: number): number {
   if (mode === 'brawl') return correct * 700 + 3000;
   // ปลาหนักสุด ~40,000 ปอนด์ x แม่เหล็ก 2 เท่า ต่อเหยื่อ 1 ชิ้น (เหยื่อแถมจากหีบสมบัติเผื่อไว้)
   if (mode === 'fishing') return correct * 90000 + 2000;
+  // ถังหมึก 100 ช่อง/ข้อถูก + ระเบิดสี ~50 ช่อง + หมึกเริ่มต้น (ช่องที่ยึดได้นับได้ไม่เกินแผนที่อยู่แล้ว)
+  if (mode === 'turf') return Math.min(TURF_CELLS, correct * 160 + 120);
+  // หีบ 1 ใบ/ข้อถูก สูงสุด 60 เพชร + เพชรที่เดินเก็บตามพื้นเกาะ
+  if (mode === 'treasure') return correct * 90 + 600;
   return Number.MAX_SAFE_INTEGER;
 }
+
+/** จำนวนช่องในแผนที่ศึกยึดอาณาจักร (ต้องตรงกับตัวเกม) */
+export const TURF_W = 46;
+export const TURF_H = 30;
+export const TURF_CELLS = TURF_W * TURF_H;
 
 export function fmtDuration(sec: number): string {
   return sec % 60 ? `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')} นาที` : `${sec / 60} นาที`;

@@ -6,6 +6,10 @@
  */
 import type { MediaRef, PointsMode, PublicQuestion, QuizChoice, QuizContent, QuizQuestion, Rich, Seg } from './types';
 
+/** คำตอบแบบพิมพ์: จำนวน/ความยาวสูงสุด */
+export const ANSWER_MAX = 6;
+export const ANSWER_CHARS = 60;
+
 export const LIMITS = {
   questions: 100,
   choicesMin: 2,
@@ -17,7 +21,10 @@ export const LIMITS = {
   title: 80,
 } as const;
 
-export const VIDEO_MAX_SECONDS = 5;
+/** คลิปในโจทย์ยาวได้ไม่เกิน 30 วินาที (ตัดในเครื่องตอนอัปโหลด) */
+export const VIDEO_MAX_SECONDS = 30;
+/** คลิปเสียงยาวได้ไม่เกิน 60 วินาที */
+export const AUDIO_MAX_SECONDS = 60;
 export const TIME_OPTIONS = [5, 10, 15, 20, 30, 45, 60, 90, 120, 0] as const;
 export const DEFAULT_TIME = 20;
 /** เวลาเผื่อเน็ตช้าหลังหมดเวลา (มิลลิวินาที) */
@@ -108,7 +115,7 @@ function cleanRich(input: unknown, maxChars: number): Rich {
 function cleanMedia(input: unknown, mediaPrefix: string): MediaRef | null {
   if (!input || typeof input !== 'object') return null;
   const m = input as Partial<MediaRef>;
-  if (m.kind !== 'image' && m.kind !== 'video') return null;
+  if (m.kind !== 'image' && m.kind !== 'video' && m.kind !== 'audio') return null;
   if (typeof m.url !== 'string' || typeof m.path !== 'string') return null;
   if (m.url.length > 600 || m.path.length > 300) return null;
   if (!mediaPrefix || !m.url.startsWith(mediaPrefix)) return null;
@@ -180,9 +187,45 @@ export function sanitizeQuiz(input: unknown, mediaPrefix: string): QuizContent {
     const points: PointsMode = q.points === 0 || q.points === 2 ? q.points : 1;
     let multi = q.multi === true;
     if (!multi && choices.filter((c) => c.correct).length > 1) multi = true;
-    questions.push({ id, text: cleanRich(q.text, LIMITS.questionChars), media: cleanMedia(q.media, mediaPrefix), choices, multi, time, points });
+    const media = cleanMedia(q.media, mediaPrefix);
+    if (q.kind === 'text') {
+      const answers = cleanAnswers(q.answers);
+      questions.push({ id, text: cleanRich(q.text, LIMITS.questionChars), media, choices: [], multi: false, time, points, kind: 'text', answers });
+      continue;
+    }
+    // ตัวเลือกมีได้แต่รูป/คลิป (เสียงใส่ในตัวเลือกไม่ได้)
+    for (const c of choices) if (c.media?.kind === 'audio') c.media = null;
+    questions.push({ id, text: cleanRich(q.text, LIMITS.questionChars), media, choices, multi, time, points });
   }
   return { v: 1, questions };
+}
+
+function cleanAnswers(x: unknown): string[] {
+  if (!Array.isArray(x)) return [];
+  const out: string[] = [];
+  for (const a of x.slice(0, ANSWER_MAX)) {
+    if (typeof a !== 'string') continue;
+    const v = a.replace(CTRL, '').replace(/\s+/g, ' ').trim().slice(0, ANSWER_CHARS);
+    if (v && !out.some((o) => normAnswer(o) === normAnswer(v))) out.push(v);
+  }
+  return out;
+}
+
+/** เทียบคำตอบแบบพิมพ์: ไม่สนตัวพิมพ์ใหญ่เล็ก ช่องว่าง จุดท้าย และเลขไทย/อารบิก */
+export function normAnswer(s: string): string {
+  return s
+    .normalize('NFC')
+    .replace(/[\u0E50-\u0E59]/g, (d) => String(d.charCodeAt(0) - 0x0e50))
+    .toLowerCase()
+    .replace(/[\s\u200b]+/g, '')
+    .replace(/[.,!?。]+$/, '');
+}
+
+export const isTextQ = (q: Pick<QuizQuestion, 'kind'>) => q.kind === 'text';
+
+/** ตั้งเป็นคำถามถูก-ผิด (ตัวเลือก 2 ข้อ) */
+export function trueFalseChoices(correctTrue = true): QuizChoice[] {
+  return [newChoice(correctTrue, 'ถูก'), newChoice(!correctTrue, 'ผิด')];
 }
 
 export function cleanTitle(s: unknown): string {
@@ -203,6 +246,10 @@ export function quizIssues(content: QuizContent): Issue[] {
   if (!content.questions.length) out.push({ q: -1, msg: 'ยังไม่มีคำถามเลย' });
   content.questions.forEach((q, i) => {
     if (richIsEmpty(q.text) && !q.media) out.push({ q: i, msg: 'ยังไม่ได้ใส่โจทย์' });
+    if (isTextQ(q)) {
+      if (!q.answers?.some((a) => a.trim())) out.push({ q: i, msg: 'ยังไม่ได้ใส่คำตอบที่ถูก' });
+      return;
+    }
     const filled = q.choices.filter(choiceFilled);
     if (filled.length < LIMITS.choicesMin) out.push({ q: i, msg: 'ต้องมีตัวเลือกอย่างน้อย 2 ข้อ' });
     if (q.choices.some((c) => !choiceFilled(c))) out.push({ q: i, msg: 'มีตัวเลือกที่ยังว่าง' });
@@ -215,7 +262,7 @@ export function quizIssues(content: QuizContent): Issue[] {
 export function playableQuiz(content: QuizContent): QuizContent {
   const questions = content.questions
     .map((q) => ({ ...q, choices: q.choices.filter(choiceFilled) }))
-    .filter((q) => (!richIsEmpty(q.text) || q.media) && q.choices.length >= LIMITS.choicesMin && q.choices.some((c) => c.correct));
+    .filter((q) => (!richIsEmpty(q.text) || q.media) && (isTextQ(q) ? !!q.answers?.some((a) => a.trim()) : q.choices.length >= LIMITS.choicesMin && q.choices.some((c) => c.correct)));
   return { v: 1, questions };
 }
 
@@ -308,6 +355,7 @@ export function publicQuestion(
     multi: q.multi,
     time: q.time,
     points: q.points,
+    ...(isTextQ(q) ? { kind: 'text' as const } : {}),
     elapsedMs: Math.max(0, Math.round(opts.elapsedMs)),
   };
 }
@@ -318,6 +366,10 @@ export function correctIds(q: QuizQuestion): string[] {
 
 /** ถูก = เลือกครบทุกข้อที่ถูกและไม่เลือกข้อผิดเลย */
 export function checkAnswer(q: QuizQuestion, picks: string[]): boolean {
+  if (isTextQ(q)) {
+    const got = normAnswer(String(picks[0] || '').slice(0, ANSWER_CHARS * 2));
+    return !!got && (q.answers || []).some((a) => normAnswer(a) === got);
+  }
   const want = new Set(correctIds(q));
   const got = new Set(picks.filter((p) => q.choices.some((c) => c.id === p)));
   if (!want.size || want.size !== got.size) return false;

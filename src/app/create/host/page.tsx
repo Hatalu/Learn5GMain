@@ -91,6 +91,8 @@ function boardSub(game: GameMode, p: PlayerPublic) {
   if (game === 'racing') return `ตอบถูก ${p.correct} ข้อ`;
   if (game === 'brawl') return `เลเวล ${p.stats.level || 1} · ปราบ ${p.stats.kills || 0} ตัว`;
   if (game === 'fishing') return `ได้ปลา ${p.stats.fish || 0} ตัว · ตอบถูก ${p.correct}`;
+  if (game === 'turf') return `ไอเท็ม ${p.stats.items || 0} ชิ้น · ตอบถูก ${p.correct}`;
+  if (game === 'treasure') return `เปิดหีบ ${p.stats.chests || 0} ใบ · ตอบถูก ${p.correct}`;
   return '';
 }
 

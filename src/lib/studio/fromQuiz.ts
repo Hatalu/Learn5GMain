@@ -25,6 +25,7 @@ export interface QuizSheetOpts {
 
 /** เฉลย เช่น "ข" หรือ "ก, ค" (ตอบได้หลายข้อ) */
 export function answerOf(q: QuizQuestion): string {
+  if (q.kind === 'text') return q.answers?.[0] || '-';
   return q.choices.map((c, i) => (c.correct ? HEADS_TH[i] : '')).filter(Boolean).join(', ') || '-';
 }
 
@@ -66,6 +67,11 @@ export function quizPages(title: string, quiz: QuizContent, W: number, H: number
       const h = Math.max(60, Math.round((q.media!.h || 150) * k));
       block.push({ ...makeImage(qImg, w, h), x: M + 30, y: by });
       by += h + 8;
+    }
+    // ข้อพิมพ์คำตอบ: เส้นให้เขียนคำตอบแทนตัวเลือก
+    if (q.kind === 'text') {
+      block.push(at(makeText({ text: 'ตอบ ............................................................', size: 18, align: 'left', lh: 1.5 }), M + 30, by, tw - 30));
+      by += 36;
     }
     const opts2 = q.choices.map((c, i) => {
       const t = plain(c.text);

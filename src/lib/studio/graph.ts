@@ -28,6 +28,8 @@ export interface GExpr extends GBase {
   /** ช่วงของตัวแปรต้น (x ของ y=f(x), y ของ x=g(y)) เว้นว่าง = ทั้งจอ */
   lo: number | null;
   hi: number | null;
+  /** รูปทรงเฉพาะ: มีค่านี้ = สมการสร้างจากค่ารูปทรง (ปรับด้วยแถบเฉพาะทาง) */
+  shape?: GShape;
 }
 export interface GPoint extends GBase {
   kind: 'point';
@@ -961,6 +963,11 @@ export function cleanGraph(raw: unknown): GraphSpec {
     switch (o.kind) {
       case 'expr':
         g = { ...base, kind: 'expr', text: txt(o.text, 200), width: num(o.width, 0.5, 12, 2.5), dash: pick(o.dash, DASHES, 'solid'), label: txt(o.label, 40), at: num(o.at, 0, 1, 0.9), lo: o.lo === null || o.lo === undefined || o.lo === '' ? null : num(o.lo, -BIG, BIG, 0), hi: o.hi === null || o.hi === undefined || o.hi === '' ? null : num(o.hi, -BIG, BIG, 0) };
+        {
+          const sh = cleanShape(o.shape);
+          // สมการต้องตรงกับรูปทรงเสมอ (กันข้อมูลที่ถูกแก้มาเอง)
+          if (sh) g = { ...g, shape: sh, text: shapeText(sh) };
+        }
         break;
       case 'point':
         g = { ...base, kind: 'point', x: num(o.x, -BIG, BIG, 0), y: num(o.y, -BIG, BIG, 0), label: txt(o.label, 40), size: num(o.size, 0, 14, 4.5), hollow: !!o.hollow, pos: pick(o.pos, POS, 'ne'), guides: !!o.guides };
@@ -1026,16 +1033,134 @@ export function cleanGraph(raw: unknown): GraphSpec {
   };
 }
 
+/* ------------------------------------------------------------------ รูปทรงเฉพาะ (ปรับรัศมี แกนเอก แกนโท จุดยอด ฯลฯ) */
+
+export type ShapeKind = 'line' | 'circle' | 'ellipse' | 'parabola' | 'parabolaX' | 'hyperbola';
+/** ค่าของรูปทรง: h,k = จุดศูนย์กลาง/จุดยอด, r = รัศมี, a,b = ครึ่งแกน (ไฮเพอร์โบลา/วงรี) หรือสัมประสิทธิ์ (พาราโบลา a, เส้นตรง a=ความชัน b=จุดตัดแกน y), vert = แกนเอกแนวตั้ง */
+export interface GShape {
+  k: ShapeKind;
+  h: number;
+  v: number;
+  r: number;
+  a: number;
+  b: number;
+  vert: boolean;
+}
+
+export const SHAPE_KINDS: { k: ShapeKind; label: string }[] = [
+  { k: 'line', label: 'เส้นตรง' },
+  { k: 'circle', label: 'วงกลม' },
+  { k: 'ellipse', label: 'วงรี' },
+  { k: 'parabola', label: 'พาราโบลา (หงาย/คว่ำ)' },
+  { k: 'parabolaX', label: 'พาราโบลา (ตะแคง)' },
+  { k: 'hyperbola', label: 'ไฮเพอร์โบลา' },
+];
+
+export const defaultShape = (k: ShapeKind): GShape => ({
+  k,
+  h: 0,
+  v: 0,
+  r: 3,
+  a: k === 'line' ? 1 : k === 'parabola' || k === 'parabolaX' ? 1 : k === 'hyperbola' ? 2 : 4,
+  b: k === 'line' ? 0 : k === 'hyperbola' ? 3 : 2,
+  vert: false,
+});
+
+/** ตัวเลขสั้นๆ (ไม่มีศูนย์เกิน) */
+export const shNum = (n: number) => String(Math.round(n * 1000) / 1000);
+/** (x - h) แบบอ่านง่าย: h = 0 -> x, h = 2 -> (x - 2), h = -2 -> (x + 2) */
+const shift = (name: string, h: number) => (Math.abs(h) < 1e-9 ? name : `(${name} ${h > 0 ? '-' : '+'} ${shNum(Math.abs(h))})`);
+const plus = (c: number) => (Math.abs(c) < 1e-9 ? '' : ` ${c > 0 ? '+' : '-'} ${shNum(Math.abs(c))}`);
+const coef = (a: number) => (a === 1 ? '' : a === -1 ? '-' : shNum(a));
+
+/** สมการของรูปทรง (ป้อนให้ตัววาดกราฟเดิม) */
+export function shapeText(s: GShape): string {
+  const X = shift('x', s.h);
+  const Y = shift('y', s.v);
+  const sq = (t: string) => `${t}^2`;
+  switch (s.k) {
+    case 'line':
+      return `y = ${coef(s.a) || ''}x${plus(s.b)}`.replace('y = 0x', 'y = 0');
+    case 'circle':
+      return `${sq(X)} + ${sq(Y)} = ${shNum(s.r * s.r)}`;
+    case 'ellipse': {
+      const [ax, by] = s.vert ? [s.b, s.a] : [s.a, s.b];
+      return `${sq(X)}/${shNum(ax * ax)} + ${sq(Y)}/${shNum(by * by)} = 1`;
+    }
+    case 'hyperbola':
+      return s.vert ? `${sq(Y)}/${shNum(s.a * s.a)} - ${sq(X)}/${shNum(s.b * s.b)} = 1` : `${sq(X)}/${shNum(s.a * s.a)} - ${sq(Y)}/${shNum(s.b * s.b)} = 1`;
+    case 'parabola':
+      return `y = ${coef(s.a)}${sq(X)}${plus(s.v)}`;
+    case 'parabolaX':
+      return `x = ${coef(s.a)}${sq(Y)}${plus(s.h)}`;
+  }
+}
+
+/** ค่าที่ได้จากรูปทรง (โฟกัส ความเยื้องศูนย์กลาง ฯลฯ) ไว้โชว์ใต้แถบปรับ */
+export function shapeFacts(s: GShape): string[] {
+  const P = (x: number, y: number) => `(${shNum(x)}, ${shNum(y)})`;
+  switch (s.k) {
+    case 'line':
+      return [`ความชัน ${shNum(s.a)}`, `ตัดแกน y ที่ ${P(0, s.b)}`, Math.abs(s.a) > 1e-9 ? `ตัดแกน x ที่ ${P(-s.b / s.a, 0)}` : 'ขนานแกน x'];
+    case 'circle':
+      return [`จุดศูนย์กลาง ${P(s.h, s.v)}`, `รัศมี ${shNum(s.r)}`, `เส้นผ่านศูนย์กลาง ${shNum(2 * s.r)}`];
+    case 'ellipse': {
+      const big = Math.max(s.a, s.b);
+      const small = Math.min(s.a, s.b);
+      const c = Math.sqrt(big * big - small * small);
+      const alongY = s.vert !== s.b > s.a;
+      const f = alongY ? [P(s.h, s.v - c), P(s.h, s.v + c)] : [P(s.h - c, s.v), P(s.h + c, s.v)];
+      return [`จุดศูนย์กลาง ${P(s.h, s.v)}`, `แกนเอกยาว ${shNum(2 * big)} แกนโทยาว ${shNum(2 * small)}`, `โฟกัส ${f.join(' และ ')}`, `ความเยื้องศูนย์กลาง ${shNum(c / big)}`];
+    }
+    case 'hyperbola': {
+      const c = Math.sqrt(s.a * s.a + s.b * s.b);
+      const f = s.vert ? [P(s.h, s.v - c), P(s.h, s.v + c)] : [P(s.h - c, s.v), P(s.h + c, s.v)];
+      return [`จุดศูนย์กลาง ${P(s.h, s.v)}`, `โฟกัส ${f.join(' และ ')}`, `เส้นกำกับ ความชัน ±${shNum(s.vert ? s.a / s.b : s.b / s.a)}`];
+    }
+    case 'parabola': {
+      const p = 1 / (4 * (s.a || 1e-9));
+      return [`จุดยอด ${P(s.h, s.v)}`, s.a > 0 ? 'หงาย (ค่าต่ำสุด)' : 'คว่ำ (ค่าสูงสุด)', `โฟกัส ${P(s.h, s.v + p)}`, `เส้นไดเรกทริกซ์ y = ${shNum(s.v - p)}`, `แกนสมมาตร x = ${shNum(s.h)}`];
+    }
+    case 'parabolaX': {
+      const p = 1 / (4 * (s.a || 1e-9));
+      return [`จุดยอด ${P(s.h, s.v)}`, s.a > 0 ? 'เปิดไปทางขวา' : 'เปิดไปทางซ้าย', `โฟกัส ${P(s.h + p, s.v)}`, `เส้นไดเรกทริกซ์ x = ${shNum(s.h - p)}`];
+    }
+  }
+}
+
+const SHAPE_IDS = new Set<ShapeKind>(['line', 'circle', 'ellipse', 'parabola', 'parabolaX', 'hyperbola']);
+export function cleanShape(raw: unknown): GShape | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const o = raw as Record<string, unknown>;
+  if (!SHAPE_IDS.has(o.k as ShapeKind)) return undefined;
+  const n = (x: unknown, lo: number, hi: number, d: number) => (typeof x === 'number' && isFinite(x) ? Math.min(hi, Math.max(lo, x)) : d);
+  const k = o.k as ShapeKind;
+  const d = defaultShape(k);
+  let a = n(o.a, -1000, 1000, d.a);
+  // ครึ่งแกน/รัศมีต้องเป็นบวก พาราโบลาห้ามเป็น 0
+  if (k === 'ellipse' || k === 'hyperbola') a = Math.max(0.05, Math.abs(a));
+  if ((k === 'parabola' || k === 'parabolaX') && Math.abs(a) < 0.01) a = 0.01;
+  return {
+    k,
+    h: n(o.h, -1000, 1000, 0),
+    v: n(o.v, -1000, 1000, 0),
+    r: Math.max(0.05, n(o.r, 0.05, 1000, d.r)),
+    a,
+    b: k === 'line' ? n(o.b, -1000, 1000, 0) : Math.max(0.05, Math.abs(n(o.b, -1000, 1000, d.b))),
+    vert: o.vert === true,
+  };
+}
+
 /* ------------------------------------------------------------------ สมการสำเร็จรูป (ใช้ง่าย) */
 
-export const GRAPH_PRESETS: { label: string; text: string; view?: GraphSpec['view'] }[] = [
-  { label: 'เส้นตรง', text: 'y = 2x + 1' },
-  { label: 'พาราโบลา', text: 'y = x^2 - 2' },
-  { label: 'พาราโบลาตะแคง', text: 'y^2 = 4x' },
+export const GRAPH_PRESETS: { label: string; text: string; view?: GraphSpec['view']; shape?: ShapeKind }[] = [
+  { label: 'เส้นตรง', text: 'y = 2x + 1', shape: 'line' },
+  { label: 'พาราโบลา', text: 'y = x^2 - 2', shape: 'parabola' },
+  { label: 'พาราโบลาตะแคง', text: 'y^2 = 4x', shape: 'parabolaX' },
   { label: 'พาราโบลา ax²+bx+c', text: 'y = a x^2 + b x + c' },
-  { label: 'วงกลม', text: 'x^2 + y^2 = 9' },
-  { label: 'วงรี', text: 'x^2/16 + y^2/9 = 1' },
-  { label: 'ไฮเพอร์โบลา', text: 'x^2/4 - y^2/9 = 1' },
+  { label: 'วงกลม', text: 'x^2 + y^2 = 9', shape: 'circle' },
+  { label: 'วงรี', text: 'x^2/16 + y^2/9 = 1', shape: 'ellipse' },
+  { label: 'ไฮเพอร์โบลา', text: 'x^2/4 - y^2/9 = 1', shape: 'hyperbola' },
   { label: 'เอกซ์โพเนนเชียล', text: 'y = 2^x' },
   { label: 'ลอการิทึม', text: 'y = log(x)' },
   { label: 'ln', text: 'y = ln(x)' },

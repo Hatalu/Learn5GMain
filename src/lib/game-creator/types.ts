@@ -10,7 +10,7 @@ export type Seg = { t: 'x'; v: string } | { t: 'm'; v: string };
 export type Rich = Seg[];
 
 export interface MediaRef {
-  kind: 'image' | 'video';
+  kind: 'image' | 'video' | 'audio';
   /** URL สาธารณะใน Supabase Storage (bucket game-media) เท่านั้น */
   url: string;
   /** พาธในบักเก็ต (ใช้ลบไฟล์) */
@@ -31,6 +31,9 @@ export interface QuizChoice {
 
 export type PointsMode = 0 | 1 | 2; // ไม่คิดคะแนน / ปกติ / สองเท่า
 
+/** ชนิดคำถาม: เลือกตัวเลือก (รวมถูก-ผิด) / พิมพ์คำตอบสั้นๆ */
+export type QuestionKind = 'choice' | 'text';
+
 export interface QuizQuestion {
   id: string;
   text: Rich;
@@ -41,6 +44,10 @@ export interface QuizQuestion {
   /** เวลาต่อข้อ (วินาที) 0 = ไม่จำกัด */
   time: number;
   points: PointsMode;
+  /** ไม่มี = 'choice' (ชุดคำถามเก่า) */
+  kind?: QuestionKind;
+  /** คำตอบที่ยอมรับ (kind 'text') ไม่สนตัวพิมพ์ใหญ่เล็ก/ช่องว่าง */
+  answers?: string[];
 }
 
 export interface QuizContent {
@@ -92,6 +99,8 @@ export interface RoomSettings {
   duration: number;
   /** จำนวนก้าวถึงเส้นชัย โหมด Racing */
   goal: number;
+  /** จำนวนทีม (0 = ต่างคนต่างเล่น) โหมดศึกยึดอาณาจักร */
+  teams: number;
 }
 
 /** คำถามที่ส่งให้ผู้เล่น (ไม่มีเฉลย) */
@@ -106,6 +115,8 @@ export interface PublicQuestion {
   multi: boolean;
   time: number;
   points: PointsMode;
+  /** 'text' = ช่องพิมพ์คำตอบ (ไม่มีตัวเลือก) */
+  kind?: QuestionKind;
   /** เวลาที่ผ่านไปแล้วของข้อนี้ (มิลลิวินาที) นับจากฝั่งเซิร์ฟเวอร์ กันรีเฟรชเพื่อรีเซ็ตเวลา */
   elapsedMs: number;
 }
@@ -117,6 +128,8 @@ export interface AnswerResult {
   correctIds: string[];
   score: number;
   streak: number;
+  /** คำตอบที่ถูก (ข้อพิมพ์คำตอบ) */
+  answer?: string;
 }
 
 export interface PlayerPublic {

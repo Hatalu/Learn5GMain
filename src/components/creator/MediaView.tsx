@@ -5,7 +5,7 @@ import { Volume2, VolumeX } from 'lucide-react';
 import type { MediaRef } from '@/lib/game-creator/types';
 import { VIDEO_MAX_SECONDS } from '@/lib/game-creator/quiz';
 
-/** แสดงรูป/คลิปในเกม: คลิปเล่นวนเฉพาะช่วงที่กำหนด (ไม่เกิน 5 วินาที) เริ่มแบบปิดเสียง แตะเพื่อเปิดเสียง */
+/** แสดงรูป/คลิป/เสียงในเกม: คลิปเล่นวนเฉพาะช่วงที่กำหนด (ไม่เกิน VIDEO_MAX_SECONDS) เริ่มแบบปิดเสียง แตะเพื่อเปิดเสียง */
 export function MediaView({ media, className, fit = 'contain', controls = true }: { media: MediaRef; className?: string; fit?: 'contain' | 'cover'; controls?: boolean }) {
   const v = useRef<HTMLVideoElement>(null);
   const [muted, setMuted] = useState(true);
@@ -40,6 +40,13 @@ export function MediaView({ media, className, fit = 'contain', controls = true }
     };
   }, [media.kind, media.url, start, end]);
 
+  if (media.kind === 'audio') {
+    return (
+      <span className={`l5g-audio ${className || ''}`} onClick={(e) => e.stopPropagation()}>
+        <audio src={media.url} controls preload="metadata" controlsList="nodownload noplaybackrate" />
+      </span>
+    );
+  }
   if (media.kind === 'image') {
     return (
       // eslint-disable-next-line @next/next/no-img-element

@@ -8,7 +8,7 @@ import { MediaView } from '../MediaView';
 import { ChoiceShape, choiceStyle } from '../ChoiceShape';
 import { gsfx } from '@/lib/game-creator/gsound';
 import { richLength } from '@/lib/game-creator/quiz';
-import { MineTag, choiceState } from '../games/QuestionPad';
+import { MineTag, TextAnswer, choiceState } from '../games/QuestionPad';
 import { CoachArrow, useCoach } from '../games/Coach';
 
 export type AnswerOutcome = AnswerResult & { rank?: number; players?: number; finished: boolean };
@@ -193,12 +193,14 @@ export function QuizRunner({
       }
       if (ms <= 0) {
         clearInterval(iv);
-        submit(q.multi ? picksRef.current : []);
+        submit(q.kind === 'text' ? [typedRef.current] : q.multi ? picksRef.current : []);
       }
     }, 100);
     return () => clearInterval(iv);
   }, [phase, q, submit]);
 
+  // ข้อพิมพ์คำตอบ: หมดเวลาแล้วส่งสิ่งที่พิมพ์ค้างไว้
+  const typedRef = useRef('');
   const toggle = (id: string) => {
     if (phase !== 'question' || !q) return;
     if (!q.multi) {
@@ -251,7 +253,8 @@ export function QuizRunner({
   }
 
   const showResult = phase === 'feedback' && res;
-  const longest = Math.max(...q.choices.map((c) => richLength(c.text)));
+  const longest = Math.max(0, ...q.choices.map((c) => richLength(c.text)));
+  const typed = q.kind === 'text';
   const hasChoiceMedia = q.choices.some((c) => c.media);
   const cols = q.choices.length <= 2 || (longest > 38 && !hasChoiceMedia) ? 1 : q.choices.length === 3 ? 3 : 2;
   const urgent = q.time > 0 && secs <= 5;
@@ -299,8 +302,19 @@ export function QuizRunner({
         {q.multi && <p className="l5g-qmulti">เลือกได้มากกว่า 1 ข้อ</p>}
       </div>
 
+      {typed && (
+        <TextAnswer
+          key={q.id}
+          big
+          disabled={phase !== 'question'}
+          result={showResult ? res : null}
+          onType={(t) => (typedRef.current = t)}
+          onSubmit={(t) => submit([t])}
+        />
+      )}
+
       {/* ตัวเลือก */}
-      <div className="l5g-choices" data-cols={cols} data-media={hasChoiceMedia}>
+      <div className="l5g-choices" data-cols={cols} data-media={hasChoiceMedia} hidden={typed}>
         {q.choices.map((c, i) => {
           const st = choiceStyle(i);
           const picked = picks.includes(c.id);
@@ -365,7 +379,7 @@ export function QuizRunner({
                 +<Rolling to={res!.points} ms={600} />
               </span>
             )}
-            {!res!.correct && <span className="l5g-feedback-sub">{res!.correctIds.length ? 'ดูคำตอบที่ถูกได้ด้านล่าง ข้อหน้าเอาใหม่' : 'ไม่เป็นไร ข้อหน้าเอาใหม่นะ'}</span>}
+            {!res!.correct && <span className="l5g-feedback-sub">{res!.answer ? `คำตอบที่ถูก: ${res!.answer}` : res!.correctIds.length ? 'ดูคำตอบที่ถูกได้ด้านล่าง ข้อหน้าเอาใหม่' : 'ไม่เป็นไร ข้อหน้าเอาใหม่นะ'}</span>}
             {res!.rank ? (
               <span className="l5g-feedback-rank">
                 อันดับ {res!.rank} จาก {res!.players}

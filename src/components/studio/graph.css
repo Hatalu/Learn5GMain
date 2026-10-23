@@ -555,3 +555,75 @@
   font-size: 12.5px;
   font-weight: 600;
 }
+
+/* ---------------- รูปทรงเฉพาะ: แถบปรับรัศมี/แกนเอก/แกนโท/จุดยอด ---------------- */
+.ge-shape-pick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  opacity: 0.85;
+}
+.ge-shape-pick select {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 9px;
+  border: 1.5px solid var(--line);
+  background: #fff;
+  font-weight: 700;
+}
+.ge-knobs {
+  margin-top: 8px;
+}
+.ge-knob b {
+  width: 92px;
+  flex: none;
+  font-family: inherit;
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+.ge-knob-flip {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.ge-knob-flip button {
+  flex: 1;
+  padding: 5px 6px;
+  border-radius: 9px;
+  border: 1.5px solid var(--line);
+  background: #fff;
+  font-size: 12px;
+  font-weight: 800;
+}
+.ge-knob-flip button[data-on='true'] {
+  background: var(--acc);
+  border-color: var(--acc);
+  color: #fff;
+}
+.ge-facts {
+  margin: 6px 0 0;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: #fff;
+  list-style: none;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.55;
+}
+.ge-facts li::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--acc);
+  vertical-align: middle;
+}

@@ -36,7 +36,7 @@ import { FONTS } from './fonts';
 import { ItemView, PageView } from './render';
 import { hydrateFlow } from './flowDom';
 import { ColorPop } from './ui';
-import { SIZES, SYMBOLS, WordPanel, WordRail, type TableOp, type WordApi, type WordPanelId } from './WordPanels';
+import { SIZES, SYMBOLS, ptToPx, pxToPt, WordPanel, WordRail, type TableOp, type WordApi, type WordPanelId } from './WordPanels';
 import { WORD_KEYS, comboOf, type WordKeyId } from '@/lib/studio/keys';
 
 export interface WordHandle {
@@ -142,6 +142,11 @@ export const WordEditor = forwardRef<
     const s = window.getSelection();
     if (s && s.rangeCount && ed.current?.contains(s.anchorNode)) saved.current = s.getRangeAt(0).cloneRange();
   };
+  // แถบเครื่องมือโชว์ขนาด/สไตล์ตรงเคอร์เซอร์ล่าสุด
+  const keepShow = () => {
+    keep();
+    force((x) => x + 1);
+  };
   const restore = () => {
     const el = ed.current;
     if (!el) return;
@@ -172,18 +177,40 @@ export const WordEditor = forwardRef<
     keep();
     changed();
   };
-  const setSize = (px: number) => {
+  /** ขนาดตัวอักษรหน่วย pt แบบ Word (ตัวปกติ 21px = 16pt) */
+  const setSize = (pt: number) => {
     restore();
-    // ไม่ได้คลุมข้อความ: fontSize 7 จะค้างเป็นขนาดใหญ่สุดกับตัวที่พิมพ์ต่อ
-    if (window.getSelection()?.isCollapsed) return;
-    document.execCommand('styleWithCSS', false, 'true');
-    document.execCommand('fontSize', false, '7');
-    ed.current?.querySelectorAll<HTMLElement>('span[style*="xxx-large"], font[size="7"]').forEach((el) => {
-      el.removeAttribute('size');
-      el.style.fontSize = `${px}px`;
-    });
+    const px = `${ptToPx(pt)}px`;
+    const s = window.getSelection();
+    if (!s || !s.rangeCount) return;
+    if (s.isCollapsed) {
+      // ยังไม่ได้คลุมข้อความ: ตัวที่พิมพ์ต่อจากตรงนี้ใช้ขนาดนี้ (ช่องว่างไร้ความกว้างไว้ให้เคอร์เซอร์อยู่ในกล่อง ตัวกรองลบทิ้งตอนบันทึก)
+      const r = s.getRangeAt(0);
+      const span = document.createElement('span');
+      span.style.fontSize = px;
+      span.textContent = '\u200b';
+      r.insertNode(span);
+      r.setStart(span.firstChild!, 1);
+      r.collapse(true);
+      s.removeAllRanges();
+      s.addRange(r);
+    } else {
+      document.execCommand('styleWithCSS', false, 'true');
+      document.execCommand('fontSize', false, '7');
+      ed.current?.querySelectorAll<HTMLElement>('span[style*="xxx-large"], font[size="7"]').forEach((el) => {
+        el.removeAttribute('size');
+        el.style.fontSize = px;
+      });
+    }
     keep();
     changed();
+    force((x) => x + 1);
+  };
+  /** ขนาด (pt) ของตัวอักษรตรงเคอร์เซอร์ */
+  const curPt = () => {
+    const node = window.getSelection()?.anchorNode;
+    const el = node && ed.current?.contains(node) ? (node.nodeType === 1 ? (node as HTMLElement) : node.parentElement) : null;
+    return pxToPt(el ? parseFloat(getComputedStyle(el).fontSize) || 21 : 21);
   };
   /** ย่อหน้าที่อยู่ในส่วนที่เลือก */
   const blocks = () => {
@@ -211,11 +238,9 @@ export const WordEditor = forwardRef<
   };
   /** ขยาย/ย่อตัวอักษร: step = ไปขนาดถัดไปในรายการ ไม่งั้น +-1 (แบบ Word) */
   const bumpSize = (d: 1 | -1, step: boolean) => {
-    const node = window.getSelection()?.anchorNode;
-    const el = node && (node.nodeType === 1 ? (node as HTMLElement) : node.parentElement);
-    const z = el ? parseFloat(getComputedStyle(el).fontSize) || 21 : 21;
-    const next = !step ? z + d : d > 0 ? SIZES.find((s) => s > z + 0.5) ?? 72 : [...SIZES].reverse().find((s) => s < z - 0.5) ?? 10;
-    setSize(Math.round(Math.max(8, Math.min(96, next))));
+    const z = curPt();
+    const next = !step ? z + d : d > 0 ? SIZES.find((s) => s > z + 0.25) ?? 96 : [...SIZES].reverse().find((s) => s < z - 0.25) ?? 8;
+    setSize(Math.max(6, Math.min(96, next)));
   };
 
   /** ตั้งสไตล์ย่อหน้าที่เลือก (ค่าว่าง = เอาออก) */
@@ -597,6 +622,7 @@ export const WordEditor = forwardRef<
   };
 
   const totalH = n * P - FLOW_GAP;
+  const sizeNow = typeof window !== 'undefined' ? curPt() : 16;
   const blockTag = (() => {
     const s = typeof window !== 'undefined' ? window.getSelection() : null;
     const node = s?.anchorNode as HTMLElement | null;
@@ -627,8 +653,8 @@ export const WordEditor = forwardRef<
               </option>
             ))}
           </select>
-          <select className="st-wsel" defaultValue="" onChange={(e) => e.target.value && setSize(Number(e.target.value))} aria-label="ขนาดตัวอักษร">
-            <option value="">ขนาด</option>
+          <select className="st-wsel st-wsel-size" value={String(sizeNow)} onChange={(e) => setSize(Number(e.target.value))} aria-label="ขนาดตัวอักษร (pt)" title="ขนาดตัวอักษร (pt แบบ Word)">
+            {!SIZES.includes(sizeNow) && <option value={sizeNow}>{sizeNow}</option>}
             {SIZES.map((z) => (
               <option key={z} value={z}>
                 {z}
@@ -809,8 +835,8 @@ export const WordEditor = forwardRef<
             spellCheck={false}
             style={{ position: 'absolute', left: 0, top: 0, width: W, minHeight: totalH, padding: `0 ${FLOW_MARGIN.x}px`, fontFamily: FONTS.sarabun.family }}
             onInput={changed}
-            onKeyUp={keep}
-            onMouseUp={keep}
+            onKeyUp={keepShow}
+            onMouseUp={keepShow}
             onBlur={keep}
             onKeyDown={onKey}
             onPaste={onPaste}

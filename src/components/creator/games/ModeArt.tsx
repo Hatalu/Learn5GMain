@@ -2,6 +2,7 @@
 
 import './games.css';
 import './brawl-fish.css';
+import './world.css';
 import React from 'react';
 import type { GameMode } from '@/lib/game-creator/modes';
 import { Avatar } from '../Avatar';
@@ -97,6 +98,30 @@ export function ModeArt({ mode }: { mode: GameMode }) {
         </span>
         <span style={{ position: 'absolute', right: 6, bottom: 4 }}>
           <WeaponIcon id="bolt" size={26} />
+        </span>
+      </div>
+    );
+  }
+  if (mode === 'turf') {
+    return (
+      <div className="ma ma-turf">
+        {Array.from({ length: 48 }).map((_, i) => (
+          <i key={i} style={{ background: ['#ff4fa3', '#3d8bff', '#ffb31a', 'transparent'][(i * 7 + Math.floor(i / 8)) % 4], animationDelay: `${(i % 8) * 0.12 + Math.floor(i / 8) * 0.2}s` }} />
+        ))}
+        <span className="ma-turf-who">
+          <Avatar id={2} gear={{ h: 3, o: 0, m: 0, i: 0 }} size={42} />
+        </span>
+      </div>
+    );
+  }
+  if (mode === 'treasure') {
+    return (
+      <div className="ma ma-treasure">
+        <span className="ma-tr-island" />
+        <span className="ma-tr-chest" />
+        <span className="ma-tr-chest ma-tr-chest-2" />
+        <span className="ma-tr-who">
+          <Avatar id={9} gear={{ h: 1, o: 0, m: 0, i: 0 }} size={40} />
         </span>
       </div>
     );

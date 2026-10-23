@@ -4,7 +4,7 @@
  */
 import assert from 'node:assert/strict';
 import { answerOf, quizPages } from '../src/lib/studio/fromQuiz';
-import { cleanGraph, compileExpr, graphToSvg, GRAPH_TEMPLATES, intersections, parseEquation } from '../src/lib/studio/graph';
+import { cleanGraph, compileExpr, defaultShape, graphToSvg, GRAPH_TEMPLATES, intersections, parseEquation, shapeFacts, shapeText, type GShape } from '../src/lib/studio/graph';
 import { cleanFlowHtml, flowIsEmpty } from '../src/lib/studio/flow';
 import { MATH_DEFAULTS, WORD_KEYS, assignMath, comboLabel, comboOf, conflictOf, mathKeyOf } from '../src/lib/studio/keys';
 import { FREE_SET_LIMIT, FREE_UPLOAD_MB, MEMBER_UPLOAD_MB, creatorTier, fmtMB, quotaBytes, setsUsed } from '../src/lib/game-creator/quota';
@@ -40,7 +40,7 @@ import { extendUntil, maskedMatch, nameMatch, receiverMatches } from '../src/lib
 import { NO_OFFER, PLANS, comparePrice, perDay, quote, saveBaht, welcomePrice } from '../src/lib/plans';
 import { checkUnsubscribeToken, unsubscribeToken, winbackEmail } from '../src/lib/server/email';
 import { MEMBER_PLAY_SECONDS, TRIAL_GRACE_SECONDS, TRIAL_SECONDS, signTrialToken, trialPublicJwk, verifyTrialToken } from '../src/lib/server/trial';
-import { cleanModeSettings, modeFit, modeQuiz, scoreCap } from '../src/lib/game-creator/modes';
+import { TURF_CELLS, cleanModeSettings, isWorldMode, modeFit, modeQuiz, scoreCap } from '../src/lib/game-creator/modes';
 import { endlessIndex } from '../src/lib/game-creator/quiz';
 import {
   checkAnswer,
@@ -568,18 +568,46 @@ t('sanitize: รูป/คลิปต้องมาจาก bucket ของ�
     { ...goodImg, url: 'https://evil.example/x.png' },
     { ...goodImg, url: `${PFX}${UID}/other.webp` }, // url กับ path ไม่ตรงกัน
     { ...goodImg, url: `${PFX}../secret`, path: '../secret' },
-    { ...goodImg, kind: 'audio' },
+    { ...goodImg, kind: 'pdf' },
   ];
   bad.forEach((m) => assert.equal(sanitizeQuiz({ questions: [Q({ media: m })] }, PFX).questions[0].media, null));
 });
 
-t('คลิปเล่นได้ไม่เกิน 5 วินาที', () => {
-  const v = { kind: 'video', url: `${PFX}${UID}/v.webm`, path: `${UID}/v.webm`, start: 3, end: 30 };
+t('คลิปเล่นได้ไม่เกิน 30 วินาที', () => {
+  const v = { kind: 'video', url: `${PFX}${UID}/v.webm`, path: `${UID}/v.webm`, start: 3, end: 90 };
   const m = sanitizeQuiz({ questions: [Q({ media: v })] }, PFX).questions[0].media!;
   assert.equal(m.start, 3);
-  assert.equal(m.end, 8);
+  assert.equal(m.end, 33);
   const m2 = sanitizeQuiz({ questions: [Q({ media: { ...v, start: 1, end: 3.5 } })] }, PFX).questions[0].media!;
   assert.equal(m2.end, 3.5);
+});
+
+t('คำถามแบบพิมพ์คำตอบ: ตัวกรอง ตรวจคำตอบ และคลิปเสียง', () => {
+  const raw = Q({ kind: 'text', answers: ['  สิบสอง ', '12', '12.', '', 7, 'x'.repeat(200)], choices: [{ id: 'aaaa1', text: 'ก', correct: true }] });
+  const q = sanitizeQuiz({ questions: [raw] }, PFX).questions[0];
+  assert.equal(q.kind, 'text');
+  assert.deepEqual(q.choices, [], 'ข้อพิมพ์คำตอบไม่มีตัวเลือก');
+  assert.equal(q.answers?.[0], 'สิบสอง');
+  assert.equal(q.answers?.includes('12.'), false, 'คำตอบซ้ำแบบเดียวกันถูกตัด');
+  assert.ok((q.answers || []).every((a) => a.length <= 60));
+  assert.equal(checkAnswer(q, ['สิบ สอง']), true);
+  assert.equal(checkAnswer(q, ['๑๒']), true, 'เลขไทยเทียบเท่าเลขอารบิก');
+  assert.equal(checkAnswer(q, ['12!']), true);
+  assert.equal(checkAnswer(q, ['13']), false);
+  assert.equal(checkAnswer(q, ['']), false);
+  assert.equal(checkAnswer(q, []), false);
+  const pub = publicQuestion(q, 0, 1, { shuffleChoices: false, seed: 's', elapsedMs: 0 });
+  assert.equal(pub.kind, 'text');
+  assert.equal(JSON.stringify(pub).includes('สิบสอง'), false, 'ผู้เล่นไม่เห็นเฉลย');
+  // ยังไม่ใส่คำตอบ = ยังไม่ครบ และไม่ถูกนำไปเล่น
+  const empty = sanitizeQuiz({ questions: [Q({ kind: 'text', answers: [] })] }, PFX);
+  assert.equal(playableQuiz(empty).questions.length, 0);
+  assert.ok(quizIssues(empty).some((x) => x.msg.includes('คำตอบ')));
+  // คลิปเสียงใส่ในโจทย์ได้ แต่ใส่ในตัวเลือกไม่ได้
+  const au = { kind: 'audio', url: `${PFX}${UID}/s.mp3`, path: `${UID}/s.mp3` };
+  const qa = sanitizeQuiz({ questions: [Q({ media: au, choices: [{ id: 'aaaa1', text: 'ก', correct: true, media: au }, { id: 'bbbb1', text: 'ข' }] })] }, PFX).questions[0];
+  assert.equal(qa.media?.kind, 'audio');
+  assert.equal(qa.choices[0].media, null);
 });
 
 t('หลายคำตอบถูก -> เปิดโหมดตอบได้หลายข้อเอง / id ซ้ำถูกแก้', () => {
@@ -678,12 +706,28 @@ t('คำถามวนซ้ำ: ครบทุกข้อในแต่ล
   }
 });
 
-t('ตั้งค่าห้อง: เวลา/เส้นชัย ต้องเป็นค่าที่อนุญาต', () => {
-  assert.deepEqual(cleanModeSettings('cafe', { duration: 300 }), { duration: 300, goal: 0 });
-  assert.deepEqual(cleanModeSettings('cafe', { duration: 99999 }), { duration: 300, goal: 0 });
-  assert.deepEqual(cleanModeSettings('racing', { goal: 20 }), { duration: 0, goal: 20 });
-  assert.deepEqual(cleanModeSettings('racing', { goal: -5 }), { duration: 0, goal: 15 });
-  assert.deepEqual(cleanModeSettings('quiz', { duration: 300, goal: 20 }), { duration: 0, goal: 0 });
+t('ตั้งค่าห้อง: เวลา/เส้นชัย/ทีม ต้องเป็นค่าที่อนุญาต', () => {
+  assert.deepEqual(cleanModeSettings('cafe', { duration: 300 }), { duration: 300, goal: 0, teams: 0 });
+  assert.deepEqual(cleanModeSettings('cafe', { duration: 99999 }), { duration: 300, goal: 0, teams: 0 });
+  assert.deepEqual(cleanModeSettings('racing', { goal: 20 }), { duration: 0, goal: 20, teams: 0 });
+  assert.deepEqual(cleanModeSettings('racing', { goal: -5 }), { duration: 0, goal: 15, teams: 0 });
+  assert.deepEqual(cleanModeSettings('quiz', { duration: 300, goal: 20 }), { duration: 0, goal: 0, teams: 0 });
+  // แบ่งทีมได้เฉพาะศึกยึดอาณาจักร และเฉพาะ 2/3/4 ทีม
+  assert.equal(cleanModeSettings('turf', { teams: 3 }).teams, 3);
+  assert.equal(cleanModeSettings('turf', { teams: 9 }).teams, 0);
+  assert.equal(cleanModeSettings('cafe', { teams: 2 }).teams, 0);
+});
+
+t('รูปแบบใหม่ ศึกยึดอาณาจักร / เกาะมหาสมบัติ: รองรับคลิป เพดานคะแนนตามข้อที่ถูก', () => {
+  const vq = { ...QS(3), questions: QS(3).questions.map((q, k) => (k === 0 ? { ...q, media: { kind: 'video' as const, url: 'x', path: 'x', start: 0, end: 20 } } : q)) };
+  for (const m of ['turf', 'treasure'] as const) {
+    assert.equal(modeFit(QS(2), m).ok, false);
+    assert.equal(modeFit(vq, m).usable, 3, 'ไม่ตัดข้อที่มีคลิป');
+    assert.ok(scoreCap(m, 0) > 0 && scoreCap(m, 5) > scoreCap(m, 4));
+  }
+  assert.ok(scoreCap('turf', 1000) <= TURF_CELLS, 'ยึดได้ไม่เกินจำนวนช่องในแผนที่');
+  assert.ok(isWorldMode('turf') && isWorldMode('treasure') && !isWorldMode('racing'));
+  assert.ok(MODE_MUSIC.turf && MODE_MUSIC.treasure);
 });
 
 t('เพดานคะแนนจากเกมในเครื่อง ขึ้นกับจำนวนข้อที่ตอบถูก', () => {
@@ -702,8 +746,8 @@ t('รูปแบบใหม่ Monster Brawl / Fishing Frenzy: ข้อข�
   assert.equal(modeFit(QS(2), 'fishing').ok, false);
   assert.equal(modeFit(QS(3), 'fishing').ok, true);
   assert.equal(modeQuiz(QS(6, [0]), 'fishing').questions.length, 5);
-  assert.deepEqual(cleanModeSettings('brawl', { duration: 600 }), { duration: 600, goal: 0 });
-  assert.deepEqual(cleanModeSettings('fishing', { duration: 1 }), { duration: 300, goal: 0 });
+  assert.deepEqual(cleanModeSettings('brawl', { duration: 600 }), { duration: 600, goal: 0, teams: 0 });
+  assert.deepEqual(cleanModeSettings('fishing', { duration: 1 }), { duration: 300, goal: 0, teams: 0 });
 });
 
 t('เครื่องประดับ: รับเฉพาะเลขที่มีจริง ค่าอื่นกลายเป็น "ไม่ใส่"', () => {
@@ -1159,6 +1203,35 @@ t('แป้นลัด: แปลงปุ่ม เช็กซ้ำ/ห้�
   assert.equal(s2['\\sqrt{#0}'], 'Ctrl+KeyF');
   assert.equal(s2[frac], undefined, 'ตัวที่ซ้ำถูกปิด');
   assert.equal(mathKeyOf(s2, 'Ctrl+KeyF'), '\\sqrt{#0}');
+});
+
+t('กราฟ: รูปทรงเฉพาะสร้างสมการที่วาดได้ และค่าจากตัวกรองตรงกับรูปทรง', () => {
+  const near = (a: number, b: number) => Math.abs(a - b) < 1e-6;
+  const cases: [GShape, number, number][] = [
+    // จุดที่ต้องอยู่บนเส้น (สมการ implicit = 0 / y = f(x))
+    [{ ...defaultShape('circle'), h: -1, v: 2, r: 2.5 }, 1.5, 2],
+    [{ ...defaultShape('ellipse'), h: 1, a: 4, b: 2 }, 5, 0],
+    [{ ...defaultShape('ellipse'), h: 1, a: 4, b: 2, vert: true }, 3, 0],
+    [{ ...defaultShape('hyperbola'), a: 2, b: 3 }, 2, 0],
+    [{ ...defaultShape('hyperbola'), a: 2, b: 3, vert: true, v: -2 }, 0, 0],
+  ];
+  for (const [s, x, y] of cases) {
+    const r = parseEquation(shapeText(s));
+    assert.ok(r.ok && r.kind === 'implicit', shapeText(s));
+    if (r.ok) assert.ok(near(r.fn(x, y, {}), 0), `${shapeText(s)} @ (${x}, ${y})`);
+  }
+  const par = parseEquation(shapeText({ ...defaultShape('parabola'), a: -0.5, h: 2, v: 1 }));
+  assert.ok(par.ok && par.kind === 'y' && near(par.fn(4, 0, {}), -1), 'พาราโบลา y = -0.5(x-2)^2 + 1');
+  const px = parseEquation(shapeText({ ...defaultShape('parabolaX'), a: 0.25, h: -3 }));
+  assert.ok(px.ok, 'พาราโบลาตะแคง');
+  const ln = parseEquation(shapeText({ ...defaultShape('line'), a: -2, b: 3 }));
+  assert.ok(ln.ok && near(ln.fn(1, 0, {}), 1), 'เส้นตรง y = -2x + 3');
+  assert.ok(parseEquation(shapeText({ ...defaultShape('line'), a: 0, b: 3 })).ok, 'เส้นตรงแนวนอน');
+  // ตัวกรอง: ครึ่งแกนติดลบกลายเป็นบวก และสมการถูกสร้างใหม่จากรูปทรง (แก้ข้อความเองไม่ได้)
+  const g = cleanGraph({ objs: [{ kind: 'expr', text: 'y = evil', shape: { k: 'ellipse', a: -3, b: 2 } }] });
+  const e = g.objs[0];
+  assert.ok(e.kind === 'expr' && e.shape?.a === 3 && e.text === shapeText(e.shape));
+  assert.ok(shapeFacts({ ...defaultShape('ellipse'), a: 5, b: 3 }).some((f) => f.includes('(-4, 0)') && f.includes('(4, 0)')), 'โฟกัสวงรี');
 });
 
 console.log(`\n${passed} tests passed`);
