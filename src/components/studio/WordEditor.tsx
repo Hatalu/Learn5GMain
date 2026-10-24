@@ -29,12 +29,13 @@ import {
   Type,
   Underline,
 } from 'lucide-react';
-import { FLOW_GAP, FLOW_MARGIN, cleanFlowHtml, paginate } from '@/lib/studio/flow';
+import { FLOW_GAP, WORD_SINGLE, cleanFlowHtml, paginate, type WordOpt } from '@/lib/studio/flow';
 import { cleanSrc, type Item, type Page } from '@/lib/studio/doc';
 import { cleanGraph, type GraphSpec } from '@/lib/studio/graph';
 import { FONTS } from './fonts';
-import { ItemView, PageView } from './render';
-import { hydrateFlow } from './flowDom';
+import { wordClipboardHtml } from './wordCopy';
+import { ItemView, PageView, flowBoxStyle } from './render';
+import { hydrateFlow, isLineShape } from './flowDom';
 import { ColorPop } from './ui';
 import { SIZES, SYMBOLS, ptToPx, pxToPt, WordPanel, WordRail, type TableOp, type WordApi, type WordPanelId } from './WordPanels';
 import { WORD_KEYS, comboOf, type WordKeyId } from '@/lib/studio/keys';
@@ -55,6 +56,9 @@ export const WordEditor = forwardRef<
   {
     html: string;
     pages: Page[];
+    /** ตั้งค่าหน้ากระดาษ (ขอบ หัว/ท้ายกระดาษ เลขหน้า) */
+    wopt: WordOpt;
+    onWopt: (o: WordOpt) => void;
     W: number;
     H: number;
     zoom: number;
@@ -71,7 +75,7 @@ export const WordEditor = forwardRef<
     openGraph: (spec: GraphSpec | null, done: (s: GraphSpec) => void) => void;
     upload: (file: File) => Promise<string | null>;
   }
->(function WordEditor({ html, pages, W, H, zoom, readOnly, barEl, railEl, layoutExtra, onChange, onNeedPages, openMath, openGraph, upload }, ref) {
+>(function WordEditor({ html, pages, wopt, onWopt, W, H, zoom, readOnly, barEl, railEl, layoutExtra, onChange, onNeedPages, openMath, openGraph, upload }, ref) {
   const ed = useRef<HTMLDivElement>(null);
   const emitted = useRef<string | null>(null);
   const saved = useRef<Range | null>(null);
@@ -100,9 +104,13 @@ export const WordEditor = forwardRef<
   const relayout = useCallback(() => {
     const el = ed.current;
     if (!el) return;
-    const need = paginate(el, H, FLOW_GAP, FLOW_MARGIN.y);
+    const need = paginate(el, H, FLOW_GAP, wopt.mt, wopt.mb);
     if (need > n) onNeedPages(need);
-  }, [H, n, onNeedPages]);
+  }, [H, n, onNeedPages, wopt.mt, wopt.mb]);
+  // เปลี่ยนขอบ/ฟอนต์หลัก: จัดหน้าใหม่หลังวาดเสร็จ
+  useEffect(() => {
+    requestAnimationFrame(relayout);
+  }, [relayout, wopt.ml, wopt.mr, wopt.std]);
 
   // โหลดเนื้อหาจากภายนอก (เปิดสื่อ / ย้อนกลับจากแถบบน) แต่ไม่ทับตอนกำลังพิมพ์
   useLayoutEffect(() => {
@@ -220,9 +228,11 @@ export const WordEditor = forwardRef<
     const r = s.getRangeAt(0);
     return (Array.from(el.children) as HTMLElement[]).filter((b) => r.intersectsNode(b));
   };
+  /** ระยะบรรทัดแบบ Word: v เท่าของบรรทัดเดี่ยว (เอกสารมาตรฐาน Word บรรทัดเดี่ยว = 1.31 เท่าของขนาดตัวอักษร) */
   const setLine = (v: string) => {
     restore();
-    blocks().forEach((b) => (b.style.lineHeight = v));
+    const lh = wopt.std ? String(Math.round(+v * WORD_SINGLE * 100) / 100) : v;
+    blocks().forEach((b) => (b.style.lineHeight = lh));
     changed();
   };
   /** เยื้องย่อหน้าแบบ Word (คำสั่ง indent ของเบราว์เซอร์ห่อด้วย blockquote กลายเป็นกรอบเน้น) รายการใช้แบบซ้อนชั้น */
@@ -332,7 +342,36 @@ export const WordEditor = forwardRef<
     cell.style.backgroundColor = c;
     changed();
   };
-  const insertTex = (tex: string) => insertHtml(`<span data-tex="${esc(tex)}" contenteditable="false"></span>&nbsp;`);
+  /**
+   * สมการในบรรทัด: วางที่เคอร์เซอร์แล้วพิมพ์ต่อในบรรทัดเดิม
+   * (insertHTML ของ Chrome ย้ายช่องว่างหลังชิ้นที่แก้ไม่ได้ออกไปนอกย่อหน้า ตัวที่พิมพ์ต่อเลยขึ้นบรรทัดใหม่)
+   */
+  const insertTex = (tex: string) => {
+    restore();
+    const s = window.getSelection();
+    const root = ed.current;
+    if (!s || !s.rangeCount || !root) return;
+    const r = s.getRangeAt(0);
+    r.deleteContents();
+    const span = document.createElement('span');
+    span.dataset.tex = tex;
+    span.contentEditable = 'false';
+    const after = document.createTextNode(' ');
+    if (r.startContainer === root) {
+      const p = document.createElement('p');
+      p.append(span, after);
+      r.insertNode(p);
+    } else {
+      r.insertNode(after);
+      r.insertNode(span);
+    }
+    r.setStart(after, 1);
+    r.collapse(true);
+    s.removeAllRanges();
+    s.addRange(r);
+    keep();
+    changed();
+  };
   const openPanel = (p: WordPanelId) => {
     setPanel(p);
     if (p === 'find') setFindFocus((x) => x + 1);
@@ -357,8 +396,8 @@ export const WordEditor = forwardRef<
     keep();
     openMath('', (tex) => {
       if (!tex.trim()) return;
-      const eq = `<span data-tex="${esc(tex)}" contenteditable="false"></span>`;
-      insertHtml(display ? `<p style="text-align: center">${eq}</p><p><br></p>` : `${eq}&nbsp;`);
+      if (!display) return insertTex(tex);
+      insertHtml(`<p style="text-align: center"><span data-tex="${esc(tex)}" contenteditable="false"></span></p><p><br></p>`);
     });
   };
   const addGraph = () => {
@@ -413,7 +452,7 @@ export const WordEditor = forwardRef<
   const pickAt = (x: number, y: number, target: HTMLElement) => {
     const root = ed.current;
     if (!root) return null;
-    const direct = target.closest<HTMLElement>('span[data-tex], figure[data-graph], img');
+    const direct = target.closest<HTMLElement>('span[data-tex], figure[data-graph], figure[data-shape], img');
     if (direct && root.contains(direct)) return direct;
     const under = document.elementsFromPoint(x, y).find((el): el is HTMLElement => el instanceof HTMLElement && el.dataset.wrap === 'behind' && root.contains(el));
     return under && !onText(x, y) ? under : null;
@@ -492,7 +531,7 @@ export const WordEditor = forwardRef<
     } else {
       el.style.left = '';
       el.style.top = '';
-      const inner = W - 2 * FLOW_MARGIN.x;
+      const inner = W - wopt.ml - wopt.mr;
       if (v && box.w > inner * 0.6) el.style.width = `${Math.round(inner * 0.45)}px`;
       if (was) place(el, a.left + 4, a.top + 4);
     }
@@ -505,8 +544,72 @@ export const WordEditor = forwardRef<
     changed();
   };
 
+  /* ---------------- วาดรูปร่างแบบ Word: เลือกรูปแล้วลากบนกระดาษ ---------------- */
+  const [draw, setDraw] = useState<string | null>(null);
+  const [ghost, setGhost] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const drawRef = useRef(draw);
+  drawRef.current = draw;
+  useEffect(() => {
+    if (!draw) return;
+    const k = (e: KeyboardEvent) => e.key === 'Escape' && setDraw(null);
+    window.addEventListener('keydown', k);
+    return () => window.removeEventListener('keydown', k);
+  }, [draw]);
+  const startDraw = (e: React.PointerEvent) => {
+    const root = ed.current;
+    const id = drawRef.current;
+    if (!root || !id) return;
+    e.preventDefault();
+    const b0 = root.getBoundingClientRect();
+    const z = zoomRef.current;
+    const at = (ev: { clientX: number; clientY: number }) => ({ x: (ev.clientX - b0.left) / z, y: (ev.clientY - b0.top) / z });
+    const a = at(e);
+    let b = a;
+    const box = () => ({ x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), w: Math.abs(b.x - a.x), h: Math.abs(b.y - a.y) });
+    const move = (ev: PointerEvent) => {
+      b = at(ev);
+      setGhost(box());
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+      setGhost(null);
+      setDraw(null);
+      const line = id === 'ln';
+      let r = box();
+      // คลิกเฉยๆ = ขนาดเริ่มต้น
+      if (r.w < 6 && r.h < 6) r = { x: a.x, y: a.y, w: line ? 200 : 160, h: line ? 0 : 110 };
+      const fig = document.createElement('figure');
+      fig.dataset.shape = line ? ((b.x - a.x) * (b.y - a.y) < 0 ? 'ln2' : 'ln') : id;
+      fig.dataset.fill = line ? 'none' : '#bfdbfe';
+      fig.dataset.stroke = '#1f1b36';
+      fig.dataset.sw = line ? '3' : '2';
+      fig.dataset.ar = String(Math.round(Math.max(0.02, Math.min(60, Math.max(r.w, 2) / Math.max(r.h, 2))) * 1000) / 1000);
+      fig.dataset.wrap = 'front';
+      fig.style.left = `${Math.round(r.x)}px`;
+      fig.style.top = `${Math.round(r.y)}px`;
+      fig.style.width = `${Math.round(Math.max(r.w, 4))}px`;
+      fig.contentEditable = 'false';
+      root.insertBefore(fig, root.firstChild);
+      changed();
+      setActive(fig);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+  };
+  const shapeAttr = (k: 'fill' | 'stroke' | 'sw', v: string) => {
+    const el = active;
+    if (!el?.dataset.shape) return;
+    el.dataset[k] = v;
+    changed();
+    force((x) => x + 1);
+  };
+
   const onDown = (e: React.PointerEvent) => {
     if (readOnly || e.button !== 0) return;
+    if (drawRef.current) return startDraw(e);
     const t = pickAt(e.clientX, e.clientY, e.target as HTMLElement);
     setActive(t);
     if (!t || t.tagName === 'SPAN') return;
@@ -606,6 +709,26 @@ export const WordEditor = forwardRef<
       replace: () => openPanel('find'),
     };
     acts[id]();
+  };
+  /** คัดลอก/ตัด: ใส่ HTML ที่วางใน Microsoft Word ได้หน้าตาเหมือนเดิม (ฟอนต์ ขนาด pt สมการ Word รูป) */
+  const onCopy = (e: React.ClipboardEvent, cut: boolean) => {
+    const s = window.getSelection();
+    const el = ed.current;
+    if (!s || !s.rangeCount || !el) return;
+    let html: string | null = null;
+    try {
+      html = wordClipboardHtml(el, s.getRangeAt(0));
+    } catch {
+      html = null;
+    }
+    if (!html) return;
+    e.preventDefault();
+    e.clipboardData.setData('text/html', html);
+    e.clipboardData.setData('text/plain', s.toString());
+    if (cut && !readOnly) {
+      document.execCommand('delete');
+      changed();
+    }
   };
   const onPaste = (e: React.ClipboardEvent) => {
     const img = Array.from(e.clipboardData.files).find((f) => f.type.startsWith('image/'));
@@ -741,10 +864,31 @@ export const WordEditor = forwardRef<
           <B title="ขึ้นหน้าใหม่ (Ctrl+Enter)" act={() => insertHtml('<div data-pb="1"></div><p><br></p>')}>
             <FileDown className="w-4 h-4" />
           </B>
+          {draw && <span className="st-insp-tag st-insp-draw">ลากบนกระดาษเพื่อวาดรูปร่าง (Esc ยกเลิก)</span>}
           {active && (
             <>
               <span className="st-insp-sep" />
-              <span className="st-insp-tag">{active.dataset.tex !== undefined ? 'สมการ' : active.dataset.graph ? 'กราฟ' : 'รูปภาพ'}</span>
+              <span className="st-insp-tag">{active.dataset.tex !== undefined ? 'สมการ' : active.dataset.graph ? 'กราฟ' : active.dataset.shape ? 'รูปร่าง' : 'รูปภาพ'}</span>
+              {active.dataset.shape && (
+                <>
+                  {!isLineShape(active.dataset.shape) && (
+                    <ColorPop title="สีพื้นรูปร่าง" value={active.dataset.fill === 'none' ? '#ffffff' : active.dataset.fill || '#bfdbfe'} onChange={(c) => shapeAttr('fill', c)} icon={<span className="st-shape-sw" style={{ background: active.dataset.fill === 'none' ? 'transparent' : active.dataset.fill }} />} />
+                  )}
+                  <ColorPop title="สีเส้นขอบ" value={active.dataset.stroke || '#1f1b36'} onChange={(c) => shapeAttr('stroke', c)} icon={<span className="st-shape-sw st-shape-sw-line" style={{ borderColor: active.dataset.stroke }} />} />
+                  <select className="st-wsel" value={active.dataset.sw || '2'} onChange={(e) => shapeAttr('sw', e.target.value)} aria-label="ความหนาเส้น" title="ความหนาเส้น">
+                    {['0', '1', '2', '3', '4', '6', '8', '12'].map((w) => (
+                      <option key={w} value={w}>
+                        {w === '0' ? 'ไม่มีเส้น' : `เส้น ${w}`}
+                      </option>
+                    ))}
+                  </select>
+                  {!isLineShape(active.dataset.shape) && (
+                    <button type="button" className="st-tb st-tb-wide" onMouseDown={(e) => e.preventDefault()} onClick={() => shapeAttr('fill', 'none')}>
+                      ไม่มีสีพื้น
+                    </button>
+                  )}
+                </>
+              )}
               {(active.dataset.tex !== undefined || active.dataset.graph) && (
                 <button type="button" className="st-tb st-tb-wide" onMouseDown={(e) => e.preventDefault()} onClick={editActive}>
                   <Pencil className="w-4 h-4" /> แก้ไข
@@ -807,6 +951,13 @@ export const WordEditor = forwardRef<
     root: () => ed.current,
     changed,
     pages: n,
+    opt: wopt,
+    setOpt: (p) => onWopt({ ...wopt, ...p }),
+    drawing: draw,
+    drawShape: (id) => {
+      setActive(null);
+      setDraw(id);
+    },
   };
   const side = !readOnly && (
     <>
@@ -819,27 +970,30 @@ export const WordEditor = forwardRef<
     <>
       {bar && (barEl ? createPortal(bar, barEl) : bar)}
       {side && railEl && createPortal(side, railEl)}
-      <div className="st-word" style={{ width: W * zoom, height: totalH * zoom }}>
+      <div className="st-word" data-draw={draw ? '1' : undefined} style={{ width: W * zoom, height: totalH * zoom }}>
         <div style={{ width: W, height: totalH, transform: `scale(${zoom})`, transformOrigin: '0 0', position: 'relative' }}>
           {pages.map((p, i) => (
             <div key={p.id} className="st-sheet" style={{ top: i * P, width: W, height: H }}>
-              <PageView page={{ ...p, items: [] }} W={W} H={H} />
+              <PageView page={{ ...p, items: [] }} W={W} H={H} index={i} total={n} wopt={wopt} />
               <span className="st-sheet-no">หน้า {i + 1}</span>
             </div>
           ))}
           <div
             ref={ed}
             className="st-flow st-word-ed"
+            data-std={wopt.std || undefined}
             contentEditable={!readOnly}
             suppressContentEditableWarning
             spellCheck={false}
-            style={{ position: 'absolute', left: 0, top: 0, width: W, minHeight: totalH, padding: `0 ${FLOW_MARGIN.x}px`, fontFamily: FONTS.sarabun.family }}
+            style={{ ...flowBoxStyle(wopt, W), position: 'absolute', left: 0, top: 0, minHeight: totalH }}
             onInput={changed}
             onKeyUp={keepShow}
             onMouseUp={keepShow}
             onBlur={keep}
             onKeyDown={onKey}
             onPaste={onPaste}
+            onCopy={(e) => onCopy(e, false)}
+            onCut={(e) => onCopy(e, true)}
             onPointerDown={onDown}
             onDragStart={(e) => (e.target as HTMLElement).closest?.('img, figure') && e.preventDefault()}
             onDoubleClick={onDouble}
@@ -860,6 +1014,7 @@ export const WordEditor = forwardRef<
               </div>
             ) : null
           )}
+          {ghost && <span className="st-word-ghost" style={{ left: ghost.x, top: ghost.y, width: ghost.w, height: ghost.h, borderWidth: 2 / zoom }} />}
           {active && ed.current?.contains(active) && (
             <ActiveRing box={rel(active)} zoom={zoom} onGrab={readOnly || active.tagName === 'SPAN' ? undefined : (c, x, y) => grab(active, x, y, c)} />
           )}

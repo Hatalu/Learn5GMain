@@ -1,4 +1,5 @@
 import { blankBg, blankBorder, makeLine, makeShape, makeSticker, makeTable, makeText, makeWrite, SIZES, uid, type Design, type Item, type Page } from '@/lib/studio/doc';
+import { defaultWordOpt } from '@/lib/studio/flow';
 
 /** แม่แบบเริ่มต้น: กดแล้วได้สื่อพร้อมแก้ต่อ (ทุกชิ้นแก้/ลบได้) */
 export interface Template {
@@ -14,7 +15,7 @@ const at = <T extends Item>(it: T, x: number, y: number, w?: number, h?: number)
 const page = (items: Item[], over: Partial<Page> = {}): Page => ({ id: uid(), bg: blankBg(), border: blankBorder(), items, ...over });
 const design = (sizeId: string, pages: Page[]): Design => {
   const s = SIZES.find((x) => x.id === sizeId) ?? SIZES[0];
-  return { v: 1, size: { id: s.id, w: s.w, h: s.h }, pages, mode: 'canvas', flow: '' };
+  return { v: 1, size: { id: s.id, w: s.w, h: s.h }, pages, mode: 'canvas', flow: '', word: defaultWordOpt() };
 };
 const nameLine = (y: number, w = 714) =>
   at(makeText({ text: 'ชื่อ ........................................................  ชั้น ...............  เลขที่ ...........', size: 20, align: 'left', font: 'sarabun' }), 40, y, w);

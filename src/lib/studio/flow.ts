@@ -5,9 +5,97 @@
  */
 import { cleanGraph } from './graph';
 
-/** ขอบกระดาษ (px ที่ 96 dpi) และช่องว่างระหว่างแผ่นในจอแก้ไข */
+/** ขอบกระดาษรุ่นแรก (px ที่ 96 dpi) ใช้กับเอกสารเก่าที่ยังไม่มีค่าตั้งหน้า และช่องว่างระหว่างแผ่นในจอแก้ไข */
 export const FLOW_MARGIN = { x: 76, y: 72 };
 export const FLOW_GAP = 28;
+/** บรรทัดเดี่ยวของ Word กับฟอนต์ TH Sarabun 16pt สูง 21pt (วัดจาก Word จริง) = 1.31 เท่าของขนาดตัวอักษร */
+export const WORD_SINGLE = 1.31;
+
+/**
+ * ตั้งค่าหน้ากระดาษแบบ Word: ระยะขอบ หัว/ท้ายกระดาษ เลขหน้า
+ * std = เอกสารใหม่ใช้ค่ามาตรฐาน Word (ขอบ 1 นิ้ว, TH Sarabun, ระยะบรรทัดเดี่ยว) ส่วนเอกสารเก่าคงหน้าตาเดิม
+ */
+export interface WordOpt {
+  std: boolean;
+  mt: number;
+  mb: number;
+  ml: number;
+  mr: number;
+  head: string;
+  foot: string;
+  num: 'none' | 'top' | 'bottom';
+  numAlign: 'left' | 'center' | 'right';
+  numFmt: 'n' | 'thai' | 'page' | 'of';
+  numStart: number;
+  /** แสดงเลขหน้า/หัวท้ายกระดาษที่หน้าแรกด้วย (Word: หน้าแรกแตกต่าง) */
+  numFirst: boolean;
+}
+export const NUM_FMTS: { id: WordOpt['numFmt']; label: string }[] = [
+  { id: 'n', label: '1' },
+  { id: 'thai', label: '๑' },
+  { id: 'page', label: 'หน้า 1' },
+  { id: 'of', label: 'หน้า 1 จาก 5' },
+];
+/** ระยะขอบสำเร็จรูปแบบ Word (px) */
+export const MARGIN_PRESETS: { id: string; label: string; m: [number, number, number, number] }[] = [
+  { id: 'normal', label: 'ปกติ (2.54 ซม.)', m: [96, 96, 96, 96] },
+  { id: 'narrow', label: 'แคบ (1.27 ซม.)', m: [48, 48, 48, 48] },
+  { id: 'moderate', label: 'ปานกลาง', m: [96, 96, 72, 72] },
+  { id: 'wide', label: 'กว้าง', m: [96, 96, 192, 192] },
+  { id: 'thai', label: 'หนังสือราชการ (บน 2.5 ซ้าย 3 ขวา 2 ซม.)', m: [94, 76, 113, 76] },
+];
+export const defaultWordOpt = (std = true): WordOpt => ({
+  std,
+  ...(std ? { mt: 96, mb: 96, ml: 96, mr: 96 } : { mt: FLOW_MARGIN.y, mb: FLOW_MARGIN.y, ml: FLOW_MARGIN.x, mr: FLOW_MARGIN.x }),
+  head: '',
+  foot: '',
+  num: 'none',
+  numAlign: 'center',
+  numFmt: 'n',
+  numStart: 1,
+  numFirst: true,
+});
+const pickS = <T extends string>(v: unknown, ok: readonly T[], d: T): T => (ok.includes(v as T) ? (v as T) : d);
+const cleanLine = (v: unknown) =>
+  String(typeof v === 'string' ? v : '')
+    .replace(/[\u0000-\u001f<>]/g, '')
+    .slice(0, 120);
+/** ค่าที่ไม่มี (เอกสารเก่า) = ค่ารุ่นแรก ไม่ให้หน้าตาเอกสารเดิมเปลี่ยน */
+export function cleanWordOpt(raw: unknown): WordOpt {
+  if (!raw || typeof raw !== 'object') return defaultWordOpt(false);
+  const r = raw as Record<string, unknown>;
+  const d = defaultWordOpt(r.std === true);
+  const m = (v: unknown, def: number) => (typeof v === 'number' && isFinite(v) ? Math.round(Math.max(0, Math.min(300, v))) : def);
+  const st = Number(r.numStart);
+  return {
+    std: d.std,
+    mt: m(r.mt, d.mt),
+    mb: m(r.mb, d.mb),
+    ml: m(r.ml, d.ml),
+    mr: m(r.mr, d.mr),
+    head: cleanLine(r.head),
+    foot: cleanLine(r.foot),
+    num: pickS(r.num, ['none', 'top', 'bottom'] as const, 'none'),
+    numAlign: pickS(r.numAlign, ['left', 'center', 'right'] as const, 'center'),
+    numFmt: pickS(r.numFmt, ['n', 'thai', 'page', 'of'] as const, 'n'),
+    numStart: Number.isInteger(st) ? Math.max(0, Math.min(9999, st)) : 1,
+    numFirst: r.numFirst !== false,
+  };
+}
+const THAI_DIGITS = '๐๑๒๓๔๕๖๗๘๙';
+/** ข้อความเลขหน้าของหน้าที่ i (เริ่ม 0) จากทั้งหมด total หน้า */
+export function pageLabel(o: WordOpt, i: number, total: number): string {
+  const n = o.numStart + i;
+  const last = o.numStart + total - 1;
+  if (o.numFmt === 'thai') return String(n).replace(/\d/g, (c) => THAI_DIGITS[+c]);
+  if (o.numFmt === 'page') return `หน้า ${n}`;
+  if (o.numFmt === 'of') return `หน้า ${n} จาก ${last}`;
+  return String(n);
+}
+
+/** รูปร่างแบบ Word (วาดลงหน้ากระดาษ): สีพื้น/เส้นเป็น #hex เท่านั้น */
+const SHAPE_ID = /^[a-z0-9]{1,16}$/;
+const HEX = /^#[0-9a-fA-F]{6}$/;
 
 const TAGS = new Set(['p', 'div', 'br', 'h1', 'h2', 'h3', 'ul', 'ol', 'li', 'b', 'strong', 'i', 'em', 'u', 's', 'strike', 'sub', 'sup', 'span', 'font', 'table', 'thead', 'tbody', 'tr', 'td', 'th', 'hr', 'img', 'figure', 'blockquote']);
 const VOID = new Set(['br', 'hr', 'img']);
@@ -88,6 +176,7 @@ export function cleanFlowHtml(html: string, cleanSrc: SrcCheck): string {
     let a: RegExpExecArray | null;
     let tex = '';
     let graph = '';
+    const shape: string[] = [];
     while ((a = ar.exec(m[3] || ''))) {
       const name = a[1].toLowerCase();
       const val = decode(a[2] ?? a[3] ?? a[4] ?? '');
@@ -102,6 +191,14 @@ export function cleanFlowHtml(html: string, cleanSrc: SrcCheck): string {
         } catch {
           graph = '';
         }
+      } else if (tag === 'figure' && name === 'data-shape' && SHAPE_ID.test(val)) {
+        shape.unshift(`data-shape="${val}"`);
+      } else if (tag === 'figure' && (name === 'data-fill' || name === 'data-stroke') && (HEX.test(val) || val === 'none')) {
+        shape.push(`${name}="${val}"`);
+      } else if (tag === 'figure' && name === 'data-sw' && /^\d{1,2}$/.test(val) && +val <= 24) {
+        shape.push(`data-sw="${val}"`);
+      } else if (tag === 'figure' && name === 'data-ar' && /^\d{1,3}(\.\d{1,3})?$/.test(val) && +val >= 0.02 && +val <= 60) {
+        shape.push(`data-ar="${val}"`);
       } else if (name === 'data-wrap' && (tag === 'figure' || tag === 'img') && (WRAPS as readonly string[]).includes(val)) {
         attrs.push(`data-wrap="${val}"`);
       } else if (name === 'data-pb' && tag === 'div') {
@@ -128,6 +225,7 @@ export function cleanFlowHtml(html: string, cleanSrc: SrcCheck): string {
     }
     if (tag === 'figure') {
       if (graph) out.push(`<figure data-graph="${escAttr(graph)}" contenteditable="false"${attrs.length ? ' ' + attrs.join(' ') : ''}></figure>`);
+      else if (shape[0]?.startsWith('data-shape')) out.push(`<figure ${[...shape, ...attrs].join(' ')} contenteditable="false"></figure>`);
       if (!m[0].endsWith('/>')) startSkip(tag);
       continue;
     }
@@ -149,7 +247,7 @@ export const flowIsEmpty = (html: string) =>
  * จัดหน้าเนื้อหาในกล่องที่วางเรียงหน้าละ pageH + gap: ชิ้นที่คร่อมรอยต่อหน้าถูกดันไปขึ้นหน้าใหม่ด้วย margin-top
  * (margin-top ไม่ถูกบันทึก ตัวกรองไม่อนุญาต) คืนจำนวนหน้าที่ต้องใช้
  */
-export function paginate(root: HTMLElement, pageH: number, gap: number, my: number): number {
+export function paginate(root: HTMLElement, pageH: number, gap: number, my: number, mb = my): number {
   const P = pageH + gap;
   const units: HTMLElement[] = [];
   const top0 = root.getBoundingClientRect().top;
@@ -171,14 +269,14 @@ export function paginate(root: HTMLElement, pageH: number, gap: number, my: numb
     const h = r.height / scale;
     const k = Math.max(0, Math.floor(t / P));
     const cTop = k * P + my;
-    const cBot = k * P + pageH - my;
+    const cBot = k * P + pageH - mb;
     let push = 0;
     if (forceNext) push = (k + 1) * P + my - t;
     else if (t < cTop - 0.5) push = cTop - t;
-    else if (t + h > cBot + 0.5 && h <= pageH - 2 * my) push = (k + 1) * P + my - t;
+    else if (t + h > cBot + 0.5 && h <= pageH - my - mb) push = (k + 1) * P + my - t;
     forceNext = u.dataset.pb === '1';
     if (push > 0.5) u.style.marginTop = `${push}px`;
     last = t + push + h;
   }
-  return Math.max(1, Math.ceil((last + my) / P), Math.ceil(free / P));
+  return Math.max(1, Math.ceil((last + mb) / P), Math.ceil(free / P));
 }

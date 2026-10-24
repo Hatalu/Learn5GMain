@@ -13,8 +13,10 @@ import {
   BarChart3,
   Bold,
   CalendarDays,
+  Clock,
   Eraser,
   FileDown,
+  FilePlus,
   Heading,
   ImagePlus,
   IndentDecrease,
@@ -45,6 +47,8 @@ import { texToHtml } from '@/components/creator/math/MathText';
 import { MathKeysDialog } from '@/components/creator/math/MathKeys';
 import { WORD_KEYS, comboLabel } from '@/lib/studio/keys';
 import { FONTS } from './fonts';
+import { SHAPES } from './shapes';
+import { MARGIN_PRESETS, NUM_FMTS, type WordOpt } from '@/lib/studio/flow';
 
 /** ขนาดตัวอักษรหน่วย pt เหมือนรายการใน Word (ตัวปกติของเอกสาร = 16pt แบบ TH Sarabun) */
 export const SIZES = [8, 9, 10, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28, 32, 36, 40, 48, 60, 72];
@@ -122,6 +126,12 @@ export interface WordApi {
   root: () => HTMLElement | null;
   changed: () => void;
   pages: number;
+  /** ตั้งค่าหน้ากระดาษ (ขอบ หัว/ท้ายกระดาษ เลขหน้า) */
+  opt: WordOpt;
+  setOpt: (p: Partial<WordOpt>) => void;
+  /** รูปร่างที่กำลังรอวาด (ลากบนกระดาษ) */
+  drawing: string | null;
+  drawShape: (id: string) => void;
 }
 
 /* ใช้กับปุ่มในแผง: ไม่แย่งเคอร์เซอร์จากเอกสาร */
@@ -404,14 +414,43 @@ function InsertPanel({ api }: { api: WordApi }) {
           </button>
         </div>
       </Sec>
-      <Sec title="หน้าและเส้น">
+      <Sec title="รูปร่าง" note={api.drawing ? 'ลากบนกระดาษเพื่อวาด (Esc ยกเลิก)' : 'เลือกรูป แล้วลากบนกระดาษเพื่อวาด'}>
+        <div className="st-wshapes">
+          <button type="button" data-on={api.drawing === 'ln'} onMouseDown={noFocus} onClick={() => api.drawShape('ln')} title="เส้นตรง" aria-label="เส้นตรง">
+            <svg viewBox="0 0 100 100">
+              <path d="M8,92 L92,8" fill="none" stroke="currentColor" strokeWidth="8" strokeLinecap="round" />
+            </svg>
+          </button>
+          {SHAPES.map((s) => (
+            <button key={s.id} type="button" data-on={api.drawing === s.id} onMouseDown={noFocus} onClick={() => api.drawShape(s.id)} title={s.label} aria-label={s.label}>
+              <svg viewBox="-4 -4 108 108">
+                <path d={s.d} fill="#dbeafe" fillRule="evenodd" stroke="currentColor" strokeWidth="5" strokeLinejoin="round" />
+              </svg>
+            </button>
+          ))}
+        </div>
+      </Sec>
+      <Sec title="หน้า">
         <div className="st-wbig">
           <button type="button" onMouseDown={noFocus} onClick={() => api.insertHtml('<div data-pb="1"></div><p><br></p>')}>
-            <FileDown className="w-5 h-5" /> ขึ้นหน้าใหม่
+            <FileDown className="w-5 h-5" /> ตัวแบ่งหน้า (ขึ้นหน้าใหม่) <kbd>Ctrl + Enter</kbd>
+          </button>
+          <button type="button" onMouseDown={noFocus} onClick={() => api.insertHtml('<div data-pb="1"></div><p><br></p><div data-pb="1"></div><p><br></p>')}>
+            <FilePlus className="w-5 h-5" /> หน้าเปล่า
           </button>
           <button type="button" onMouseDown={noFocus} onClick={() => api.insertHtml('<hr><p><br></p>')}>
             <Minus className="w-5 h-5" /> เส้นคั่น
           </button>
+        </div>
+      </Sec>
+      <HeadFoot api={api} />
+      <Sec title="อักษรศิลป์">
+        <div className="st-wart">
+          {WORDART.map((a) => (
+            <button key={a.c} type="button" onMouseDown={noFocus} onClick={() => api.insertHtml(`<span style="font-size: 48px; font-weight: 700; color: ${a.c}">อักษรศิลป์</span>&nbsp;`)} style={{ color: a.c }}>
+              {a.label}
+            </button>
+          ))}
         </div>
       </Sec>
       <Sec title="ส่วนช่วยครู">
@@ -425,6 +464,9 @@ function InsertPanel({ api }: { api: WordApi }) {
           <button type="button" onMouseDown={noFocus} onClick={() => api.insertHtml(`${today()}&nbsp;`)}>
             <CalendarDays className="w-5 h-5" /> วันที่วันนี้
           </button>
+          <button type="button" onMouseDown={noFocus} onClick={() => api.insertHtml(`${new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.&nbsp;`)}>
+            <Clock className="w-5 h-5" /> เวลาตอนนี้
+          </button>
         </div>
       </Sec>
       <Sec title="สัญลักษณ์">
@@ -435,6 +477,70 @@ function InsertPanel({ api }: { api: WordApi }) {
             </button>
           ))}
         </div>
+      </Sec>
+    </>
+  );
+}
+
+const WORDART = [
+  { c: '#7c3aed', label: 'ม่วง' },
+  { c: '#2563eb', label: 'ฟ้า' },
+  { c: '#dc2626', label: 'แดง' },
+  { c: '#16a34a', label: 'เขียว' },
+  { c: '#ea580c', label: 'ส้ม' },
+  { c: '#1f1b36', label: 'ดำ' },
+];
+
+/** หัวกระดาษ ท้ายกระดาษ เลขหน้า (แบบ Word: แทรก > หัวกระดาษ/ท้ายกระดาษ/หมายเลขหน้า) */
+function HeadFoot({ api }: { api: WordApi }) {
+  const o = api.opt;
+  const Chip = <K extends keyof WordOpt>({ k, v, children }: { k: K; v: WordOpt[K]; children: React.ReactNode }) => (
+    <button type="button" data-on={o[k] === v} onMouseDown={noFocus} onClick={() => api.setOpt({ [k]: v } as Partial<WordOpt>)}>
+      {children}
+    </button>
+  );
+  return (
+    <>
+      <Sec title="หัวกระดาษ / ท้ายกระดาษ" note="ข้อความที่ซ้ำทุกหน้า">
+        <div className="st-search">
+          <ArrowUpToLine className="w-4 h-4 shrink-0" />
+          <input value={o.head} maxLength={120} onChange={(e) => api.setOpt({ head: e.target.value })} placeholder="หัวกระดาษ เช่น ชื่อวิชา / ชื่อโรงเรียน" aria-label="หัวกระดาษ" />
+        </div>
+        <div className="st-search mt-2">
+          <ArrowDownToLine className="w-4 h-4 shrink-0" />
+          <input value={o.foot} maxLength={120} onChange={(e) => api.setOpt({ foot: e.target.value })} placeholder="ท้ายกระดาษ" aria-label="ท้ายกระดาษ" />
+        </div>
+      </Sec>
+      <Sec title="หมายเลขหน้า">
+        <div className="st-chips">
+          <Chip k="num" v="none">ไม่ใส่</Chip>
+          <Chip k="num" v="top">ด้านบน</Chip>
+          <Chip k="num" v="bottom">ด้านล่าง</Chip>
+        </div>
+        {o.num !== 'none' && (
+          <>
+            <div className="st-chips mt-2">
+              <Chip k="numAlign" v="left">ซ้าย</Chip>
+              <Chip k="numAlign" v="center">กลาง</Chip>
+              <Chip k="numAlign" v="right">ขวา</Chip>
+            </div>
+            <div className="st-chips mt-2">
+              {NUM_FMTS.map((f) => (
+                <Chip key={f.id} k="numFmt" v={f.id}>
+                  {f.label}
+                </Chip>
+              ))}
+            </div>
+            <label className="st-wfield mt-2">
+              เริ่มที่เลข
+              <input type="number" min={0} max={9999} value={o.numStart} onChange={(e) => api.setOpt({ numStart: Math.max(0, Math.min(9999, Math.round(+e.target.value) || 0)) })} />
+            </label>
+          </>
+        )}
+        <label className="st-wcheck mt-2">
+          <input type="checkbox" checked={!o.numFirst} onChange={(e) => api.setOpt({ numFirst: !e.target.checked })} />
+          หน้าแรกแตกต่าง (ไม่แสดงหัว/ท้ายกระดาษและเลขหน้าที่หน้าแรก)
+        </label>
       </Sec>
     </>
   );
@@ -675,8 +781,51 @@ function LayoutPanel({ api, extra }: { api: WordApi; extra?: React.ReactNode }) 
     setStats({ words, chars: text.replace(/\s/g, '').length, paras });
   };
   useEffect(count, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const o = api.opt;
+  const cm = (px: number) => Math.round((px / 96) * 2.54 * 100) / 100;
+  // ใส่ค่าเสร็จ (ออกจากช่อง/Enter) ค่อยบันทึก จะได้พิมพ์ทศนิยมได้
+  const margin = (k: 'mt' | 'mb' | 'ml' | 'mr', label: string) => (
+    <label className="st-wfield" key={k}>
+      {label}
+      <input
+        key={o[k]}
+        type="number"
+        step={0.1}
+        min={0}
+        max={7}
+        defaultValue={cm(o[k])}
+        onBlur={(e) => api.setOpt({ [k]: Math.round(Math.max(0, Math.min(7, +e.target.value || 0)) * (96 / 2.54)) })}
+        onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+      />
+      <small>ซม.</small>
+    </label>
+  );
   return (
     <>
+      {!o.std && (
+        <Sec title="มาตรฐาน Word" note="เอกสารนี้สร้างก่อนมีค่ามาตรฐาน Word กดเพื่อใช้ฟอนต์ TH Sarabun ขนาดตรงกับ Word ระยะบรรทัดเดี่ยว และขอบ 2.54 ซม.">
+          <div className="st-wbig">
+            <button type="button" onMouseDown={noFocus} onClick={() => api.setOpt({ std: true, mt: 96, mb: 96, ml: 96, mr: 96 })}>
+              <Ruler className="w-4 h-4" /> ใช้ค่ามาตรฐาน Word
+            </button>
+          </div>
+        </Sec>
+      )}
+      <Sec title="ระยะขอบ">
+        <div className="st-wbig">
+          {MARGIN_PRESETS.map((p) => (
+            <button key={p.id} type="button" data-on={o.mt === p.m[0] && o.mb === p.m[1] && o.ml === p.m[2] && o.mr === p.m[3]} onMouseDown={noFocus} onClick={() => api.setOpt({ mt: p.m[0], mb: p.m[1], ml: p.m[2], mr: p.m[3] })}>
+              {p.label}
+            </button>
+          ))}
+        </div>
+        <div className="st-wmargins mt-2">
+          {margin('mt', 'บน')}
+          {margin('mb', 'ล่าง')}
+          {margin('ml', 'ซ้าย')}
+          {margin('mr', 'ขวา')}
+        </div>
+      </Sec>
       {extra && <Sec title="ขนาดและแนวกระดาษ">{extra}</Sec>}
       <Sec title="สถิติเอกสาร">
         <div className="st-wstats">

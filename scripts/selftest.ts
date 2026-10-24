@@ -5,7 +5,9 @@
 import assert from 'node:assert/strict';
 import { answerOf, quizPages } from '../src/lib/studio/fromQuiz';
 import { cleanGraph, compileExpr, defaultShape, graphToSvg, GRAPH_TEMPLATES, intersections, parseEquation, shapeFacts, shapeText, type GShape } from '../src/lib/studio/graph';
-import { cleanFlowHtml, flowIsEmpty } from '../src/lib/studio/flow';
+import { cleanFlowHtml, cleanWordOpt, defaultWordOpt, flowIsEmpty, pageLabel } from '../src/lib/studio/flow';
+import { mathmlToOmml } from '../src/lib/studio/omml';
+import katex from 'katex';
 import { MATH_DEFAULTS, WORD_KEYS, assignMath, comboLabel, comboOf, conflictOf, mathKeyOf } from '../src/lib/studio/keys';
 import { FREE_SET_LIMIT, FREE_UPLOAD_MB, MEMBER_UPLOAD_MB, creatorTier, fmtMB, quotaBytes, setsUsed } from '../src/lib/game-creator/quota';
 import { normalizeGmail, signupSchema } from '../src/lib/validations/signup';
@@ -1183,6 +1185,41 @@ t('โหมดเอกสาร: ตัวกรอง HTML ตัดสคร
   const d = sanitizeDesign({ mode: 'word', flow: '<h1>หัวเรื่อง</h1><script>x</script>' });
   assert.equal(d.mode, 'word');
   assert.equal(d.flow, '<h1>หัวเรื่อง</h1>');
+});
+
+t('โหมดเอกสาร: รูปร่าง หัว/ท้ายกระดาษ เลขหน้า และขอบแบบ Word', () => {
+  const c = (h: string) => cleanFlowHtml(h, () => '');
+  // รูปร่าง: เก็บเฉพาะรหัสรูป/สี #hex/ความหนา/สัดส่วนที่ถูกต้อง เนื้อหาข้างใน (SVG) ทิ้ง
+  const sh = c('<figure data-shape="star" data-fill="#fde68a" data-stroke="red" data-sw="99" data-ar="1.5" data-wrap="front" style="left: 10px; top: 20px; width: 120px" onclick="x"><svg><script>x</script></svg></figure>');
+  assert.equal(sh, '<figure data-shape="star" data-fill="#fde68a" data-ar="1.5" data-wrap="front" style="left: 10px; top: 20px; width: 120px" contenteditable="false"></figure>');
+  assert.equal(c('<figure data-shape="<x>"></figure><p>a</p>'), '<p>a</p>');
+  assert.equal(c('<figure data-fill="#000000"></figure><p>a</p>'), '<p>a</p>', 'ไม่มีรหัสรูป = ทิ้ง');
+  // เอกสารเก่า (ไม่มีค่าตั้งหน้า) คงขอบเดิม เอกสารใหม่ใช้ขอบ 1 นิ้วแบบ Word
+  const old = cleanWordOpt(undefined);
+  assert.equal(old.std, false);
+  assert.equal(old.mt, 72);
+  assert.equal(defaultWordOpt().ml, 96);
+  assert.equal(sanitizeDesign({}).word.std, false);
+  const o = cleanWordOpt({ std: true, mt: 9999, head: 'วิชา<script>', num: 'bottom', numFmt: 'of', numStart: 3, numFirst: false, ml: -5 });
+  assert.equal(o.mt, 300);
+  assert.equal(o.ml, 0);
+  assert.equal(o.head, 'วิชาscript');
+  assert.equal(pageLabel(o, 0, 4), 'หน้า 3 จาก 6');
+  assert.equal(pageLabel({ ...o, numFmt: 'thai' }, 9, 10), '๑๒');
+  assert.equal(cleanWordOpt({ num: 'side', numFmt: 'x', numStart: 1.5 }).num, 'none');
+});
+
+t('คัดลอกไป Word: สมการแปลงเป็น OMML ของ Word', () => {
+  const om = (tex: string) => mathmlToOmml(katex.renderToString(tex, { output: 'mathml' }));
+  const q = om(String.raw`x=\frac{-b\pm\sqrt{b^{2}-4ac}}{2a}`);
+  assert.ok(q.startsWith('<m:oMath xmlns:m="http://schemas.microsoft.com/office/2004/12/omml">'));
+  assert.ok(q.includes('<m:f><m:num>') && q.includes('<m:rad>') && q.includes('<m:sSup>'));
+  assert.ok(!q.includes('annotation') && !q.includes('frac'), 'ไม่มีต้นฉบับ LaTeX ปนในสมการ');
+  assert.ok(om(String.raw`\sqrt[3]{8}`).includes('<m:deg><m:r><m:t xml:space="preserve">3</m:t></m:r></m:deg>'));
+  assert.ok(om(String.raw`\sum_{i=1}^{n} i`).includes('<m:nary>'));
+  assert.ok(om(String.raw`\begin{bmatrix}1&2\\3&4\end{bmatrix}`).includes('<m:m><m:mr>'));
+  assert.ok(om('a<b').includes('&lt;'), 'อักขระพิเศษถูก escape');
+  assert.equal(mathmlToOmml('ไม่ใช่สมการ'), '');
 });
 
 t('แป้นลัด: แปลงปุ่ม เช็กซ้ำ/ห้ามใช้ และตั้งแม่แบบสมการ', () => {

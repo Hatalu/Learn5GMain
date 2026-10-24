@@ -2,7 +2,7 @@
 import React, { useLayoutEffect, useMemo, useRef } from 'react';
 import { MOON_PHASES, type Dash, type DecoItem, type EduItem, type Fx, type GraphItem, type Item, type LineItem, type MathItem, type Page, type PageBg, type PageBorder, type TableItem, type TextItem, type WriteItem } from '@/lib/studio/doc';
 import { graphToSvg } from '@/lib/studio/graph';
-import { FLOW_GAP, FLOW_MARGIN, paginate } from '@/lib/studio/flow';
+import { FLOW_GAP, defaultWordOpt, pageLabel, paginate, type WordOpt } from '@/lib/studio/flow';
 import { texToHtml } from '@/components/creator/math/MathText';
 import { hydrateFlow } from './flowDom';
 import { CharArt } from './CharArt';
@@ -1170,22 +1170,46 @@ function GraphView({ g }: { g: GraphItem }) {
 }
 
 /** เนื้อหาโหมดเอกสาร 1 หน้า: วางเนื้อหาทั้งหมดแล้วเลื่อนขึ้นตามเลขหน้า (ตัดหน้าแบบเดียวกับจอแก้ไข) */
-export function FlowLayer({ html, index, W, H }: { html: string; index: number; W: number; H: number }) {
+/** กล่องเนื้อหาโหมดเอกสาร: ขอบซ้าย/ขวา ฟอนต์หลัก และค่ามาตรฐาน Word (ใช้ทั้งจอแก้ไขและตอนแสดง/ส่งออก) */
+export const flowBoxStyle = (o: WordOpt, W: number): React.CSSProperties => ({ width: W, paddingLeft: o.ml, paddingRight: o.mr, fontFamily: (o.std ? FONTS.thsarabun : FONTS.sarabun).family });
+
+export function FlowLayer({ html, index, W, H, opt = defaultWordOpt(false) }: { html: string; index: number; W: number; H: number; opt?: WordOpt }) {
   const ref = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
     el.innerHTML = html;
     hydrateFlow(el);
-    paginate(el, H, FLOW_GAP, FLOW_MARGIN.y);
+    paginate(el, H, FLOW_GAP, opt.mt, opt.mb);
     let off = false;
     // ฟอนต์โหลดเสร็จทีหลังทำให้ความสูงเปลี่ยน
-    document.fonts?.ready.then(() => !off && paginate(el, H, FLOW_GAP, FLOW_MARGIN.y));
+    document.fonts?.ready.then(() => !off && paginate(el, H, FLOW_GAP, opt.mt, opt.mb));
     return () => {
       off = true;
     };
-  }, [html, H]);
-  return <div ref={ref} className="st-flow" aria-hidden="true" style={{ position: 'absolute', left: 0, top: -index * (H + FLOW_GAP), width: W, padding: `0 ${FLOW_MARGIN.x}px`, pointerEvents: 'none', fontFamily: FONTS.sarabun.family }} />;
+  }, [html, H, opt.mt, opt.mb, opt.ml, opt.mr, opt.std]);
+  return <div ref={ref} className="st-flow" data-std={opt.std || undefined} aria-hidden="true" style={{ ...flowBoxStyle(opt, W), position: 'absolute', left: 0, top: -index * (H + FLOW_GAP), pointerEvents: 'none' }} />;
+}
+
+/** หัวกระดาษ ท้ายกระดาษ และเลขหน้า (แบบ Word) วางในพื้นที่ขอบกระดาษ */
+export function PageDeco({ opt, index, total, W, H }: { opt: WordOpt; index: number; total: number; W: number; H: number }) {
+  if (index === 0 && !opt.numFirst) return null;
+  const num = opt.num !== 'none' ? pageLabel(opt, index, total) : '';
+  if (!num && !opt.head && !opt.foot) return null;
+  const font = (opt.std ? FONTS.thsarabun : FONTS.sarabun).family;
+  const band = (top: boolean, text: string, n: string) =>
+    text || n ? (
+      <div className="st-hf" style={{ [top ? 'top' : 'bottom']: 0, height: top ? opt.mt : opt.mb, left: opt.ml, right: opt.mr, fontFamily: font, justifyContent: top ? 'flex-end' : 'flex-start' }}>
+        {text && <span className="st-hf-text">{text}</span>}
+        {n && <span className="st-hf-num" style={{ textAlign: opt.numAlign }}>{n}</span>}
+      </div>
+    ) : null;
+  return (
+    <div aria-hidden="true" style={{ position: 'absolute', inset: 0, width: W, height: H, pointerEvents: 'none' }}>
+      {band(true, opt.head, opt.num === 'top' ? num : '')}
+      {band(false, opt.foot, opt.num === 'bottom' ? num : '')}
+    </div>
+  );
 }
 
 export function ItemView({ it, editText, editCell }: { it: Item; editText?: EditText; editCell?: EditCell }) {
@@ -1219,6 +1243,8 @@ export function PageView({
   editId,
   flow,
   index = 0,
+  wopt,
+  total = 1,
   children,
 }: {
   page: Page;
@@ -1230,12 +1256,16 @@ export function PageView({
   /** เนื้อหาโหมดเอกสาร (แสดงใต้ชิ้นงาน) */
   flow?: string;
   index?: number;
+  /** ตั้งค่าหน้าของโหมดเอกสาร (หัว/ท้ายกระดาษ เลขหน้า ขอบ) */
+  wopt?: WordOpt;
+  total?: number;
   children?: React.ReactNode;
 }) {
   return (
     <div data-page={page.id} style={{ position: 'relative', width: W, height: H, overflow: 'hidden', ...bgStyle(page.bg) }}>
       <BorderArt b={page.border} W={W} H={H} />
-      {flow ? <FlowLayer html={flow} index={index} W={W} H={H} /> : null}
+      {flow ? <FlowLayer html={flow} index={index} W={W} H={H} opt={wopt} /> : null}
+      {wopt ? <PageDeco opt={wopt} index={index} total={total} W={W} H={H} /> : null}
       {page.items.map((it) => (
         <ItemView key={it.id} it={it} editText={editId === it.id ? editText : undefined} editCell={editId === it.id ? editCell : undefined} />
       ))}

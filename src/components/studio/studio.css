@@ -2063,6 +2063,12 @@ html.dark .st-quizlink {
   padding-bottom: 0.3em;
   min-height: 1.6em;
 }
+/* หัวเรื่องใช้ฟอนต์เดียวกับเนื้อหา (แบบสไตล์หัวเรื่องของ Word) ไม่ใช้ฟอนต์หัวเรื่องของหน้าเว็บ */
+.st-flow h1,
+.st-flow h2,
+.st-flow h3 {
+  font-family: inherit;
+}
 .st-flow h1 {
   font-size: 1.9em;
   font-weight: 700;
@@ -2150,10 +2156,54 @@ html.dark .st-quizlink {
   float: right;
   margin: 0 0 0.4em 1em;
 }
+/* สมการวางบนเส้นฐานเดียวกับตัวอักษร และขนาดเท่าตัวอักษรรอบข้าง (แบบสมการของ Word) */
 .st-flow span[data-tex] {
   display: inline-block;
-  vertical-align: middle;
-  padding: 0 2px;
+  vertical-align: baseline;
+  padding: 0 1px;
+}
+.st-flow span[data-tex] .katex {
+  font-size: 1em;
+}
+/* เอกสารมาตรฐาน Word: 16pt ระยะบรรทัดเดี่ยวแบบ Word ไม่มีช่องหลังย่อหน้า */
+.st-flow[data-std] {
+  font-size: 16pt;
+  line-height: 1.31;
+}
+.st-flow[data-std] p,
+.st-flow[data-std] div {
+  padding-bottom: 0;
+  min-height: 0;
+}
+/* รูปร่าง (แทรก > รูปร่าง) */
+.st-flow figure[data-shape] {
+  width: 160px;
+  margin: 0;
+}
+.st-flow figure[data-shape] svg {
+  overflow: visible;
+}
+/* หัวกระดาษ ท้ายกระดาษ เลขหน้า */
+.st-hf {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 0;
+  box-sizing: border-box;
+  font-size: 14pt;
+  line-height: 1.3;
+  color: #1f1b36;
+  overflow: hidden;
+}
+.st-hf-text {
+  text-align: center;
+  white-space: pre;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.st-hf-num {
+  display: block;
 }
 .st-flow [data-pb] {
   height: 0;
@@ -2631,4 +2681,117 @@ html.dark .st-wwarn {
 .st-shell[data-readonly='false'] .st-paper .st-flow figure[data-graph]:hover {
   outline: 2px dashed #8b3dff;
   outline-offset: 3px;
+}
+
+/* ---------------- โหมดเอกสาร: รูปร่าง ส่วนหัว/ท้าย ระยะขอบ ---------------- */
+.st-word[data-draw] .st-word-ed {
+  cursor: crosshair;
+}
+.st-word-ghost {
+  position: absolute;
+  z-index: 4;
+  border: 2px dashed #7c3aed;
+  background: rgba(124, 58, 237, 0.08);
+  pointer-events: none;
+}
+.st-insp-draw {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+.st-shape-sw {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 2px solid #1f1b36;
+}
+.st-shape-sw-line {
+  background: transparent;
+  border-width: 3px;
+}
+.st-wshapes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+  gap: 5px;
+}
+.st-wshapes button {
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  padding: 6px;
+  border-radius: 10px;
+  border: 1.5px solid var(--st-line);
+  background: var(--st-card);
+  color: #1f1b36;
+  transition: transform 0.15s, background 0.15s;
+}
+.st-wshapes button:hover {
+  background: var(--st-acc-soft);
+}
+.st-wshapes button:active {
+  transform: scale(0.92);
+}
+.st-wshapes button[data-on='true'] {
+  border-color: var(--st-acc);
+  background: var(--st-acc-soft);
+  box-shadow: 0 2px 0 var(--st-acc);
+}
+.st-wshapes svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.st-wart {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.st-wart button {
+  padding: 8px 4px;
+  border-radius: 10px;
+  border: 1.5px solid var(--st-line);
+  background: #fff;
+  font-size: 20px;
+  font-weight: 800;
+}
+.st-wbig button[data-on='true'] {
+  background: var(--st-acc);
+  color: #fff;
+}
+.st-wfield {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.st-wfield input {
+  width: 68px;
+  height: 32px;
+  padding: 0 6px;
+  border-radius: 8px;
+  border: 1.5px solid var(--st-line);
+  background: var(--st-card);
+  color: var(--st-ink);
+  font-weight: 700;
+}
+.st-wfield small {
+  color: var(--st-muted);
+}
+.st-wmargins {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 10px;
+}
+.st-wcheck {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.st-wcheck input {
+  margin-top: 2px;
+  accent-color: var(--st-acc);
 }

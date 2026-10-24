@@ -16,6 +16,8 @@ const chakra = Chakra_Petch({ subsets: ['thai', 'latin'], weight: ['400', '700']
 
 export const FONTS: Record<FontId, { label: string; family: string; note: string }> = {
   sarabun: { label: 'สารบรรณ', family: sarabun.style.fontFamily, note: 'ทางการ อ่านง่าย' },
+  // ฟอนต์ในเครื่อง (ส่วนใหญ่มีคู่กับ Word) ไม่มีจะใช้สารบรรณแทน
+  thsarabun: { label: 'TH Sarabun', family: `'TH SarabunPSK', 'TH Sarabun New', ${sarabun.style.fontFamily}`, note: 'แบบ Word (ต้องมีฟอนต์ในเครื่อง)' },
   kanit: { label: 'คณิต', family: kanit.style.fontFamily, note: 'หัวเรื่องหนา' },
   prompt: { label: 'พร้อมท์', family: prompt.style.fontFamily, note: 'ทันสมัย' },
   mitr: { label: 'มิตร', family: 'var(--font-mitr)', note: 'กลมมน' },

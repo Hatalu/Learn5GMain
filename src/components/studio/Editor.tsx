@@ -1531,6 +1531,8 @@ export function StudioEditor({ id }: { id: string }) {
                   ref={word}
                   html={doc.flow}
                   pages={doc.pages}
+                  wopt={doc.word}
+                  onWopt={(word) => commit({ ...docRef.current!, word }, 'flow')}
                   W={W}
                   H={H}
                   zoom={zoom}
@@ -1592,7 +1594,7 @@ export function StudioEditor({ id }: { id: string }) {
                         onPointerDown={(e) => onPagePointer(e, i)}
                         onDoubleClick={(e) => onDbl(e, i)}
                       >
-                        <PageView page={p} W={W} H={H} editText={active ? editText : undefined} editCell={active ? editCell : undefined} editId={active ? editId : null} flow={doc.flow} index={i}>
+                        <PageView page={p} W={W} H={H} editText={active ? editText : undefined} editCell={active ? editCell : undefined} editId={active ? editId : null} flow={doc.flow} index={i} wopt={doc.word} total={doc.pages.length}>
                           {marquee && marquee.pi === i && <span className="st-marquee" style={{ left: marquee.x, top: marquee.y, width: marquee.w, height: marquee.h }} />}
                           {active &&
                             mbox &&
@@ -1806,12 +1808,12 @@ export function StudioEditor({ id }: { id: string }) {
         createPortal(
           <div aria-hidden="true" style={{ position: 'fixed', left: -100000, top: 0, pointerEvents: 'none' }}>
             <div ref={thumbEl} style={{ width: W, height: H }}>
-              <PageView page={doc.pages[0]} W={W} H={H} flow={doc.flow} index={0} />
+              <PageView page={doc.pages[0]} W={W} H={H} flow={doc.flow} index={0} wopt={doc.word} total={doc.pages.length} />
             </div>
             {exporting && (
               <div ref={stageEl}>
                 {doc.pages.map((p, i) => (
-                  <PageView key={p.id} page={p} W={W} H={H} flow={doc.flow} index={i} />
+                  <PageView key={p.id} page={p} W={W} H={H} flow={doc.flow} index={i} wopt={doc.word} total={doc.pages.length} />
                 ))}
               </div>
             )}

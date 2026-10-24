@@ -140,7 +140,7 @@ export function Presenter({ doc, start, onClose }: { doc: Design; start: number;
         <div className="pv-stage" onClick={(e) => (e.clientX > window.innerWidth / 3 ? go(i + 1) : go(i - 1))}>
           <div key={doc.pages[i].id} className="pv-slide" data-fx={fx} data-dir={dir} style={{ width: W * s, height: H * s }}>
             <div style={{ width: W, height: H, transform: `scale(${s})`, transformOrigin: '0 0' }}>
-              <PageView page={doc.pages[i]} W={W} H={H} flow={doc.flow} index={i} />
+              <PageView page={doc.pages[i]} W={W} H={H} flow={doc.flow} index={i} wopt={doc.word} total={doc.pages.length} />
             </div>
           </div>
         </div>

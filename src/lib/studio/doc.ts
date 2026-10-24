@@ -5,7 +5,7 @@
  */
 import { mediaPrefix } from '@/lib/game-creator/prefix';
 import { cleanGraph, type GraphSpec } from './graph';
-import { cleanFlowHtml } from './flow';
+import { cleanFlowHtml, cleanWordOpt, defaultWordOpt, type WordOpt } from './flow';
 import { cleanLook, DEFAULT_LOOK, type CharLook } from './char';
 
 export const MAX_PAGES = 30;
@@ -33,7 +33,7 @@ export const DEFAULT_SIZE = SIZES[0];
 export const CUSTOM_MIN = 200;
 export const CUSTOM_MAX = 2400;
 
-export const FONT_IDS = ['sarabun', 'kanit', 'prompt', 'mitr', 'noto', 'itim', 'mali', 'sriracha', 'chonburi', 'charm', 'pattaya', 'chakra'] as const;
+export const FONT_IDS = ['sarabun', 'thsarabun', 'kanit', 'prompt', 'mitr', 'noto', 'itim', 'mali', 'sriracha', 'chonburi', 'charm', 'pattaya', 'chakra'] as const;
 export type FontId = (typeof FONT_IDS)[number];
 
 export type Dash = 'solid' | 'dash' | 'dot';
@@ -199,6 +199,8 @@ export interface Design {
   mode: EditMode;
   /** เนื้อหาโหมดเอกสาร (HTML ที่กรองแล้ว) ไหลต่อเนื่องทุกหน้า อยู่ใต้ชิ้นงานของโหมด Canva */
   flow: string;
+  /** ตั้งค่าหน้ากระดาษของโหมดเอกสาร (ขอบ หัว/ท้ายกระดาษ เลขหน้า) */
+  word: WordOpt;
 }
 
 export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-3);
@@ -210,7 +212,7 @@ export const blankBorder = (): PageBorder => ({ style: 'none', color: '#7c5cf0',
 export const blankPage = (): Page => ({ id: uid(), bg: blankBg(), border: blankBorder(), items: [] });
 
 export function blankDesign(size: { id: string; w: number; h: number } = DEFAULT_SIZE): Design {
-  return { v: 1, size: { id: size.id, w: size.w, h: size.h }, pages: [blankPage()], mode: 'canvas', flow: '' };
+  return { v: 1, size: { id: size.id, w: size.w, h: size.h }, pages: [blankPage()], mode: 'canvas', flow: '', word: defaultWordOpt() };
 }
 
 const base = (x: number, y: number, w: number, h: number): Base => ({ id: uid(), x, y, w, h, rot: 0, opacity: 1, locked: false, fx: 'none', fxColor: '#2a2350' });
@@ -537,7 +539,7 @@ export function sanitizeDesign(raw: unknown): Design {
   const h = Math.round(num(s.h, CUSTOM_MIN, CUSTOM_MAX, preset?.h ?? DEFAULT_SIZE.h));
   const size = { id: preset && preset.w === w && preset.h === h ? preset.id : 'custom', w, h };
   const pages = (Array.isArray(r.pages) ? r.pages.slice(0, MAX_PAGES) : []).map((p) => cleanPage(p, w, h));
-  return { v: 1, size, pages: pages.length ? pages : [blankPage()], mode: r.mode === 'word' ? 'word' : 'canvas', flow: cleanFlowHtml(typeof r.flow === 'string' ? r.flow : '', cleanSrc) };
+  return { v: 1, size, pages: pages.length ? pages : [blankPage()], mode: r.mode === 'word' ? 'word' : 'canvas', flow: cleanFlowHtml(typeof r.flow === 'string' ? r.flow : '', cleanSrc), word: cleanWordOpt(r.word) };
 }
 
 /** ไฟล์รูปในที่เก็บของเราที่สื่อชิ้นนี้ใช้ (ใช้ตอนลบสื่อ) */

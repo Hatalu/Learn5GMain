@@ -67,6 +67,19 @@
 .l5g-btn-go {
   background: var(--l5g-sun);
 }
+.l5g-go-kbd {
+  font-family: inherit;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  border: 1.5px solid currentColor;
+  opacity: 0.7;
+}
+@media (max-width: 640px) {
+  .l5g-go-kbd {
+    display: none;
+  }
+}
 .l5g-btn-violet {
   background: var(--l5g-violet);
   color: #fff;

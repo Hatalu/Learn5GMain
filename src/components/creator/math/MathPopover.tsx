@@ -274,6 +274,8 @@ export function MathPopover({
   // แป้นลัดแม่แบบ (แบบ MathType) ตั้งเองได้ เฉพาะระบบสร้างสื่อ
   const [mkeys, setMkeys] = useState<MathKeys>({});
   const [keyDlg, setKeyDlg] = useState(false);
+  const keyDlgRef = useRef(keyDlg);
+  keyDlgRef.current = keyDlg;
   const mkeysRef = useRef(mkeys);
   mkeysRef.current = mkeys;
   useEffect(() => {
@@ -307,6 +309,13 @@ export function MathPopover({
         el.addEventListener(
           'keydown',
           (e: KeyboardEvent) => {
+            // Enter / Ctrl+Enter = ปุ่ม "ใส่สูตร" (ดักก่อนช่องสูตร ไม่ต้องใช้เมาส์) Shift+Enter ปล่อยให้ช่องสูตรใช้
+            if (e.key === 'Enter' && !e.shiftKey && !e.altKey && !e.isComposing) {
+              e.preventDefault();
+              e.stopPropagation();
+              if (el.value.trim() || e.ctrlKey || e.metaKey) cb.current.onDone(el.value);
+              return;
+            }
             const c = comboOf(e);
             const ins = c ? mathKeyOf(mkeysRef.current, c) : null;
             if (!ins) return;
@@ -318,10 +327,6 @@ export function MathPopover({
           true
         );
         el.addEventListener('keydown', (e: KeyboardEvent) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            cb.current.onDone(el.value);
-          }
           if (e.key === 'Escape') cb.current.onCancel();
         });
         mf.current = el;
@@ -342,6 +347,19 @@ export function MathPopover({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mounted]);
+
+  // Ctrl+Enter ได้ทุกที่ในหน้าต่าง (เช่นตอนโฟกัสอยู่ที่ปุ่มแป้นสูตร)
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => {
+      if (e.key !== 'Enter' || !(e.ctrlKey || e.metaKey) || keyDlgRef.current) return;
+      const v = mf.current?.value || '';
+      if (!v.trim()) return;
+      e.preventDefault();
+      cb.current.onDone(v);
+    };
+    window.addEventListener('keydown', k);
+    return () => window.removeEventListener('keydown', k);
+  }, []);
 
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -390,7 +408,7 @@ export function MathPopover({
         <div className="l5g-mf-wrap">
           <div ref={host} className="l5g-mf-host" />
           {!ready && <div className="l5g-mf-loading">กำลังเตรียมแป้นสูตร…</div>}
-          <p className="l5g-mf-hint">พิมพ์ 3/4 จะกลายเป็นเศษส่วนเอง · กดลูกศรเพื่อย้ายช่อง</p>
+          <p className="l5g-mf-hint">พิมพ์ 3/4 จะกลายเป็นเศษส่วนเอง · กดลูกศรเพื่อย้ายช่อง · กด Enter = ใส่สูตร</p>
         </div>
 
         <div className="l5g-tabs" role="tablist">
@@ -453,6 +471,7 @@ export function MathPopover({
           </button>
           <button type="button" className="l5g-btn l5g-btn-go" disabled={!ready || empty} onClick={() => onDone(mf.current?.value || '')}>
             <Check className="w-5 h-5" strokeWidth={3} /> {editing ? 'บันทึกสูตร' : 'ใส่สูตร'}
+            <kbd className="l5g-go-kbd">Enter</kbd>
           </button>
         </div>
       </div>
