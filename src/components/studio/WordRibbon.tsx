@@ -18,10 +18,11 @@ import {
   Bold,
   CalendarDays,
   ChevronDown,
-  ChevronUp,
+  ChevronLeft,
   ClipboardPaste,
   Copy,
   Eraser,
+  Eye,
   FileDown,
   FilePlus,
   Frame,
@@ -44,12 +45,14 @@ import {
   PanelTop,
   PenLine,
   PilcrowSquare,
+  Plus,
   Replace,
   Ruler,
   Scissors,
   Search,
   Shapes,
   Sigma,
+  SpellCheck,
   Strikethrough,
   Subscript,
   Superscript,
@@ -187,6 +190,8 @@ export function WordRibbon({
   hf,
   closeHf,
   drawing,
+  side,
+  pane,
 }: {
   api: WordApi;
   sizeNow: number;
@@ -200,19 +205,19 @@ export function WordRibbon({
   hf: 'head' | 'foot' | null;
   closeHf: () => void;
   drawing: string | null;
+  /** ซ้าย = แท็บหลักเรียงลง (หน้าแรก แทรก ...) / ขวา = บานจัดรูปแบบตามบริบท (รูปร่าง รูปภาพ ตาราง) แบบบาน Format ของ Word */
+  side: 'left' | 'right';
+  /** บานที่เปิดแทนแท็บด้านซ้าย (ค้นหา/แป้นลัด) */
+  pane?: React.ReactNode;
 }) {
   const [tab, setTab] = useState<RibbonTab>('home');
-  const [min, setMin] = useState(false);
+  // จอใหญ่เปิดแผงแท็บไว้เลย จอเล็กปิดไว้ให้กระดาษเต็มจอ
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (window.matchMedia('(min-width: 1024px)').matches) setOpen(true);
+  }, []);
   const [keysOpen, setKeysOpen] = useState(false);
   const [clipMsg, setClipMsg] = useState('');
-  // เลือกชิ้นงาน/คลิกในตาราง = เปิดแท็บตามบริบทเองแบบ Word
-  const prevObj = useRef(!!object);
-  useEffect(() => {
-    if (object && !prevObj.current) setTab('object');
-    if (!object && tab === 'object') setTab('home');
-    prevObj.current = !!object;
-  }, [object, tab]);
-  const cur = tab === 'table' && !inTable ? 'home' : tab;
   const clip = async (op: 'cut' | 'copy' | 'paste') => {
     const m = await api.clip(op);
     setClipMsg(m || '');
@@ -221,7 +226,7 @@ export function WordRibbon({
   const o = api.opt;
   const today = () => new Date().toLocaleDateString('th-TH', { dateStyle: 'long' });
 
-  const body = (() => {
+  const render = (cur: RibbonTab) => {
     switch (cur) {
       case 'home':
         return (
@@ -611,47 +616,89 @@ export function WordRibbon({
       case 'object':
         return <div className="st-robj">{object}</div>;
     }
-  })();
+  };
 
+  const hints = (
+    <>
+      {hf && (
+        <button type="button" className="st-rhf" onMouseDown={noFocus} onClick={closeHf}>
+          ปิด{hf === 'head' ? 'หัวกระดาษ' : 'ท้ายกระดาษ'}
+        </button>
+      )}
+      {drawing && <p className="st-rhint">ลากบนกระดาษเพื่อวาด (Esc ยกเลิก)</p>}
+    </>
+  );
+
+  if (side === 'right') {
+    // บานจัดรูปแบบด้านขวา: ขึ้นเฉพาะตอนเลือกรูปร่าง/รูปภาพ หรือคลิกในตาราง (ไม่มีอะไรเลือก = กระดาษกว้างเต็มที่)
+    const ctx: RibbonTab | null = object ? 'object' : inTable ? 'table' : null;
+    if (!ctx && !hf && !drawing) return null;
+    return (
+      <aside className="st-rside st-rright" aria-label={ctx === 'object' ? objectLabel : ctx === 'table' ? 'เค้าโครงตาราง' : 'สถานะ'}>
+        {ctx && <h2 className="st-rside-h">{ctx === 'object' ? objectLabel : 'เค้าโครงตาราง'}</h2>}
+        {hints}
+        {ctx && (
+          <div className="st-rbody" role="toolbar" aria-label="จัดรูปแบบ">
+            {render(ctx)}
+          </div>
+        )}
+      </aside>
+    );
+  }
+
+  const cur = tab === 'table' || tab === 'object' ? 'home' : tab;
   return (
-    <div className="st-ribbon" data-min={min || undefined}>
-      <div className="st-rtabs" role="tablist" aria-label="ริบบอน">
+    <>
+      <nav className="st-rail st-rrail" aria-label="แท็บเครื่องมือ">
         {TABS.map((t) => (
-          <button key={t.id} type="button" role="tab" aria-selected={cur === t.id} className="st-rtab" data-on={cur === t.id} onMouseDown={noFocus} onClick={() => (setTab(t.id), setMin(false))}>
-            {t.label}
+          <button
+            key={t.id}
+            type="button"
+            className="st-rail-btn"
+            data-on={open && !pane && cur === t.id}
+            onMouseDown={noFocus}
+            onClick={() => {
+              if (pane) api.closePane();
+              setOpen(!(open && !pane && cur === t.id));
+              setTab(t.id);
+            }}
+            style={{ ['--c' as string]: TAB_COLOR[t.id] }}
+          >
+            <span className="st-rail-ic">{TAB_ICON[t.id]}</span>
+            <span className="st-rail-tx">{t.label}</span>
           </button>
         ))}
-        {inTable && (
-          <button type="button" role="tab" aria-selected={cur === 'table'} className="st-rtab st-rtab-ctx" data-on={cur === 'table'} onMouseDown={noFocus} onClick={() => (setTab('table'), setMin(false))}>
-            เค้าโครงตาราง
-          </button>
-        )}
-        {object && (
-          <button type="button" role="tab" aria-selected={cur === 'object'} className="st-rtab st-rtab-ctx" data-on={cur === 'object'} onMouseDown={noFocus} onClick={() => (setTab('object'), setMin(false))}>
-            {objectLabel}
-          </button>
-        )}
-        <span className="flex-1" />
-        {hf && (
-          <button type="button" className="st-rtab st-rhf" onMouseDown={noFocus} onClick={closeHf}>
-            ปิด{hf === 'head' ? 'หัวกระดาษ' : 'ท้ายกระดาษ'}
-          </button>
-        )}
-        {drawing && <span className="st-rhint">ลากบนกระดาษเพื่อวาด (Esc ยกเลิก)</span>}
-        {clipMsg && <span className="st-rhint">{clipMsg}</span>}
-        <button type="button" className="st-rtab st-rmin" title={min ? 'แสดงริบบอน' : 'ย่อริบบอน'} aria-label={min ? 'แสดงริบบอน' : 'ย่อริบบอน'} onMouseDown={noFocus} onClick={() => setMin(!min)}>
-          {min ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-        </button>
-      </div>
-      {!min && (
-        <div className="st-rbody" role="toolbar" aria-label="เครื่องมือ">
-          {body}
-        </div>
-      )}
+      </nav>
+      {pane ??
+        (open && (
+          <aside className="st-panel st-rside st-rleft" aria-label={TABS.find((t) => t.id === cur)?.label}>
+            <div className="st-panel-head">
+              <h2>{TABS.find((t) => t.id === cur)?.label}</h2>
+              <button type="button" className="st-tb" onMouseDown={noFocus} onClick={() => setOpen(false)} aria-label="ปิดแผง">
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+            </div>
+            {clipMsg && <p className="st-rhint">{clipMsg}</p>}
+            <div className="st-rbody" role="toolbar" aria-label="เครื่องมือ">
+              {render(cur)}
+            </div>
+          </aside>
+        ))}
       {keysOpen && <MathKeysDialog onClose={() => setKeysOpen(false)} />}
-    </div>
+    </>
   );
 }
+
+const TAB_ICON: Record<string, React.ReactNode> = {
+  home: <Type className="w-5 h-5" />,
+  insert: <Plus className="w-5 h-5" />,
+  layout: <Ruler className="w-5 h-5" />,
+  refs: <ListTree className="w-5 h-5" />,
+  review: <SpellCheck className="w-5 h-5" />,
+  view: <Eye className="w-5 h-5" />,
+  math: <Sigma className="w-5 h-5" />,
+};
+const TAB_COLOR: Record<string, string> = { home: '#2a73d9', insert: '#e8456b', layout: '#2f9e6e', refs: '#e07a12', review: '#c026d3', view: '#0d9488', math: '#4f46e5' };
 
 function TableGrid({ onPick }: { onPick: (r: number, c: number) => void }) {
   const [hv, setHv] = useState<[number, number]>([0, 0]);

@@ -71,6 +71,7 @@ export interface WordApi {
   selectAll: () => void;
   openFind: () => void;
   openKeys: () => void;
+  closePane: () => void;
   /** การอ้างอิง > สารบัญ (จากหัวเรื่อง 1-3) */
   toc: () => void;
 }

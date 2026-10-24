@@ -41,7 +41,8 @@ export const WordEditor = forwardRef<
     zoom: number;
     readOnly: boolean;
     /** ที่วางแถบเครื่องมือ (แทนที่แถบตั้งค่าของโหมด Canva) */
-    barEl: HTMLElement | null;
+    /** ที่วางบานจัดรูปแบบด้านขวา */
+    rightEl: HTMLElement | null;
     /** ที่วางแถบเครื่องมือด้านข้าง (แบบโหมด Canva) */
     railEl: HTMLElement | null;
     /** ตัวเลือกขนาดกระดาษ (แผงเค้าโครง) */
@@ -52,7 +53,7 @@ export const WordEditor = forwardRef<
     openGraph: (spec: GraphSpec | null, done: (s: GraphSpec) => void) => void;
     upload: (file: File) => Promise<string | null>;
   }
->(function WordEditor({ html, pages, wopt, onWopt, W, H, zoom, readOnly, barEl, railEl, layoutExtra, onChange, onNeedPages, openMath, openGraph, upload }, ref) {
+>(function WordEditor({ html, pages, wopt, onWopt, W, H, zoom, readOnly, rightEl, railEl, layoutExtra, onChange, onNeedPages, openMath, openGraph, upload }, ref) {
   const ed = useRef<HTMLDivElement>(null);
   /** หัว/ท้ายกระดาษที่กำลังแก้ (ดับเบิลคลิกขอบบน/ล่างของกระดาษแบบ Word) */
   const hfRef = useRef<HTMLDivElement>(null);
@@ -919,6 +920,7 @@ export const WordEditor = forwardRef<
     },
     openFind: () => openPanel('find'),
     openKeys: () => openPanel('keys'),
+    closePane: () => setPanel(null),
     toc: () => {
       // สารบัญจากหัวเรื่อง 1-3 พร้อมเลขหน้า ณ ตอนกด (แบบกดสร้างใหม่ ไม่ใช่ฟิลด์อัปเดตเองแบบ Word)
       const root = ed.current;
@@ -999,31 +1001,49 @@ export const WordEditor = forwardRef<
     </B>
     </>
   ) : null;
-  const bar = !readOnly && (
+  const objectLabel = active ? (active.dataset.tex !== undefined ? 'เครื่องมือสมการ' : active.dataset.graph ? 'รูปแบบกราฟ' : active.dataset.shape ? 'รูปแบบรูปร่าง' : 'รูปแบบรูปภาพ') : '';
+  // เครื่องมือแบบ Word แยกซ้าย-ขวา ไม่กินพื้นที่ด้านบนของกระดาษ: ซ้าย = แท็บหลัก, ขวา = บานจัดรูปแบบของชิ้นที่เลือก
+  const side = !readOnly && (
     <>
       <WordRibbon
+        side="left"
         api={api}
         sizeNow={sizeNow}
         blockTag={blockTag}
         isOn={docState}
         inTable={!!curCell()}
         object={objectTools}
-        objectLabel={active ? (active.dataset.tex !== undefined ? 'เครื่องมือสมการ' : active.dataset.graph ? 'รูปแบบกราฟ' : active.dataset.shape ? 'รูปแบบรูปร่าง' : 'รูปแบบรูปภาพ') : ''}
+        objectLabel={objectLabel}
         layoutExtra={layoutExtra}
         hf={hf?.part ?? null}
         closeHf={closeHf}
         drawing={draw}
+        pane={panel ? <WordPanel id={panel} api={api} onClose={() => setPanel(null)} findFocus={findFocus} /> : undefined}
       />
       <input ref={fileIn} type="file" accept="image/*" hidden onChange={(e) => (addImage(e.target.files?.[0]), (e.target.value = ''))} />
     </>
   );
-
-  const side = !readOnly && panel && <WordPanel id={panel} api={api} onClose={() => setPanel(null)} findFocus={findFocus} />;
+  const right = !readOnly && (
+    <WordRibbon
+      side="right"
+      api={api}
+      sizeNow={sizeNow}
+      blockTag={blockTag}
+      isOn={docState}
+      inTable={!!curCell()}
+      object={objectTools}
+      objectLabel={objectLabel}
+      layoutExtra={layoutExtra}
+      hf={hf?.part ?? null}
+      closeHf={closeHf}
+      drawing={draw}
+    />
+  );
 
   return (
     <>
-      {bar && (barEl ? createPortal(bar, barEl) : bar)}
       {side && railEl && createPortal(side, railEl)}
+      {right && rightEl && createPortal(right, rightEl)}
       <div className="st-word" data-draw={draw ? '1' : undefined} data-hf={hf ? '1' : undefined} style={{ width: W * zoom, height: totalH * zoom }}>
         <div style={{ width: W, height: totalH, transform: `scale(${zoom})`, transformOrigin: '0 0', position: 'relative' }}>
           {pages.map((p, i) => (

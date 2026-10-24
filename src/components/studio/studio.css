@@ -3268,3 +3268,125 @@ html.dark .st-wwarn {
     transition: none;
   }
 }
+
+/* ---------------- เครื่องมือแบบ Word แยกซ้าย-ขวา (กระดาษได้ความสูงเต็มจอ) ---------------- */
+.st-rside .st-rbody {
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 0 4px 24px;
+  border-top: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+.st-rside .st-rgroup {
+  flex-direction: column-reverse;
+  padding: 10px 10px 12px;
+  border-right: 0;
+  border-bottom: 1.5px solid var(--st-line);
+}
+.st-rside .st-rgroup:last-child {
+  border-bottom: 0;
+}
+.st-rside .st-rgroup-label {
+  padding: 0 0 6px;
+  font-size: 12.5px;
+  font-weight: 800;
+  text-align: left;
+  color: var(--st-ink);
+}
+.st-rside .st-rgroup-body {
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.st-rside .st-rrow {
+  flex-wrap: wrap;
+}
+.st-rside .st-rstyles {
+  max-width: none;
+  flex-wrap: wrap;
+  overflow: visible;
+}
+.st-rside .st-rstyles button {
+  min-width: 88px;
+  height: 46px;
+}
+.st-rside .st-rsel-font {
+  width: 150px;
+}
+.st-rside .st-rbig {
+  min-width: 64px;
+}
+.st-rleft .st-rhint {
+  margin: 0 12px 6px;
+}
+/* บานจัดรูปแบบด้านขวา (แบบบาน Format Shape ของ Word) */
+.st-rright {
+  width: 272px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--st-card);
+  border-left: 1px solid var(--st-line);
+  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.04);
+  animation: st-slide-r 0.18s ease-out;
+  z-index: 3;
+}
+@keyframes st-slide-r {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+}
+.st-rside-h {
+  padding: 14px 14px 6px;
+  font-size: 15px;
+  font-weight: 800;
+  color: #c2410c;
+}
+.st-rright .st-rhf {
+  margin: 8px 12px 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #7c3aed;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+}
+.st-rright .st-rhint {
+  margin: 8px 12px 0;
+  white-space: normal;
+  border-radius: 10px;
+}
+.st-rright .st-robj {
+  flex-direction: column;
+  align-items: stretch;
+  padding: 4px;
+}
+.st-rright .st-robj .st-wsel {
+  max-width: none;
+  width: 100%;
+}
+.st-rrail .st-rail-btn[data-on='true'] {
+  font-weight: 800;
+}
+@media (max-width: 767px) {
+  .st-rright {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 64px;
+    width: auto;
+    max-height: 45vh;
+    border-left: 0;
+    border-radius: 18px 18px 0 0;
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.18);
+    z-index: 24;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .st-rright {
+    animation: none;
+  }
+}

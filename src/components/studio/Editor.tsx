@@ -168,7 +168,7 @@ export function StudioEditor({ id }: { id: string }) {
   const [mathDlg, setMathDlg] = useState<{ tex: string; itemId?: string; done?: (tex: string) => void; insert?: string } | null>(null);
   const [graphDlg, setGraphDlg] = useState<{ spec: GraphSpec; itemId?: string; done?: (s: GraphSpec) => void } | null>(null);
   const word = useRef<WordHandle>(null);
-  const [barEl, setBarEl] = useState<HTMLDivElement | null>(null);
+  const [rightEl, setRightEl] = useState<HTMLDivElement | null>(null);
   const [railEl, setRailEl] = useState<HTMLDivElement | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
   const [cell, setCell] = useState<[number, number] | null>(null);
@@ -1504,7 +1504,6 @@ export function StudioEditor({ id }: { id: string }) {
 
         <div className="st-work">
           {!readOnly && mode === 'canvas' && <Inspector ctl={ctl} />}
-          {mode === 'word' && <div ref={setBarEl} className="contents" />}
           <div
             ref={wrapEl}
             className="st-canvas"
@@ -1537,7 +1536,7 @@ export function StudioEditor({ id }: { id: string }) {
                   H={H}
                   zoom={zoom}
                   readOnly={readOnly}
-                  barEl={barEl}
+                  rightEl={rightEl}
                   railEl={railEl}
                   layoutExtra={<SizePicker ctl={ctl} onDone={() => undefined} />}
                   onChange={(flow) => commit({ ...docRef.current!, flow }, 'flow')}
@@ -1766,6 +1765,7 @@ export function StudioEditor({ id }: { id: string }) {
             </div>
           </footer>
         </div>
+        {!readOnly && mode === 'word' && <div ref={setRightEl} className="contents" />}
       </div>
 
       {tier === 'free' && !readOnly && (
