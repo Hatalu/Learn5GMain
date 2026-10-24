@@ -3408,3 +3408,22 @@ html.dark .st-wwarn {
 .st-word [data-lock='1'] {
   cursor: default;
 }
+
+/* รายการเลือกฟอนต์ (โหมด Word): ตัวใหญ่อ่านง่าย เลื่อนดูได้ */
+.st-rfonts {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.st-rfonts button {
+  padding: 6px 12px;
+  border-radius: 8px;
+  text-align: left;
+  line-height: 1.3;
+  color: var(--st-ink);
+}
+.st-rfonts button:hover,
+.st-rfonts button[data-on='true'] {
+  background: var(--st-acc-soft);
+  color: var(--st-acc-ink);
+}

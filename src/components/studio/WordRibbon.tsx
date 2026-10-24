@@ -67,7 +67,8 @@ import {
 import { texToHtml } from '@/components/creator/math/MathText';
 import { MathKeysDialog } from '@/components/creator/math/MathKeys';
 import { MARGIN_PRESETS, NUM_FMTS, type WordOpt } from '@/lib/studio/flow';
-import { FONTS } from './fonts';
+import { FONTS, FONT_PREVIEW_SCALE } from './fonts';
+import type { FontId } from '@/lib/studio/doc';
 import { SHAPES } from './shapes';
 import { COLORS, FORMULAS, HILITES, MORE_SYMBOLS, SHADES, SIZES, SYMBOLS, WORDART, type WordApi } from './WordPanels';
 
@@ -197,7 +198,7 @@ export function WordRibbon({
   api: WordApi;
   sizeNow: number;
   /** ฟอนต์ตรงเคอร์เซอร์ (family ของ FONTS) */
-  fontNow: string;
+  fontNow: FontId | '';
   blockTag: string;
   isOn: (c: string) => boolean;
   inTable: boolean;
@@ -244,14 +245,25 @@ export function WordRibbon({
             <G label="ฟอนต์">
               <Col>
                 <Row>
-                  <select className="st-rsel st-rsel-font" value={fontNow} onChange={(e) => e.target.value && api.cmd('fontName', e.target.value)} aria-label="ฟอนต์" title="ฟอนต์">
-                    {!fontNow && <option value="">ฟอนต์</option>}
-                    {Object.values(FONTS).map((f) => (
-                      <option key={f.label} value={f.family} style={{ fontFamily: f.family }}>
-                        {f.label}
-                      </option>
-                    ))}
-                  </select>
+                  <Drop label={fontNow ? FONTS[fontNow].label : 'ฟอนต์'} icon={null} title="ฟอนต์" width={250}>
+                    {(close) => (
+                      <div className="st-rfonts" role="listbox" aria-label="ฟอนต์">
+                        {(Object.keys(FONTS) as FontId[]).map((id) => (
+                          <button
+                            key={id}
+                            type="button"
+                            role="option"
+                            aria-selected={fontNow === id}
+                            data-on={fontNow === id}
+                            onClick={() => (api.setFont(id), close())}
+                            style={{ fontFamily: FONTS[id].family, fontSize: 17 * (FONT_PREVIEW_SCALE[id] ?? 1) }}
+                          >
+                            {FONTS[id].label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </Drop>
                   <select className="st-rsel" value={String(sizeNow)} onChange={(e) => api.setSize(Number(e.target.value))} aria-label="ขนาดฟอนต์ (pt)" title="ขนาดฟอนต์">
                     {!SIZES.includes(sizeNow) && <option value={sizeNow}>{sizeNow}</option>}
                     {SIZES.map((z) => (

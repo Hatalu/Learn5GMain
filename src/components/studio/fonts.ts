@@ -33,5 +33,14 @@ export const FONTS: Record<FontId, { label: string; family: string; note: string
   chakra: { label: 'Chakra Petch', family: chakra.style.fontFamily, note: 'เหลี่ยมเท่' },
 };
 
+/**
+ * ฟอนต์ในเนื้อเอกสารโหมด Word เก็บเป็น var(--sf-<id>) ไม่ใช่ชื่อฟอนต์จริง
+ * (ชื่อจาก next/font เปลี่ยนทุกครั้งที่ build และยาวเกินที่ตัวกรอง HTML รับ ทำให้ฟอนต์หลุดกลับเป็นค่าเริ่มต้น)
+ */
+export const fontVar = (id: FontId) => `var(--sf-${id})`;
+export const FONT_VARS_CSS = `:root{${(Object.keys(FONTS) as FontId[]).map((id) => `--sf-${id}:${FONTS[id].family}`).join(';')}}`;
+/** ฟอนต์ไทยแบบ Word ตัวเล็กกว่าฟอนต์อื่นที่ขนาดเดียวกัน ขยายในรายการเลือกฟอนต์ให้อ่านง่าย */
+export const FONT_PREVIEW_SCALE: Partial<Record<FontId, number>> = { thsarabun: 1.4, angsana: 1.45 };
+
 /** ฟอนต์ที่มีแต่น้ำหนักปกติ (ตัวหนาจะเป็นตัวหนาจำลอง) */
 export const NO_BOLD: FontId[] = ['itim', 'sriracha', 'chonburi', 'pattaya'];

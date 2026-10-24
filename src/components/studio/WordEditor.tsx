@@ -15,7 +15,8 @@ import { cleanSrc, type Item, type Page } from '@/lib/studio/doc';
 import { cleanGraph, type GraphSpec } from '@/lib/studio/graph';
 import { wordClipboardHtml } from './wordCopy';
 import { ItemView, PageView, fillPageFields, flowBoxStyle, hfOffset } from './render';
-import { FONTS } from './fonts';
+import { FONTS, fontVar } from './fonts';
+import type { FontId } from '@/lib/studio/doc';
 import { hydrateFlow, isLineShape } from './flowDom';
 import { ColorPop } from './ui';
 import { SIZES, ptToPx, pxToPt, WordPanel, type TableOp, type WordApi, type WordPanelId } from './WordPanels';
@@ -284,6 +285,36 @@ export const WordEditor = forwardRef<
     keep();
     changed();
   };
+  /** เปลี่ยนฟอนต์: ไม่ได้คลุมข้อความ = ตัวที่พิมพ์ต่อใช้ฟอนต์นี้ (ช่องฟอนต์เปลี่ยนชื่อทันที) / คลุมแล้ว = เปลี่ยนเฉพาะที่คลุม */
+  const setFont = (id: FontId) => {
+    restore();
+    const fam = fontVar(id);
+    const s = window.getSelection();
+    if (!s || !s.rangeCount) return;
+    if (s.isCollapsed) {
+      const r = s.getRangeAt(0);
+      const span = document.createElement('span');
+      span.style.fontFamily = fam;
+      span.textContent = '\u200b';
+      r.insertNode(span);
+      r.setStart(span.firstChild!, 1);
+      r.collapse(true);
+      s.removeAllRanges();
+      s.addRange(r);
+    } else {
+      document.execCommand('styleWithCSS', false, 'true');
+      document.execCommand('fontName', false, 'sfpick');
+      cur()
+        ?.querySelectorAll<HTMLElement>('[style*="sfpick"], font[face="sfpick"]')
+        .forEach((el) => {
+          el.removeAttribute('face');
+          el.style.fontFamily = fam;
+        });
+    }
+    keep();
+    changed();
+    force((x) => x + 1);
+  };
   /** ขนาดตัวอักษรหน่วย pt แบบ Word (ตัวปกติ 21px = 16pt) */
   const setSize = (pt: number) => {
     restore();
@@ -319,13 +350,27 @@ export const WordEditor = forwardRef<
     const el = node && cur()?.contains(node) ? (node.nodeType === 1 ? (node as HTMLElement) : node.parentElement) : null;
     return pxToPt(el ? parseFloat(getComputedStyle(el).fontSize) || 21 : 21);
   };
-  /** ฟอนต์ตรงเคอร์เซอร์ (ค่า family ของ FONTS ที่ชื่อแรกตรงกัน) */
-  const curFont = () => {
+  /** ฟอนต์ตรงเคอร์เซอร์: เทียบชื่อฟอนต์แรกที่เบราว์เซอร์ใช้จริงกับของแต่ละฟอนต์ (วัดจากกล่องทดลองครั้งเดียว) */
+  const firstFam = (f: string) => f.split(',')[0].trim().replace(/^['"]|['"]$/g, '');
+  const famOf = useRef<Map<string, FontId> | null>(null);
+  const curFont = (): FontId | '' => {
+    const root = ed.current;
+    if (!root) return '';
+    if (!famOf.current) {
+      const m = new Map<string, FontId>();
+      const probe = document.createElement('span');
+      root.appendChild(probe);
+      for (const id of Object.keys(FONTS) as FontId[]) {
+        probe.style.fontFamily = fontVar(id);
+        const k = firstFam(getComputedStyle(probe).fontFamily);
+        if (k && !m.has(k)) m.set(k, id);
+      }
+      probe.remove();
+      famOf.current = m;
+    }
     const node = window.getSelection()?.anchorNode;
     const el = node && cur()?.contains(node) ? (node.nodeType === 1 ? (node as HTMLElement) : node.parentElement) : cur();
-    const first = (f: string) => f.split(',')[0].trim().replace(/^['"]|['"]$/g, '');
-    const now = el ? first(getComputedStyle(el).fontFamily) : '';
-    return Object.values(FONTS).find((f) => first(f.family) === now)?.family ?? '';
+    return el ? famOf.current.get(firstFam(getComputedStyle(el).fontFamily)) ?? '' : '';
   };
   /** ย่อหน้าที่อยู่ในส่วนที่เลือก */
   const blocks = () => {
@@ -984,6 +1029,7 @@ export const WordEditor = forwardRef<
 
   const api: WordApi = {
     cmd,
+    setFont,
     insertHtml,
     setSize,
     bumpSize,

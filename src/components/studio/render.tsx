@@ -6,7 +6,7 @@ import { FLOW_GAP, defaultWordOpt, hasPageField, pageLabel, paginate, type WordO
 import { texToHtml } from '@/components/creator/math/MathText';
 import { hydrateFlow } from './flowDom';
 import { CharArt } from './CharArt';
-import { FONTS } from './fonts';
+import { FONTS, FONT_VARS_CSS } from './fonts';
 import { shapeById } from './shapes';
 import { StickerArt } from './stickers';
 import { pastePlain } from './ui';
@@ -1287,6 +1287,9 @@ export function PageView({
 }) {
   return (
     <div data-page={page.id} style={{ position: 'relative', width: W, height: H, overflow: 'hidden', ...bgStyle(page.bg) }}>
+      <style href="studio-font-vars" precedence="default">
+        {FONT_VARS_CSS}
+      </style>
       <BorderArt b={page.border} W={W} H={H} />
       {flow ? <FlowLayer html={flow} index={index} W={W} H={H} opt={wopt} /> : null}
       {wopt ? <PageDeco opt={wopt} index={index} total={total} W={W} H={H} hide={hideHf} /> : null}

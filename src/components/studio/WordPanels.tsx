@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Replace, Search, X } from 'lucide-react';
 import { WORD_KEYS, comboLabel } from '@/lib/studio/keys';
 import type { WordOpt } from '@/lib/studio/flow';
+import type { FontId } from '@/lib/studio/doc';
 
 /** ขนาดตัวอักษรหน่วย pt เหมือนรายการใน Word (ตัวปกติของเอกสาร = 16pt แบบ TH Sarabun) */
 export const SIZES = [8, 9, 10, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28, 32, 36, 40, 48, 60, 72];
@@ -38,6 +39,8 @@ export type TableOp = 'rowAbove' | 'rowBelow' | 'colLeft' | 'colRight' | 'delRow
 /** คำสั่งที่แผงเรียกใช้กับตัวแก้ไขเอกสาร (ทำกับที่ที่กำลังพิมพ์: เนื้อเอกสาร หรือหัว/ท้ายกระดาษ) */
 export interface WordApi {
   cmd: (c: string, v?: string) => void;
+  /** เปลี่ยนฟอนต์ (เก็บแบบไม่ผูกกับชื่อไฟล์ฟอนต์ของ build) */
+  setFont: (id: FontId) => void;
   insertHtml: (h: string) => void;
   /** หน่วย pt */
   setSize: (pt: number) => void;

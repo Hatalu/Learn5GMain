@@ -121,13 +121,43 @@ const decode = (s: string) =>
     .replace(/&amp;/g, '&');
 const escAttr = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+/** ชื่อฟอนต์ (จากเอกสารรุ่นก่อน/วางจาก Word) ที่รู้จัก แปลงเป็น var(--sf-<id>) ที่ไม่ผูกกับ build */
+const KNOWN_FONTS: Record<string, string> = {
+  'th sarabunpsk': 'thsarabun',
+  'th sarabun new': 'thsarabun',
+  'th sarabun psk': 'thsarabun',
+  'angsana new': 'angsana',
+  angsanaupc: 'angsana',
+  sarabun: 'sarabun',
+  kanit: 'kanit',
+  prompt: 'prompt',
+  mitr: 'mitr',
+  'noto sans thai': 'noto',
+  itim: 'itim',
+  mali: 'mali',
+  sriracha: 'sriracha',
+  chonburi: 'chonburi',
+  charm: 'charm',
+  pattaya: 'pattaya',
+  'chakra petch': 'chakra',
+};
+export function stableFont(val: string): string {
+  if (/^var\(--sf-[a-z]+\)$/.test(val)) return val;
+  const first = val.split(',')[0].trim().replace(/^['"]|['"]$/g, '');
+  // ชื่อจาก next/font เช่น __Chakra_Petch_1a2b3c
+  const name = (/^__(.+?)_(Fallback_)?[0-9a-f]{4,}$/i.exec(first)?.[1] ?? first).replace(/_/g, ' ').toLowerCase();
+  const id = KNOWN_FONTS[name];
+  return id ? `var(--sf-${id})` : val;
+}
+
 function cleanStyle(v: string): string {
   const out: string[] = [];
   for (const decl of v.split(';')) {
     const i = decl.indexOf(':');
     if (i < 0) continue;
     const prop = decl.slice(0, i).trim().toLowerCase();
-    const val = decl.slice(i + 1).trim();
+    let val = decl.slice(i + 1).trim();
+    if (prop === 'font-family') val = stableFont(val);
     if (!STYLE_PROPS.has(prop) || !val || val.length > 120) continue;
     // ห้าม url() / expression / ตัวอักษรแปลก
     if (/url|expression|javascript|@|\\|[<>{}]/i.test(val)) continue;
