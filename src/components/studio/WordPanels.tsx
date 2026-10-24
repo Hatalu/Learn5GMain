@@ -61,6 +61,8 @@ export interface WordApi {
   /** ตั้งค่าหน้ากระดาษ (ขอบ หัว/ท้ายกระดาษ เลขหน้า) */
   opt: WordOpt;
   setOpt: (p: Partial<WordOpt>) => void;
+  /** ใส่ช่องเลขหน้าที่เคอร์เซอร์ (ในหัว/ท้ายกระดาษ) */
+  insertPageNum: () => void;
   /** รูปร่างที่กำลังรอวาด (ลากบนกระดาษ) */
   drawing: string | null;
   drawShape: (id: string) => void;

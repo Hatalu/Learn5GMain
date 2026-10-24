@@ -33,7 +33,7 @@ export const DEFAULT_SIZE = SIZES[0];
 export const CUSTOM_MIN = 200;
 export const CUSTOM_MAX = 2400;
 
-export const FONT_IDS = ['sarabun', 'thsarabun', 'kanit', 'prompt', 'mitr', 'noto', 'itim', 'mali', 'sriracha', 'chonburi', 'charm', 'pattaya', 'chakra'] as const;
+export const FONT_IDS = ['sarabun', 'thsarabun', 'kanit', 'prompt', 'mitr', 'noto', 'itim', 'mali', 'sriracha', 'chonburi', 'charm', 'pattaya', 'chakra', 'angsana'] as const;
 export type FontId = (typeof FONT_IDS)[number];
 
 export type Dash = 'solid' | 'dash' | 'dot';

@@ -6,11 +6,12 @@ import {
   Pencil,
   Trash2,
 } from 'lucide-react';
-import { FLOW_GAP, WORD_SINGLE, cleanFlowHtml, flowIsEmpty, paginate, type WordOpt } from '@/lib/studio/flow';
+import { FLOW_GAP, WORD_SINGLE, cleanFlowHtml, flowIsEmpty, hasPageField, pageLabel, paginate, stripPageField, withPageField, type WordOpt } from '@/lib/studio/flow';
 import { cleanSrc, type Item, type Page } from '@/lib/studio/doc';
 import { cleanGraph, type GraphSpec } from '@/lib/studio/graph';
 import { wordClipboardHtml } from './wordCopy';
-import { ItemView, PageView, flowBoxStyle, hfOffset } from './render';
+import { ItemView, PageView, fillPageFields, flowBoxStyle, hfOffset } from './render';
+import { FONTS } from './fonts';
 import { hydrateFlow, isLineShape } from './flowDom';
 import { ColorPop } from './ui';
 import { SIZES, ptToPx, pxToPt, WordPanel, type TableOp, type WordApi, type WordPanelId } from './WordPanels';
@@ -232,6 +233,14 @@ export const WordEditor = forwardRef<
     const el = node && cur()?.contains(node) ? (node.nodeType === 1 ? (node as HTMLElement) : node.parentElement) : null;
     return pxToPt(el ? parseFloat(getComputedStyle(el).fontSize) || 21 : 21);
   };
+  /** ฟอนต์ตรงเคอร์เซอร์ (ค่า family ของ FONTS ที่ชื่อแรกตรงกัน) */
+  const curFont = () => {
+    const node = window.getSelection()?.anchorNode;
+    const el = node && cur()?.contains(node) ? (node.nodeType === 1 ? (node as HTMLElement) : node.parentElement) : cur();
+    const first = (f: string) => f.split(',')[0].trim().replace(/^['"]|['"]$/g, '');
+    const now = el ? first(getComputedStyle(el).fontFamily) : '';
+    return Object.values(FONTS).find((f) => first(f.family) === now)?.family ?? '';
+  };
   /** ย่อหน้าที่อยู่ในส่วนที่เลือก */
   const blocks = () => {
     const el = cur();
@@ -359,14 +368,24 @@ export const WordEditor = forwardRef<
    * (insertHTML ของ Chrome ย้ายช่องว่างหลังชิ้นที่แก้ไม่ได้ออกไปนอกย่อหน้า ตัวที่พิมพ์ต่อเลยขึ้นบรรทัดใหม่)
    */
   const insertTex = (tex: string) => {
+    const span = document.createElement('span');
+    span.dataset.tex = tex;
+    insertSpan(span);
+  };
+  /** ช่องเลขหน้า (ใช้ในหัว/ท้ายกระดาษ) */
+  const insertPageNum = () => {
+    const span = document.createElement('span');
+    span.dataset.pg = '1';
+    span.textContent = hfOn.current ? pageLabel(woptRef.current, hfOn.current.page, n) : '#';
+    insertSpan(span);
+  };
+  const insertSpan = (span: HTMLSpanElement) => {
     restore();
     const s = window.getSelection();
     const root = cur();
     if (!s || !s.rangeCount || !root) return;
     const r = s.getRangeAt(0);
     r.deleteContents();
-    const span = document.createElement('span');
-    span.dataset.tex = tex;
     span.contentEditable = 'false';
     const after = document.createTextNode(' ');
     if (r.startContainer === root) {
@@ -693,13 +712,20 @@ export const WordEditor = forwardRef<
   useLayoutEffect(() => {
     const el = hfRef.current;
     if (!hf || !el) return;
-    el.innerHTML = woptRef.current[hf.part] || '<p><br></p>';
+    // เลขหน้าที่เลือกไว้กลายเป็นช่องในหัว/ท้ายกระดาษ พิมพ์ข้อความหน้า/หลังเลขได้แบบ Word
+    el.innerHTML = withPageField(woptRef.current, hf.part) || '<p><br></p>';
     hydrateFlow(el);
+    fillPageFields(el, pageLabel(woptRef.current, hf.page, n));
+    const fresh = el.innerHTML.includes('data-pg') && !hasPageField(woptRef.current[hf.part]);
+    if (fresh) flushHf();
     el.focus({ preventScroll: true });
     el.scrollIntoView({ block: 'nearest' });
     const r = document.createRange();
     r.selectNodeContents(el);
     r.collapse(false);
+    // เพิ่งย้ายเลขหน้าเข้ามา: เคอร์เซอร์อยู่หน้าเลข พิมพ์ "หน้า " ได้เลย
+    const pgEl = fresh && el.querySelector('span[data-pg]');
+    if (pgEl) r.setStartBefore(pgEl), r.collapse(true);
     window.getSelection()?.removeAllRanges();
     window.getSelection()?.addRange(r);
     saved.current = r.cloneRange();
@@ -843,6 +869,7 @@ export const WordEditor = forwardRef<
 
   const totalH = n * P - FLOW_GAP;
   const sizeNow = typeof window !== 'undefined' ? curPt() : 16;
+  const fontNow = typeof window !== 'undefined' ? curFont() : '';
   const blockTag = (() => {
     const s = typeof window !== 'undefined' ? window.getSelection() : null;
     const node = s?.anchorNode as HTMLElement | null;
@@ -874,7 +901,15 @@ export const WordEditor = forwardRef<
     changed,
     pages: n,
     opt: wopt,
-    setOpt: (p) => onWopt({ ...wopt, ...p }),
+    setOpt: (p) => {
+      if (p.num === undefined || p.num === wopt.num) return onWopt({ ...woptRef.current, ...p });
+      // เปลี่ยนตำแหน่งเลขหน้า: เอาช่องเลขหน้าเดิมออกจากหัว/ท้ายกระดาษ
+      flushHf();
+      setHf(null);
+      const o = woptRef.current;
+      onWopt({ ...o, ...p, head: stripPageField(o.head), foot: stripPageField(o.foot) });
+    },
+    insertPageNum,
     drawing: draw,
     drawShape: (id) => {
       setActive(null);
@@ -1009,6 +1044,7 @@ export const WordEditor = forwardRef<
         side="left"
         api={api}
         sizeNow={sizeNow}
+        fontNow={fontNow}
         blockTag={blockTag}
         isOn={docState}
         inTable={!!curCell()}
@@ -1028,6 +1064,7 @@ export const WordEditor = forwardRef<
       side="right"
       api={api}
       sizeNow={sizeNow}
+      fontNow={fontNow}
       blockTag={blockTag}
       isOn={docState}
       inTable={!!curCell()}

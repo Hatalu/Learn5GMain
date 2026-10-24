@@ -181,6 +181,7 @@ const Swatches = ({ colors, onPick, none }: { colors: string[]; onPick: (c: stri
 export function WordRibbon({
   api,
   sizeNow,
+  fontNow,
   blockTag,
   isOn,
   inTable,
@@ -195,6 +196,8 @@ export function WordRibbon({
 }: {
   api: WordApi;
   sizeNow: number;
+  /** ฟอนต์ตรงเคอร์เซอร์ (family ของ FONTS) */
+  fontNow: string;
   blockTag: string;
   isOn: (c: string) => boolean;
   inTable: boolean;
@@ -241,10 +244,10 @@ export function WordRibbon({
             <G label="ฟอนต์">
               <Col>
                 <Row>
-                  <select className="st-rsel st-rsel-font" defaultValue="" onChange={(e) => (e.target.value && api.cmd('fontName', e.target.value), (e.target.value = ''))} aria-label="ฟอนต์" title="ฟอนต์">
-                    <option value="">ฟอนต์</option>
+                  <select className="st-rsel st-rsel-font" value={fontNow} onChange={(e) => e.target.value && api.cmd('fontName', e.target.value)} aria-label="ฟอนต์" title="ฟอนต์">
+                    {!fontNow && <option value="">ฟอนต์</option>}
                     {Object.values(FONTS).map((f) => (
-                      <option key={f.label} value={f.family}>
+                      <option key={f.label} value={f.family} style={{ fontFamily: f.family }}>
                         {f.label}
                       </option>
                     ))}
@@ -623,6 +626,11 @@ export function WordRibbon({
       {hf && (
         <button type="button" className="st-rhf" onMouseDown={noFocus} onClick={closeHf}>
           ปิด{hf === 'head' ? 'หัวกระดาษ' : 'ท้ายกระดาษ'}
+        </button>
+      )}
+      {hf && (
+        <button type="button" className="st-rhf st-rhf2" onMouseDown={noFocus} onClick={api.insertPageNum}>
+          ใส่เลขหน้าตรงเคอร์เซอร์
         </button>
       )}
       {drawing && <p className="st-rhint">ลากบนกระดาษเพื่อวาด (Esc ยกเลิก)</p>}

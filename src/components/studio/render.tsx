@@ -2,7 +2,7 @@
 import React, { useLayoutEffect, useMemo, useRef } from 'react';
 import { MOON_PHASES, type Dash, type DecoItem, type EduItem, type Fx, type GraphItem, type Item, type LineItem, type MathItem, type Page, type PageBg, type PageBorder, type TableItem, type TextItem, type WriteItem } from '@/lib/studio/doc';
 import { graphToSvg } from '@/lib/studio/graph';
-import { FLOW_GAP, defaultWordOpt, pageLabel, paginate, type WordOpt } from '@/lib/studio/flow';
+import { FLOW_GAP, defaultWordOpt, hasPageField, pageLabel, paginate, type WordOpt } from '@/lib/studio/flow';
 import { texToHtml } from '@/components/creator/math/MathText';
 import { hydrateFlow } from './flowDom';
 import { CharArt } from './CharArt';
@@ -1196,32 +1196,39 @@ export function FlowLayer({ html, index, W, H, opt = defaultWordOpt(false) }: { 
 export const hfOffset = (margin: number) => Math.round(Math.min(47, margin / 2));
 
 /** เนื้อหาหัว/ท้ายกระดาษ (HTML ที่ผ่านตัวกรองแล้ว) */
-function HfHtml({ html }: { html: string }) {
+function HfHtml({ html, num }: { html: string; num: string }) {
   const ref = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     if (!ref.current) return;
     ref.current.innerHTML = html;
     hydrateFlow(ref.current);
-  }, [html]);
+    fillPageFields(ref.current, num);
+  }, [html, num]);
   return <div ref={ref} />;
+}
+/** ใส่เลขหน้าลงช่องเลขหน้า (span[data-pg]) */
+export function fillPageFields(el: HTMLElement, num: string) {
+  el.querySelectorAll('span[data-pg]').forEach((s) => (s.textContent = num));
 }
 
 /** หัวกระดาษ ท้ายกระดาษ และเลขหน้า (แบบ Word) ซ้ำทุกหน้า · hide = ส่วนที่กำลังแก้อยู่ (จอแก้ไขวาดเอง) */
 export function PageDeco({ opt, index, total, W, H, hide }: { opt: WordOpt; index: number; total: number; W: number; H: number; hide?: 'head' | 'foot' }) {
   if (index === 0 && !opt.numFirst) return null;
-  const num = opt.num !== 'none' ? pageLabel(opt, index, total) : '';
+  const label = pageLabel(opt, index, total);
+  const num = opt.num !== 'none' ? label : '';
   if (!num && !opt.head && !opt.foot) return null;
+  // เลขหน้าที่อยู่ในหัว/ท้ายกระดาษแล้ว (ช่องเลขหน้า) ไม่วาดแยกซ้ำ
   const band = (top: boolean, html: string, n: string) =>
     html || n ? (
       <div className="st-flow st-hf" data-std={opt.std || undefined} style={{ [top ? 'top' : 'bottom']: hfOffset(top ? opt.mt : opt.mb), left: opt.ml, right: opt.mr, fontFamily: (opt.std ? FONTS.thsarabun : FONTS.sarabun).family }}>
-        {html && <HfHtml html={html} />}
-        {n && <p className="st-hf-num" style={{ textAlign: opt.numAlign }}>{n}</p>}
+        {html && <HfHtml html={html} num={label} />}
+        {n && !hasPageField(html) && <p className="st-hf-num" style={{ textAlign: opt.numAlign }}>{n}</p>}
       </div>
     ) : null;
   return (
     <div aria-hidden="true" style={{ position: 'absolute', inset: 0, width: W, height: H, pointerEvents: 'none' }}>
-      {band(true, hide === 'head' ? '' : opt.head, opt.num === 'top' ? num : '')}
-      {band(false, hide === 'foot' ? '' : opt.foot, opt.num === 'bottom' ? num : '')}
+      {band(true, hide === 'head' ? '' : opt.head, opt.num === 'top' && hide !== 'head' ? num : '')}
+      {band(false, hide === 'foot' ? '' : opt.foot, opt.num === 'bottom' && hide !== 'foot' ? num : '')}
     </div>
   );
 }

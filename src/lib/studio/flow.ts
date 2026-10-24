@@ -90,6 +90,17 @@ export function pageLabel(o: WordOpt, i: number, total: number): string {
   if (o.numFmt === 'of') return `หน้า ${n} จาก ${last}`;
   return String(n);
 }
+/** ช่องเลขหน้าในหัว/ท้ายกระดาษ (แบบฟิลด์ PAGE ของ Word) ตัวเลขจริงใส่ตอนวาดแต่ละหน้า */
+export const PAGE_FIELD = '<span data-pg="1" contenteditable="false">#</span>';
+export const hasPageField = (html: string) => html.includes('data-pg=');
+/** เลขหน้าที่เลือกจากเมนู ย้ายเข้าไปเป็นช่องในหัว/ท้ายกระดาษ จะได้พิมพ์ข้อความต่อกันได้ */
+export function withPageField(o: WordOpt, part: 'head' | 'foot'): string {
+  const html = o[part];
+  if (o.num !== (part === 'head' ? 'top' : 'bottom') || hasPageField(html)) return html;
+  return html + `<p style="text-align: ${o.numAlign}">${PAGE_FIELD}</p>`;
+}
+/** เอาช่องเลขหน้าออก (เปลี่ยนตำแหน่ง/ไม่ใส่เลขหน้า) */
+export const stripPageField = (html: string) => html.replace(/<span data-pg="1"[^>]*>[^<]*<\/span>/g, '').replace(/<p[^>]*>(\s|<br>)*<\/p>/g, '');
 
 /** รูปร่างแบบ Word (วาดลงหน้ากระดาษ): สีพื้น/เส้นเป็น #hex เท่านั้น */
 const SHAPE_ID = /^[a-z0-9]{1,16}$/;
@@ -173,6 +184,7 @@ export function cleanFlowHtml(html: string, cleanSrc: SrcCheck): string {
     const ar = /([^\s=>/]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g;
     let a: RegExpExecArray | null;
     let tex = '';
+    let pg = false;
     let graph = '';
     const shape: string[] = [];
     while ((a = ar.exec(m[3] || ''))) {
@@ -183,6 +195,8 @@ export function cleanFlowHtml(html: string, cleanSrc: SrcCheck): string {
         if (st) attrs.push(`style="${escAttr(st)}"`);
       } else if (name === 'data-tex' && tag === 'span') {
         tex = val.slice(0, 2000);
+      } else if (name === 'data-pg' && tag === 'span') {
+        pg = true;
       } else if (name === 'data-graph' && tag === 'figure') {
         try {
           graph = JSON.stringify(cleanGraph(JSON.parse(val)));
@@ -221,6 +235,11 @@ export function cleanFlowHtml(html: string, cleanSrc: SrcCheck): string {
       if (!m[0].endsWith('/>')) startSkip(tag);
       continue;
     }
+    if (pg && tag === 'span') {
+      out.push(PAGE_FIELD);
+      if (!m[0].endsWith('/>')) startSkip(tag);
+      continue;
+    }
     // รูปร่างแบบ span: ข้างในเป็นผลวาด ทิ้งแล้ววาดใหม่ (span อื่นที่ติดค่าจัดวางมาไม่เก็บค่านั้น)
     if (tag === 'span' && shape[0]?.startsWith('data-shape')) {
       out.push(`<span ${[...shape, ...attrs].join(' ')} contenteditable="false"></span>`);
@@ -246,7 +265,7 @@ export function cleanFlowHtml(html: string, cleanSrc: SrcCheck): string {
 /** ข้อความล้วนของเอกสาร (เช็กว่าว่างไหม) */
 export const flowIsEmpty = (html: string) =>
   !String(html || '')
-    .replace(/<(img|figure|hr|table)\b|<span data-(tex|shape)/gi, 'X')
+    .replace(/<(img|figure|hr|table)\b|<span data-(tex|shape|pg)/gi, 'X')
     .replace(/<[^>]*>/g, '')
     .replace(/&nbsp;|\s/g, '');
 

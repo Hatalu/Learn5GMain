@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import { answerOf, quizPages } from '../src/lib/studio/fromQuiz';
 import { cleanGraph, compileExpr, defaultShape, graphToSvg, GRAPH_TEMPLATES, intersections, parseEquation, shapeFacts, shapeText, type GShape } from '../src/lib/studio/graph';
-import { cleanFlowHtml, cleanWordOpt, defaultWordOpt, flowIsEmpty, pageLabel } from '../src/lib/studio/flow';
+import { PAGE_FIELD, cleanFlowHtml, cleanWordOpt, defaultWordOpt, flowIsEmpty, pageLabel, stripPageField, withPageField } from '../src/lib/studio/flow';
 import { mathmlToOmml } from '../src/lib/studio/omml';
 import { prepTex } from '../src/lib/mathTex';
 import katex from 'katex';
@@ -1210,6 +1210,14 @@ t('โหมดเอกสาร: รูปร่าง หัว/ท้าย�
   assert.equal(c('<p>ก<span data-shape="heart" data-ar="2" data-wrap="front" style="left: 5px; top: 6px; width: 80px"><svg></svg></span></p>'), '<p>ก<span data-shape="heart" data-ar="2" data-wrap="front" style="left: 5px; top: 6px; width: 80px" contenteditable="false"></span></p>');
   assert.equal(c('<p><span data-wrap="front" style="color: red">x</span></p>'), '<p><span style="color: red">x</span></p>');
   assert.ok(!flowIsEmpty('<p><img src="x"></p>') && !flowIsEmpty('<p><span data-shape="star"></span></p>'), 'รูป/รูปร่างอย่างเดียวไม่ใช่เอกสารว่าง');
+  // ช่องเลขหน้าในหัว/ท้ายกระดาษ: เก็บแค่ช่อง ข้างในทิ้ง, ย้ายเลขหน้าเข้าหัวกระดาษ, เอาออกได้
+  assert.equal(c('<p>หน้า <span data-pg="1" onclick="x"><b>9</b></span></p>'), '<p>หน้า ' + PAGE_FIELD + '</p>');
+  assert.ok(!flowIsEmpty('<p>' + PAGE_FIELD + '</p>'));
+  const wo = { ...defaultWordOpt(), num: 'top' as const, head: '<p>คณิต</p>' };
+  const hh = withPageField(wo, 'head');
+  assert.ok(hh.startsWith('<p>คณิต</p>') && hh.includes(PAGE_FIELD) && withPageField(wo, 'foot') === '');
+  assert.equal(withPageField({ ...wo, head: hh }, 'head'), hh, 'ไม่ใส่ช่องซ้ำ');
+  assert.equal(stripPageField(c(hh)), '<p>คณิต</p>');
   assert.equal(pageLabel(o, 0, 4), 'หน้า 3 จาก 6');
   assert.equal(pageLabel({ ...o, numFmt: 'thai' }, 9, 10), '๑๒');
   assert.equal(cleanWordOpt({ num: 'side', numFmt: 'x', numStart: 1.5 }).num, 'none');

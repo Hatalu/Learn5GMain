@@ -14,21 +14,23 @@ const charm = Charm({ subsets: ['thai', 'latin'], weight: ['400', '700'], displa
 const pattaya = Pattaya({ subsets: ['thai', 'latin'], weight: '400', display: 'swap' });
 const chakra = Chakra_Petch({ subsets: ['thai', 'latin'], weight: ['400', '700'], display: 'swap' });
 
+// ชื่อฟอนต์เป็นภาษาอังกฤษแบบ Word (ผู้ใช้สั่ง) TH SarabunPSK กับ Angsana New ขึ้นก่อน
 export const FONTS: Record<FontId, { label: string; family: string; note: string }> = {
-  sarabun: { label: 'สารบรรณ', family: sarabun.style.fontFamily, note: 'ทางการ อ่านง่าย' },
-  // ฟอนต์ในเครื่อง (ส่วนใหญ่มีคู่กับ Word) ไม่มีจะใช้สารบรรณแทน
-  thsarabun: { label: 'TH Sarabun', family: `'TH SarabunPSK', 'TH Sarabun New', ${sarabun.style.fontFamily}`, note: 'แบบ Word (ต้องมีฟอนต์ในเครื่อง)' },
-  kanit: { label: 'คณิต', family: kanit.style.fontFamily, note: 'หัวเรื่องหนา' },
-  prompt: { label: 'พร้อมท์', family: prompt.style.fontFamily, note: 'ทันสมัย' },
-  mitr: { label: 'มิตร', family: 'var(--font-mitr)', note: 'กลมมน' },
-  noto: { label: 'โนโต', family: 'var(--font-noto-sans-thai)', note: 'มาตรฐาน' },
-  itim: { label: 'ไอติม', family: itim.style.fontFamily, note: 'ลายมือน่ารัก' },
-  mali: { label: 'มะลิ', family: mali.style.fontFamily, note: 'ลายมือเด็ก' },
-  sriracha: { label: 'ศรีราชา', family: sriracha.style.fontFamily, note: 'ลายมือ' },
-  chonburi: { label: 'ชลบุรี', family: chonburi.style.fontFamily, note: 'หัวเรื่องเด่น' },
-  charm: { label: 'ชาม', family: charm.style.fontFamily, note: 'ตัวเขียนสวย' },
-  pattaya: { label: 'พัทยา', family: pattaya.style.fontFamily, note: 'หัวเรื่องสนุก' },
-  chakra: { label: 'จักรเพชร', family: chakra.style.fontFamily, note: 'เหลี่ยมเท่' },
+  // ฟอนต์ในเครื่อง (มีคู่กับ Word) ไม่มีจะใช้ Sarabun แทน
+  thsarabun: { label: 'TH SarabunPSK', family: `'TH SarabunPSK', 'TH Sarabun New', ${sarabun.style.fontFamily}`, note: 'ค่าเริ่มต้นแบบ Word (ต้องมีฟอนต์ในเครื่อง)' },
+  angsana: { label: 'Angsana New', family: `'Angsana New', 'AngsanaUPC', ${sarabun.style.fontFamily}`, note: 'แบบ Word (ต้องมีฟอนต์ในเครื่อง)' },
+  sarabun: { label: 'Sarabun', family: sarabun.style.fontFamily, note: 'ทางการ อ่านง่าย' },
+  kanit: { label: 'Kanit', family: kanit.style.fontFamily, note: 'หัวเรื่องหนา' },
+  prompt: { label: 'Prompt', family: prompt.style.fontFamily, note: 'ทันสมัย' },
+  mitr: { label: 'Mitr', family: 'var(--font-mitr)', note: 'กลมมน' },
+  noto: { label: 'Noto Sans Thai', family: 'var(--font-noto-sans-thai)', note: 'มาตรฐาน' },
+  itim: { label: 'Itim', family: itim.style.fontFamily, note: 'ลายมือน่ารัก' },
+  mali: { label: 'Mali', family: mali.style.fontFamily, note: 'ลายมือเด็ก' },
+  sriracha: { label: 'Sriracha', family: sriracha.style.fontFamily, note: 'ลายมือ' },
+  chonburi: { label: 'Chonburi', family: chonburi.style.fontFamily, note: 'หัวเรื่องเด่น' },
+  charm: { label: 'Charm', family: charm.style.fontFamily, note: 'ตัวเขียนสวย' },
+  pattaya: { label: 'Pattaya', family: pattaya.style.fontFamily, note: 'หัวเรื่องสนุก' },
+  chakra: { label: 'Chakra Petch', family: chakra.style.fontFamily, note: 'เหลี่ยมเท่' },
 };
 
 /** ฟอนต์ที่มีแต่น้ำหนักปกติ (ตัวหนาจะเป็นตัวหนาจำลอง) */
