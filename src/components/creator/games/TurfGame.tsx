@@ -467,7 +467,7 @@ export function TurfGame({ engine, deadline, sync, me, preview, onLeave, world: 
         net.send('pos', { i: myIdx, x: Math.round(h.x), y: Math.round(h.y), f: h.face, s: status, c: outbox.current.splice(0, 200), t: now() });
       } else if (!info) outbox.current.length = 0;
 
-      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const dpr = Math.min(1.5, window.devicePixelRatio || 1);
       const rect = c.getBoundingClientRect();
       const pw = Math.max(1, Math.round(rect.width * dpr));
       const ph = Math.max(1, Math.round(rect.height * dpr));
@@ -665,7 +665,7 @@ export function TurfGame({ engine, deadline, sync, me, preview, onLeave, world: 
       }
     };
 
-    const dprOf = () => Math.min(2, window.devicePixelRatio || 1);
+    const dprOf = () => Math.min(1.5, window.devicePixelRatio || 1);
 
     const drawFort = (ctx: CanvasRenderingContext2D, cx: number, cy: number, i: number, tms: number) => {
       const x = (cx - 1) * CELL;

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { BkkParts, EventKey, Phase, Season, bkkParts, eventOf, phaseOf, seasonOf } from '@/lib/companion';
 
 const SKY: Record<Phase, string> = {
@@ -121,7 +122,12 @@ interface Props {
  * ฉากหลังที่เปลี่ยนตามเวลา (รุ่งอรุณ/กลางวัน/เย็น/กลางคืน), ฤดูของไทย และวันสำคัญ
  * วาดด้วย SVG/CSS ล้วน ไม่ใช้รูปภาพ จึงเบาและคมทุกหน้าจอ
  */
+/** หน้าที่ปิดฉากหลังทั้งจอ ไม่ต้องวาดท้องฟ้า */
+const COVERED = ['/studio/edit', '/create/edit', '/create/host', '/play'];
+
 export function AmbientSky({ at }: Props) {
+  const path = usePathname() || '';
+  const covered = COVERED.some((p) => path === p || path.startsWith(p + '/'));
   const [now, setNow] = useState<BkkParts | null>(null);
   const [reduced, setReduced] = useState(false);
 
@@ -158,7 +164,7 @@ export function AmbientSky({ at }: Props) {
     return { phase, season, event, sunP, moonP, showers };
   }, [now]);
 
-  if (!scene) return null;
+  if (!scene || covered) return null;
   const { phase, season, event, sunP, moonP, showers } = scene;
   const isNight = phase === 'night';
   const cloudTone = isNight ? 'rgba(180,190,255,.16)' : showers ? 'rgba(140,150,170,.7)' : 'rgba(255,255,255,.75)';

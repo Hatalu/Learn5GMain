@@ -505,8 +505,7 @@
   align-items: center;
   justify-content: center;
   padding: 12px;
-  background: rgba(30, 24, 56, 0.6);
-  backdrop-filter: blur(3px);
+  background: rgba(30, 24, 56, 0.72);
   animation: l5gFade 0.18s ease-out;
 }
 .l5g-batch {
@@ -683,8 +682,7 @@
   align-items: center;
   justify-content: center;
   padding: 16px;
-  background: rgba(30, 24, 56, 0.55);
-  backdrop-filter: blur(3px);
+  background: rgba(30, 24, 56, 0.68);
   border-radius: 28px;
   animation: l5gFade 0.3s ease-out;
 }

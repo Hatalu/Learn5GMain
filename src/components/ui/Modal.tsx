@@ -40,7 +40,7 @@ export function Modal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-3 sm:p-5 bg-indigo-950/70 backdrop-blur-md animate-fade-in overflow-y-auto no-print" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-3 sm:p-5 bg-indigo-950/80 animate-fade-in overflow-y-auto no-print" onMouseDown={onClose}>
       <div
         ref={ref}
         tabIndex={-1}

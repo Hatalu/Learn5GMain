@@ -497,6 +497,37 @@
   color: #fff;
   border-color: var(--ink);
 }
+/* แบบรูปวาดอิสระ (โผล่เมื่อเลือกเครื่องมือวาดอิสระ) */
+.ge-drawkinds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 10px;
+  border-bottom: 2px solid var(--line);
+  background: #f8f5ff;
+}
+.ge-drawkinds button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  border: 2px solid var(--line);
+  background: #fff;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.ge-drawkinds button[data-on='true'] {
+  border-color: var(--ink);
+  background: #ffcf3f;
+}
+.ge-stage[data-tool='draw'] {
+  cursor: crosshair;
+}
+/* หน้าต่าง MathType ที่เปิดจากในหน้าต่างกราฟ ต้องอยู่บนหน้าต่างกราฟ */
+body:has(.ge-back) .l5g-math-backdrop {
+  z-index: 140;
+}
 .ge-sep {
   width: 2px;
   background: var(--line);

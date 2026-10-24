@@ -72,14 +72,6 @@ body::before {
     radial-gradient(48rem 36rem at 100% 0%, rgb(245 61 155 / 0.1), transparent 60%),
     radial-gradient(50rem 40rem at 50% 110%, rgb(46 180 245 / 0.08), transparent 60%);
 }
-body::before {
-  animation: bgDrift 26s ease-in-out infinite alternate;
-}
-@keyframes bgDrift {
-  0% { transform: translate3d(0, 0, 0) scale(1.05); }
-  50% { transform: translate3d(-2%, 1.5%, 0) scale(1.12); }
-  100% { transform: translate3d(2%, -1%, 0) scale(1.08); }
-}
 .dark body::before {
   background:
     radial-gradient(60rem 40rem at 8% -10%, rgb(134 96 251 / 0.28), transparent 60%),

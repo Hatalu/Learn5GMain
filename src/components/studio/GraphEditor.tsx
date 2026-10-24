@@ -12,10 +12,12 @@ import {
   Hand,
   Minus,
   MousePointer2,
+  Pencil,
   Pentagon,
   Plus,
   Redo2,
   Ruler,
+  Sigma,
   Spline,
   Trash2,
   Type,
@@ -49,17 +51,33 @@ import {
   paramValues,
   syncParams,
   themeOf,
+  gid,
+  texToExpr,
+  type DrawShape,
   type GArrow,
   type GDash,
+  type GDraw,
   type GObj,
   type GPoint,
   type GraphSpec,
   type GThemeId,
   type LabelPos,
 } from '@/lib/studio/graph';
+import { MathPopover } from '@/components/creator/math/MathPopover';
 import './graph.css';
 
-type Tool = 'move' | 'point' | 'seg' | 'vec' | 'dash' | 'poly' | 'angle' | 'text';
+type Tool = 'move' | 'point' | 'seg' | 'vec' | 'dash' | 'poly' | 'angle' | 'text' | 'draw';
+/** แบบรูปวาดอิสระ (เครื่องมือวาด) */
+const DRAW_KINDS: { id: string; label: string; shape: DrawShape; dash: GDash; arrow: GDraw['arrow'] }[] = [
+  { id: 'line', label: 'เส้นตรง', shape: 'line', dash: 'solid', arrow: 'none' },
+  { id: 'dash', label: 'เส้นประ', shape: 'line', dash: 'dash', arrow: 'none' },
+  { id: 'dot', label: 'เส้นจุด', shape: 'line', dash: 'dot', arrow: 'none' },
+  { id: 'arrow', label: 'ลูกศรชี้', shape: 'line', dash: 'solid', arrow: 'end' },
+  { id: 'arrow2', label: 'ลูกศรสองหัว', shape: 'line', dash: 'solid', arrow: 'both' },
+  { id: 'rect', label: 'สี่เหลี่ยม', shape: 'rect', dash: 'solid', arrow: 'none' },
+  { id: 'ellipse', label: 'วงกลม/วงรี', shape: 'ellipse', dash: 'solid', arrow: 'none' },
+  { id: 'pen', label: 'ปากกา', shape: 'pen', dash: 'solid', arrow: 'none' },
+];
 type Tab = 'eq' | 'draw' | 'view' | 'tpl';
 
 const TOOLS: { id: Tool; label: string; icon: React.ReactNode; hint: string }[] = [
@@ -71,6 +89,7 @@ const TOOLS: { id: Tool; label: string; icon: React.ReactNode; hint: string }[] 
   { id: 'poly', label: 'รูปหลายเหลี่ยม', icon: <Pentagon className="w-4 h-4" />, hint: 'แตะทีละมุม แตะมุมแรกอีกครั้งเพื่อปิดรูป' },
   { id: 'angle', label: 'มุม', icon: <Spline className="w-4 h-4" />, hint: 'แตะจุดบนแขนมุม > จุดยอดมุม > จุดบนแขนอีกข้าง' },
   { id: 'text', label: 'ข้อความ', icon: <Type className="w-4 h-4" />, hint: 'แตะตำแหน่งที่จะวางข้อความ' },
+  { id: 'draw', label: 'วาดอิสระ', icon: <Pencil className="w-4 h-4" />, hint: 'ลากบนภาพเพื่อวาดเส้น ลูกศร รูปทรง ไม่ยึดกับสมการหรือกริด' },
 ];
 const DASHES: { id: GDash; label: string }[] = [
   { id: 'solid', label: 'ทึบ' },
@@ -92,7 +111,7 @@ const SIZES: { label: string; w: number; h: number }[] = [
   { label: 'สูง 3:4', w: 420, h: 560 },
 ];
 const NAMES = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-const KIND_LABEL: Record<GObj['kind'], string> = { expr: 'สมการ', point: 'จุด', seg: 'เส้น', poly: 'รูปหลายเหลี่ยม', angle: 'มุม', text: 'ข้อความ' };
+const KIND_LABEL: Record<GObj['kind'], string> = { expr: 'สมการ', point: 'จุด', seg: 'เส้น', poly: 'รูปหลายเหลี่ยม', angle: 'มุม', text: 'ข้อความ', draw: 'รูปวาด' };
 
 const round = (v: number, st: number) => Math.round(v / st) * st;
 const fix = (v: number) => Math.round(v * 1e6) / 1e6;
@@ -108,7 +127,16 @@ export function GraphEditor({ initial, onDone, onClose, editing }: { initial: Gr
   const past = useRef<GraphSpec[]>([]);
   const future = useRef<GraphSpec[]>([]);
   const stage = useRef<HTMLDivElement>(null);
-  const drag = useRef<null | { kind: 'pt'; id: string } | { kind: 'move'; x: number; y: number; from: Map<string, [number, number]> } | { kind: 'pan'; sx: number; sy: number; view: GraphSpec['view'] }>(null);
+  const drag = useRef<
+    | null
+    | { kind: 'pt'; id: string }
+    | { kind: 'move'; x: number; y: number; px: number; py: number; from: Map<string, [number, number]>; draws: Map<string, [number, number][]> }
+    | { kind: 'draw'; id: string }
+    | { kind: 'pan'; sx: number; sy: number; view: GraphSpec['view'] }
+  >(null);
+  const [drawKind, setDrawKind] = useState('line');
+  /** สมการที่กำลังพิมพ์ผ่านหน้าต่าง MathType */
+  const [mathFor, setMathFor] = useState<string | null>(null);
   const specRef = useRef(spec);
   specRef.current = spec;
 
@@ -182,6 +210,24 @@ export function GraphEditor({ initial, onDone, onClose, editing }: { initial: Gr
     };
     const seg = objs.find((o) => o.kind === 'seg' && segD(at(o.a), at(o.b)) < 7);
     if (seg) return seg;
+    const lineD = (q: [number, number][]) => {
+      let m = Infinity;
+      for (let i = 1; i < q.length; i++) {
+        const [ax, ay] = q[i - 1];
+        const [bx, by] = q[i];
+        const L = (bx - ax) ** 2 + (by - ay) ** 2 || 1;
+        const t = Math.max(0, Math.min(1, ((px - ax) * (bx - ax) + (py - ay) * (by - ay)) / L));
+        m = Math.min(m, Math.hypot(ax + t * (bx - ax) - px, ay + t * (by - ay) - py));
+      }
+      return m;
+    };
+    const drawn = objs.find((o) => {
+      if (o.kind !== 'draw') return false;
+      if (o.shape === 'line' || o.shape === 'pen') return lineD(o.pts) < 7;
+      const [a, b] = [o.pts[0], o.pts[o.pts.length - 1]];
+      return px > Math.min(a[0], b[0]) - 6 && px < Math.max(a[0], b[0]) + 6 && py > Math.min(a[1], b[1]) - 6 && py < Math.max(a[1], b[1]) + 6;
+    });
+    if (drawn) return drawn;
     return objs.find((o) => {
       if (o.kind !== 'poly') return false;
       const q = o.pts.map(at).filter((p): p is GPoint => !!p).map((p) => [f.X(p.x), f.Y(p.y)]);
@@ -221,11 +267,23 @@ export function GraphEditor({ initial, onDone, onClose, editing }: { initial: Gr
         const ids = o.kind === 'text' ? [o.id] : o.kind === 'seg' ? [o.a, o.b] : o.kind === 'poly' ? o.pts : [];
         const from = new Map<string, [number, number]>();
         for (const q of spec.objs) if (ids.includes(q.id) && (q.kind === 'point' || q.kind === 'text')) from.set(q.id, [q.x, q.y]);
-        drag.current = { kind: 'move', x, y, from };
+        const draws = new Map<string, [number, number][]>();
+        if (o.kind === 'draw') draws.set(o.id, o.pts);
+        drag.current = { kind: 'move', x, y, px, py, from, draws };
         return;
       }
       // ที่ว่าง = เลื่อนมุมมอง
       drag.current = { kind: 'pan', sx: px, sy: py, view: { ...f } };
+      return;
+    }
+    if (tool === 'draw') {
+      const k = DRAW_KINDS.find((d) => d.id === drawKind) ?? DRAW_KINDS[0];
+      const o: GDraw = { id: gid(), kind: 'draw', shape: k.shape, pts: [[px, py], [px, py]], color: th.text, width: 2.5, dash: k.dash, arrow: k.arrow, fill: '', alpha: 0.25 };
+      past.current.push(specRef.current);
+      future.current = [];
+      setSpecRaw((s) => ({ ...s, objs: [...s.objs, o] }));
+      setSel(o.id);
+      drag.current = { kind: 'draw', id: o.id };
       return;
     }
     if (tool === 'point') {
@@ -284,9 +342,31 @@ export function GraphEditor({ initial, onDone, onClose, editing }: { initial: Gr
     if (d.kind === 'pt') {
       const [sx, sy] = snapXY(x, y);
       patch(d.id, { x: sx, y: sy } as Partial<GObj>, false);
+    } else if (d.kind === 'draw') {
+      const r = (v: number) => Math.round(v * 10) / 10;
+      setSpecRaw((s) => ({
+        ...s,
+        objs: s.objs.map((o) => {
+          if (o.id !== d.id || o.kind !== 'draw') return o;
+          const last = o.pts[o.pts.length - 1];
+          if (o.shape === 'pen') return Math.hypot(px - last[0], py - last[1]) < 2 || o.pts.length >= 400 ? o : { ...o, pts: [...o.pts, [r(px), r(py)]] };
+          return { ...o, pts: [o.pts[0], [r(px), r(py)]] };
+        }),
+      }));
     } else if (d.kind === 'move') {
       const [dx, dy] = snapXY(x - d.x, y - d.y);
-      setSpecRaw((s) => ({ ...s, objs: s.objs.map((o) => (d.from.has(o.id) && (o.kind === 'point' || o.kind === 'text') ? { ...o, x: fix(d.from.get(o.id)![0] + dx), y: fix(d.from.get(o.id)![1] + dy) } : o)) }));
+      const ddx = px - d.px;
+      const ddy = py - d.py;
+      setSpecRaw((s) => ({
+        ...s,
+        objs: s.objs.map((o) =>
+          d.from.has(o.id) && (o.kind === 'point' || o.kind === 'text')
+            ? { ...o, x: fix(d.from.get(o.id)![0] + dx), y: fix(d.from.get(o.id)![1] + dy) }
+            : o.kind === 'draw' && d.draws.has(o.id)
+              ? { ...o, pts: d.draws.get(o.id)!.map(([a, b]): [number, number] => [Math.round((a + ddx) * 10) / 10, Math.round((b + ddy) * 10) / 10]) }
+              : o,
+        ),
+      }));
     } else {
       const kx = (d.view.xMax - d.view.xMin) / spec.w;
       const ky = (d.view.yMax - d.view.yMin) / spec.h;
@@ -298,6 +378,20 @@ export function GraphEditor({ initial, onDone, onClose, editing }: { initial: Gr
   const onUp = () => {
     const d = drag.current;
     drag.current = null;
+    if (d?.kind === 'draw') {
+      // แตะเฉยๆ ไม่ได้ลาก = ไม่สร้างรูป
+      const o = specRef.current.objs.find((q) => q.id === d.id);
+      if (o?.kind === 'draw') {
+        const xs = o.pts.map((q) => q[0]);
+        const ys = o.pts.map((q) => q[1]);
+        if (Math.max(...xs) - Math.min(...xs) < 3 && Math.max(...ys) - Math.min(...ys) < 3) {
+          past.current.pop();
+          setSpecRaw((s) => ({ ...s, objs: s.objs.filter((q) => q.id !== d.id) }));
+          setSel(null);
+        } else setTab('draw');
+      }
+      return;
+    }
     if (d?.kind === 'pan') {
       past.current.push({ ...specRef.current, view: { ...d.view } });
       future.current = [];
@@ -325,6 +419,8 @@ export function GraphEditor({ initial, onDone, onClose, editing }: { initial: Gr
   /* ---------------- แป้นพิมพ์ ---------------- */
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
+      // หน้าต่าง MathType เปิดอยู่: ปุ่มเป็นของหน้าต่างนั้น (Esc ปิดแค่ MathType)
+      if (mathFor) return;
       const t = e.target as HTMLElement;
       const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(t?.tagName) || t?.isContentEditable;
       if (e.key === 'Escape') {
@@ -404,8 +500,21 @@ export function GraphEditor({ initial, onDone, onClose, editing }: { initial: Gr
   const shapes = spec.objs.filter((o) => o.kind !== 'expr');
   const toolHint = TOOLS.find((t) => t.id === tool)?.hint;
 
+  const mathObj = mathFor ? spec.objs.find((o) => o.id === mathFor) : undefined;
   return createPortal(
     <div className="ge-back" role="dialog" aria-modal="true" aria-label="สร้างกราฟและรูปคณิตศาสตร์">
+      {mathObj?.kind === 'expr' && (
+        <MathPopover
+          initial={mathObj.text}
+          editing={!!mathObj.text}
+          onCancel={() => setMathFor(null)}
+          onDone={(tex) => {
+            const text = texToExpr(tex);
+            setSpec((s) => syncParams({ ...s, objs: s.objs.map((x) => (x.id === mathObj.id ? ({ ...x, text, shape: undefined } as GObj) : x)) }));
+            setMathFor(null);
+          }}
+        />
+      )}
       <div className="ge">
         <header className="ge-head">
           <span className="ge-badge">
@@ -463,12 +572,15 @@ export function GraphEditor({ initial, onDone, onClose, editing }: { initial: Gr
                         <input
                           className="ge-eq"
                           value={o.text}
-                          onChange={(e) => setSpec((s) => syncParams({ ...s, objs: s.objs.map((x) => (x.id === o.id ? { ...x, text: e.target.value.slice(0, 200), shape: undefined } : x)) }), false)}
+                          onChange={(e) => setSpec((s) => syncParams({ ...s, objs: s.objs.map((x) => (x.id === o.id ? ({ ...x, text: e.target.value.slice(0, 200), shape: undefined } as GObj) : x)) }), false)}
                           onFocus={() => past.current.push(specRef.current)}
                           placeholder="เช่น y = x^2 หรือ x^2 + y^2 = 9"
                           aria-label={`สมการที่ ${i + 1}`}
                           spellCheck={false}
                         />
+                        <button type="button" className="ge-ico" onClick={() => setMathFor(o.id)} title="พิมพ์สมการด้วย MathType" aria-label="พิมพ์สมการด้วย MathType">
+                          <Sigma className="w-4 h-4" />
+                        </button>
                         <button type="button" className="ge-ico" onClick={() => patch(o.id, { hidden: !o.hidden })} title={o.hidden ? 'แสดง' : 'ซ่อน'} aria-label={o.hidden ? 'แสดง' : 'ซ่อน'}>
                           {o.hidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
@@ -696,6 +808,16 @@ export function GraphEditor({ initial, onDone, onClose, editing }: { initial: Gr
                 <span>ดูดกริด</span>
               </button>
             </div>
+            {tool === 'draw' && (
+              <div className="ge-drawkinds" role="radiogroup" aria-label="แบบรูปวาด">
+                {DRAW_KINDS.map((k) => (
+                  <button key={k.id} type="button" role="radio" aria-checked={drawKind === k.id} data-on={drawKind === k.id} onClick={() => setDrawKind(k.id)}>
+                    <DrawIcon id={k.id} />
+                    <span>{k.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="ge-stagewrap">
               <div
                 ref={stage}
@@ -804,6 +926,21 @@ function ShapeKnobs({ s, onChange }: { s: GShape; onChange: (s: GShape, push?: b
         ))}
       </ul>
     </div>
+  );
+}
+
+/** ไอคอนเล็กของแบบรูปวาด */
+function DrawIcon({ id }: { id: string }) {
+  const st = { fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+      {id === 'rect' && <rect x="4" y="6" width="16" height="12" rx="1" {...st} />}
+      {id === 'ellipse' && <ellipse cx="12" cy="12" rx="8" ry="6" {...st} />}
+      {id === 'pen' && <path d="M4 17c3-6 5 2 8-3s4-5 8-6" {...st} />}
+      {(id === 'line' || id === 'dash' || id === 'dot') && <path d="M4 18L20 6" {...st} strokeDasharray={id === 'dash' ? '4 3' : id === 'dot' ? '0.1 4' : undefined} />}
+      {(id === 'arrow' || id === 'arrow2') && <path d="M4 18L20 6M20 6h-6M20 6v6" {...st} />}
+      {id === 'arrow2' && <path d="M4 18h6M4 18v-6" {...st} />}
+    </svg>
   );
 }
 
@@ -942,6 +1079,37 @@ function ObjProps({ o, points, th, patch, remove }: { o: GObj; points: GPoint[];
               <input type="range" min={0.05} max={1} step={0.05} value={o.alpha} onChange={(e) => patch({ alpha: Number(e.target.value) }, false)} />
             </Row>
           )}
+        </>
+      )}
+      {o.kind === 'draw' && (
+        <>
+          <Row label="เส้น">
+            <Seg value={o.dash} options={DASHES} onChange={(dash) => patch({ dash })} />
+          </Row>
+          {o.shape === 'line' && (
+            <Row label="หัวลูกศร">
+              <Seg value={o.arrow} options={ARROWS} onChange={(arrow) => patch({ arrow })} />
+            </Row>
+          )}
+          <Row label={`หนา ${o.width}`}>
+            <input type="range" min={0.5} max={10} step={0.5} value={o.width} onChange={(e) => patch({ width: Number(e.target.value) }, false)} />
+          </Row>
+          {(o.shape === 'rect' || o.shape === 'ellipse') && (
+            <>
+              <Row label="สีพื้น">
+                <button type="button" className="ge-colorbtn ge-none" data-on={!o.fill} onClick={() => patch({ fill: '' })} aria-label="ไม่มีสีพื้น" />
+                {colors.slice(1, 8).map((c) => (
+                  <button key={c} type="button" className="ge-colorbtn" data-on={o.fill === c} style={{ background: c }} onClick={() => patch({ fill: c })} aria-label={`พื้น ${c}`} />
+                ))}
+              </Row>
+              {o.fill && (
+                <Row label="ความทึบพื้น">
+                  <input type="range" min={0.05} max={1} step={0.05} value={o.alpha} onChange={(e) => patch({ alpha: Number(e.target.value) }, false)} />
+                </Row>
+              )}
+            </>
+          )}
+          <p className="ge-tip">ลากด้วยเครื่องมือเลือก/ลากเพื่อย้าย</p>
         </>
       )}
       {o.kind === 'angle' && (

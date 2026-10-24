@@ -40,7 +40,7 @@ import { cleanTitle } from '@/lib/game-creator/quiz';
 import { FREE_DESIGN_LIMIT, creatorTier } from '@/lib/game-creator/quota';
 import { blankPage, cleanSrc, makeChar, makeGraph, makeImage, makeLine, makeMath, makeShape, makeText, MAX_PAGES, sanitizeDesign, sizeLabel, uid, type Design, type EditMode, type Item, type Page } from '@/lib/studio/doc';
 import { cleanGraph, newSpec, type GraphSpec } from '@/lib/studio/graph';
-import { cleanFlowHtml } from '@/lib/studio/flow';
+import { FLOW_GAP, cleanFlowHtml } from '@/lib/studio/flow';
 import { texToHtml } from '@/components/creator/math/MathText';
 import { MathPopover } from '@/components/creator/math/MathPopover';
 import '@/components/creator/creator.css';
@@ -622,6 +622,10 @@ export function StudioEditor({ id }: { id: string }) {
     if (best !== ap) setPageIdx(best);
   };
 
+  const [fontsReady, setFontsReady] = useState(false);
+  useEffect(() => {
+    document.fonts?.ready.then(() => setFontsReady(true));
+  }, []);
   /* ------------------------------------------------------------ ความสูงของกล่องข้อความตามเนื้อหา (ทุกหน้า) */
   useLayoutEffect(() => {
     const d = docRef.current;
@@ -650,7 +654,8 @@ export function StudioEditor({ id }: { id: string }) {
       });
     });
     if (fix.size) setDoc({ ...d, pages: d.pages.map((p, i) => (fix.has(i) ? { ...p, items: p.items.map((x) => (fix.get(i)!.has(x.id) ? ({ ...x, ...fix.get(i)!.get(x.id)! } as Item) : x)) } : p)) });
-  });
+    // วัดเฉพาะตอนเนื้อหาเปลี่ยน/จบการแก้/ฟอนต์โหลดเสร็จ (เดิมวัดทุกครั้งที่วาดใหม่ รวมตอนลากเมาส์ ทำให้กระตุก)
+  }, [doc, status, editId, fontsReady]);
 
   /* ------------------------------------------------------------ บันทึกอัตโนมัติ */
   const doSave = useCallback(async () => {
@@ -658,7 +663,8 @@ export function StudioEditor({ id }: { id: string }) {
     if (!d || readOnly) return;
     setSave('saving');
     const body: Record<string, unknown> = { title: cleanTitle(title) || 'สื่อไม่มีชื่อ', content: d, page_count: d.pages.length, is_public: isPublic };
-    if (Date.now() - lastThumb.current > 15000 && thumbEl.current) {
+    // รูปปกทำจากหน้าแรกด้วย html-to-image (หนัก หน้าค้างชั่วครู่) ทำห่างๆ ทุก 2 นาทีพอ
+    if (Date.now() - lastThumb.current > 120000 && thumbEl.current) {
       // รูปปกค้างได้ (แท็บอยู่เบื้องหลัง/รูปโหลดไม่เสร็จ) ห้ามให้มันขวางการบันทึกงาน
       const t = await Promise.race([makeThumb(thumbEl.current, d.size.w, d.size.h).catch(() => null), new Promise<null>((r) => setTimeout(() => r(null), 8000))]);
       if (t) {
@@ -903,7 +909,7 @@ export function StudioEditor({ id }: { id: string }) {
     }
     const pr = paper.getBoundingClientRect();
     const fr = figs[k].getBoundingClientRect();
-    const item = { ...makeGraph(spec, fr.width / zoom), x: (fr.left - pr.left) / zoom, y: (fr.top - pr.top) / zoom };
+    const item = { ...makeGraph(spec, fr.width / zoom), x: (fr.left - pr.left) / zoom, y: (fr.top - pr.top) / zoom, locked: figs[k].dataset.lock === '1' };
     // ลบกราฟลำดับที่ k ออกจากเนื้อหาเอกสาร (ลำดับใน HTML ตรงกับที่วาด)
     const t = document.createElement('template');
     t.innerHTML = d.flow;
@@ -1339,7 +1345,24 @@ export function StudioEditor({ id }: { id: string }) {
     if (!doc || doc.mode === m) return;
     finishEdit();
     setSelIds([]);
-    setDoc({ ...doc, mode: m });
+    // สลับโหมดแล้วกระดาษขนาดเท่าเดิม (ไม่ซูมพอดีจอใหม่ตามพื้นที่ที่แถบเครื่องมือแต่ละโหมดกิน)
+    setAutoFit(false);
+    // กราฟที่สร้างในโหมด Canva ย้ายเข้าเนื้อเอกสารเป็นกราฟวางอิสระตำแหน่งเดิม (โหมด Word แก้/ย้ายได้ แตะในโหมด Canva ยกกลับเป็นชิ้นงาน)
+    const toMode = (doc: Design): Design => {
+      if (m !== 'word') return { ...doc, mode: m };
+      const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const figs: string[] = [];
+      const pages = doc.pages.map((p, i) => ({
+        ...p,
+        items: p.items.filter((it) => {
+          if (it.type !== 'graph' || it.rot) return true;
+          figs.push(`<figure data-graph="${esc(JSON.stringify(it.spec))}" data-wrap="front"${it.locked ? ' data-lock="1"' : ''} style="left: ${Math.round(it.x)}px; top: ${Math.round(i * (H + FLOW_GAP) + it.y)}px; width: ${Math.round(it.w)}px"></figure>`);
+          return false;
+        }),
+      }));
+      return figs.length ? { ...doc, mode: m, pages, flow: cleanFlowHtml((doc.flow || '<p><br></p>') + figs.join(''), cleanSrc) } : { ...doc, mode: m };
+    };
+    setDoc((d) => d && toMode(d));
     if (m === 'word') say('โหมดเอกสาร: พิมพ์ต่อเนื่องได้เลย ขึ้นหน้าใหม่ให้เอง ชิ้นงานแบบ Canva แสดงอยู่แต่แก้ได้ในโหมด Canva');
   };
   const needPages = (n: number) =>

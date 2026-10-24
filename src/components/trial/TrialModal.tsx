@@ -270,7 +270,7 @@ export function TrialModal({ media, onClose, mode = 'trial' }: { media: MediaIte
 
   return (
     <div
-      className={cn('fixed inset-0 z-[70] flex items-center justify-center bg-indigo-950/75 backdrop-blur-md animate-fade-in', max ? 'p-0' : 'p-2 sm:p-5')}
+      className={cn('fixed inset-0 z-[70] flex items-center justify-center bg-indigo-950/90 animate-fade-in', max ? 'p-0' : 'p-2 sm:p-5')}
       onMouseDown={close}
     >
       <div

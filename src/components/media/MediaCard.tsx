@@ -101,7 +101,7 @@ export function MediaCard({
           }}
           disabled={!user}
           className={cn(
-            'fav-btn btn-jelly absolute top-3 right-3 p-2.5 rounded-full backdrop-blur-md shadow-md z-10 ring-2 ring-white/60',
+            'fav-btn btn-jelly absolute top-3 right-3 p-2.5 rounded-full shadow-md z-10 ring-2 ring-white/60',
             !user
               ? 'bg-black/30 text-white/50 cursor-not-allowed'
               : isFavorite
@@ -116,13 +116,13 @@ export function MediaCard({
         </button>
 
         {/* Views */}
-        <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-xs font-medium flex items-center gap-1 shadow-sm">
+        <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-full bg-black/60 text-white text-xs font-medium flex items-center gap-1 shadow-sm">
           <Eye className="w-3.5 h-3.5 opacity-90" />
           <span>{localViews.toLocaleString('th-TH')}</span>
         </div>
 
         {/* Media type */}
-        <div className="absolute bottom-3 right-3 px-2.5 py-1 rounded-full bg-white/95 dark:bg-gray-900/90 backdrop-blur-md text-gray-800 dark:text-gray-100 text-xs font-semibold flex items-center gap-1 shadow-sm">
+        <div className="absolute bottom-3 right-3 px-2.5 py-1 rounded-full bg-white/95 dark:bg-gray-900/90 text-gray-800 dark:text-gray-100 text-xs font-semibold flex items-center gap-1 shadow-sm">
           <Layers className="w-3 h-3 text-indigo-500" />
           <span>{media.media_type}</span>
         </div>

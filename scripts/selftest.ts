@@ -4,7 +4,7 @@
  */
 import assert from 'node:assert/strict';
 import { answerOf, quizPages } from '../src/lib/studio/fromQuiz';
-import { cleanGraph, compileExpr, defaultShape, graphToSvg, GRAPH_TEMPLATES, intersections, parseEquation, shapeFacts, shapeText, type GShape } from '../src/lib/studio/graph';
+import { cleanGraph, compileExpr, defaultShape, graphToSvg, GRAPH_TEMPLATES, intersections, parseEquation, shapeFacts, shapeText, texToExpr, type GShape } from '../src/lib/studio/graph';
 import { PAGE_FIELD, cleanFlowHtml, cleanWordOpt, defaultWordOpt, flowIsEmpty, pageLabel, stripPageField, withPageField } from '../src/lib/studio/flow';
 import { mathmlToOmml } from '../src/lib/studio/omml';
 import { prepTex } from '../src/lib/mathTex';
@@ -1293,6 +1293,23 @@ t('กราฟ: รูปทรงเฉพาะสร้างสมการ
   const e = g.objs[0];
   assert.ok(e.kind === 'expr' && e.shape?.a === 3 && e.text === shapeText(e.shape));
   assert.ok(shapeFacts({ ...defaultShape('ellipse'), a: 5, b: 3 }).some((f) => f.includes('(-4, 0)') && f.includes('(4, 0)')), 'โฟกัสวงรี');
+  // สูตรจาก MathType เป็นสมการกราฟ
+  const tq = (tex: string, x: number) => {
+    const r = parseEquation(texToExpr(tex));
+    assert.ok(r.ok, tex + ' -> ' + texToExpr(tex));
+    return r.ok ? r.fn(x, 0, {}) : NaN;
+  };
+  assert.ok(near(tq('y=\\frac{1}{2}x^{2}', 4), 8));
+  assert.ok(near(tq('y=\\sqrt{x}+\\left(x-1\\right)', 9), 11));
+  assert.ok(near(tq('y=\\sqrt[3]{x}', 27), 3));
+  assert.ok(near(tq('y=2\\cdot\\sin\\left(\\pi x\\right)', 0.5), 2));
+  assert.ok(near(tq('y=\\dfrac{x+1}{\\frac{1}{2}}', 1), 4));
+  // รูปวาดอิสระ: ตัวกรองรับเฉพาะพิกัดตัวเลข สีผิดถูกแทน และวาดออกมาเป็น SVG
+  const dg = cleanGraph({ objs: [{ kind: 'draw', shape: 'rect', pts: [[10, 10], ['x', 3], [90, 60]], color: 'red;evil', fill: '#ff0000' }, { kind: 'draw', shape: 'line', pts: [[1, 1]] }] });
+  assert.equal(dg.objs.length, 1);
+  const d0 = dg.objs[0];
+  assert.ok(d0.kind === 'draw' && d0.pts.length === 2 && d0.color !== 'red;evil');
+  assert.ok(graphToSvg(dg).includes('<rect x="10" y="10" width="80" height="50"'));
 });
 
 console.log(`\n${passed} tests passed`);

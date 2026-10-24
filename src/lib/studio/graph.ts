@@ -79,7 +79,19 @@ export interface GText extends GBase {
   italic: boolean;
   bar: boolean;
 }
-export type GObj = GExpr | GPoint | GSeg | GPoly | GAngle | GText;
+/** รูปวาดอิสระ (เส้น ลูกศร สี่เหลี่ยม วงรี ปากกา) พิกัดเป็นพิกเซลของภาพ ไม่ขยับตามสมการ/การเลื่อนกราฟ */
+export type DrawShape = 'line' | 'rect' | 'ellipse' | 'pen';
+export interface GDraw extends GBase {
+  kind: 'draw';
+  shape: DrawShape;
+  pts: [number, number][];
+  width: number;
+  dash: GDash;
+  arrow: GArrow;
+  fill: string;
+  alpha: number;
+}
+export type GObj = GExpr | GPoint | GSeg | GPoly | GAngle | GText | GDraw;
 export type GKind = GObj['kind'];
 
 export interface GParam {
@@ -171,6 +183,66 @@ const F1: Record<string, (a: number) => number> = {
 const NAMES = [...Object.keys(F1), 'min', 'max', 'pi'].sort((a, b) => b.length - a.length);
 
 type Tok = { t: 'num'; v: number } | { t: 'id'; v: string } | { t: 'fn'; v: string } | { t: 'op'; v: string };
+
+/**
+ * สูตรจากหน้าต่าง MathType (LaTeX) เป็นสมการที่ตัวแปลกราฟอ่านได้
+ * เช่น y=\frac{1}{2}x^{2}+\sqrt{x} เป็น y=((1)/(2))x^(2)+sqrt(x)
+ */
+export function texToExpr(tex: string): string {
+  let s = String(tex || '').slice(0, 600);
+  // อ่านกลุ่ม {...} ที่ตำแหน่ง i (ข้ามช่องว่าง) คืนเนื้อในกับตำแหน่งถัดไป
+  const group = (i: number): [string, number] => {
+    while (s[i] === ' ') i++;
+    if (s[i] !== '{') return [s[i] ?? '', i + 1];
+    let d = 0;
+    for (let j = i; j < s.length; j++) {
+      if (s[j] === '{') d++;
+      else if (s[j] === '}' && --d === 0) return [s.slice(i + 1, j), j + 1];
+    }
+    return [s.slice(i + 1), s.length];
+  };
+  for (let guard = 0; guard < 60; guard++) {
+    const m = /\\(d|t)?frac|\\sqrt|\\text|\\operatorname|\\mathrm/.exec(s);
+    if (!m) break;
+    const at = m.index;
+    let end = at + m[0].length;
+    let out = '';
+    if (m[0].endsWith('frac')) {
+      const [a, e1] = group(end);
+      const [b, e2] = group(e1);
+      out = `((${a})/(${b}))`;
+      end = e2;
+    } else if (m[0] === '\\sqrt') {
+      let n = '';
+      if (s[end] === '[') {
+        const close = s.indexOf(']', end);
+        n = s.slice(end + 1, close < 0 ? s.length : close);
+        end = close < 0 ? s.length : close + 1;
+      }
+      const [a, e1] = group(end);
+      out = n ? `((${a})^(1/(${n})))` : `sqrt(${a})`;
+      end = e1;
+    } else {
+      const [a, e1] = group(end);
+      out = a;
+      end = e1;
+    }
+    s = s.slice(0, at) + out + s.slice(end);
+  }
+  return s
+    .replace(/_\{[^{}]*\}|_[A-Za-z0-9]/g, '')
+    .replace(/\\(left|right|displaystyle|,|;|!|:|quad|qquad)/g, '')
+    .replace(/\\(l|r)?vert|\\mid/g, '|')
+    .replace(/\\(cdot|times|ast)/g, '*')
+    .replace(/\\div/g, '/')
+    .replace(/\\(leq?|leqslant)/g, '<=')
+    .replace(/\\(geq?|geqslant)/g, '>=')
+    .replace(/\\ /g, ' ')
+    .replace(/\\([a-zA-Z]+)/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 200);
+}
 
 export function normalizeExpr(src: string): string {
   return String(src || '')
@@ -810,6 +882,26 @@ export function graphToSvg(s: GraphSpec, opt: { idPrefix?: string } = {}): strin
         const q = path[Math.min(path.length - 1, Math.max(0, Math.round((path.length - 1) * o.at)))];
         labels.push(richText(o.label, Math.min(W - 8, q[0] + 6), Math.max(fs, q[1] - 6), { size: fs * 1.15, color: o.color, font: th.font, italic: th.italic, anchor: q[0] > W - 40 ? 'end' : 'start' }));
       }
+    } else if (o.kind === 'draw') {
+      const [a, b] = [o.pts[0], o.pts[o.pts.length - 1]];
+      const st = `stroke="${o.color}" stroke-width="${o.width}" stroke-dasharray="${dashArr(o.dash, o.width)}" stroke-linecap="round" stroke-linejoin="round"`;
+      const fill = o.fill ? `fill="${o.fill}" fill-opacity="${o.alpha}"` : 'fill="none"';
+      if (o.shape === 'rect') out.push(`<rect x="${r1(Math.min(a[0], b[0]))}" y="${r1(Math.min(a[1], b[1]))}" width="${r1(Math.abs(b[0] - a[0]))}" height="${r1(Math.abs(b[1] - a[1]))}" ${fill} ${st}/>`);
+      else if (o.shape === 'ellipse') out.push(`<ellipse cx="${r1((a[0] + b[0]) / 2)}" cy="${r1((a[1] + b[1]) / 2)}" rx="${r1(Math.abs(b[0] - a[0]) / 2)}" ry="${r1(Math.abs(b[1] - a[1]) / 2)}" ${fill} ${st}/>`);
+      else if (o.shape === 'pen') out.push(`<path d="${pathD(o.pts)}" fill="none" ${st}/>`);
+      else {
+        const hs = 7 + o.width * 2.2;
+        const len = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+        const ux = (b[0] - a[0]) / len;
+        const uy = (b[1] - a[1]) / len;
+        const e = o.arrow === 'end' || o.arrow === 'both';
+        const s0 = o.arrow === 'start' || o.arrow === 'both';
+        const a2: Pt = s0 ? [a[0] + ux * hs * 0.8, a[1] + uy * hs * 0.8] : a;
+        const b2: Pt = e ? [b[0] - ux * hs * 0.8, b[1] - uy * hs * 0.8] : b;
+        out.push(`<path d="${pathD([a2, b2])}" fill="none" ${st}/>`);
+        if (e) out.push(arrowHead(a[0], a[1], b[0], b[1], hs, o.color));
+        if (s0) out.push(arrowHead(b[0], b[1], a[0], a[1], hs, o.color));
+      }
     } else if (o.kind === 'poly') {
       const q = o.pts.map(P).filter((v): v is Pt => !!v);
       if (q.length >= 2) out.push(`<path d="${pathD(q)}Z" fill="${o.fill || 'none'}" fill-opacity="${o.fill ? o.alpha : 0}" stroke="${o.color}" stroke-width="${o.width}" stroke-dasharray="${dashArr(o.dash, o.width)}" stroke-linejoin="round"/>`);
@@ -933,6 +1025,7 @@ const col = (v: unknown, d = '#111111') => (typeof v === 'string' && HEXC.test(v
 const pick = <T extends string>(v: unknown, list: readonly T[], d: T): T => (list.includes(v as T) ? (v as T) : d);
 const DASHES = ['solid', 'dash', 'dot', 'dashdot'] as const;
 const ARROWS = ['none', 'end', 'start', 'both'] as const;
+const DRAW_SHAPES = ['line', 'rect', 'ellipse', 'pen'] as const;
 const POS = ['ne', 'nw', 'se', 'sw', 'n', 's', 'e', 'w'] as const;
 const THEMES = ['book', 'grid', 'desmos', 'chalk', 'kids'] as const;
 const OID = /^[a-z0-9]{1,12}$/;
@@ -986,6 +1079,15 @@ export function cleanGraph(raw: unknown): GraphSpec {
       case 'text':
         g = { ...base, kind: 'text', x: num(o.x, -BIG, BIG, 0), y: num(o.y, -BIG, BIG, 0), text: txt(o.text, 120), size: num(o.size, 8, 72, 18), italic: !!o.italic, bar: !!o.bar };
         break;
+      case 'draw': {
+        const pts = (Array.isArray(o.pts) ? o.pts : [])
+          .slice(0, 400)
+          .filter((q): q is [number, number] => Array.isArray(q) && q.length === 2 && q.every((v) => typeof v === 'number' && isFinite(v)))
+          .map((q): [number, number] => [num(q[0], -4000, 4000, 0), num(q[1], -4000, 4000, 0)]);
+        if (pts.length >= 2)
+          g = { ...base, kind: 'draw', shape: pick(o.shape, DRAW_SHAPES, 'line'), pts, width: num(o.width, 0.5, 12, 2.5), dash: pick(o.dash, DASHES, 'solid'), arrow: pick(o.arrow, ARROWS, 'none'), fill: typeof o.fill === 'string' && HEXC.test(o.fill) ? o.fill : '', alpha: num(o.alpha, 0, 1, 0.25) };
+        break;
+      }
     }
     if (g) {
       ids.add(id);

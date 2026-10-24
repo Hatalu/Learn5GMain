@@ -1093,7 +1093,7 @@ export function TowerGame({ engine, deadline, sync, preview, onLeave }: GameProp
       step(w, dt);
       const ctx = c.getContext('2d');
       if (ctx) {
-        const dpr = Math.min(2, window.devicePixelRatio || 1);
+        const dpr = Math.min(1.5, window.devicePixelRatio || 1);
         const rect = c.getBoundingClientRect();
         const pw = Math.max(1, Math.round(rect.width * dpr));
         const ph = Math.max(1, Math.round(rect.height * dpr));

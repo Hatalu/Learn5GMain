@@ -3,9 +3,12 @@
 import React, { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, forwardRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
+  Copy,
+  Lock,
   Move,
   Pencil,
   Trash2,
+  Unlock,
 } from 'lucide-react';
 import { FLOW_GAP, WORD_SINGLE, cleanFlowHtml, flowIsEmpty, hasPageField, pageLabel, paginate, stripPageField, withPageField, type WordOpt } from '@/lib/studio/flow';
 import { cleanSrc, type Item, type Page } from '@/lib/studio/doc';
@@ -512,7 +515,7 @@ export const WordEditor = forwardRef<
   };
   const editActive = () => {
     const el = active;
-    if (!el) return;
+    if (!el || isLocked(el)) return;
     if (el.dataset.tex !== undefined) {
       openMath(el.dataset.tex || '', (tex) => {
         if (!tex.trim()) el.remove();
@@ -559,6 +562,8 @@ export const WordEditor = forwardRef<
     return op && op !== ed.current && ed.current?.contains(op) ? rel(op) : { x: 0, y: 0, w: 0, h: 0 };
   };
   const isFree = (el: HTMLElement) => el.dataset.wrap === 'behind' || el.dataset.wrap === 'front';
+  /** ล็อกแล้ว: เลือกได้ (เพื่อปลดล็อก) แต่ย้าย ย่อขยาย แก้ ลบ ไม่ได้ */
+  const isLocked = (el: HTMLElement | null) => el?.dataset.lock === '1';
   /** ชิ้นใต้จุดคลิก รวมชิ้น "หลังข้อความ" เมื่อไม่ได้คลิกโดนตัวอักษร */
   const pickAt = (x: number, y: number, target: HTMLElement) => {
     const root = ed.current;
@@ -668,7 +673,30 @@ export const WordEditor = forwardRef<
     changed();
     force((x) => x + 1);
   };
+  const toggleLock = () => {
+    if (!active) return;
+    if (isLocked(active)) delete active.dataset.lock;
+    else active.dataset.lock = '1';
+    changed();
+    force((x) => x + 1);
+  };
+  /** ทำสำเนาชิ้นที่เลือก วางถัดไป (ชิ้นอิสระเลื่อนลงขวานิดหน่อย) */
+  const dupActive = () => {
+    const el = active;
+    if (!el) return;
+    const c = el.cloneNode(true) as HTMLElement;
+    delete c.dataset.sel;
+    delete c.dataset.lock;
+    if (isFree(el)) {
+      c.style.left = `${(parseFloat(el.style.left) || 0) + 24}px`;
+      c.style.top = `${(parseFloat(el.style.top) || 0) + 24}px`;
+    }
+    el.after(c);
+    changed();
+    setActive(c);
+  };
   const removeActive = () => {
+    if (isLocked(active)) return;
     active?.remove();
     setActive(null);
     changed();
@@ -760,7 +788,7 @@ export const WordEditor = forwardRef<
     if (drawRef.current) return startDraw(e);
     const t = pickAt(e.clientX, e.clientY, e.target as HTMLElement);
     setActive(t);
-    if (!t || t.dataset.tex !== undefined) return;
+    if (!t || t.dataset.tex !== undefined || isLocked(t)) return;
     e.preventDefault();
     restore();
     grab(t, e.clientX, e.clientY);
@@ -835,7 +863,7 @@ export const WordEditor = forwardRef<
     if (active) {
       if (e.key === 'Delete' || e.key === 'Backspace') return run(removeActive);
       if (e.key === 'Escape') return run(() => setActive(null));
-      if (isFree(active) && e.key.startsWith('Arrow')) {
+      if (isFree(active) && !isLocked(active) && e.key.startsWith('Arrow')) {
         return run(() => {
           const d = e.shiftKey ? 10 : 1;
           const r0 = rel(active);
@@ -1056,6 +1084,20 @@ export const WordEditor = forwardRef<
   /** เครื่องมือของชิ้นที่เลือก: แท็บตามบริบทบนริบบอน (แบบ Word: รูปแบบรูปร่าง / รูปแบบรูปภาพ) */
   const objectTools = active ? (
     <>
+    <div className="st-wobj-quick">
+      <B title="ทำสำเนา" act={dupActive}>
+        <Copy className="w-4 h-4" />
+      </B>
+      <B title={isLocked(active) ? 'ปลดล็อก' : 'ล็อก (กันย้าย/แก้โดยไม่ตั้งใจ)'} act={toggleLock}>
+        {isLocked(active) ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
+      </B>
+      {!isLocked(active) && (
+        <B title="ลบ (Delete)" act={removeActive}>
+          <Trash2 className="w-4 h-4" />
+        </B>
+      )}
+    </div>
+    {!isLocked(active) && (<>
     {active.dataset.shape && (
       <>
         {!isLineShape(active.dataset.shape) && (
@@ -1113,9 +1155,7 @@ export const WordEditor = forwardRef<
           {w}%
         </button>
       ))}
-    <B title="ลบ (Delete)" act={removeActive}>
-      <Trash2 className="w-4 h-4" />
-    </B>
+    </>)}
     </>
   ) : null;
   const objectLabel = active ? (active.dataset.tex !== undefined ? 'เครื่องมือสมการ' : active.dataset.graph ? 'รูปแบบกราฟ' : active.dataset.shape ? 'รูปแบบรูปร่าง' : 'รูปแบบรูปภาพ') : '';
@@ -1243,7 +1283,7 @@ export const WordEditor = forwardRef<
           )}
           {ghost && <span className="st-word-ghost" style={{ left: ghost.x, top: ghost.y, width: ghost.w, height: ghost.h, borderWidth: 2 / zoom }} />}
           {active && ed.current?.contains(active) && (
-            <ActiveRing box={rel(active)} zoom={zoom} sides={!!active.dataset.shape} onGrab={readOnly || active.dataset.tex !== undefined ? undefined : (c, x, y) => grab(active, x, y, c)} />
+            <ActiveRing box={rel(active)} zoom={zoom} sides={!!active.dataset.shape} onGrab={readOnly || active.dataset.tex !== undefined || isLocked(active) ? undefined : (c, x, y) => grab(active, x, y, c)} />
           )}
         </div>
       </div>

@@ -13,7 +13,7 @@ function Inner() {
 
 export default function StudioEditPage() {
   return (
-    <div className="st-page">
+    <div className="st-screen">
       <Navbar />
       <Suspense fallback={null}>
         <Inner />

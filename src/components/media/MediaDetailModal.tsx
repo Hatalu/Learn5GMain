@@ -134,7 +134,7 @@ export function MediaDetailModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-indigo-950/70 backdrop-blur-md animate-fade-in overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-indigo-950/80 animate-fade-in overflow-y-auto"
       onClick={onClose}
     >
       <div

@@ -201,7 +201,7 @@ export function FiveG3D({ mood, onPose, className = '', label = 'น้องไ
         setFailed(true);
         return;
       }
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
       renderer.domElement.style.cssText = 'width:100%;height:100%;display:block;touch-action:manipulation';
       el.appendChild(renderer.domElement);
 

@@ -36,7 +36,7 @@ html.dark .st-menu {
   color-scheme: dark;
 }
 /* หน้าแก้สื่อ: แถบนำทางของเว็บด้านบน + พื้นที่สร้างสื่อเต็มที่เหลือ (ไม่เลื่อนทั้งหน้า) */
-.st-page {
+.st-screen {
   display: flex;
   flex-direction: column;
   height: 100dvh;
@@ -3398,4 +3398,13 @@ html.dark .st-wwarn {
   .st-rright {
     animation: none;
   }
+}
+
+/* ปุ่มด่วนของชิ้นที่เลือกในโหมด Word: ทำสำเนา ล็อก ลบ */
+.st-wobj-quick {
+  display: flex;
+  gap: 4px;
+}
+.st-word [data-lock='1'] {
+  cursor: default;
 }

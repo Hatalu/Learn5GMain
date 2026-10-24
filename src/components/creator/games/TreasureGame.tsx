@@ -655,7 +655,7 @@ export function TreasureGame({ engine, deadline, sync, me, preview, onLeave, wor
         net.send('pos', { i: myIdx, x: Math.round(h.x), y: Math.round(h.y), f: h.face, s: status, g: gems.current });
       }
 
-      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const dpr = Math.min(1.5, window.devicePixelRatio || 1);
       const rect = c.getBoundingClientRect();
       const pw = Math.max(1, Math.round(rect.width * dpr));
       const ph = Math.max(1, Math.round(rect.height * dpr));

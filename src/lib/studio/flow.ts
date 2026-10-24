@@ -213,6 +213,8 @@ export function cleanFlowHtml(html: string, cleanSrc: SrcCheck): string {
         shape.push(`data-ar="${val}"`);
       } else if (name === 'data-wrap' && (tag === 'figure' || tag === 'img' || tag === 'span') && (WRAPS as readonly string[]).includes(val)) {
         attrs.push(`data-wrap="${val}"`);
+      } else if (name === 'data-lock' && (tag === 'figure' || tag === 'img' || tag === 'span')) {
+        attrs.push('data-lock="1"');
       } else if (name === 'data-pb' && tag === 'div') {
         attrs.push('data-pb="1"');
       } else if ((name === 'colspan' || name === 'rowspan') && /^\d{1,2}$/.test(val)) {
@@ -247,7 +249,7 @@ export function cleanFlowHtml(html: string, cleanSrc: SrcCheck): string {
       continue;
     }
     if (tag === 'span') {
-      const a = attrs.filter((x) => !x.startsWith('data-wrap'));
+      const a = attrs.filter((x) => !x.startsWith('data-wrap') && !x.startsWith('data-lock'));
       out.push(`<span${a.length ? ' ' + a.join(' ') : ''}>`);
       continue;
     }

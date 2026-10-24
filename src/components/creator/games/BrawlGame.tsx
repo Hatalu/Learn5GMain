@@ -1329,7 +1329,7 @@ export function BrawlGame({ engine, deadline, sync, me, preview, onLeave }: Game
         gsfx.fanfare();
         return;
       }
-      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const dpr = Math.min(1.5, window.devicePixelRatio || 1);
       const rect = c.getBoundingClientRect();
       const pw = Math.max(1, Math.round(rect.width * dpr));
       const ph = Math.max(1, Math.round(rect.height * dpr));
