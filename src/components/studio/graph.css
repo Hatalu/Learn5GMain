@@ -523,6 +523,10 @@
   user-select: none;
   background: #fff;
 }
+/* พื้นหลังโปร่งใส: ลายตารางหมากรุกให้เห็นว่าไม่มีพื้น */
+.ge-stage[data-clear] {
+  background: repeating-conic-gradient(#ecebf3 0% 25%, #fff 0% 50%) 0 0 / 16px 16px;
+}
 .ge-stage[data-tool='move'] {
   cursor: grab;
 }

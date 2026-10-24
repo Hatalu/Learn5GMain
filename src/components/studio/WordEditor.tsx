@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, forwardRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
+  Move,
   Pencil,
   Trash2,
 } from 'lucide-react';
@@ -24,6 +25,35 @@ export interface WordHandle {
   focus: () => void;
 }
 
+/** ตำแหน่งเคอร์เซอร์เป็นจำนวนตัวอักษรนับจากต้นเอกสาร (-1 = ไม่อยู่ในเอกสาร) */
+function caretOffset(el: HTMLElement): number {
+  const s = window.getSelection();
+  if (!s || !s.rangeCount || !el.contains(s.anchorNode)) return -1;
+  const r = document.createRange();
+  r.selectNodeContents(el);
+  r.setEnd(s.anchorNode!, s.anchorOffset);
+  return r.toString().length;
+}
+/** วางเคอร์เซอร์ที่ตัวอักษรที่ n (-1/เกิน = ท้ายเอกสาร) */
+function setCaret(el: HTMLElement, n: number) {
+  const r = document.createRange();
+  r.selectNodeContents(el);
+  r.collapse(false);
+  if (n >= 0) {
+    const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    for (let t = w.nextNode() as Text | null; t; t = w.nextNode() as Text | null) {
+      if (n <= t.length) {
+        r.setStart(t, n);
+        r.collapse(true);
+        break;
+      }
+      n -= t.length;
+    }
+  }
+  el.focus({ preventScroll: true });
+  window.getSelection()?.removeAllRanges();
+  window.getSelection()?.addRange(r);
+}
 
 /**
  * โหมดเอกสาร (แบบ Word): พิมพ์ต่อเนื่อง ขึ้นหน้าใหม่เอง แทรกสมการ/กราฟ/รูป/ตาราง ได้
@@ -125,6 +155,7 @@ export const WordEditor = forwardRef<
     if (!el || html === emitted.current) return;
     el.innerHTML = html || '<p><br></p>';
     emitted.current = html;
+    hist.current.last = { html, caret: -1 };
     hydrateFlow(el);
     relayout();
   }, [html, relayout]);
@@ -139,6 +170,7 @@ export const WordEditor = forwardRef<
       if (!el) return;
       const clean = cleanFlowHtml(el.innerHTML, cleanSrc);
       emitted.current = clean;
+      hist.current.last = { html: clean, caret: caretOffset(el) };
       onChange(clean);
     }, 450);
   }, [onChange]);
@@ -152,9 +184,60 @@ export const WordEditor = forwardRef<
     }
     const el = ed.current;
     if (!el) return;
+    record();
     hydrateFlow(el);
     requestAnimationFrame(relayout);
     emit();
+  };
+
+  /*
+   * ย้อนกลับ/ทำซ้ำของตัวเอง ย้อนได้ไม่จำกัดรอบ (เพดาน 300)
+   * execCommand('undo') ใช้ไม่ได้ เพราะหลายคำสั่งแก้ DOM ตรงๆ (สมการ รูปร่าง ตาราง ตัดหน้า) ประวัติของเบราว์เซอร์เลยขาด
+   * เก็บ HTML ก่อนเริ่มแก้แต่ละช่วง (พิมพ์ต่อเนื่องไม่เกิน 0.7 วิ = 1 ขั้น)
+   */
+  type Snap = { html: string; caret: number };
+  const hist = useRef<{ past: Snap[]; future: Snap[]; last: Snap | null; burst: number }>({ past: [], future: [], last: null, burst: 0 });
+  const record = () => {
+    const h = hist.current;
+    if (!h.last) return;
+    if (!h.burst) {
+      h.past.push(h.last);
+      if (h.past.length > 300) h.past.shift();
+      h.future = [];
+    }
+    window.clearTimeout(h.burst);
+    h.burst = window.setTimeout(() => (h.burst = 0), 700);
+  };
+  const stepHist = (back: boolean) => {
+    const el = ed.current;
+    const h = hist.current;
+    if (!el || !h.last) return;
+    window.clearTimeout(h.burst);
+    h.burst = 0;
+    window.clearTimeout(timer.current);
+    const now = { html: cleanFlowHtml(el.innerHTML, cleanSrc), caret: caretOffset(el) };
+    const to = (back ? h.past : h.future).pop();
+    if (!to) return;
+    (back ? h.future : h.past).push(now);
+    h.last = to;
+    setActive(null);
+    el.innerHTML = to.html || '<p><br></p>';
+    emitted.current = to.html;
+    hydrateFlow(el);
+    relayout();
+    setCaret(el, to.caret);
+    keep();
+    onChange(to.html);
+  };
+
+  /** หัว/ท้ายกระดาษใช้ประวัติของเบราว์เซอร์ (กล่องเล็ก แก้ผ่าน execCommand) เนื้อเอกสารใช้ประวัติของเราเอง */
+  const undoRedo = (back: boolean) => {
+    if (hfOn.current && hfRef.current) {
+      restore();
+      document.execCommand(back ? 'undo' : 'redo');
+      return changed();
+    }
+    stepHist(back);
   };
 
   /* ---------------- ตำแหน่งเคอร์เซอร์ ---------------- */
@@ -409,16 +492,8 @@ export const WordEditor = forwardRef<
   };
 
   useImperativeHandle(ref, () => ({
-    undo: () => {
-      restore();
-      document.execCommand('undo');
-      changed();
-    },
-    redo: () => {
-      restore();
-      document.execCommand('redo');
-      changed();
-    },
+    undo: () => undoRedo(true),
+    redo: () => undoRedo(false),
     focus: () => restore(),
   }));
 
@@ -755,6 +830,8 @@ export const WordEditor = forwardRef<
       e.preventDefault();
       f();
     };
+    // ย้อนกลับ/ทำซ้ำ (ใช้ e.code แป้นไทยก็กดได้)
+    if (mod && !e.altKey && (e.code === 'KeyZ' || e.code === 'KeyY')) return run(() => undoRedo(e.code === 'KeyZ' && !e.shiftKey));
     if (active) {
       if (e.key === 'Delete' || e.key === 'Backspace') return run(removeActive);
       if (e.key === 'Escape') return run(() => setActive(null));
@@ -1002,6 +1079,11 @@ export const WordEditor = forwardRef<
     {(active.dataset.tex !== undefined || active.dataset.graph) && (
       <button type="button" className="st-tb st-tb-wide" onMouseDown={(e) => e.preventDefault()} onClick={editActive}>
         <Pencil className="w-4 h-4" /> แก้ไข
+      </button>
+    )}
+    {active.dataset.tex === undefined && (
+      <button type="button" className="st-tb st-tb-wide" data-on={isFree(active)} onMouseDown={(e) => e.preventDefault()} onClick={() => setWrap(isFree(active) ? '' : 'front')} title="วางตรงไหนบนกระดาษก็ได้ ไม่ยึดกับบรรทัด">
+        <Move className="w-4 h-4" /> ขยับอิสระ (ไม่ยึดบรรทัด)
       </button>
     )}
     {active.dataset.tex === undefined && (

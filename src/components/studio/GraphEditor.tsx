@@ -108,7 +108,7 @@ export function GraphEditor({ initial, onDone, onClose, editing }: { initial: Gr
   const past = useRef<GraphSpec[]>([]);
   const future = useRef<GraphSpec[]>([]);
   const stage = useRef<HTMLDivElement>(null);
-  const drag = useRef<null | { kind: 'pt'; id: string } | { kind: 'pan'; sx: number; sy: number; view: GraphSpec['view'] }>(null);
+  const drag = useRef<null | { kind: 'pt'; id: string } | { kind: 'move'; x: number; y: number; from: Map<string, [number, number]> } | { kind: 'pan'; sx: number; sy: number; view: GraphSpec['view'] }>(null);
   const specRef = useRef(spec);
   specRef.current = spec;
 
@@ -167,6 +167,29 @@ export function GraphEditor({ initial, onDone, onClose, editing }: { initial: Gr
     return { px, py, x: f.ix(px), y: f.iy(py) };
   };
   const nearPoint = (px: number, py: number) => points.find((p) => Math.hypot(f.X(p.x) - px, f.Y(p.y) - py) < 12);
+  /** ชิ้นที่แตะด้วยเครื่องมือเลือก/ลาก: ข้อความ เส้น รูปหลายเหลี่ยม (ลากแล้วขยับเฉพาะชิ้นนั้น) */
+  const nearObj = (px: number, py: number): GObj | undefined => {
+    const at = (id: string) => points.find((p) => p.id === id);
+    const objs = spec.objs.filter((o) => !o.hidden).reverse();
+    const text = objs.find((o) => o.kind === 'text' && Math.abs(f.X(o.x) - px) < Math.max(14, o.text.length * o.size * 0.32) && Math.abs(f.Y(o.y) - o.size * 0.35 - py) < o.size * 0.75);
+    if (text) return text;
+    const segD = (a?: GPoint, b?: GPoint) => {
+      if (!a || !b) return Infinity;
+      const ax = f.X(a.x), ay = f.Y(a.y), bx = f.X(b.x), by = f.Y(b.y);
+      const L = (bx - ax) ** 2 + (by - ay) ** 2 || 1;
+      const t = Math.max(0, Math.min(1, ((px - ax) * (bx - ax) + (py - ay) * (by - ay)) / L));
+      return Math.hypot(ax + t * (bx - ax) - px, ay + t * (by - ay) - py);
+    };
+    const seg = objs.find((o) => o.kind === 'seg' && segD(at(o.a), at(o.b)) < 7);
+    if (seg) return seg;
+    return objs.find((o) => {
+      if (o.kind !== 'poly') return false;
+      const q = o.pts.map(at).filter((p): p is GPoint => !!p).map((p) => [f.X(p.x), f.Y(p.y)]);
+      let inside = false;
+      for (let i = 0, j = q.length - 1; i < q.length; j = i++) if (q[i][1] > py !== q[j][1] > py && px < ((q[j][0] - q[i][0]) * (py - q[i][1])) / (q[j][1] - q[i][1]) + q[i][0]) inside = !inside;
+      return inside;
+    });
+  };
   const snapXY = (x: number, y: number): [number, number] => (grid ? [fix(round(x, grid)), fix(round(y, grid))] : [fix(Math.round(x * 100) / 100), fix(Math.round(y * 100) / 100)]);
   /** จุดเดิมที่แตะ หรือสร้างจุดใหม่ */
   const pointAt = (px: number, py: number, x: number, y: number): { id: string; created?: GPoint } => {
@@ -188,7 +211,21 @@ export function GraphEditor({ initial, onDone, onClose, editing }: { initial: Gr
         past.current.push(specRef.current);
         future.current = [];
         drag.current = { kind: 'pt', id: hit.id };
-      } else drag.current = { kind: 'pan', sx: px, sy: py, view: { ...f } };
+        return;
+      }
+      const o = nearObj(px, py);
+      if (o) {
+        setSel(o.id);
+        past.current.push(specRef.current);
+        future.current = [];
+        const ids = o.kind === 'text' ? [o.id] : o.kind === 'seg' ? [o.a, o.b] : o.kind === 'poly' ? o.pts : [];
+        const from = new Map<string, [number, number]>();
+        for (const q of spec.objs) if (ids.includes(q.id) && (q.kind === 'point' || q.kind === 'text')) from.set(q.id, [q.x, q.y]);
+        drag.current = { kind: 'move', x, y, from };
+        return;
+      }
+      // ที่ว่าง = เลื่อนมุมมอง
+      drag.current = { kind: 'pan', sx: px, sy: py, view: { ...f } };
       return;
     }
     if (tool === 'point') {
@@ -247,6 +284,9 @@ export function GraphEditor({ initial, onDone, onClose, editing }: { initial: Gr
     if (d.kind === 'pt') {
       const [sx, sy] = snapXY(x, y);
       patch(d.id, { x: sx, y: sy } as Partial<GObj>, false);
+    } else if (d.kind === 'move') {
+      const [dx, dy] = snapXY(x - d.x, y - d.y);
+      setSpecRaw((s) => ({ ...s, objs: s.objs.map((o) => (d.from.has(o.id) && (o.kind === 'point' || o.kind === 'text') ? { ...o, x: fix(d.from.get(o.id)![0] + dx), y: fix(d.from.get(o.id)![1] + dy) } : o)) }));
     } else {
       const kx = (d.view.xMax - d.view.xMin) / spec.w;
       const ky = (d.view.yMax - d.view.yMin) / spec.h;
@@ -550,6 +590,15 @@ export function GraphEditor({ initial, onDone, onClose, editing }: { initial: Gr
 
             {tab === 'view' && (
               <div className="ge-pane">
+                <p className="ge-h">พื้นหลัง</p>
+                <div className="ge-presets mb-3">
+                  <button type="button" data-on={!spec.clear} onClick={() => setSpec((s) => ({ ...s, clear: false }))}>
+                    มีพื้นหลัง
+                  </button>
+                  <button type="button" data-on={spec.clear} onClick={() => setSpec((s) => ({ ...s, clear: true }))}>
+                    โปร่งใส (มีแค่กราฟ)
+                  </button>
+                </div>
                 <p className="ge-h">ช่วงที่แสดง</p>
                 <Row label="x">
                   <NumIn value={fix(spec.view.xMin)} onChange={(v) => v !== null && v < spec.view.xMax && setSpec((s) => ({ ...s, view: { ...s.view, xMin: v } }))} />
@@ -568,7 +617,6 @@ export function GraphEditor({ initial, onDone, onClose, editing }: { initial: Gr
                 <Check2 label="กริดย่อย" on={spec.minor} set={(minor) => setSpec((s) => ({ ...s, minor }))} />
                 <Check2 label="ตัวเลขบนแกน" on={spec.numbers} set={(numbers) => setSpec((s) => ({ ...s, numbers }))} />
                 <Check2 label="จุดกำเนิด O" on={spec.origin} set={(origin) => setSpec((s) => ({ ...s, origin }))} />
-                <Check2 label="พื้นโปร่งใส" on={spec.clear} set={(clear) => setSpec((s) => ({ ...s, clear }))} />
                 <Row label="หัวลูกศรแกน">
                   <Seg value={spec.arrows} options={ARROWS} onChange={(arrows) => setSpec((s) => ({ ...s, arrows }))} />
                 </Row>
@@ -653,6 +701,7 @@ export function GraphEditor({ initial, onDone, onClose, editing }: { initial: Gr
                 ref={stage}
                 className="ge-stage"
                 data-tool={tool}
+                data-clear={spec.clear || undefined}
                 style={{ aspectRatio: `${spec.w} / ${spec.h}`, ['--r' as string]: spec.w / spec.h }}
                 onPointerDown={onDown}
                 onPointerMove={onMove}
