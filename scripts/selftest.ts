@@ -1200,10 +1200,15 @@ t('โหมดเอกสาร: รูปร่าง หัว/ท้าย�
   assert.equal(old.mt, 72);
   assert.equal(defaultWordOpt().ml, 96);
   assert.equal(sanitizeDesign({}).word.std, false);
-  const o = cleanWordOpt({ std: true, mt: 9999, head: 'วิชา<script>', num: 'bottom', numFmt: 'of', numStart: 3, numFirst: false, ml: -5 });
+  const o = cleanWordOpt({ std: true, mt: 9999, head: '<p>วิชา<img src="https://evil/x.png"><script>x</script></p>', foot: '<p>ท้าย<img src="https://ok/a.png"></p>', num: 'bottom', numFmt: 'of', numStart: 3, numFirst: false, ml: -5 });
   assert.equal(o.mt, 300);
   assert.equal(o.ml, 0);
-  assert.equal(o.head, 'วิชาscript');
+  assert.equal(o.head, '<p>วิชา</p>', 'หัวกระดาษผ่านตัวกรองเดียวกับเนื้อหา');
+  assert.equal(cleanWordOpt({ foot: '<p>ท้าย<img src="https://ok/a.png"></p>' }, (v) => (v.startsWith('https://ok/') ? v : '')).foot, '<p>ท้าย<img src="https://ok/a.png"></p>');
+  // รูปร่างแบบยึดกับย่อหน้า (span) และ span ทั่วไปห้ามติดค่าจัดวาง
+  assert.equal(c('<p>ก<span data-shape="heart" data-ar="2" data-wrap="front" style="left: 5px; top: 6px; width: 80px"><svg></svg></span></p>'), '<p>ก<span data-shape="heart" data-ar="2" data-wrap="front" style="left: 5px; top: 6px; width: 80px" contenteditable="false"></span></p>');
+  assert.equal(c('<p><span data-wrap="front" style="color: red">x</span></p>'), '<p><span style="color: red">x</span></p>');
+  assert.ok(!flowIsEmpty('<p><img src="x"></p>') && !flowIsEmpty('<p><span data-shape="star"></span></p>'), 'รูป/รูปร่างอย่างเดียวไม่ใช่เอกสารว่าง');
   assert.equal(pageLabel(o, 0, 4), 'หน้า 3 จาก 6');
   assert.equal(pageLabel({ ...o, numFmt: 'thai' }, 9, 10), '๑๒');
   assert.equal(cleanWordOpt({ num: 'side', numFmt: 'x', numStart: 1.5 }).num, 'none');

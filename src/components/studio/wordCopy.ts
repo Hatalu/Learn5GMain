@@ -82,7 +82,7 @@ export function wordClipboardHtml(root: HTMLElement, range: Range): string | nul
       el.replaceWith(out);
     });
     // กราฟ/รูปร่าง/รูปภาพ -> รูปขนาดเท่าบนกระดาษ (หน่วย pt)
-    box.querySelectorAll<HTMLElement>('figure, img').forEach((el) => {
+    box.querySelectorAll<HTMLElement>('figure, img, span[data-shape]').forEach((el) => {
       const r = el.getBoundingClientRect();
       const z = r.width / (el.offsetWidth || r.width || 1) || 1;
       const w = (el.offsetWidth || r.width / z) * 0.75;

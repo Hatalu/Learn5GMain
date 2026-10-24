@@ -539,13 +539,13 @@ export function sanitizeDesign(raw: unknown): Design {
   const h = Math.round(num(s.h, CUSTOM_MIN, CUSTOM_MAX, preset?.h ?? DEFAULT_SIZE.h));
   const size = { id: preset && preset.w === w && preset.h === h ? preset.id : 'custom', w, h };
   const pages = (Array.isArray(r.pages) ? r.pages.slice(0, MAX_PAGES) : []).map((p) => cleanPage(p, w, h));
-  return { v: 1, size, pages: pages.length ? pages : [blankPage()], mode: r.mode === 'word' ? 'word' : 'canvas', flow: cleanFlowHtml(typeof r.flow === 'string' ? r.flow : '', cleanSrc), word: cleanWordOpt(r.word) };
+  return { v: 1, size, pages: pages.length ? pages : [blankPage()], mode: r.mode === 'word' ? 'word' : 'canvas', flow: cleanFlowHtml(typeof r.flow === 'string' ? r.flow : '', cleanSrc), word: cleanWordOpt(r.word, cleanSrc) };
 }
 
 /** ไฟล์รูปในที่เก็บของเราที่สื่อชิ้นนี้ใช้ (ใช้ตอนลบสื่อ) */
 export function designMediaPaths(d: Design): string[] {
   const pre = mediaPrefix();
-  const flowImgs = [...(d.flow || '').matchAll(/<img src="([^"]+)"/g)].map((m) => m[1].replace(/&amp;/g, '&'));
+  const flowImgs = [...[d.flow, d.word?.head, d.word?.foot].join('').matchAll(/<img src="([^"]+)"/g)].map((m) => m[1].replace(/&amp;/g, '&'));
   return [...new Set([...d.pages.flatMap((p) => p.items).flatMap((i) => (i.type === 'image' ? [i.src] : [])), ...flowImgs].flatMap((src) => (pre && src.startsWith(pre) ? [src.slice(pre.length)] : [])))];
 }
 

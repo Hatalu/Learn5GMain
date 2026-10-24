@@ -76,7 +76,7 @@ export function hydrateFlow(root: HTMLElement) {
     }
     el.contentEditable = 'false';
   });
-  root.querySelectorAll<HTMLElement>('figure[data-shape]').forEach((el) => {
+  root.querySelectorAll<HTMLElement>('[data-shape]').forEach((el) => {
     const key = figureKey(el);
     if (el.dataset.done !== key) {
       const svg = shapeSvg(el);

@@ -8,36 +8,25 @@ import {
   AlignLeft,
   AlignRight,
   Bold,
-  Eraser,
-  FileDown,
   Highlighter,
-  ImagePlus,
-  IndentDecrease,
-  IndentIncrease,
   Italic,
-  LineChart,
   List,
   ListOrdered,
-  Minus,
   Pencil,
-  Sigma,
-  Strikethrough,
-  Subscript,
-  Superscript,
-  Table,
   Trash2,
   Type,
   Underline,
+  X,
 } from 'lucide-react';
-import { FLOW_GAP, WORD_SINGLE, cleanFlowHtml, paginate, type WordOpt } from '@/lib/studio/flow';
+import { FLOW_GAP, WORD_SINGLE, cleanFlowHtml, flowIsEmpty, paginate, type WordOpt } from '@/lib/studio/flow';
 import { cleanSrc, type Item, type Page } from '@/lib/studio/doc';
 import { cleanGraph, type GraphSpec } from '@/lib/studio/graph';
 import { FONTS } from './fonts';
 import { wordClipboardHtml } from './wordCopy';
-import { ItemView, PageView, flowBoxStyle } from './render';
+import { ItemView, PageView, flowBoxStyle, hfOffset } from './render';
 import { hydrateFlow, isLineShape } from './flowDom';
 import { ColorPop } from './ui';
-import { SIZES, SYMBOLS, ptToPx, pxToPt, WordPanel, WordRail, type TableOp, type WordApi, type WordPanelId } from './WordPanels';
+import { SIZES, ptToPx, pxToPt, WordPanel, WordRail, type TableOp, type WordApi, type WordPanelId } from './WordPanels';
 import { WORD_KEYS, comboOf, type WordKeyId } from '@/lib/studio/keys';
 
 export interface WordHandle {
@@ -77,6 +66,35 @@ export const WordEditor = forwardRef<
   }
 >(function WordEditor({ html, pages, wopt, onWopt, W, H, zoom, readOnly, barEl, railEl, layoutExtra, onChange, onNeedPages, openMath, openGraph, upload }, ref) {
   const ed = useRef<HTMLDivElement>(null);
+  /** หัว/ท้ายกระดาษที่กำลังแก้ (ดับเบิลคลิกขอบบน/ล่างของกระดาษแบบ Word) */
+  const hfRef = useRef<HTMLDivElement>(null);
+  const [hf, setHf] = useState<{ part: 'head' | 'foot'; page: number } | null>(null);
+  const hfOn = useRef(hf);
+  hfOn.current = hf;
+  /** ที่ที่กำลังพิมพ์อยู่: หัว/ท้ายกระดาษ หรือเนื้อเอกสาร (คำสั่งทุกปุ่มทำกับที่นี่) */
+  const cur = () => (hfOn.current && hfRef.current) || ed.current;
+  const woptRef = useRef(wopt);
+  woptRef.current = wopt;
+  const onWoptRef = useRef(onWopt);
+  onWoptRef.current = onWopt;
+  const hfTimer = useRef(0);
+  const flushHf = () => {
+    window.clearTimeout(hfTimer.current);
+    const h = hfOn.current;
+    const el = hfRef.current;
+    if (!h || !el) return;
+    const v = cleanFlowHtml(el.innerHTML, cleanSrc);
+    const clean = flowIsEmpty(v) ? '' : v;
+    if (clean !== woptRef.current[h.part]) onWoptRef.current({ ...woptRef.current, [h.part]: clean });
+  };
+  const emitHf = () => {
+    window.clearTimeout(hfTimer.current);
+    hfTimer.current = window.setTimeout(flushHf, 400);
+  };
+  const closeHf = () => {
+    flushHf();
+    setHf(null);
+  };
   const emitted = useRef<string | null>(null);
   const saved = useRef<Range | null>(null);
   const timer = useRef<number>(0);
@@ -138,6 +156,11 @@ export const WordEditor = forwardRef<
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
   const changed = () => {
+    if (hfOn.current && hfRef.current) {
+      hydrateFlow(hfRef.current);
+      emitHf();
+      return;
+    }
     const el = ed.current;
     if (!el) return;
     hydrateFlow(el);
@@ -148,7 +171,7 @@ export const WordEditor = forwardRef<
   /* ---------------- ตำแหน่งเคอร์เซอร์ ---------------- */
   const keep = () => {
     const s = window.getSelection();
-    if (s && s.rangeCount && ed.current?.contains(s.anchorNode)) saved.current = s.getRangeAt(0).cloneRange();
+    if (s && s.rangeCount && cur()?.contains(s.anchorNode)) saved.current = s.getRangeAt(0).cloneRange();
   };
   // แถบเครื่องมือโชว์ขนาด/สไตล์ตรงเคอร์เซอร์ล่าสุด
   const keepShow = () => {
@@ -156,9 +179,10 @@ export const WordEditor = forwardRef<
     force((x) => x + 1);
   };
   const restore = () => {
-    const el = ed.current;
+    const el = cur();
     if (!el) return;
-    el.focus();
+    // ไม่เลื่อนจอไปบนสุดของเอกสาร (focus ปกติเลื่อนให้เห็นต้นกล่อง)
+    el.focus({ preventScroll: true });
     const s = window.getSelection();
     if (saved.current && el.contains(saved.current.startContainer)) {
       s?.removeAllRanges();
@@ -205,7 +229,7 @@ export const WordEditor = forwardRef<
     } else {
       document.execCommand('styleWithCSS', false, 'true');
       document.execCommand('fontSize', false, '7');
-      ed.current?.querySelectorAll<HTMLElement>('span[style*="xxx-large"], font[size="7"]').forEach((el) => {
+      cur()?.querySelectorAll<HTMLElement>('span[style*="xxx-large"], font[size="7"]').forEach((el) => {
         el.removeAttribute('size');
         el.style.fontSize = px;
       });
@@ -217,12 +241,12 @@ export const WordEditor = forwardRef<
   /** ขนาด (pt) ของตัวอักษรตรงเคอร์เซอร์ */
   const curPt = () => {
     const node = window.getSelection()?.anchorNode;
-    const el = node && ed.current?.contains(node) ? (node.nodeType === 1 ? (node as HTMLElement) : node.parentElement) : null;
+    const el = node && cur()?.contains(node) ? (node.nodeType === 1 ? (node as HTMLElement) : node.parentElement) : null;
     return pxToPt(el ? parseFloat(getComputedStyle(el).fontSize) || 21 : 21);
   };
   /** ย่อหน้าที่อยู่ในส่วนที่เลือก */
   const blocks = () => {
-    const el = ed.current;
+    const el = cur();
     const s = window.getSelection();
     if (!el || !s || !s.rangeCount) return [];
     const r = s.getRangeAt(0);
@@ -270,7 +294,7 @@ export const WordEditor = forwardRef<
     };
     if (inList()?.tagName !== tag) document.execCommand(ordered ? 'insertOrderedList' : 'insertUnorderedList');
     const l = inList();
-    if (l && ed.current?.contains(l)) l.style.listStyleType = type;
+    if (l && cur()?.contains(l)) l.style.listStyleType = type;
     keep();
     changed();
   };
@@ -288,7 +312,7 @@ export const WordEditor = forwardRef<
     const node = saved.current?.startContainer ?? window.getSelection()?.anchorNode;
     const el = node && (node.nodeType === 1 ? (node as HTMLElement) : node.parentElement);
     const c = (el?.closest('td,th') as HTMLTableCellElement | null) ?? null;
-    return c && ed.current?.contains(c) ? c : null;
+    return c && cur()?.contains(c) ? c : null;
   };
   const table = (op: TableOp) => {
     const cell = curCell();
@@ -349,7 +373,7 @@ export const WordEditor = forwardRef<
   const insertTex = (tex: string) => {
     restore();
     const s = window.getSelection();
-    const root = ed.current;
+    const root = cur();
     if (!s || !s.rangeCount || !root) return;
     const r = s.getRangeAt(0);
     r.deleteContents();
@@ -447,12 +471,17 @@ export const WordEditor = forwardRef<
     const z = zoomRef.current;
     return { x: (a.left - b.left) / z, y: (a.top - b.top) / z, w: a.width / z, h: a.height / z };
   };
+  /** มุมบนซ้ายของกล่องที่ชิ้นอิสระยึดอยู่ (รูปร่างยึดกับย่อหน้า ชิ้นเก่ายึดกับทั้งเอกสาร) */
+  const origin = (el: HTMLElement) => {
+    const op = el.offsetParent as HTMLElement | null;
+    return op && op !== ed.current && ed.current?.contains(op) ? rel(op) : { x: 0, y: 0, w: 0, h: 0 };
+  };
   const isFree = (el: HTMLElement) => el.dataset.wrap === 'behind' || el.dataset.wrap === 'front';
   /** ชิ้นใต้จุดคลิก รวมชิ้น "หลังข้อความ" เมื่อไม่ได้คลิกโดนตัวอักษร */
   const pickAt = (x: number, y: number, target: HTMLElement) => {
     const root = ed.current;
     if (!root) return null;
-    const direct = target.closest<HTMLElement>('span[data-tex], figure[data-graph], figure[data-shape], img');
+    const direct = target.closest<HTMLElement>('span[data-tex], figure[data-graph], [data-shape], img');
     if (direct && root.contains(direct)) return direct;
     const under = document.elementsFromPoint(x, y).find((el): el is HTMLElement => el instanceof HTMLElement && el.dataset.wrap === 'behind' && root.contains(el));
     return under && !onText(x, y) ? under : null;
@@ -465,7 +494,7 @@ export const WordEditor = forwardRef<
     const r = caretAt(x, y);
     el.style.pointerEvents = '';
     if (!r || !root.contains(r.startContainer) || el.contains(r.startContainer)) return;
-    if (el.tagName === 'IMG') return r.insertNode(el);
+    if (el.tagName === 'IMG' || el.tagName === 'SPAN') return r.insertNode(el);
     let b: Node | null = r.startContainer === root ? root.childNodes[r.startOffset] ?? null : r.startContainer;
     while (b && b.parentNode !== root) b = b.parentNode;
     if (b === el) return;
@@ -475,15 +504,33 @@ export const WordEditor = forwardRef<
   /** ลาก (ไม่ส่ง corner) หรือย่อขยายจากมุม */
   const grab = (el: HTMLElement, sx: number, sy: number, corner?: string) => {
     const z = zoomRef.current;
-    const box = rel(el);
     const free = isFree(el);
+    // ตำแหน่งเทียบกับกล่องที่ยึด (left/top ของชิ้นอิสระ)
+    const o = origin(el);
+    const b0 = rel(el);
+    const box = { ...b0, x: b0.x - o.x, y: b0.y - o.y };
+    const shape = !!el.dataset.shape;
     let moved = false;
     const move = (ev: PointerEvent) => {
       const dx = (ev.clientX - sx) / z;
       const dy = (ev.clientY - sy) / z;
       if (!moved && Math.hypot(dx * z, dy * z) < 4) return;
       moved = true;
-      if (corner) {
+      if (corner && shape) {
+        // รูปร่าง: ยืดแยกด้านได้ (กว้าง/สูงอิสระ) แบบ Word
+        const west = corner.includes('w');
+        const east = corner.includes('e');
+        const north = corner.includes('n');
+        const south = corner.includes('s');
+        const w = Math.max(6, Math.min(W, box.w + (east ? dx : west ? -dx : 0)));
+        const h = Math.max(2, Math.min(H, box.h + (south ? dy : north ? -dy : 0)));
+        const ar = String(Math.round(Math.max(0.02, Math.min(60, w / h)) * 1000) / 1000);
+        el.style.width = `${Math.round(w)}px`;
+        el.dataset.ar = ar;
+        el.style.aspectRatio = ar;
+        if (free && west) el.style.left = `${Math.round(box.x + box.w - w)}px`;
+        if (free && north) el.style.top = `${Math.round(box.y + box.h - h)}px`;
+      } else if (corner) {
         const west = corner.includes('w');
         const w = Math.round(Math.max(40, Math.min(W, box.w + (west ? -dx : dx))));
         el.style.width = `${w}px`;
@@ -525,9 +572,10 @@ export const WordEditor = forwardRef<
     else delete el.dataset.wrap;
     if (isFree(el)) {
       // คงตำแหน่ง/ขนาดเดิมบนกระดาษ (เปอร์เซ็นต์ของกล่องอิสระคิดจากความกว้างกระดาษ จะกระโดด)
+      const o = origin(el);
       el.style.width = `${Math.round(box.w)}px`;
-      el.style.left = `${Math.round(box.x)}px`;
-      el.style.top = `${Math.round(box.y)}px`;
+      el.style.left = `${Math.round(box.x - o.x)}px`;
+      el.style.top = `${Math.round(box.y - o.y)}px`;
     } else {
       el.style.left = '';
       el.style.top = '';
@@ -580,24 +628,40 @@ export const WordEditor = forwardRef<
       let r = box();
       // คลิกเฉยๆ = ขนาดเริ่มต้น
       if (r.w < 6 && r.h < 6) r = { x: a.x, y: a.y, w: line ? 200 : 160, h: line ? 0 : 110 };
-      const fig = document.createElement('figure');
-      fig.dataset.shape = line ? ((b.x - a.x) * (b.y - a.y) < 0 ? 'ln2' : 'ln') : id;
-      fig.dataset.fill = line ? 'none' : '#bfdbfe';
-      fig.dataset.stroke = '#1f1b36';
-      fig.dataset.sw = line ? '3' : '2';
-      fig.dataset.ar = String(Math.round(Math.max(0.02, Math.min(60, Math.max(r.w, 2) / Math.max(r.h, 2))) * 1000) / 1000);
-      fig.dataset.wrap = 'front';
-      fig.style.left = `${Math.round(r.x)}px`;
-      fig.style.top = `${Math.round(r.y)}px`;
-      fig.style.width = `${Math.round(Math.max(r.w, 4))}px`;
-      fig.contentEditable = 'false';
-      root.insertBefore(fig, root.firstChild);
+      // รูปร่างยึดกับย่อหน้าตรงที่วาด (แบบ Word): ย่อหน้าเลื่อน (กด Enter ข้างบน) รูปก็เลื่อนตาม
+      const sp = document.createElement('span');
+      sp.dataset.shape = line ? ((b.x - a.x) * (b.y - a.y) < 0 ? 'ln2' : 'ln') : id;
+      sp.dataset.fill = line ? 'none' : '#bfdbfe';
+      sp.dataset.stroke = '#1f1b36';
+      sp.dataset.sw = line ? '3' : '2';
+      sp.dataset.ar = String(Math.round(Math.max(0.02, Math.min(60, Math.max(r.w, 2) / Math.max(r.h, 2))) * 1000) / 1000);
+      sp.dataset.wrap = 'front';
+      sp.style.width = `${Math.round(Math.max(r.w, 4))}px`;
+      sp.contentEditable = 'false';
+      const host = anchorAt(root, r.y);
+      // ไว้ท้ายย่อหน้า: กด Enter ท้ายย่อหน้ารูปอยู่กับข้อความเดิม กด Enter หน้าย่อหน้ารูปเลื่อนลงตามข้อความ
+      host.appendChild(sp);
+      const o = origin(sp);
+      sp.style.left = `${Math.round(r.x - o.x)}px`;
+      sp.style.top = `${Math.round(r.y - o.y)}px`;
       changed();
-      setActive(fig);
+      setActive(sp);
     };
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
     window.addEventListener('pointercancel', up);
+  };
+  /** ย่อหน้าที่จะยึดรูปร่าง: ย่อหน้าสุดท้ายที่เริ่มเหนือจุดที่วาด (ไม่มีก็สร้างใหม่) */
+  const anchorAt = (root: HTMLElement, y: number) => {
+    const ok = (Array.from(root.children) as HTMLElement[]).filter((c) => /^(P|H1|H2|H3|BLOCKQUOTE)$/.test(c.tagName) || (c.tagName === 'DIV' && !c.dataset.pb));
+    let host = ok[0];
+    for (const c of ok) if (rel(c).y <= y) host = c;
+    if (!host) {
+      host = document.createElement('p');
+      host.innerHTML = '<br>';
+      root.appendChild(host);
+    }
+    return host;
   };
   const shapeAttr = (k: 'fill' | 'stroke' | 'sw', v: string) => {
     const el = active;
@@ -609,16 +673,59 @@ export const WordEditor = forwardRef<
 
   const onDown = (e: React.PointerEvent) => {
     if (readOnly || e.button !== 0) return;
+    // คลิกที่เนื้อเอกสาร = ออกจากหัว/ท้ายกระดาษ (แบบ Word)
+    if (hfOn.current) closeHf();
     if (drawRef.current) return startDraw(e);
     const t = pickAt(e.clientX, e.clientY, e.target as HTMLElement);
     setActive(t);
-    if (!t || t.tagName === 'SPAN') return;
+    if (!t || t.dataset.tex !== undefined) return;
     e.preventDefault();
     restore();
     grab(t, e.clientX, e.clientY);
   };
+  /** จุดบนจออยู่ในขอบบน/ล่างของกระดาษหน้าไหน (ที่ของหัว/ท้ายกระดาษ) */
+  const zoneAt = (cx: number, cy: number): { part: 'head' | 'foot'; page: number } | null => {
+    const el = ed.current;
+    if (!el) return null;
+    const y = (cy - el.getBoundingClientRect().top) / zoomRef.current;
+    const page = Math.floor(y / P);
+    const iy = y - page * P;
+    if (page < 0 || page >= n || iy > H) return null;
+    if (iy < wopt.mt) return { part: 'head', page };
+    if (iy > H - wopt.mb) return { part: 'foot', page };
+    return null;
+  };
+  const openHf = (z: { part: 'head' | 'foot'; page: number }) => {
+    if (readOnly) return;
+    flushHf();
+    setActive(null);
+    setHf(z);
+  };
+  // เปิดหัว/ท้ายกระดาษ: ใส่เนื้อหาเดิมแล้ววางเคอร์เซอร์ท้ายสุด
+  useLayoutEffect(() => {
+    const el = hfRef.current;
+    if (!hf || !el) return;
+    el.innerHTML = woptRef.current[hf.part] || '<p><br></p>';
+    hydrateFlow(el);
+    el.focus({ preventScroll: true });
+    el.scrollIntoView({ block: 'nearest' });
+    const r = document.createRange();
+    r.selectNodeContents(el);
+    r.collapse(false);
+    window.getSelection()?.removeAllRanges();
+    window.getSelection()?.addRange(r);
+    saved.current = r.cloneRange();
+  }, [hf?.part, hf?.page]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => window.clearTimeout(hfTimer.current), []);
+
   const onDouble = (e: React.MouseEvent) => {
+    if (hfOn.current) return closeHf();
     const t = pickAt(e.clientX, e.clientY, e.target as HTMLElement);
+    const zone = !t ? zoneAt(e.clientX, e.clientY) : null;
+    if (zone) {
+      e.preventDefault();
+      return openHf(zone);
+    }
     if (t && t.tagName !== 'IMG') {
       setActive(t);
       requestAnimationFrame(() => editActiveRef.current());
@@ -640,7 +747,9 @@ export const WordEditor = forwardRef<
       if (isFree(active) && e.key.startsWith('Arrow')) {
         return run(() => {
           const d = e.shiftKey ? 10 : 1;
-          const b = rel(active);
+          const r0 = rel(active);
+          const o = origin(active);
+          const b = { x: r0.x - o.x, y: r0.y - o.y };
           active.style.left = `${Math.round(b.x + (e.key === 'ArrowLeft' ? -d : e.key === 'ArrowRight' ? d : 0))}px`;
           active.style.top = `${Math.round(b.y + (e.key === 'ArrowUp' ? -d : e.key === 'ArrowDown' ? d : 0))}px`;
           changed();
@@ -655,7 +764,7 @@ export const WordEditor = forwardRef<
         const node = window.getSelection()?.anchorNode;
         const el = node && (node.nodeType === 1 ? (node as HTMLElement) : node.parentElement);
         const cell = el?.closest('td,th');
-        if (cell && ed.current?.contains(cell)) {
+        if (cell && cur()?.contains(cell)) {
           // ตาราง: ไปช่องถัดไป/ก่อนหน้า
           const cells = Array.from(cell.closest('table')!.querySelectorAll('td,th'));
           const to = cells[cells.indexOf(cell) + (e.shiftKey ? -1 : 1)];
@@ -749,7 +858,7 @@ export const WordEditor = forwardRef<
   const blockTag = (() => {
     const s = typeof window !== 'undefined' ? window.getSelection() : null;
     const node = s?.anchorNode as HTMLElement | null;
-    const b = node && ed.current?.contains(node) ? (node.nodeType === 1 ? node : node.parentElement)?.closest('h1,h2,h3,blockquote,p,div,li') : null;
+    const b = node && cur()?.contains(node) ? (node.nodeType === 1 ? node : node.parentElement)?.closest('h1,h2,h3,blockquote,p,div,li') : null;
     return b?.tagName.toLowerCase() ?? 'p';
   })();
 
@@ -794,24 +903,12 @@ export const WordEditor = forwardRef<
           <B title="ขีดเส้นใต้ (Ctrl+U)" act={() => cmd('underline')} on={docState('underline')}>
             <Underline className="w-4 h-4" />
           </B>
-          <B title="ขีดฆ่า" act={() => cmd('strikeThrough')}>
-            <Strikethrough className="w-4 h-4" />
-          </B>
-          <B title="ตัวห้อย (Ctrl+=)" act={() => cmd('subscript')}>
-            <Subscript className="w-4 h-4" />
-          </B>
-          <B title="ตัวยก (Ctrl+Shift+=)" act={() => cmd('superscript')}>
-            <Superscript className="w-4 h-4" />
-          </B>
           <span onMouseDown={keep}>
             <ColorPop title="สีตัวอักษร" value="#1f1b36" onChange={(c) => cmd('foreColor', c)} icon={<Type className="w-4 h-4" />} />
           </span>
           <span onMouseDown={keep}>
             <ColorPop title="ไฮไลต์" value="#fff3c4" onChange={(c) => cmd('hiliteColor', c)} icon={<Highlighter className="w-4 h-4" />} />
           </span>
-          <B title="ล้างรูปแบบ (Ctrl+Space)" act={() => cmd('removeFormat')}>
-            <Eraser className="w-4 h-4" />
-          </B>
           <span className="st-insp-sep" />
           <B title="ชิดซ้าย (Ctrl+L)" act={() => cmd('justifyLeft')}>
             <AlignLeft className="w-4 h-4" />
@@ -831,39 +928,16 @@ export const WordEditor = forwardRef<
           <B title="ลำดับเลข" act={() => cmd('insertOrderedList')}>
             <ListOrdered className="w-4 h-4" />
           </B>
-          <B title="ลดการเยื้อง (Ctrl+Shift+M)" act={() => indent(-1)}>
-            <IndentDecrease className="w-4 h-4" />
-          </B>
-          <B title="เพิ่มการเยื้อง (Ctrl+M)" act={() => indent(1)}>
-            <IndentIncrease className="w-4 h-4" />
-          </B>
-          <select className="st-wsel" defaultValue="" onChange={(e) => e.target.value && setLine(e.target.value)} aria-label="ระยะบรรทัด">
-            <option value="">ระยะบรรทัด</option>
-            {['1', '1.15', '1.5', '2', '2.5'].map((v) => (
-              <option key={v} value={v}>
-                {v}
-              </option>
-            ))}
-          </select>
-          <span className="st-insp-sep" />
-          <button type="button" className="st-tb st-tb-wide" onMouseDown={(e) => e.preventDefault()} onClick={() => addMath(false)} title="แทรกสมการ (Alt+=)">
-            <Sigma className="w-4 h-4" /> สมการ
-          </button>
-          <button type="button" className="st-tb st-tb-wide" onMouseDown={(e) => e.preventDefault()} onClick={addGraph} title="แทรกกราฟ/รูปคณิตศาสตร์">
-            <LineChart className="w-4 h-4" /> กราฟ/รูป
-          </button>
-          <button type="button" className="st-tb st-tb-wide" onMouseDown={(e) => (e.preventDefault(), keep())} onClick={() => fileIn.current?.click()} title="แทรกรูปภาพ">
-            <ImagePlus className="w-4 h-4" /> รูปภาพ
-          </button>
           <input ref={fileIn} type="file" accept="image/*" hidden onChange={(e) => (addImage(e.target.files?.[0]), (e.target.value = ''))} />
-          <TablePick onPick={(r, c) => insertHtml(`<table><tbody>${Array.from({ length: r }, () => `<tr>${'<td><br></td>'.repeat(c)}</tr>`).join('')}</tbody></table><p><br></p>`)} onOpen={keep} />
-          <SymbolPick onPick={(s) => insertHtml(s)} onOpen={keep} />
-          <B title="เส้นคั่น" act={() => insertHtml('<hr><p><br></p>')}>
-            <Minus className="w-4 h-4" />
-          </B>
-          <B title="ขึ้นหน้าใหม่ (Ctrl+Enter)" act={() => insertHtml('<div data-pb="1"></div><p><br></p>')}>
-            <FileDown className="w-4 h-4" />
-          </B>
+          {hf && (
+            <>
+              <span className="st-insp-sep" />
+              <span className="st-insp-tag st-insp-draw">กำลังแก้{hf.part === 'head' ? 'หัวกระดาษ' : 'ท้ายกระดาษ'}</span>
+              <button type="button" className="st-tb st-tb-wide st-hf-close" onMouseDown={(e) => e.preventDefault()} onClick={closeHf}>
+                <X className="w-4 h-4" /> ปิดหัวกระดาษและท้ายกระดาษ
+              </button>
+            </>
+          )}
           {draw && <span className="st-insp-tag st-insp-draw">ลากบนกระดาษเพื่อวาดรูปร่าง (Esc ยกเลิก)</span>}
           {active && (
             <>
@@ -894,7 +968,7 @@ export const WordEditor = forwardRef<
                   <Pencil className="w-4 h-4" /> แก้ไข
                 </button>
               )}
-              {active.tagName !== 'SPAN' && (
+              {active.dataset.tex === undefined && (
                 <select className="st-wsel" value={active.dataset.wrap || ''} onChange={(e) => setWrap(e.target.value)} aria-label="การจัดวางกับข้อความ" title="การจัดวางกับข้อความ">
                   <option value="">อยู่ในบรรทัดข้อความ</option>
                   <option value="left">ข้อความล้อม (ชิดซ้าย)</option>
@@ -903,7 +977,8 @@ export const WordEditor = forwardRef<
                   <option value="front">อยู่หน้าข้อความ</option>
                 </select>
               )}
-              {active.tagName !== 'SPAN' &&
+              {active.dataset.tex === undefined &&
+                !active.dataset.shape &&
                 [40, 60, 80, 100].map((w) => (
                   <button
                     key={w}
@@ -958,6 +1033,45 @@ export const WordEditor = forwardRef<
       setActive(null);
       setDraw(id);
     },
+    // หน้าแรกไม่แสดงหัว/ท้ายกระดาษ (หน้าแรกแตกต่าง) ไปแก้ที่หน้า 2
+    editHf: (part) => openHf({ part, page: !wopt.numFirst && n > 1 ? 1 : 0 }),
+    clip: async (op) => {
+      restore();
+      if (op !== 'paste') {
+        // ผ่านตัวจัดการคัดลอกของเอกสาร (วางใน Word ได้)
+        if (!document.execCommand(op)) return 'เบราว์เซอร์ไม่ยอมให้กดจากปุ่ม ใช้ Ctrl+C / Ctrl+X แทน';
+        if (op === 'cut') changed();
+        return null;
+      }
+      try {
+        const items = await navigator.clipboard.read();
+        for (const it of items) {
+          if (it.types.includes('text/html')) {
+            restore();
+            insertHtml(cleanFlowHtml(await (await it.getType('text/html')).text(), cleanSrc));
+            return null;
+          }
+        }
+        const t = await navigator.clipboard.readText();
+        restore();
+        document.execCommand('insertText', false, t);
+        changed();
+        return null;
+      } catch {
+        return 'เบราว์เซอร์ไม่อนุญาตให้วางจากปุ่ม กด Ctrl+V แทน';
+      }
+    },
+    selectAll: () => {
+      const el = cur();
+      if (!el) return;
+      el.focus({ preventScroll: true });
+      const r = document.createRange();
+      r.selectNodeContents(el);
+      window.getSelection()?.removeAllRanges();
+      window.getSelection()?.addRange(r);
+      keep();
+    },
+    openFind: () => openPanel('find'),
   };
   const side = !readOnly && (
     <>
@@ -970,11 +1084,11 @@ export const WordEditor = forwardRef<
     <>
       {bar && (barEl ? createPortal(bar, barEl) : bar)}
       {side && railEl && createPortal(side, railEl)}
-      <div className="st-word" data-draw={draw ? '1' : undefined} style={{ width: W * zoom, height: totalH * zoom }}>
+      <div className="st-word" data-draw={draw ? '1' : undefined} data-hf={hf ? '1' : undefined} style={{ width: W * zoom, height: totalH * zoom }}>
         <div style={{ width: W, height: totalH, transform: `scale(${zoom})`, transformOrigin: '0 0', position: 'relative' }}>
           {pages.map((p, i) => (
             <div key={p.id} className="st-sheet" style={{ top: i * P, width: W, height: H }}>
-              <PageView page={{ ...p, items: [] }} W={W} H={H} index={i} total={n} wopt={wopt} />
+              <PageView page={{ ...p, items: [] }} W={W} H={H} index={i} total={n} wopt={wopt} hideHf={hf && hf.page === i ? hf.part : undefined} />
               <span className="st-sheet-no">หน้า {i + 1}</span>
             </div>
           ))}
@@ -995,7 +1109,7 @@ export const WordEditor = forwardRef<
             onCopy={(e) => onCopy(e, false)}
             onCut={(e) => onCopy(e, true)}
             onPointerDown={onDown}
-            onDragStart={(e) => (e.target as HTMLElement).closest?.('img, figure') && e.preventDefault()}
+            onDragStart={(e) => (e.target as HTMLElement).closest?.('img, figure, [data-shape]') && e.preventDefault()}
             onDoubleClick={onDouble}
             onDrop={(e) => {
               const f = Array.from(e.dataTransfer.files).find((x) => x.type.startsWith('image/'));
@@ -1014,9 +1128,43 @@ export const WordEditor = forwardRef<
               </div>
             ) : null
           )}
+          {hf && (
+            <>
+              <div className="st-hf-zone" data-part={hf.part} style={{ top: hf.part === 'head' ? hf.page * P : hf.page * P + H - wopt.mb, height: hf.part === 'head' ? wopt.mt : wopt.mb, width: W }}>
+                <span className="st-hf-tag">{hf.part === 'head' ? 'หัวกระดาษ (ขึ้นทุกหน้า)' : 'ท้ายกระดาษ (ขึ้นทุกหน้า)'}</span>
+              </div>
+              <div
+                ref={hfRef}
+                className="st-flow st-hf-ed"
+                data-std={wopt.std || undefined}
+                contentEditable
+                suppressContentEditableWarning
+                spellCheck={false}
+                aria-label={hf.part === 'head' ? 'หัวกระดาษ' : 'ท้ายกระดาษ'}
+                style={{
+                  left: wopt.ml,
+                  width: W - wopt.ml - wopt.mr,
+                  fontFamily: flowBoxStyle(wopt, W).fontFamily,
+                  ...(hf.part === 'head' ? { top: hf.page * P + hfOffset(wopt.mt) } : { bottom: totalH - (hf.page * P + H) + hfOffset(wopt.mb) }),
+                }}
+                onInput={changed}
+                onKeyUp={keepShow}
+                onMouseUp={keepShow}
+                onBlur={keep}
+                onPaste={onPaste}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    e.preventDefault();
+                    return closeHf();
+                  }
+                  onKey(e);
+                }}
+              />
+            </>
+          )}
           {ghost && <span className="st-word-ghost" style={{ left: ghost.x, top: ghost.y, width: ghost.w, height: ghost.h, borderWidth: 2 / zoom }} />}
           {active && ed.current?.contains(active) && (
-            <ActiveRing box={rel(active)} zoom={zoom} onGrab={readOnly || active.tagName === 'SPAN' ? undefined : (c, x, y) => grab(active, x, y, c)} />
+            <ActiveRing box={rel(active)} zoom={zoom} sides={!!active.dataset.shape} onGrab={readOnly || active.dataset.tex !== undefined ? undefined : (c, x, y) => grab(active, x, y, c)} />
           )}
         </div>
       </div>
@@ -1053,17 +1201,25 @@ const onText = (x: number, y: number) => {
 };
 
 /** กรอบบอกว่ากำลังเลือกสมการ/กราฟ/รูปไหนอยู่ + จุดจับมุมไว้ย่อขยาย */
-function ActiveRing({ box, zoom, onGrab }: { box: { x: number; y: number; w: number; h: number }; zoom: number; onGrab?: (corner: string, x: number, y: number) => void }) {
+function ActiveRing({ box, zoom, onGrab, sides }: { box: { x: number; y: number; w: number; h: number }; zoom: number; onGrab?: (corner: string, x: number, y: number) => void; sides?: boolean }) {
   const s = 1 / zoom;
   const k = 14 * s;
+  // จุดจับ: มุม 4 จุด (+ กลางด้าน 4 จุดสำหรับรูปร่าง ยืดทีละด้านได้)
+  const at = (c: string): React.CSSProperties => ({
+    width: k,
+    height: k,
+    borderWidth: 2 * s,
+    ...(c.includes('n') ? { top: -k / 2 } : c.includes('s') ? { bottom: -k / 2 } : { top: `calc(50% - ${k / 2}px)` }),
+    ...(c.includes('w') ? { left: -k / 2 } : c.includes('e') ? { right: -k / 2 } : { left: `calc(50% - ${k / 2}px)` }),
+  });
   return (
     <span className="st-word-ring" style={{ left: box.x - 3 * s, top: box.y - 3 * s, width: box.w + 6 * s, height: box.h + 6 * s, borderWidth: 2.5 * s }}>
       {onGrab &&
-        ['nw', 'ne', 'sw', 'se'].map((c) => (
+        (sides ? ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] : ['nw', 'ne', 'sw', 'se']).map((c) => (
           <i
             key={c}
             data-c={c}
-            style={{ width: k, height: k, borderWidth: 2 * s, [c[0] === 'n' ? 'top' : 'bottom']: -k / 2, [c[1] === 'w' ? 'left' : 'right']: -k / 2 }}
+            style={at(c)}
             onPointerDown={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -1071,73 +1227,6 @@ function ActiveRing({ box, zoom, onGrab }: { box: { x: number; y: number; w: num
             }}
           />
         ))}
-    </span>
-  );
-}
-
-function TablePick({ onPick, onOpen }: { onPick: (r: number, c: number) => void; onOpen: () => void }) {
-  const [open, setOpen] = useState(false);
-  const [hv, setHv] = useState<[number, number]>([0, 0]);
-  return (
-    <span className="relative">
-      <button type="button" className="st-tb st-tb-wide" onMouseDown={(e) => (e.preventDefault(), onOpen())} onClick={() => setOpen(!open)} title="แทรกตาราง">
-        <Table className="w-4 h-4" /> ตาราง
-      </button>
-      {open && (
-        <span className="st-wpop" onMouseLeave={() => setHv([0, 0])}>
-          <span className="st-wgrid">
-            {Array.from({ length: 64 }, (_, i) => {
-              const r = Math.floor(i / 8) + 1;
-              const c = (i % 8) + 1;
-              return (
-                <button
-                  key={i}
-                  type="button"
-                  data-on={r <= hv[0] && c <= hv[1]}
-                  onMouseEnter={() => setHv([r, c])}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => {
-                    setOpen(false);
-                    onPick(r, c);
-                  }}
-                  aria-label={`${r} แถว ${c} คอลัมน์`}
-                />
-              );
-            })}
-          </span>
-          <span className="text-xs font-bold">{hv[0] ? `${hv[0]} แถว x ${hv[1]} คอลัมน์` : 'เลือกขนาดตาราง'}</span>
-        </span>
-      )}
-    </span>
-  );
-}
-
-function SymbolPick({ onPick, onOpen }: { onPick: (s: string) => void; onOpen: () => void }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <span className="relative">
-      <button type="button" className="st-tb st-tb-wide" onMouseDown={(e) => (e.preventDefault(), onOpen())} onClick={() => setOpen(!open)} title="สัญลักษณ์">
-        <span className="font-bold">Ω</span> สัญลักษณ์
-      </button>
-      {open && (
-        <span className="st-wpop">
-          <span className="st-wsym">
-            {SYMBOLS.map((s) => (
-              <button
-                key={s}
-                type="button"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => {
-                  setOpen(false);
-                  onPick(s);
-                }}
-              >
-                {s}
-              </button>
-            ))}
-          </span>
-        </span>
-      )}
     </span>
   );
 }

@@ -2,6 +2,8 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AArrowDown,
+  AArrowUp,
   AlignCenter,
   AlignJustify,
   AlignLeft,
@@ -13,7 +15,9 @@ import {
   BarChart3,
   Bold,
   CalendarDays,
+  ClipboardPaste,
   Clock,
+  Copy,
   Eraser,
   FileDown,
   FilePlus,
@@ -27,17 +31,21 @@ import {
   List,
   ListOrdered,
   Minus,
+  Omega,
   PanelTop,
   PilcrowSquare,
   Plus,
   Replace,
   Ruler,
+  Scissors,
   Search,
+  SpellCheck,
   Sigma,
   Strikethrough,
   Subscript,
   Superscript,
   Table,
+  TextSelect,
   Trash2,
   Type,
   Underline,
@@ -77,33 +85,33 @@ const FORMULAS: { tex: string; label: string }[] = [
   { tex: '\\text{ร้อยละ}=\\frac{\\text{ส่วน}}{\\text{ทั้งหมด}}\\times 100', label: 'ร้อยละ' },
 ];
 
-export type WordPanelId = 'home' | 'para' | 'insert' | 'math' | 'table' | 'find' | 'layout' | 'keys';
+/** แท็บเครื่องมือเรียงแบบริบบอนของ Word (หน้าแรก แทรก เค้าโครง ...) แต่อยู่ด้านซ้าย */
+export type WordPanelId = 'home' | 'insert' | 'layout' | 'table' | 'math' | 'review' | 'find' | 'keys';
 
 export const WORD_RAIL: { id: WordPanelId; label: string; icon: React.ReactNode; color: string }[] = [
   { id: 'home', label: 'หน้าแรก', icon: <Type className="w-5 h-5" />, color: '#2a73d9' },
-  { id: 'para', label: 'ย่อหน้า', icon: <PilcrowSquare className="w-5 h-5" />, color: '#0f766e' },
   { id: 'insert', label: 'แทรก', icon: <Plus className="w-5 h-5" />, color: '#e8456b' },
-  { id: 'math', label: 'MathType', icon: <Sigma className="w-5 h-5" />, color: '#4f46e5' },
-  { id: 'table', label: 'ตาราง', icon: <Table className="w-5 h-5" />, color: '#e07a12' },
-  { id: 'find', label: 'ค้นหา', icon: <Search className="w-5 h-5" />, color: '#c026d3' },
   { id: 'layout', label: 'เค้าโครง', icon: <Ruler className="w-5 h-5" />, color: '#2f9e6e' },
+  { id: 'table', label: 'ตาราง', icon: <Table className="w-5 h-5" />, color: '#e07a12' },
+  { id: 'math', label: 'MathType', icon: <Sigma className="w-5 h-5" />, color: '#4f46e5' },
+  { id: 'review', label: 'รีวิว', icon: <SpellCheck className="w-5 h-5" />, color: '#c026d3' },
   { id: 'keys', label: 'แป้นลัด', icon: <Keyboard className="w-5 h-5" />, color: '#64748b' },
 ];
 
 const TITLES: Record<WordPanelId, string> = {
-  home: 'หน้าแรก: ตัวอักษรและสไตล์',
-  para: 'ย่อหน้า',
+  home: 'หน้าแรก',
   insert: 'แทรก',
-  math: 'MathType: สมการ',
-  table: 'เครื่องมือตาราง',
+  layout: 'เค้าโครง',
+  table: 'เค้าโครงตาราง',
+  math: 'MathType',
+  review: 'รีวิว',
   find: 'ค้นหาและแทนที่',
-  layout: 'เค้าโครงหน้ากระดาษ',
   keys: 'แป้นลัดโหมดเอกสาร',
 };
 
 export type TableOp = 'rowAbove' | 'rowBelow' | 'colLeft' | 'colRight' | 'delRow' | 'delCol' | 'delTable' | 'header';
 
-/** คำสั่งที่แผงเรียกใช้กับตัวแก้ไขเอกสาร */
+/** คำสั่งที่แผงเรียกใช้กับตัวแก้ไขเอกสาร (ทำกับที่ที่กำลังพิมพ์: เนื้อเอกสาร หรือหัว/ท้ายกระดาษ) */
 export interface WordApi {
   cmd: (c: string, v?: string) => void;
   insertHtml: (h: string) => void;
@@ -132,30 +140,46 @@ export interface WordApi {
   /** รูปร่างที่กำลังรอวาด (ลากบนกระดาษ) */
   drawing: string | null;
   drawShape: (id: string) => void;
+  /** เปิดแก้หัว/ท้ายกระดาษ (เหมือนดับเบิลคลิกขอบกระดาษ) */
+  editHf: (part: 'head' | 'foot') => void;
+  /** ตัด / คัดลอก / วาง (คืนข้อความเตือนถ้าเบราว์เซอร์ไม่ยอม) */
+  clip: (op: 'cut' | 'copy' | 'paste') => Promise<string | null>;
+  selectAll: () => void;
+  openFind: () => void;
 }
 
 /* ใช้กับปุ่มในแผง: ไม่แย่งเคอร์เซอร์จากเอกสาร */
 const noFocus = (e: React.MouseEvent) => e.preventDefault();
 
 const Sec = ({ title, children, note }: { title: string; children: React.ReactNode; note?: string }) => (
-  <section className="st-sec">
+  <section className="st-sec st-wgroup">
     <h3>{title}</h3>
     {note && <p className="st-note">{note}</p>}
     {children}
   </section>
 );
 
-const Tool = ({ title, onClick, children, wide }: { title: string; onClick: () => void; children: React.ReactNode; wide?: boolean }) => (
-  <button type="button" className="st-wtool" data-wide={wide} title={title} aria-label={title} onMouseDown={noFocus} onClick={onClick}>
+/** ปุ่มไอคอนเล็ก (แบบปุ่มในกลุ่มฟอนต์/ย่อหน้าของ Word) */
+const Tool = ({ title, onClick, children, on }: { title: string; onClick: () => void; children: React.ReactNode; on?: boolean }) => (
+  <button type="button" className="st-wtool" data-on={on} title={title} aria-label={title} onMouseDown={noFocus} onClick={onClick}>
     {children}
   </button>
 );
 
+/** ปุ่มใหญ่ ไอคอนบน ชื่อล่าง (แบบปุ่มใหญ่บนริบบอนของ Word) */
+const Tile = ({ label, icon, onClick, on, title }: { label: string; icon: React.ReactNode; onClick: () => void; on?: boolean; title?: string }) => (
+  <button type="button" className="st-wtile" data-on={on} title={title ?? label} onMouseDown={noFocus} onClick={onClick}>
+    <span className="st-wtile-ic">{icon}</span>
+    <span className="st-wtile-tx">{label}</span>
+  </button>
+);
+
 export function WordRail({ panel, onPick }: { panel: WordPanelId | null; onPick: (p: WordPanelId | null) => void }) {
+  const on = panel === 'find' ? 'review' : panel;
   return (
     <nav className="st-rail" aria-label="เครื่องมือเอกสาร">
       {WORD_RAIL.map((r) => (
-        <button key={r.id} type="button" className="st-rail-btn" data-on={panel === r.id} onMouseDown={noFocus} onClick={() => onPick(panel === r.id ? null : r.id)} style={{ ['--c' as string]: r.color }}>
+        <button key={r.id} type="button" className="st-rail-btn" data-on={on === r.id} onMouseDown={noFocus} onClick={() => onPick(on === r.id ? null : r.id)} style={{ ['--c' as string]: r.color }}>
           <span className="st-rail-ic">{r.icon}</span>
           <span className="st-rail-tx">{r.label}</span>
         </button>
@@ -166,7 +190,7 @@ export function WordRail({ panel, onPick }: { panel: WordPanelId | null; onPick:
 
 export function WordPanel({ id, api, onClose, layoutExtra, findFocus }: { id: WordPanelId; api: WordApi; onClose: () => void; layoutExtra?: React.ReactNode; findFocus: number }) {
   return (
-    <aside className="st-panel" aria-label={TITLES[id]}>
+    <aside className="st-panel st-wpanel" aria-label={TITLES[id]}>
       <div className="st-panel-head">
         <h2>{TITLES[id]}</h2>
         <button type="button" className="st-tb" onMouseDown={noFocus} onClick={onClose} aria-label="ปิดแผง">
@@ -175,40 +199,59 @@ export function WordPanel({ id, api, onClose, layoutExtra, findFocus }: { id: Wo
       </div>
       <div className="st-panel-body">
         {id === 'home' && <HomePanel api={api} />}
-        {id === 'para' && <ParaPanel api={api} />}
         {id === 'insert' && <InsertPanel api={api} />}
+        {id === 'layout' && <LayoutPanel api={api} extra={layoutExtra} />}
         {id === 'math' && <MathPanel api={api} />}
         {id === 'table' && <TablePanel api={api} />}
+        {id === 'review' && <ReviewPanel api={api} />}
         {id === 'find' && <FindPanel api={api} focus={findFocus} />}
-        {id === 'layout' && <LayoutPanel api={api} extra={layoutExtra} />}
         {id === 'keys' && <KeysPanel />}
       </div>
     </aside>
   );
 }
 
-/* ------------------------------------------------------------------ หน้าแรก */
+/* ------------------------------------------------------------------ หน้าแรก (คลิปบอร์ด ฟอนต์ ย่อหน้า สไตล์ การแก้ไข) */
 
 function HomePanel({ api }: { api: WordApi }) {
+  const [msg, setMsg] = useState('');
+  const clip = async (op: 'cut' | 'copy' | 'paste') => setMsg((await api.clip(op)) || '');
   return (
     <>
-      <Sec title="สไตล์">
-        <div className="st-wstyles">
-          {[
-            ['p', 'ข้อความปกติ', 'st-ws-p'],
-            ['h1', 'หัวเรื่อง 1', 'st-ws-h1'],
-            ['h2', 'หัวเรื่อง 2', 'st-ws-h2'],
-            ['h3', 'หัวเรื่อง 3', 'st-ws-h3'],
-            ['blockquote', 'กรอบเน้น', 'st-ws-q'],
-          ].map(([tag, label, cls]) => (
-            <button key={tag} type="button" className={`st-wstyle ${cls}`} onMouseDown={noFocus} onClick={() => api.cmd('formatBlock', tag)}>
-              {label}
-            </button>
-          ))}
+      <Sec title="คลิปบอร์ด">
+        <div className="st-wtiles">
+          <Tile label="วาง" icon={<ClipboardPaste className="w-5 h-5" />} onClick={() => clip('paste')} title="วาง (Ctrl+V)" />
+          <Tile label="ตัด" icon={<Scissors className="w-5 h-5" />} onClick={() => clip('cut')} title="ตัด (Ctrl+X)" />
+          <Tile label="คัดลอก" icon={<Copy className="w-5 h-5" />} onClick={() => clip('copy')} title="คัดลอก (Ctrl+C) วางใน Word ได้" />
         </div>
+        {msg && <p className="st-note mt-1">{msg}</p>}
       </Sec>
-      <Sec title="ตกแต่งตัวอักษร">
-        <div className="st-wtools">
+      <Sec title="ฟอนต์">
+        <div className="st-wrow">
+          <select className="st-wsel st-wsel-grow" defaultValue="" onChange={(e) => (e.target.value && api.cmd('fontName', e.target.value), (e.target.value = ''))} aria-label="ฟอนต์">
+            <option value="">เลือกฟอนต์</option>
+            {Object.values(FONTS).map((f) => (
+              <option key={f.label} value={f.family}>
+                {f.label}
+              </option>
+            ))}
+          </select>
+          <select className="st-wsel" defaultValue="" onChange={(e) => (e.target.value && api.setSize(Number(e.target.value)), (e.target.value = ''))} aria-label="ขนาดตัวอักษร (pt)">
+            <option value="">ขนาด</option>
+            {SIZES.map((z) => (
+              <option key={z} value={z}>
+                {z}
+              </option>
+            ))}
+          </select>
+          <Tool title="ขยายตัวอักษร (Ctrl+Shift+>)" onClick={() => api.bumpSize(1, true)}>
+            <AArrowUp className="w-4 h-4" />
+          </Tool>
+          <Tool title="ย่อตัวอักษร (Ctrl+Shift+<)" onClick={() => api.bumpSize(-1, true)}>
+            <AArrowDown className="w-4 h-4" />
+          </Tool>
+        </div>
+        <div className="st-wtools mt-2">
           <Tool title="ตัวหนา (Ctrl+B)" onClick={() => api.cmd('bold')}>
             <Bold className="w-4 h-4" />
           </Tool>
@@ -227,52 +270,104 @@ function HomePanel({ api }: { api: WordApi }) {
           <Tool title="ตัวยก (Ctrl+Shift+=)" onClick={() => api.cmd('superscript')}>
             <Superscript className="w-4 h-4" />
           </Tool>
-          <Tool title="ล้างรูปแบบ (Ctrl+Space)" onClick={() => api.cmd('removeFormat')}>
+          <Tool title="ล้างการจัดรูปแบบ (Ctrl+Space)" onClick={() => api.cmd('removeFormat')}>
             <Eraser className="w-4 h-4" />
           </Tool>
         </div>
-      </Sec>
-      <Sec title="ขนาดตัวอักษร (pt แบบ Word)" note="คลุมข้อความเพื่อเปลี่ยน หรือเลือกก่อนพิมพ์ ตัวที่พิมพ์ต่อจะใช้ขนาดนี้">
-        <div className="st-chips">
-          {SIZES.map((z) => (
-            <button key={z} type="button" onMouseDown={noFocus} onClick={() => api.setSize(z)}>
-              {z}
-            </button>
-          ))}
-          <button type="button" onMouseDown={noFocus} onClick={() => api.bumpSize(1, true)} title="ใหญ่ขึ้น (Ctrl+Shift+>)">
-            A+
-          </button>
-          <button type="button" onMouseDown={noFocus} onClick={() => api.bumpSize(-1, true)} title="เล็กลง (Ctrl+Shift+<)">
-            A-
-          </button>
-        </div>
-      </Sec>
-      <Sec title="ฟอนต์">
-        <div className="st-wfonts">
-          {Object.values(FONTS).map((f) => (
-            <button key={f.label} type="button" onMouseDown={noFocus} onClick={() => api.cmd('fontName', f.family)} style={{ fontFamily: f.family }}>
-              {f.label}
-            </button>
-          ))}
-        </div>
-      </Sec>
-      <Sec title="สีตัวอักษร">
+        <p className="st-wlabel">สีตัวอักษร</p>
         <Swatches colors={COLORS} onPick={(c) => api.cmd('foreColor', c)} />
-      </Sec>
-      <Sec title="ปากกาเน้นข้อความ">
+        <p className="st-wlabel">ปากกาเน้นข้อความ</p>
         <Swatches colors={HILITES} onPick={(c) => api.cmd('hiliteColor', c)} none={() => api.cmd('hiliteColor', 'transparent')} />
-      </Sec>
-      <Sec title="ตัวพิมพ์ภาษาอังกฤษ">
+        <p className="st-wlabel">เปลี่ยนตัวพิมพ์ (ภาษาอังกฤษ)</p>
         <div className="st-chips">
           <button type="button" onMouseDown={noFocus} onClick={() => api.changeCase('upper')}>
-            ABC ใหญ่
+            ABC
           </button>
           <button type="button" onMouseDown={noFocus} onClick={() => api.changeCase('lower')}>
-            abc เล็ก
+            abc
           </button>
           <button type="button" onMouseDown={noFocus} onClick={() => api.changeCase('title')}>
-            Abc ขึ้นต้นใหญ่
+            Abc
           </button>
+        </div>
+      </Sec>
+      <Sec title="ย่อหน้า">
+        <div className="st-wtools">
+          <Tool title="สัญลักษณ์แสดงหัวข้อ (Ctrl+Shift+L)" onClick={() => api.list(false, 'disc')}>
+            <List className="w-4 h-4" />
+          </Tool>
+          <Tool title="ลำดับเลข" onClick={() => api.list(true, 'decimal')}>
+            <ListOrdered className="w-4 h-4" />
+          </Tool>
+          <Tool title="ลดการเยื้อง (Ctrl+Shift+M)" onClick={() => api.indent(-1)}>
+            <IndentDecrease className="w-4 h-4" />
+          </Tool>
+          <Tool title="เพิ่มการเยื้อง (Ctrl+M)" onClick={() => api.indent(1)}>
+            <IndentIncrease className="w-4 h-4" />
+          </Tool>
+        </div>
+        <div className="st-wtools mt-2">
+          <Tool title="ชิดซ้าย (Ctrl+L)" onClick={() => api.cmd('justifyLeft')}>
+            <AlignLeft className="w-4 h-4" />
+          </Tool>
+          <Tool title="กึ่งกลาง (Ctrl+E)" onClick={() => api.cmd('justifyCenter')}>
+            <AlignCenter className="w-4 h-4" />
+          </Tool>
+          <Tool title="ชิดขวา (Ctrl+R)" onClick={() => api.cmd('justifyRight')}>
+            <AlignRight className="w-4 h-4" />
+          </Tool>
+          <Tool title="เต็มบรรทัด (Ctrl+J)" onClick={() => api.cmd('justifyFull')}>
+            <AlignJustify className="w-4 h-4" />
+          </Tool>
+        </div>
+        <p className="st-wlabel">รูปแบบหัวข้อย่อย / ลำดับเลข</p>
+        <div className="st-chips">
+          {[
+            [false, 'disc', '●'],
+            [false, 'circle', '○'],
+            [false, 'square', '■'],
+            [true, 'decimal', '1.'],
+            [true, 'thai', '๑.'],
+            [true, 'lower-alpha', 'a.'],
+            [true, 'upper-alpha', 'A.'],
+            [true, 'lower-roman', 'i.'],
+          ].map(([o, t, s]) => (
+            <button key={String(t)} type="button" onMouseDown={noFocus} onClick={() => api.list(o as boolean, t as string)}>
+              {s as string}
+            </button>
+          ))}
+        </div>
+        <p className="st-wlabel">ระยะห่างบรรทัด</p>
+        <div className="st-chips">
+          {['1', '1.15', '1.5', '2', '2.5', '3'].map((v) => (
+            <button key={v} type="button" onMouseDown={noFocus} onClick={() => api.setLine(v)}>
+              {v}
+            </button>
+          ))}
+        </div>
+        <p className="st-wlabel">แรเงาย่อหน้า</p>
+        <Swatches colors={SHADES} onPick={(c) => api.blockStyle('background-color', c)} none={() => api.blockStyle('background-color', '')} />
+      </Sec>
+      <Sec title="สไตล์">
+        <div className="st-wstyles">
+          {[
+            ['p', 'ปกติ', 'st-ws-p'],
+            ['h1', 'หัวเรื่อง 1', 'st-ws-h1'],
+            ['h2', 'หัวเรื่อง 2', 'st-ws-h2'],
+            ['h3', 'หัวเรื่อง 3', 'st-ws-h3'],
+            ['blockquote', 'กรอบเน้น', 'st-ws-q'],
+          ].map(([tag, label, cls]) => (
+            <button key={tag} type="button" className={`st-wstyle ${cls}`} onMouseDown={noFocus} onClick={() => api.cmd('formatBlock', tag)}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </Sec>
+      <Sec title="การแก้ไข">
+        <div className="st-wtiles">
+          <Tile label="ค้นหา" icon={<Search className="w-5 h-5" />} onClick={api.openFind} title="ค้นหา (Ctrl+F)" />
+          <Tile label="แทนที่" icon={<Replace className="w-5 h-5" />} onClick={api.openFind} title="แทนที่ (Ctrl+H)" />
+          <Tile label="เลือกทั้งหมด" icon={<TextSelect className="w-5 h-5" />} onClick={api.selectAll} title="เลือกทั้งหมด (Ctrl+A)" />
         </div>
       </Sec>
     </>
@@ -294,94 +389,21 @@ function Swatches({ colors, onPick, none }: { colors: string[]; onPick: (c: stri
   );
 }
 
-/* ------------------------------------------------------------------ ย่อหน้า */
-
-function ParaPanel({ api }: { api: WordApi }) {
-  return (
-    <>
-      <Sec title="จัดแนว">
-        <div className="st-wtools">
-          <Tool title="ชิดซ้าย (Ctrl+L)" onClick={() => api.cmd('justifyLeft')}>
-            <AlignLeft className="w-4 h-4" />
-          </Tool>
-          <Tool title="กึ่งกลาง (Ctrl+E)" onClick={() => api.cmd('justifyCenter')}>
-            <AlignCenter className="w-4 h-4" />
-          </Tool>
-          <Tool title="ชิดขวา (Ctrl+R)" onClick={() => api.cmd('justifyRight')}>
-            <AlignRight className="w-4 h-4" />
-          </Tool>
-          <Tool title="เต็มบรรทัด (Ctrl+J)" onClick={() => api.cmd('justifyFull')}>
-            <AlignJustify className="w-4 h-4" />
-          </Tool>
-        </div>
-      </Sec>
-      <Sec title="สัญลักษณ์แสดงหัวข้อ">
-        <div className="st-wlists">
-          {[
-            ['disc', '●'],
-            ['circle', '○'],
-            ['square', '■'],
-          ].map(([t, s]) => (
-            <button key={t} type="button" onMouseDown={noFocus} onClick={() => api.list(false, t)}>
-              <List className="w-4 h-4" /> {s}
-            </button>
-          ))}
-        </div>
-      </Sec>
-      <Sec title="ลำดับเลข">
-        <div className="st-wlists">
-          {[
-            ['decimal', '1. 2. 3.'],
-            ['thai', '๑. ๒. ๓.'],
-            ['lower-alpha', 'a. b. c.'],
-            ['upper-alpha', 'A. B. C.'],
-            ['lower-roman', 'i. ii. iii.'],
-          ].map(([t, s]) => (
-            <button key={t} type="button" onMouseDown={noFocus} onClick={() => api.list(true, t)}>
-              <ListOrdered className="w-4 h-4" /> {s}
-            </button>
-          ))}
-        </div>
-      </Sec>
-      <Sec title="การเยื้อง">
-        <div className="st-wtools">
-          <Tool title="ลดการเยื้อง (Ctrl+Shift+M)" onClick={() => api.indent(-1)}>
-            <IndentDecrease className="w-4 h-4" />
-          </Tool>
-          <Tool title="เพิ่มการเยื้อง (Ctrl+M)" onClick={() => api.indent(1)}>
-            <IndentIncrease className="w-4 h-4" />
-          </Tool>
-          <Tool title="เยื้องบรรทัดแรก" wide onClick={() => api.blockStyle('text-indent', '2.5em')}>
-            ย่อหน้าบรรทัดแรก
-          </Tool>
-          <Tool title="ไม่เยื้องบรรทัดแรก" wide onClick={() => api.blockStyle('text-indent', '')}>
-            ไม่ย่อหน้า
-          </Tool>
-        </div>
-      </Sec>
-      <Sec title="ระยะห่างบรรทัด">
-        <div className="st-chips">
-          {['1', '1.15', '1.5', '2', '2.5', '3'].map((v) => (
-            <button key={v} type="button" onMouseDown={noFocus} onClick={() => api.setLine(v)}>
-              {v}
-            </button>
-          ))}
-        </div>
-      </Sec>
-      <Sec title="แรเงาย่อหน้า">
-        <Swatches colors={SHADES} onPick={(c) => api.blockStyle('background-color', c)} none={() => api.blockStyle('background-color', '')} />
-      </Sec>
-    </>
-  );
-}
-
-/* ------------------------------------------------------------------ แทรก */
+/* ------------------------------------------------------------------ แทรก (หน้า ตาราง ภาพประกอบ หัว/ท้ายกระดาษ ข้อความ สัญลักษณ์) */
 
 function InsertPanel({ api }: { api: WordApi }) {
   const [hv, setHv] = useState<[number, number]>([0, 0]);
+  const [sym, setSym] = useState(false);
   const today = () => new Date().toLocaleDateString('th-TH', { dateStyle: 'long' });
   return (
     <>
+      <Sec title="หน้า">
+        <div className="st-wtiles">
+          <Tile label="หน้าเปล่า" icon={<FilePlus className="w-5 h-5" />} onClick={() => api.insertHtml('<div data-pb="1"></div><p><br></p><div data-pb="1"></div><p><br></p>')} />
+          <Tile label="ตัวแบ่งหน้า" icon={<FileDown className="w-5 h-5" />} onClick={() => api.insertHtml('<div data-pb="1"></div><p><br></p>')} title="ตัวแบ่งหน้า (Ctrl+Enter)" />
+          <Tile label="เส้นคั่น" icon={<Minus className="w-5 h-5" />} onClick={() => api.insertHtml('<hr><p><br></p>')} />
+        </div>
+      </Sec>
       <Sec title="ตาราง" note={hv[0] ? `${hv[0]} แถว x ${hv[1]} คอลัมน์` : 'ชี้เลือกขนาด แล้วคลิก'}>
         <div className="st-wgrid st-wgrid-lg" onMouseLeave={() => setHv([0, 0])}>
           {Array.from({ length: 80 }, (_, i) => {
@@ -401,20 +423,12 @@ function InsertPanel({ api }: { api: WordApi }) {
           })}
         </div>
       </Sec>
-      <Sec title="ภาพและรูปคณิต">
-        <div className="st-wbig">
-          <button type="button" onMouseDown={noFocus} onClick={api.pickImage}>
-            <ImagePlus className="w-5 h-5" /> รูปภาพ
-          </button>
-          <button type="button" onMouseDown={noFocus} onClick={api.addGraph}>
-            <LineChart className="w-5 h-5" /> กราฟ/รูปคณิต
-          </button>
-          <button type="button" onMouseDown={noFocus} onClick={() => api.addMath(false)}>
-            <Sigma className="w-5 h-5" /> สมการ
-          </button>
+      <Sec title="ภาพประกอบ">
+        <div className="st-wtiles">
+          <Tile label="รูปภาพ" icon={<ImagePlus className="w-5 h-5" />} onClick={api.pickImage} />
+          <Tile label="กราฟ/รูปคณิต" icon={<LineChart className="w-5 h-5" />} onClick={api.addGraph} />
         </div>
-      </Sec>
-      <Sec title="รูปร่าง" note={api.drawing ? 'ลากบนกระดาษเพื่อวาด (Esc ยกเลิก)' : 'เลือกรูป แล้วลากบนกระดาษเพื่อวาด'}>
+        <p className="st-wlabel">รูปร่าง {api.drawing ? '(ลากบนกระดาษเพื่อวาด กด Esc ยกเลิก)' : '(เลือกแล้วลากบนกระดาษ)'}</p>
         <div className="st-wshapes">
           <button type="button" data-on={api.drawing === 'ln'} onMouseDown={noFocus} onClick={() => api.drawShape('ln')} title="เส้นตรง" aria-label="เส้นตรง">
             <svg viewBox="0 0 100 100">
@@ -430,21 +444,15 @@ function InsertPanel({ api }: { api: WordApi }) {
           ))}
         </div>
       </Sec>
-      <Sec title="หน้า">
-        <div className="st-wbig">
-          <button type="button" onMouseDown={noFocus} onClick={() => api.insertHtml('<div data-pb="1"></div><p><br></p>')}>
-            <FileDown className="w-5 h-5" /> ตัวแบ่งหน้า (ขึ้นหน้าใหม่) <kbd>Ctrl + Enter</kbd>
-          </button>
-          <button type="button" onMouseDown={noFocus} onClick={() => api.insertHtml('<div data-pb="1"></div><p><br></p><div data-pb="1"></div><p><br></p>')}>
-            <FilePlus className="w-5 h-5" /> หน้าเปล่า
-          </button>
-          <button type="button" onMouseDown={noFocus} onClick={() => api.insertHtml('<hr><p><br></p>')}>
-            <Minus className="w-5 h-5" /> เส้นคั่น
-          </button>
-        </div>
-      </Sec>
       <HeadFoot api={api} />
-      <Sec title="อักษรศิลป์">
+      <Sec title="ข้อความ">
+        <div className="st-wtiles">
+          <Tile label="วันที่" icon={<CalendarDays className="w-5 h-5" />} onClick={() => api.insertHtml(`${today()}&nbsp;`)} />
+          <Tile label="เวลา" icon={<Clock className="w-5 h-5" />} onClick={() => api.insertHtml(`${new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.&nbsp;`)} />
+          <Tile label="ช่องชื่อ ชั้น เลขที่" icon={<PanelTop className="w-5 h-5" />} onClick={() => api.insertHtml('<p>ชื่อ ............................................................. ชั้น ............ เลขที่ ............</p><p><br></p>')} />
+          <Tile label="เส้นเขียนคำตอบ" icon={<Heading className="w-5 h-5" />} onClick={() => api.insertHtml(`${'<p>...............................................................................................................</p>'.repeat(3)}<p><br></p>`)} />
+        </div>
+        <p className="st-wlabel">อักษรศิลป์</p>
         <div className="st-wart">
           {WORDART.map((a) => (
             <button key={a.c} type="button" onMouseDown={noFocus} onClick={() => api.insertHtml(`<span style="font-size: 48px; font-weight: 700; color: ${a.c}">อักษรศิลป์</span>&nbsp;`)} style={{ color: a.c }}>
@@ -453,30 +461,20 @@ function InsertPanel({ api }: { api: WordApi }) {
           ))}
         </div>
       </Sec>
-      <Sec title="ส่วนช่วยครู">
-        <div className="st-wbig">
-          <button type="button" onMouseDown={noFocus} onClick={() => api.insertHtml('<p>ชื่อ ............................................................. ชั้น ............ เลขที่ ............</p><p><br></p>')}>
-            <PanelTop className="w-5 h-5" /> ช่องชื่อ ชั้น เลขที่
-          </button>
-          <button type="button" onMouseDown={noFocus} onClick={() => api.insertHtml(`${'<p>...............................................................................................................</p>'.repeat(3)}<p><br></p>`)}>
-            <Heading className="w-5 h-5" /> เส้นเขียนคำตอบ 3 บรรทัด
-          </button>
-          <button type="button" onMouseDown={noFocus} onClick={() => api.insertHtml(`${today()}&nbsp;`)}>
-            <CalendarDays className="w-5 h-5" /> วันที่วันนี้
-          </button>
-          <button type="button" onMouseDown={noFocus} onClick={() => api.insertHtml(`${new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.&nbsp;`)}>
-            <Clock className="w-5 h-5" /> เวลาตอนนี้
-          </button>
-        </div>
-      </Sec>
       <Sec title="สัญลักษณ์">
-        <div className="st-wsym st-wsym-panel">
-          {[...SYMBOLS, ...MORE_SYMBOLS].map((s) => (
-            <button key={s} type="button" onMouseDown={noFocus} onClick={() => api.insertHtml(s)}>
-              {s}
-            </button>
-          ))}
+        <div className="st-wtiles">
+          <Tile label="สมการ" icon={<Sigma className="w-5 h-5" />} onClick={() => api.addMath(false)} title="สมการ (Alt+=)" />
+          <Tile label="สัญลักษณ์" icon={<Omega className="w-5 h-5" />} onClick={() => setSym(!sym)} on={sym} />
         </div>
+        {sym && (
+          <div className="st-wsym st-wsym-panel mt-2">
+            {[...SYMBOLS, ...MORE_SYMBOLS].map((s) => (
+              <button key={s} type="button" onMouseDown={noFocus} onClick={() => api.insertHtml(s)}>
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
       </Sec>
     </>
   );
@@ -494,55 +492,56 @@ const WORDART = [
 /** หัวกระดาษ ท้ายกระดาษ เลขหน้า (แบบ Word: แทรก > หัวกระดาษ/ท้ายกระดาษ/หมายเลขหน้า) */
 function HeadFoot({ api }: { api: WordApi }) {
   const o = api.opt;
-  const Chip = <K extends keyof WordOpt>({ k, v, children }: { k: K; v: WordOpt[K]; children: React.ReactNode }) => (
-    <button type="button" data-on={o[k] === v} onMouseDown={noFocus} onClick={() => api.setOpt({ [k]: v } as Partial<WordOpt>)}>
-      {children}
+  const chip = <K extends keyof WordOpt>(k: K, v: WordOpt[K], label: string) => (
+    <button key={String(v)} type="button" data-on={o[k] === v} onMouseDown={noFocus} onClick={() => api.setOpt({ [k]: v } as Partial<WordOpt>)}>
+      {label}
     </button>
   );
   return (
-    <>
-      <Sec title="หัวกระดาษ / ท้ายกระดาษ" note="ข้อความที่ซ้ำทุกหน้า">
-        <div className="st-search">
-          <ArrowUpToLine className="w-4 h-4 shrink-0" />
-          <input value={o.head} maxLength={120} onChange={(e) => api.setOpt({ head: e.target.value })} placeholder="หัวกระดาษ เช่น ชื่อวิชา / ชื่อโรงเรียน" aria-label="หัวกระดาษ" />
+    <Sec title="หัวกระดาษและท้ายกระดาษ" note="ดับเบิลคลิกที่ขอบบน/ล่างของกระดาษก็แก้ได้ ใส่ข้อความ รูป สมการ ได้ ขึ้นทุกหน้า">
+      <div className="st-wtiles">
+        <Tile label="หัวกระดาษ" icon={<ArrowUpToLine className="w-5 h-5" />} onClick={() => api.editHf('head')} />
+        <Tile label="ท้ายกระดาษ" icon={<ArrowDownToLine className="w-5 h-5" />} onClick={() => api.editHf('foot')} />
+      </div>
+      {(o.head || o.foot) && (
+        <div className="st-chips mt-2">
+          {o.head && (
+            <button type="button" onMouseDown={noFocus} onClick={() => api.setOpt({ head: '' })}>
+              ลบหัวกระดาษ
+            </button>
+          )}
+          {o.foot && (
+            <button type="button" onMouseDown={noFocus} onClick={() => api.setOpt({ foot: '' })}>
+              ลบท้ายกระดาษ
+            </button>
+          )}
         </div>
-        <div className="st-search mt-2">
-          <ArrowDownToLine className="w-4 h-4 shrink-0" />
-          <input value={o.foot} maxLength={120} onChange={(e) => api.setOpt({ foot: e.target.value })} placeholder="ท้ายกระดาษ" aria-label="ท้ายกระดาษ" />
-        </div>
-      </Sec>
-      <Sec title="หมายเลขหน้า">
-        <div className="st-chips">
-          <Chip k="num" v="none">ไม่ใส่</Chip>
-          <Chip k="num" v="top">ด้านบน</Chip>
-          <Chip k="num" v="bottom">ด้านล่าง</Chip>
-        </div>
-        {o.num !== 'none' && (
-          <>
-            <div className="st-chips mt-2">
-              <Chip k="numAlign" v="left">ซ้าย</Chip>
-              <Chip k="numAlign" v="center">กลาง</Chip>
-              <Chip k="numAlign" v="right">ขวา</Chip>
-            </div>
-            <div className="st-chips mt-2">
-              {NUM_FMTS.map((f) => (
-                <Chip key={f.id} k="numFmt" v={f.id}>
-                  {f.label}
-                </Chip>
-              ))}
-            </div>
-            <label className="st-wfield mt-2">
-              เริ่มที่เลข
-              <input type="number" min={0} max={9999} value={o.numStart} onChange={(e) => api.setOpt({ numStart: Math.max(0, Math.min(9999, Math.round(+e.target.value) || 0)) })} />
-            </label>
-          </>
-        )}
-        <label className="st-wcheck mt-2">
-          <input type="checkbox" checked={!o.numFirst} onChange={(e) => api.setOpt({ numFirst: !e.target.checked })} />
-          หน้าแรกแตกต่าง (ไม่แสดงหัว/ท้ายกระดาษและเลขหน้าที่หน้าแรก)
-        </label>
-      </Sec>
-    </>
+      )}
+      <p className="st-wlabel">หมายเลขหน้า</p>
+      <div className="st-chips">
+        {chip('num', 'none', 'ไม่ใส่')}
+        {chip('num', 'top', 'ด้านบน')}
+        {chip('num', 'bottom', 'ด้านล่าง')}
+      </div>
+      {o.num !== 'none' && (
+        <>
+          <div className="st-chips mt-2">
+            {chip('numAlign', 'left', 'ซ้าย')}
+            {chip('numAlign', 'center', 'กลาง')}
+            {chip('numAlign', 'right', 'ขวา')}
+          </div>
+          <div className="st-chips mt-2">{NUM_FMTS.map((f) => chip('numFmt', f.id, f.label))}</div>
+          <label className="st-wfield mt-2">
+            เริ่มที่เลข
+            <input type="number" min={0} max={9999} value={o.numStart} onChange={(e) => api.setOpt({ numStart: Math.max(0, Math.min(9999, Math.round(+e.target.value) || 0)) })} />
+          </label>
+        </>
+      )}
+      <label className="st-wcheck mt-2">
+        <input type="checkbox" checked={!o.numFirst} onChange={(e) => api.setOpt({ numFirst: !e.target.checked })} />
+        หน้าแรกแตกต่าง (ไม่แสดงหัว/ท้ายกระดาษและเลขหน้าที่หน้าแรก)
+      </label>
+    </Sec>
   );
 }
 
@@ -764,23 +763,9 @@ function FindPanel({ api, focus }: { api: WordApi; focus: number }) {
   );
 }
 
-/* ------------------------------------------------------------------ เค้าโครง */
+/* ------------------------------------------------------------------ เค้าโครง (ระยะขอบ ขนาด ตัวแบ่ง ย่อหน้า) */
 
 function LayoutPanel({ api, extra }: { api: WordApi; extra?: React.ReactNode }) {
-  const [stats, setStats] = useState<{ words: number; chars: number; paras: number } | null>(null);
-  const count = () => {
-    const el = api.root();
-    if (!el) return;
-    const text = el.innerText || '';
-    let words = 0;
-    // ภาษาไทยไม่เว้นวรรคระหว่างคำ: นับด้วยตัวตัดคำของเบราว์เซอร์
-    const Seg = (Intl as unknown as { Segmenter?: new (l: string, o: { granularity: string }) => { segment: (t: string) => Iterable<{ isWordLike?: boolean }> } }).Segmenter;
-    if (Seg) for (const s of new Seg('th', { granularity: 'word' }).segment(text)) words += s.isWordLike ? 1 : 0;
-    else words = text.split(/\s+/).filter(Boolean).length;
-    const paras = Array.from(el.children).filter((c) => (c as HTMLElement).innerText?.trim()).length;
-    setStats({ words, chars: text.replace(/\s/g, '').length, paras });
-  };
-  useEffect(count, []); // eslint-disable-line react-hooks/exhaustive-deps
   const o = api.opt;
   const cm = (px: number) => Math.round((px / 96) * 2.54 * 100) / 100;
   // ใส่ค่าเสร็จ (ออกจากช่อง/Enter) ค่อยบันทึก จะได้พิมพ์ทศนิยมได้
@@ -826,8 +811,50 @@ function LayoutPanel({ api, extra }: { api: WordApi; extra?: React.ReactNode }) 
           {margin('mr', 'ขวา')}
         </div>
       </Sec>
-      {extra && <Sec title="ขนาดและแนวกระดาษ">{extra}</Sec>}
-      <Sec title="สถิติเอกสาร">
+      {extra && <Sec title="ขนาดและการวางแนวกระดาษ">{extra}</Sec>}
+      <Sec title="ตัวแบ่ง">
+        <div className="st-wtiles">
+          <Tile label="ตัวแบ่งหน้า" icon={<FileDown className="w-5 h-5" />} onClick={() => api.insertHtml('<div data-pb="1"></div><p><br></p>')} title="ตัวแบ่งหน้า (Ctrl+Enter)" />
+        </div>
+      </Sec>
+      <Sec title="ย่อหน้า: การเยื้อง">
+        <div className="st-wtiles">
+          <Tile label="ลดการเยื้อง" icon={<IndentDecrease className="w-5 h-5" />} onClick={() => api.indent(-1)} title="ลดการเยื้อง (Ctrl+Shift+M)" />
+          <Tile label="เพิ่มการเยื้อง" icon={<IndentIncrease className="w-5 h-5" />} onClick={() => api.indent(1)} title="เพิ่มการเยื้อง (Ctrl+M)" />
+          <Tile label="เยื้องบรรทัดแรก" icon={<PilcrowSquare className="w-5 h-5" />} onClick={() => api.blockStyle('text-indent', '2.5em')} />
+          <Tile label="ไม่เยื้องบรรทัดแรก" icon={<AlignLeft className="w-5 h-5" />} onClick={() => api.blockStyle('text-indent', '')} />
+        </div>
+      </Sec>
+    </>
+  );
+}
+
+/* ------------------------------------------------------------------ รีวิว (นับคำ ค้นหา) */
+
+function ReviewPanel({ api }: { api: WordApi }) {
+  const [stats, setStats] = useState<{ words: number; chars: number; paras: number } | null>(null);
+  const count = () => {
+    const el = api.root();
+    if (!el) return;
+    const text = el.innerText || '';
+    let words = 0;
+    // ภาษาไทยไม่เว้นวรรคระหว่างคำ: นับด้วยตัวตัดคำของเบราว์เซอร์
+    const Seg = (Intl as unknown as { Segmenter?: new (l: string, o: { granularity: string }) => { segment: (t: string) => Iterable<{ isWordLike?: boolean }> } }).Segmenter;
+    if (Seg) for (const s of new Seg('th', { granularity: 'word' }).segment(text)) words += s.isWordLike ? 1 : 0;
+    else words = text.split(/\s+/).filter(Boolean).length;
+    const paras = Array.from(el.children).filter((c) => (c as HTMLElement).innerText?.trim()).length;
+    setStats({ words, chars: text.replace(/\s/g, '').length, paras });
+  };
+  useEffect(count, []); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <>
+      <Sec title="การตรวจทาน">
+        <div className="st-wtiles">
+          <Tile label="ค้นหาและแทนที่" icon={<Search className="w-5 h-5" />} onClick={api.openFind} title="ค้นหา (Ctrl+F) / แทนที่ (Ctrl+H)" />
+          <Tile label="นับคำใหม่" icon={<BarChart3 className="w-5 h-5" />} onClick={count} />
+        </div>
+      </Sec>
+      <Sec title="จำนวนคำ">
         <div className="st-wstats">
           <span>
             <b>{api.pages}</b> หน้า
@@ -841,11 +868,6 @@ function LayoutPanel({ api, extra }: { api: WordApi; extra?: React.ReactNode }) 
           <span>
             <b>{stats?.paras ?? '-'}</b> ย่อหน้า
           </span>
-        </div>
-        <div className="st-wbig mt-2">
-          <button type="button" onMouseDown={noFocus} onClick={count}>
-            <BarChart3 className="w-4 h-4" /> นับใหม่
-          </button>
         </div>
       </Sec>
     </>

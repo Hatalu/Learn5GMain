@@ -21,6 +21,7 @@ export interface WordOpt {
   mb: number;
   ml: number;
   mr: number;
+  /** หัว/ท้ายกระดาษเป็นเนื้อหาแบบเดียวกับเอกสาร (ข้อความ รูป สมการ) ซ้ำทุกหน้า */
   head: string;
   foot: string;
   num: 'none' | 'top' | 'bottom';
@@ -56,12 +57,9 @@ export const defaultWordOpt = (std = true): WordOpt => ({
   numFirst: true,
 });
 const pickS = <T extends string>(v: unknown, ok: readonly T[], d: T): T => (ok.includes(v as T) ? (v as T) : d);
-const cleanLine = (v: unknown) =>
-  String(typeof v === 'string' ? v : '')
-    .replace(/[\u0000-\u001f<>]/g, '')
-    .slice(0, 120);
-/** ค่าที่ไม่มี (เอกสารเก่า) = ค่ารุ่นแรก ไม่ให้หน้าตาเอกสารเดิมเปลี่ยน */
-export function cleanWordOpt(raw: unknown): WordOpt {
+/** ค่าที่ไม่มี (เอกสารเก่า) = ค่ารุ่นแรก ไม่ให้หน้าตาเอกสารเดิมเปลี่ยน · src = ตัวตรวจรูป (ไม่ส่ง = ไม่รับรูป) */
+export function cleanWordOpt(raw: unknown, src: SrcCheck = () => ''): WordOpt {
+  const hf = (v: unknown) => (typeof v === 'string' && v ? cleanFlowHtml(v.slice(0, 40_000), src) : '');
   if (!raw || typeof raw !== 'object') return defaultWordOpt(false);
   const r = raw as Record<string, unknown>;
   const d = defaultWordOpt(r.std === true);
@@ -73,8 +71,8 @@ export function cleanWordOpt(raw: unknown): WordOpt {
     mb: m(r.mb, d.mb),
     ml: m(r.ml, d.ml),
     mr: m(r.mr, d.mr),
-    head: cleanLine(r.head),
-    foot: cleanLine(r.foot),
+    head: hf(r.head),
+    foot: hf(r.foot),
     num: pickS(r.num, ['none', 'top', 'bottom'] as const, 'none'),
     numAlign: pickS(r.numAlign, ['left', 'center', 'right'] as const, 'center'),
     numFmt: pickS(r.numFmt, ['n', 'thai', 'page', 'of'] as const, 'n'),
@@ -191,15 +189,15 @@ export function cleanFlowHtml(html: string, cleanSrc: SrcCheck): string {
         } catch {
           graph = '';
         }
-      } else if (tag === 'figure' && name === 'data-shape' && SHAPE_ID.test(val)) {
+      } else if ((tag === 'figure' || tag === 'span') && name === 'data-shape' && SHAPE_ID.test(val)) {
         shape.unshift(`data-shape="${val}"`);
-      } else if (tag === 'figure' && (name === 'data-fill' || name === 'data-stroke') && (HEX.test(val) || val === 'none')) {
+      } else if ((tag === 'figure' || tag === 'span') && (name === 'data-fill' || name === 'data-stroke') && (HEX.test(val) || val === 'none')) {
         shape.push(`${name}="${val}"`);
-      } else if (tag === 'figure' && name === 'data-sw' && /^\d{1,2}$/.test(val) && +val <= 24) {
+      } else if ((tag === 'figure' || tag === 'span') && name === 'data-sw' && /^\d{1,2}$/.test(val) && +val <= 24) {
         shape.push(`data-sw="${val}"`);
-      } else if (tag === 'figure' && name === 'data-ar' && /^\d{1,3}(\.\d{1,3})?$/.test(val) && +val >= 0.02 && +val <= 60) {
+      } else if ((tag === 'figure' || tag === 'span') && name === 'data-ar' && /^\d{1,3}(\.\d{1,3})?$/.test(val) && +val >= 0.02 && +val <= 60) {
         shape.push(`data-ar="${val}"`);
-      } else if (name === 'data-wrap' && (tag === 'figure' || tag === 'img') && (WRAPS as readonly string[]).includes(val)) {
+      } else if (name === 'data-wrap' && (tag === 'figure' || tag === 'img' || tag === 'span') && (WRAPS as readonly string[]).includes(val)) {
         attrs.push(`data-wrap="${val}"`);
       } else if (name === 'data-pb' && tag === 'div') {
         attrs.push('data-pb="1"');
@@ -223,6 +221,17 @@ export function cleanFlowHtml(html: string, cleanSrc: SrcCheck): string {
       if (!m[0].endsWith('/>')) startSkip(tag);
       continue;
     }
+    // รูปร่างแบบ span: ข้างในเป็นผลวาด ทิ้งแล้ววาดใหม่ (span อื่นที่ติดค่าจัดวางมาไม่เก็บค่านั้น)
+    if (tag === 'span' && shape[0]?.startsWith('data-shape')) {
+      out.push(`<span ${[...shape, ...attrs].join(' ')} contenteditable="false"></span>`);
+      if (!m[0].endsWith('/>')) startSkip(tag);
+      continue;
+    }
+    if (tag === 'span') {
+      const a = attrs.filter((x) => !x.startsWith('data-wrap'));
+      out.push(`<span${a.length ? ' ' + a.join(' ') : ''}>`);
+      continue;
+    }
     if (tag === 'figure') {
       if (graph) out.push(`<figure data-graph="${escAttr(graph)}" contenteditable="false"${attrs.length ? ' ' + attrs.join(' ') : ''}></figure>`);
       else if (shape[0]?.startsWith('data-shape')) out.push(`<figure ${[...shape, ...attrs].join(' ')} contenteditable="false"></figure>`);
@@ -237,7 +246,7 @@ export function cleanFlowHtml(html: string, cleanSrc: SrcCheck): string {
 /** ข้อความล้วนของเอกสาร (เช็กว่าว่างไหม) */
 export const flowIsEmpty = (html: string) =>
   !String(html || '')
-    .replace(/<(img|figure|hr|table)|<span data-tex/gi, 'X')
+    .replace(/<(img|figure|hr|table)\b|<span data-(tex|shape)/gi, 'X')
     .replace(/<[^>]*>/g, '')
     .replace(/&nbsp;|\s/g, '');
 

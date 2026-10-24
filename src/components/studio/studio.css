@@ -2184,26 +2184,64 @@ html.dark .st-quizlink {
   overflow: visible;
 }
 /* หัวกระดาษ ท้ายกระดาษ เลขหน้า */
+/* หัว/ท้ายกระดาษ: ห่างขอบกระดาษ 1.25 ซม. แบบ Word ท้ายกระดาษโตขึ้นด้านบน */
 .st-hf {
   position: absolute;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 14px 0;
   box-sizing: border-box;
-  font-size: 14pt;
-  line-height: 1.3;
-  color: #1f1b36;
-  overflow: hidden;
-}
-.st-hf-text {
-  text-align: center;
-  white-space: pre;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  padding: 0;
 }
 .st-hf-num {
-  display: block;
+  margin: 0;
+}
+.st-hf-ed {
+  position: absolute;
+  z-index: 4;
+  min-height: 1.4em;
+  outline: none;
+  caret-color: #7c3aed;
+  background: rgba(255, 255, 255, 0.6);
+}
+.st-hf-zone {
+  position: absolute;
+  left: 0;
+  z-index: 3;
+  pointer-events: none;
+  background: rgba(124, 58, 237, 0.05);
+}
+.st-hf-zone[data-part='head'] {
+  border-bottom: 2px dashed #7c3aed;
+}
+.st-hf-zone[data-part='foot'] {
+  border-top: 2px dashed #7c3aed;
+}
+.st-hf-tag {
+  position: absolute;
+  left: 10px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #7c3aed;
+  color: #fff;
+  font: 700 12px/1.4 system-ui, sans-serif;
+}
+.st-hf-zone[data-part='head'] .st-hf-tag {
+  bottom: -11px;
+}
+.st-hf-zone[data-part='foot'] .st-hf-tag {
+  top: -11px;
+}
+/* ระหว่างแก้หัว/ท้ายกระดาษ เนื้อเอกสารจางลงแบบ Word */
+.st-word[data-hf] .st-word-ed {
+  opacity: 0.45;
+}
+/* รูปร่างแบบอยู่ในบรรทัด และแบบยึดกับย่อหน้า (ย่อหน้าเลื่อน รูปเลื่อนตาม) */
+.st-flow span[data-shape] {
+  display: inline-block;
+  width: 160px;
+  vertical-align: bottom;
+  line-height: 0;
+}
+.st-flow :is(p, h1, h2, h3, div, blockquote, li):has(> span[data-shape][data-wrap='front'], > span[data-shape][data-wrap='behind']) {
+  position: relative;
 }
 .st-flow [data-pb] {
   height: 0;
@@ -2794,4 +2832,100 @@ html.dark .st-wwarn {
 .st-wcheck input {
   margin-top: 2px;
   accent-color: var(--st-acc);
+}
+
+/* ---------------- แผงเครื่องมือแบบริบบอน Word (ด้านซ้าย) ---------------- */
+.st-wgroup {
+  padding-bottom: 14px;
+  border-bottom: 1.5px solid var(--st-line);
+}
+.st-wgroup:last-child {
+  border-bottom: 0;
+}
+.st-wgroup > h3 {
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--st-muted);
+}
+.st-wlabel {
+  margin: 10px 0 6px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--st-muted);
+}
+.st-wrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.st-wsel-grow {
+  flex: 1;
+  min-width: 0;
+  max-width: none;
+}
+.st-wtiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+  gap: 6px;
+}
+.st-wtile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 64px;
+  padding: 8px 4px;
+  border-radius: 12px;
+  border: 1.5px solid var(--st-line);
+  border-bottom-width: 3px;
+  background: var(--st-card);
+  transition: transform 0.12s, background 0.15s;
+}
+.st-wtile:hover {
+  background: var(--st-acc-soft);
+  color: var(--st-acc-ink);
+}
+.st-wtile:active {
+  transform: translateY(2px);
+  border-bottom-width: 1.5px;
+}
+.st-wtile[data-on='true'] {
+  border-color: var(--st-acc);
+  background: var(--st-acc-soft);
+}
+.st-wtile-ic {
+  display: grid;
+  place-items: center;
+}
+.st-wtile-tx {
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
+}
+.st-wtool[data-on='true'] {
+  background: var(--st-acc);
+  color: #fff;
+}
+.st-word-ring > i[data-c='n'],
+.st-word-ring > i[data-c='s'] {
+  cursor: ns-resize;
+}
+.st-word-ring > i[data-c='e'],
+.st-word-ring > i[data-c='w'] {
+  cursor: ew-resize;
+}
+.st-hf-close {
+  background: #ede9fe !important;
+  color: #5b21b6;
+}
+@media (prefers-reduced-motion: reduce) {
+  .st-wtile {
+    transition: none;
+  }
+}
+/* ไม่ให้เบราว์เซอร์เลื่อนจอเองตอนเนื้อหาเปลี่ยน (ใส่สูตร/จัดหน้าใหม่แล้วจอกระโดด) ทำตรงไหนอยู่ตรงนั้น */
+.st-canvas {
+  overflow-anchor: none;
 }

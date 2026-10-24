@@ -1192,22 +1192,36 @@ export function FlowLayer({ html, index, W, H, opt = defaultWordOpt(false) }: { 
 }
 
 /** หัวกระดาษ ท้ายกระดาษ และเลขหน้า (แบบ Word) วางในพื้นที่ขอบกระดาษ */
-export function PageDeco({ opt, index, total, W, H }: { opt: WordOpt; index: number; total: number; W: number; H: number }) {
+/** ระยะหัว/ท้ายกระดาษจากขอบกระดาษ (Word ค่าเริ่มต้น 1.25 ซม.) */
+export const hfOffset = (margin: number) => Math.round(Math.min(47, margin / 2));
+
+/** เนื้อหาหัว/ท้ายกระดาษ (HTML ที่ผ่านตัวกรองแล้ว) */
+function HfHtml({ html }: { html: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (!ref.current) return;
+    ref.current.innerHTML = html;
+    hydrateFlow(ref.current);
+  }, [html]);
+  return <div ref={ref} />;
+}
+
+/** หัวกระดาษ ท้ายกระดาษ และเลขหน้า (แบบ Word) ซ้ำทุกหน้า · hide = ส่วนที่กำลังแก้อยู่ (จอแก้ไขวาดเอง) */
+export function PageDeco({ opt, index, total, W, H, hide }: { opt: WordOpt; index: number; total: number; W: number; H: number; hide?: 'head' | 'foot' }) {
   if (index === 0 && !opt.numFirst) return null;
   const num = opt.num !== 'none' ? pageLabel(opt, index, total) : '';
   if (!num && !opt.head && !opt.foot) return null;
-  const font = (opt.std ? FONTS.thsarabun : FONTS.sarabun).family;
-  const band = (top: boolean, text: string, n: string) =>
-    text || n ? (
-      <div className="st-hf" style={{ [top ? 'top' : 'bottom']: 0, height: top ? opt.mt : opt.mb, left: opt.ml, right: opt.mr, fontFamily: font, justifyContent: top ? 'flex-end' : 'flex-start' }}>
-        {text && <span className="st-hf-text">{text}</span>}
-        {n && <span className="st-hf-num" style={{ textAlign: opt.numAlign }}>{n}</span>}
+  const band = (top: boolean, html: string, n: string) =>
+    html || n ? (
+      <div className="st-flow st-hf" data-std={opt.std || undefined} style={{ [top ? 'top' : 'bottom']: hfOffset(top ? opt.mt : opt.mb), left: opt.ml, right: opt.mr, fontFamily: (opt.std ? FONTS.thsarabun : FONTS.sarabun).family }}>
+        {html && <HfHtml html={html} />}
+        {n && <p className="st-hf-num" style={{ textAlign: opt.numAlign }}>{n}</p>}
       </div>
     ) : null;
   return (
     <div aria-hidden="true" style={{ position: 'absolute', inset: 0, width: W, height: H, pointerEvents: 'none' }}>
-      {band(true, opt.head, opt.num === 'top' ? num : '')}
-      {band(false, opt.foot, opt.num === 'bottom' ? num : '')}
+      {band(true, hide === 'head' ? '' : opt.head, opt.num === 'top' ? num : '')}
+      {band(false, hide === 'foot' ? '' : opt.foot, opt.num === 'bottom' ? num : '')}
     </div>
   );
 }
@@ -1245,6 +1259,7 @@ export function PageView({
   index = 0,
   wopt,
   total = 1,
+  hideHf,
   children,
 }: {
   page: Page;
@@ -1259,13 +1274,15 @@ export function PageView({
   /** ตั้งค่าหน้าของโหมดเอกสาร (หัว/ท้ายกระดาษ เลขหน้า ขอบ) */
   wopt?: WordOpt;
   total?: number;
+  /** หัว/ท้ายกระดาษที่กำลังแก้ในจอเอกสาร (ไม่วาดซ้ำ) */
+  hideHf?: 'head' | 'foot';
   children?: React.ReactNode;
 }) {
   return (
     <div data-page={page.id} style={{ position: 'relative', width: W, height: H, overflow: 'hidden', ...bgStyle(page.bg) }}>
       <BorderArt b={page.border} W={W} H={H} />
       {flow ? <FlowLayer html={flow} index={index} W={W} H={H} opt={wopt} /> : null}
-      {wopt ? <PageDeco opt={wopt} index={index} total={total} W={W} H={H} /> : null}
+      {wopt ? <PageDeco opt={wopt} index={index} total={total} W={W} H={H} hide={hideHf} /> : null}
       {page.items.map((it) => (
         <ItemView key={it.id} it={it} editText={editId === it.id ? editText : undefined} editCell={editId === it.id ? editCell : undefined} />
       ))}
