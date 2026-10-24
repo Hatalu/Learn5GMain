@@ -7,6 +7,7 @@ import { answerOf, quizPages } from '../src/lib/studio/fromQuiz';
 import { cleanGraph, compileExpr, defaultShape, graphToSvg, GRAPH_TEMPLATES, intersections, parseEquation, shapeFacts, shapeText, type GShape } from '../src/lib/studio/graph';
 import { cleanFlowHtml, cleanWordOpt, defaultWordOpt, flowIsEmpty, pageLabel } from '../src/lib/studio/flow';
 import { mathmlToOmml } from '../src/lib/studio/omml';
+import { prepTex } from '../src/lib/mathTex';
 import katex from 'katex';
 import { MATH_DEFAULTS, WORD_KEYS, assignMath, comboLabel, comboOf, conflictOf, mathKeyOf } from '../src/lib/studio/keys';
 import { FREE_SET_LIMIT, FREE_UPLOAD_MB, MEMBER_UPLOAD_MB, creatorTier, fmtMB, quotaBytes, setsUsed } from '../src/lib/game-creator/quota';
@@ -1212,6 +1213,16 @@ t('โหมดเอกสาร: รูปร่าง หัว/ท้าย�
   assert.equal(pageLabel(o, 0, 4), 'หน้า 3 จาก 6');
   assert.equal(pageLabel({ ...o, numFmt: 'thai' }, 9, 10), '๑๒');
   assert.equal(cleanWordOpt({ num: 'side', numFmt: 'x', numStart: 1.5 }).num, 'none');
+});
+
+t('สูตร: ภาษาไทยในสูตรวาดได้ (ห่อเป็นข้อความ) และ \middle ของช่องสูตร', () => {
+  const src = String.raw`A\times B=\left\lbrace a\,\middle{\vert}\,a\in Aและb\in B\right\rbrace`;
+  const p = prepTex(src);
+  assert.ok(p.includes('\\text{และ}') && p.includes('\\middle\\vert') && !p.includes('\\middle{'));
+  assert.doesNotThrow(() => katex.renderToString(p, { throwOnError: true, strict: 'ignore' }));
+  // ข้อความที่อยู่ใน \text อยู่แล้วไม่ห่อซ้ำ
+  assert.equal(prepTex(String.raw`\text{ร้อยละ}=\frac{ส่วน ทั้งหมด}{2}`), String.raw`\text{ร้อยละ}=\frac{\text{ส่วน ทั้งหมด}}{2}`);
+  assert.equal(prepTex('x+y'), 'x+y');
 });
 
 t('คัดลอกไป Word: สมการแปลงเป็น OMML ของ Word', () => {

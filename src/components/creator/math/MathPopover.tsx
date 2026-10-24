@@ -111,7 +111,98 @@ const TABS: { id: string; name: string; keys: Key[] }[] = [
 
 /** แท็บเพิ่มสำหรับระบบสร้างสื่อ (แบบ MathType) */
 const k = (show: string, ins = show, label?: string, wide?: boolean): Key => ({ show, ins, label, wide });
+/** วงเล็บแบบจานสี "Fence templates" ของ MathType: คู่ ช่วง ข้างเดียว บรา-เคต ปีกกาบน/ล่าง */
+const fence = (l: string, r: string, label: string) => k(`\\left${l}${B}\\right${r}`, `\\left${l}#0\\right${r}`, label);
 const EXTRA_TABS: { id: string; name: string; keys: Key[] }[] = [
+  {
+    id: 'fence',
+    name: 'วงเล็บ',
+    keys: [
+      fence('(', ')', 'วงเล็บ'),
+      fence('[', ']', 'วงเล็บเหลี่ยม'),
+      fence('\\lbrace ', '\\rbrace ', 'ปีกกา'),
+      fence('\\langle ', '\\rangle ', 'วงเล็บมุม'),
+      fence('|', '|', 'ค่าสัมบูรณ์'),
+      fence('\\Vert ', '\\Vert ', 'นอร์ม'),
+      fence('\\lfloor ', '\\rfloor ', 'ฟังก์ชันพื้น'),
+      fence('\\lceil ', '\\rceil ', 'ฟังก์ชันเพดาน'),
+      fence('[', ')', 'ช่วง [a, b)'),
+      fence('(', ']', 'ช่วง (a, b]'),
+      fence(']', '[', 'ช่วง ]a, b['),
+      fence('[', '[', 'ช่วง [a, b['),
+      fence(']', ']', 'ช่วง ]a, b]'),
+      fence('(', '.', 'วงเล็บซ้าย'),
+      fence('.', ')', 'วงเล็บขวา'),
+      fence('[', '.', 'เหลี่ยมซ้าย'),
+      fence('.', ']', 'เหลี่ยมขวา'),
+      fence('\\lbrace ', '.', 'ปีกกาซ้าย (แยกกรณี)'),
+      fence('.', '\\rbrace ', 'ปีกกาขวา'),
+      fence('|', '.', 'ขีดซ้าย'),
+      fence('.', '|', 'ขีดขวา (แทนค่า)'),
+      k(`\\left\\langle ${B}\\middle|${B}\\right\\rangle`, '\\left\\langle #0\\middle|#?\\right\\rangle', 'บรา-เคต'),
+      fence('\\langle ', '|', 'บรา'),
+      fence('|', '\\rangle ', 'เคต'),
+      k(`\\overbrace{${B}}^{${B}}`, '\\overbrace{#0}^{#?}', 'ปีกกาบน', true),
+      k(`\\underbrace{${B}}_{${B}}`, '\\underbrace{#0}_{#?}', 'ปีกกาล่าง', true),
+    ],
+  },
+  {
+    id: 'space',
+    name: 'ช่องว่าง/จุด',
+    keys: [
+      k('a\\,b', '\\,', 'เว้นนิด'),
+      k('a\\:b', '\\:', 'เว้นกลาง'),
+      k('a\\;b', '\\;', 'เว้นมาก'),
+      k('a\\quad b', '\\quad ', 'เว้น 1 ช่อง'),
+      k('a\\qquad b', '\\qquad ', 'เว้น 2 ช่อง'),
+      k('\\ldots', '\\ldots ', 'จุดล่าง'),
+      k('\\cdots', '\\cdots ', 'จุดกลาง'),
+      k('\\vdots', '\\vdots ', 'จุดตั้ง'),
+      k('\\ddots', '\\ddots ', 'จุดเฉียง'),
+      k('\\text{abc}', '\\text{#0}', 'ข้อความ/ภาษาไทย', true),
+    ],
+  },
+  {
+    id: 'emb',
+    name: 'ตกแต่ง',
+    keys: [
+      k(`\\dot{${B}}`, '\\dot{#0}', 'จุดบน'),
+      k(`\\ddot{${B}}`, '\\ddot{#0}', 'สองจุด'),
+      k(`${B}'`, "#0'", 'ไพรม์'),
+      k(`${B}''`, "#0''", 'ดับเบิลไพรม์'),
+      k(`\\hat{${B}}`, '\\hat{#0}', 'หมวก'),
+      k(`\\check{${B}}`, '\\check{#0}', 'หมวกกลับ'),
+      k(`\\tilde{${B}}`, '\\tilde{#0}', 'ตัวหนอน'),
+      k(`\\bar{${B}}`, '\\bar{#0}', 'ขีดบน'),
+      k(`\\vec{${B}}`, '\\vec{#0}', 'ลูกศรบน'),
+      k(`\\overleftarrow{${B}}`, '\\overleftarrow{#0}', 'ลูกศรซ้ายบน'),
+      k(`\\overrightarrow{${B}}`, '\\overrightarrow{#0}', 'ลูกศรขวาบน'),
+      k(`\\overleftrightarrow{${B}}`, '\\overleftrightarrow{#0}', 'ลูกศรสองทาง'),
+      k(`\\overline{${B}}`, '\\overline{#0}', 'เส้นบน'),
+      k(`\\underline{${B}}`, '\\underline{#0}', 'เส้นใต้'),
+      k(`\\widehat{${B}}`, '\\widehat{#0}', 'หมวกกว้าง'),
+      k(`\\cancel{${B}}`, '\\cancel{#0}', 'ขีดฆ่า'),
+    ],
+  },
+  {
+    id: 'rel',
+    name: 'ความสัมพันธ์',
+    keys: ['<', '>', '\\le', '\\ge', '\\ll', '\\gg', '\\neq', '\\approx', '\\cong', '\\equiv', '\\sim', '\\simeq', '\\propto', '\\doteq', '\\prec', '\\succ'].map((x) => k(x, `${x} `)),
+  },
+  {
+    id: 'op',
+    name: 'ตัวดำเนินการ',
+    keys: ['\\pm', '\\mp', '\\times', '\\div', '\\cdot', '\\circ', '\\ast', '\\star', '\\bullet', '\\oplus', '\\otimes', '\\odot', '\\setminus', '\\wr'].map((x) => k(x, `${x} `)),
+  },
+  {
+    id: 'arrow',
+    name: 'ลูกศร',
+    keys: [
+      ...['\\to', '\\leftarrow', '\\leftrightarrow', '\\Rightarrow', '\\Leftarrow', '\\Leftrightarrow', '\\uparrow', '\\downarrow', '\\updownarrow', '\\mapsto', '\\longrightarrow', '\\longleftrightarrow', '\\rightleftharpoons', '\\nearrow', '\\searrow'].map((x) => k(x, `${x} `)),
+      k(`\\xrightarrow[${B}]{${B}}`, '\\xrightarrow[#?]{#0}', 'ลูกศรมีป้าย', true),
+      k(`\\xleftarrow[${B}]{${B}}`, '\\xleftarrow[#?]{#0}', 'ลูกศรซ้ายมีป้าย', true),
+    ],
+  },
   {
     id: 'calc',
     name: 'แคลคูลัส',
@@ -303,6 +394,8 @@ export function MathPopover({
           /* รุ่นเก่า */
         }
         el.smartFence = true;
+        // กดเว้นวรรคในสูตรได้แบบ MathType (ปกติช่องสูตรไม่รับเว้นวรรค) ภาษาไทยที่พิมพ์ลงไปแสดงเป็นข้อความ (prepTex)
+        (el as unknown as { mathModeSpace: string }).mathModeSpace = '\\:';
         el.value = initial;
         el.addEventListener('input', () => setEmpty(!el.value.trim()));
         // capture: แป้นลัดแม่แบบมาก่อนแป้นลัดในตัวของช่องสูตร

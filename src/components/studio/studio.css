@@ -2929,3 +2929,342 @@ html.dark .st-wwarn {
 .st-canvas {
   overflow-anchor: none;
 }
+
+/* ---------------- ริบบอนแบบ Microsoft Word (โหมดเอกสาร) ---------------- */
+.st-ribbon {
+  position: relative;
+  z-index: 6;
+  flex-shrink: 0;
+  background: var(--st-panel);
+  border-bottom: 1.5px solid var(--st-line);
+  user-select: none;
+}
+.st-rtabs {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  padding: 4px 8px 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.st-rtabs::-webkit-scrollbar {
+  display: none;
+}
+.st-rtab {
+  position: relative;
+  flex-shrink: 0;
+  padding: 7px 12px 8px;
+  border-radius: 8px 8px 0 0;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--st-muted);
+  white-space: nowrap;
+  transition: background 0.12s, color 0.12s;
+}
+.st-rtab:hover {
+  background: var(--st-soft);
+  color: var(--st-ink);
+}
+/* แท็บที่เลือก: ตัวหนังสือสีหลัก ขีดล่างหนาแบบ Word */
+.st-rtab[data-on='true'] {
+  color: var(--st-acc-ink);
+}
+.st-rtab[data-on='true']::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 0;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--st-acc);
+}
+/* แท็บตามบริบท (เค้าโครงตาราง / รูปแบบรูปร่าง) สีต่างแบบ Word */
+.st-rtab-ctx {
+  color: #c2410c;
+  background: #fff7ed;
+}
+.st-rtab-ctx[data-on='true'] {
+  color: #c2410c;
+}
+.st-rtab-ctx[data-on='true']::after {
+  background: #f97316;
+}
+.st-rhf {
+  color: #fff;
+  background: #7c3aed;
+  border-radius: 8px;
+  margin-bottom: 4px;
+  padding: 5px 12px;
+}
+.st-rhf:hover {
+  background: #6d28d9;
+  color: #fff;
+}
+.st-rhint {
+  flex-shrink: 0;
+  margin: 0 6px 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #ede9fe;
+  color: #5b21b6;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.st-rmin {
+  padding: 6px 8px;
+}
+.st-rbody {
+  display: flex;
+  align-items: stretch;
+  min-height: 96px;
+  padding: 6px 4px 0;
+  border-top: 1.5px solid var(--st-line);
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.st-rgroup {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  padding: 0 8px;
+  border-right: 1.5px solid var(--st-line);
+}
+.st-rgroup:last-child {
+  border-right: 0;
+}
+.st-rgroup-body {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 3px;
+}
+.st-rgroup-label {
+  padding: 3px 0 5px;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--st-muted);
+  white-space: nowrap;
+}
+.st-rcol {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.st-rrow {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.st-rbig,
+.st-rbtn {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 8px;
+  border: 1.5px solid transparent;
+  color: var(--st-ink);
+  transition: background 0.12s, transform 0.12s;
+}
+.st-rbig {
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 3px;
+  min-width: 58px;
+  max-width: 84px;
+  min-height: 66px;
+  padding: 5px 6px 4px;
+}
+.st-rbig-ic {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: var(--st-acc-soft);
+  color: var(--st-acc-ink);
+}
+.st-rbig-ic svg {
+  width: 20px;
+  height: 20px;
+}
+.st-rbig-tx {
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.15;
+  text-align: center;
+}
+.st-rbtn {
+  gap: 5px;
+  height: 28px;
+  padding: 0 6px;
+  font-size: 12.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.st-rbtn svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.st-rbtn .st-rcaret,
+.st-rbig .st-rcaret {
+  width: 11px;
+  height: 11px;
+  opacity: 0.65;
+}
+.st-rbig .st-rcaret {
+  margin-top: -2px;
+}
+.st-rbig:hover,
+.st-rbtn:hover {
+  background: var(--st-soft);
+  border-color: var(--st-line);
+}
+.st-rbig:active,
+.st-rbtn:active {
+  transform: translateY(1px);
+}
+.st-rbig[data-on='true'],
+.st-rbtn[data-on='true'] {
+  background: var(--st-acc-soft);
+  border-color: var(--st-acc-line);
+  color: var(--st-acc-ink);
+}
+.st-raa {
+  font-size: 13px;
+  font-weight: 800;
+}
+.st-rsel {
+  height: 28px;
+  padding: 0 4px;
+  border-radius: 7px;
+  border: 1.5px solid var(--st-line);
+  background: var(--st-card);
+  color: var(--st-ink);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.st-rsel-font {
+  width: 132px;
+}
+.st-rstyles {
+  display: flex;
+  gap: 4px;
+  max-width: 420px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  padding-bottom: 2px;
+}
+.st-rstyles button {
+  flex-shrink: 0;
+  min-width: 74px;
+  height: 58px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: 1.5px solid var(--st-line);
+  background: var(--st-card);
+  text-align: left;
+}
+.st-rstyles button:hover {
+  border-color: var(--st-acc-line);
+}
+.st-rstyles button[data-on='true'] {
+  border-color: var(--st-acc);
+  box-shadow: inset 0 0 0 1px var(--st-acc);
+}
+.st-robj {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 8px;
+}
+/* ป๊อปอัปของปุ่มบนริบบอน (แกลเลอรี/ตัวเลือก) */
+.st-rpop {
+  position: fixed;
+  z-index: 80;
+  max-height: min(70vh, 520px);
+  overflow: auto;
+  padding: 10px;
+  border-radius: 14px;
+  border: 1.5px solid var(--st-line);
+  border-bottom-width: 3px;
+  background: var(--st-card);
+  color: var(--st-ink);
+  box-shadow: 0 8px 22px rgba(20, 16, 40, 0.18);
+}
+.st-rpop-h {
+  margin: 6px 0 6px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--st-muted);
+}
+.st-rpop-h:first-child {
+  margin-top: 0;
+}
+.st-rlist {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.st-rlist button {
+  padding: 7px 10px;
+  border-radius: 8px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 700;
+}
+.st-rlist button:hover,
+.st-rlist button[data-on='true'] {
+  background: var(--st-acc-soft);
+  color: var(--st-acc-ink);
+}
+.st-rgrid3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+.st-rgrid3 button {
+  padding: 8px 4px;
+  border-radius: 8px;
+  border: 1.5px solid var(--st-line);
+  font-size: 13px;
+  font-weight: 700;
+}
+.st-rgrid3 button:hover {
+  background: var(--st-acc-soft);
+}
+.st-rform .st-chips {
+  margin-bottom: 4px;
+}
+.st-rstats {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 14px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.st-rstats b {
+  text-align: right;
+  color: var(--st-acc-ink);
+}
+.st-ribbon[data-min] .st-rtabs {
+  padding-bottom: 2px;
+}
+@media (max-width: 640px) {
+  .st-rbody {
+    min-height: 88px;
+  }
+  .st-rbig {
+    min-width: 52px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .st-rbig,
+  .st-rbtn,
+  .st-rtab {
+    transition: none;
+  }
+}

@@ -2,6 +2,7 @@
 
 import katex from 'katex';
 import { mathmlToOmml } from '@/lib/studio/omml';
+import { prepTex } from '@/lib/mathTex';
 import { WORD_SINGLE } from '@/lib/studio/flow';
 import { figureKey, figurePng } from './flowDom';
 
@@ -71,7 +72,7 @@ export function wordClipboardHtml(root: HTMLElement, range: Range): string | nul
       const size = pt(parseFloat(getComputedStyle(el).fontSize));
       let omml = '';
       try {
-        omml = mathmlToOmml(katex.renderToString(el.dataset.tex || '', { output: 'mathml', throwOnError: false, strict: 'ignore' }));
+        omml = mathmlToOmml(katex.renderToString(prepTex(el.dataset.tex || ''), { output: 'mathml', throwOnError: false, strict: 'ignore' }));
       } catch {
         omml = '';
       }

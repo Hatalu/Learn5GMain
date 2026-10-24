@@ -4,6 +4,7 @@ import React, { useMemo } from 'react';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import type { Rich } from '@/lib/game-creator/types';
+import { prepTex } from '@/lib/mathTex';
 
 const cache = new Map<string, string>();
 
@@ -15,7 +16,7 @@ export function texToHtml(tex: string, display = false, big = true): string {
   let html: string;
   try {
     // big: เศษส่วนตัวใหญ่อ่านง่าย (แบบ \dfrac) แม้อยู่กลางประโยค
-    html = katex.renderToString(big ? `\\displaystyle ${tex}` : tex, { throwOnError: false, displayMode: display, trust: false, strict: 'ignore', maxSize: 20, maxExpand: 200, output: 'html' });
+    html = katex.renderToString(big ? `\\displaystyle ${prepTex(tex)}` : prepTex(tex), { throwOnError: false, displayMode: display, trust: false, strict: 'ignore', maxSize: 20, maxExpand: 200, output: 'html' });
   } catch {
     html = '';
   }

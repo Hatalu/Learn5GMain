@@ -3,30 +3,18 @@
 import React, { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, forwardRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  AlignCenter,
-  AlignJustify,
-  AlignLeft,
-  AlignRight,
-  Bold,
-  Highlighter,
-  Italic,
-  List,
-  ListOrdered,
   Pencil,
   Trash2,
-  Type,
-  Underline,
-  X,
 } from 'lucide-react';
 import { FLOW_GAP, WORD_SINGLE, cleanFlowHtml, flowIsEmpty, paginate, type WordOpt } from '@/lib/studio/flow';
 import { cleanSrc, type Item, type Page } from '@/lib/studio/doc';
 import { cleanGraph, type GraphSpec } from '@/lib/studio/graph';
-import { FONTS } from './fonts';
 import { wordClipboardHtml } from './wordCopy';
 import { ItemView, PageView, flowBoxStyle, hfOffset } from './render';
 import { hydrateFlow, isLineShape } from './flowDom';
 import { ColorPop } from './ui';
-import { SIZES, ptToPx, pxToPt, WordPanel, WordRail, type TableOp, type WordApi, type WordPanelId } from './WordPanels';
+import { SIZES, ptToPx, pxToPt, WordPanel, type TableOp, type WordApi, type WordPanelId } from './WordPanels';
+import { WordRibbon } from './WordRibbon';
 import { WORD_KEYS, comboOf, type WordKeyId } from '@/lib/studio/keys';
 
 export interface WordHandle {
@@ -104,7 +92,6 @@ export const WordEditor = forwardRef<
   const [panel, setPanel] = useState<WordPanelId | null>(null);
   const [findFocus, setFindFocus] = useState(0);
   useEffect(() => {
-    if (window.matchMedia('(min-width: 1024px)').matches) setPanel('home');
   }, []);
   const zoomRef = useRef(zoom);
   zoomRef.current = zoom;
@@ -862,147 +849,6 @@ export const WordEditor = forwardRef<
     return b?.tagName.toLowerCase() ?? 'p';
   })();
 
-  const B = ({ on, title, children, act }: { on?: boolean; title: string; children: React.ReactNode; act: () => void }) => (
-    <button type="button" className="st-tb" data-on={on} title={title} aria-label={title} onMouseDown={(e) => e.preventDefault()} onClick={act}>
-      {children}
-    </button>
-  );
-
-  const bar = !readOnly && (
-        <div className="st-insp st-wordbar" role="toolbar" aria-label="จัดรูปแบบเอกสาร" onMouseDown={(e) => (e.target as HTMLElement).tagName !== 'SELECT' && e.preventDefault()}>
-          <select className="st-wsel" value={['h1', 'h2', 'h3', 'blockquote'].includes(blockTag) ? blockTag : 'p'} onChange={(e) => cmd('formatBlock', e.target.value)} aria-label="รูปแบบย่อหน้า">
-            <option value="p">ข้อความปกติ</option>
-            <option value="h1">หัวเรื่อง 1</option>
-            <option value="h2">หัวเรื่อง 2</option>
-            <option value="h3">หัวเรื่อง 3</option>
-            <option value="blockquote">กรอบเน้น</option>
-          </select>
-          <select className="st-wsel" defaultValue="" onChange={(e) => e.target.value && cmd('fontName', e.target.value)} aria-label="ฟอนต์">
-            <option value="">ฟอนต์</option>
-            {Object.values(FONTS).map((f) => (
-              <option key={f.label} value={f.family}>
-                {f.label}
-              </option>
-            ))}
-          </select>
-          <select className="st-wsel st-wsel-size" value={String(sizeNow)} onChange={(e) => setSize(Number(e.target.value))} aria-label="ขนาดตัวอักษร (pt)" title="ขนาดตัวอักษร (pt แบบ Word)">
-            {!SIZES.includes(sizeNow) && <option value={sizeNow}>{sizeNow}</option>}
-            {SIZES.map((z) => (
-              <option key={z} value={z}>
-                {z}
-              </option>
-            ))}
-          </select>
-          <span className="st-insp-sep" />
-          <B title="ตัวหนา (Ctrl+B)" act={() => cmd('bold')} on={docState('bold')}>
-            <Bold className="w-4 h-4" />
-          </B>
-          <B title="ตัวเอียง (Ctrl+I)" act={() => cmd('italic')} on={docState('italic')}>
-            <Italic className="w-4 h-4" />
-          </B>
-          <B title="ขีดเส้นใต้ (Ctrl+U)" act={() => cmd('underline')} on={docState('underline')}>
-            <Underline className="w-4 h-4" />
-          </B>
-          <span onMouseDown={keep}>
-            <ColorPop title="สีตัวอักษร" value="#1f1b36" onChange={(c) => cmd('foreColor', c)} icon={<Type className="w-4 h-4" />} />
-          </span>
-          <span onMouseDown={keep}>
-            <ColorPop title="ไฮไลต์" value="#fff3c4" onChange={(c) => cmd('hiliteColor', c)} icon={<Highlighter className="w-4 h-4" />} />
-          </span>
-          <span className="st-insp-sep" />
-          <B title="ชิดซ้าย (Ctrl+L)" act={() => cmd('justifyLeft')}>
-            <AlignLeft className="w-4 h-4" />
-          </B>
-          <B title="กึ่งกลาง (Ctrl+E)" act={() => cmd('justifyCenter')}>
-            <AlignCenter className="w-4 h-4" />
-          </B>
-          <B title="ชิดขวา (Ctrl+R)" act={() => cmd('justifyRight')}>
-            <AlignRight className="w-4 h-4" />
-          </B>
-          <B title="เต็มบรรทัด (Ctrl+J)" act={() => cmd('justifyFull')}>
-            <AlignJustify className="w-4 h-4" />
-          </B>
-          <B title="สัญลักษณ์แสดงหัวข้อ (Ctrl+Shift+L)" act={() => cmd('insertUnorderedList')}>
-            <List className="w-4 h-4" />
-          </B>
-          <B title="ลำดับเลข" act={() => cmd('insertOrderedList')}>
-            <ListOrdered className="w-4 h-4" />
-          </B>
-          <input ref={fileIn} type="file" accept="image/*" hidden onChange={(e) => (addImage(e.target.files?.[0]), (e.target.value = ''))} />
-          {hf && (
-            <>
-              <span className="st-insp-sep" />
-              <span className="st-insp-tag st-insp-draw">กำลังแก้{hf.part === 'head' ? 'หัวกระดาษ' : 'ท้ายกระดาษ'}</span>
-              <button type="button" className="st-tb st-tb-wide st-hf-close" onMouseDown={(e) => e.preventDefault()} onClick={closeHf}>
-                <X className="w-4 h-4" /> ปิดหัวกระดาษและท้ายกระดาษ
-              </button>
-            </>
-          )}
-          {draw && <span className="st-insp-tag st-insp-draw">ลากบนกระดาษเพื่อวาดรูปร่าง (Esc ยกเลิก)</span>}
-          {active && (
-            <>
-              <span className="st-insp-sep" />
-              <span className="st-insp-tag">{active.dataset.tex !== undefined ? 'สมการ' : active.dataset.graph ? 'กราฟ' : active.dataset.shape ? 'รูปร่าง' : 'รูปภาพ'}</span>
-              {active.dataset.shape && (
-                <>
-                  {!isLineShape(active.dataset.shape) && (
-                    <ColorPop title="สีพื้นรูปร่าง" value={active.dataset.fill === 'none' ? '#ffffff' : active.dataset.fill || '#bfdbfe'} onChange={(c) => shapeAttr('fill', c)} icon={<span className="st-shape-sw" style={{ background: active.dataset.fill === 'none' ? 'transparent' : active.dataset.fill }} />} />
-                  )}
-                  <ColorPop title="สีเส้นขอบ" value={active.dataset.stroke || '#1f1b36'} onChange={(c) => shapeAttr('stroke', c)} icon={<span className="st-shape-sw st-shape-sw-line" style={{ borderColor: active.dataset.stroke }} />} />
-                  <select className="st-wsel" value={active.dataset.sw || '2'} onChange={(e) => shapeAttr('sw', e.target.value)} aria-label="ความหนาเส้น" title="ความหนาเส้น">
-                    {['0', '1', '2', '3', '4', '6', '8', '12'].map((w) => (
-                      <option key={w} value={w}>
-                        {w === '0' ? 'ไม่มีเส้น' : `เส้น ${w}`}
-                      </option>
-                    ))}
-                  </select>
-                  {!isLineShape(active.dataset.shape) && (
-                    <button type="button" className="st-tb st-tb-wide" onMouseDown={(e) => e.preventDefault()} onClick={() => shapeAttr('fill', 'none')}>
-                      ไม่มีสีพื้น
-                    </button>
-                  )}
-                </>
-              )}
-              {(active.dataset.tex !== undefined || active.dataset.graph) && (
-                <button type="button" className="st-tb st-tb-wide" onMouseDown={(e) => e.preventDefault()} onClick={editActive}>
-                  <Pencil className="w-4 h-4" /> แก้ไข
-                </button>
-              )}
-              {active.dataset.tex === undefined && (
-                <select className="st-wsel" value={active.dataset.wrap || ''} onChange={(e) => setWrap(e.target.value)} aria-label="การจัดวางกับข้อความ" title="การจัดวางกับข้อความ">
-                  <option value="">อยู่ในบรรทัดข้อความ</option>
-                  <option value="left">ข้อความล้อม (ชิดซ้าย)</option>
-                  <option value="right">ข้อความล้อม (ชิดขวา)</option>
-                  <option value="behind">อยู่หลังข้อความ</option>
-                  <option value="front">อยู่หน้าข้อความ</option>
-                </select>
-              )}
-              {active.dataset.tex === undefined &&
-                !active.dataset.shape &&
-                [40, 60, 80, 100].map((w) => (
-                  <button
-                    key={w}
-                    type="button"
-                    className="st-tb st-tb-wide"
-                    data-on={active.style.width === `${w}%`}
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => {
-                      active.style.width = `${w}%`;
-                      changed();
-                      force((x) => x + 1);
-                    }}
-                  >
-                    {w}%
-                  </button>
-                ))}
-              <B title="ลบ (Delete)" act={removeActive}>
-                <Trash2 className="w-4 h-4" />
-              </B>
-            </>
-          )}
-        </div>
-  );
-
   const api: WordApi = {
     cmd,
     insertHtml,
@@ -1072,13 +918,107 @@ export const WordEditor = forwardRef<
       keep();
     },
     openFind: () => openPanel('find'),
+    openKeys: () => openPanel('keys'),
+    toc: () => {
+      // สารบัญจากหัวเรื่อง 1-3 พร้อมเลขหน้า ณ ตอนกด (แบบกดสร้างใหม่ ไม่ใช่ฟิลด์อัปเดตเองแบบ Word)
+      const root = ed.current;
+      if (!root) return;
+      const hs = Array.from(root.querySelectorAll<HTMLElement>('h1, h2, h3')).filter((h) => h.innerText.trim());
+      if (!hs.length) return window.alert('ยังไม่มีหัวเรื่อง: ตั้งย่อหน้าเป็น หัวเรื่อง 1-3 (แท็บหน้าแรก > สไตล์) ก่อน แล้วกดสารบัญอีกครั้ง');
+      const rows = hs.map((h) => {
+        const t = h.innerText.trim().slice(0, 80);
+        const pg = Math.floor(rel(h).y / P) + wopt.numStart;
+        return `<p style="margin-left: ${(+h.tagName[1] - 1) * 36}px">${esc(t)} ${'.'.repeat(Math.max(6, 70 - t.length))} ${pg}</p>`;
+      });
+      insertHtml(`<p style="text-align: center"><b>สารบัญ</b></p>${rows.join('')}<p><br></p>`);
+    },
   };
-  const side = !readOnly && (
+  const B = ({ on, title, children, act }: { on?: boolean; title: string; children: React.ReactNode; act: () => void }) => (
+    <button type="button" className="st-tb" data-on={on} title={title} aria-label={title} onMouseDown={(e) => e.preventDefault()} onClick={act}>
+      {children}
+    </button>
+  );
+
+  /** เครื่องมือของชิ้นที่เลือก: แท็บตามบริบทบนริบบอน (แบบ Word: รูปแบบรูปร่าง / รูปแบบรูปภาพ) */
+  const objectTools = active ? (
     <>
-      <WordRail panel={panel} onPick={(p) => (p ? openPanel(p) : setPanel(null))} />
-      {panel && <WordPanel id={panel} api={api} onClose={() => setPanel(null)} layoutExtra={layoutExtra} findFocus={findFocus} />}
+    {active.dataset.shape && (
+      <>
+        {!isLineShape(active.dataset.shape) && (
+          <ColorPop title="สีพื้นรูปร่าง" value={active.dataset.fill === 'none' ? '#ffffff' : active.dataset.fill || '#bfdbfe'} onChange={(c) => shapeAttr('fill', c)} icon={<span className="st-shape-sw" style={{ background: active.dataset.fill === 'none' ? 'transparent' : active.dataset.fill }} />} />
+        )}
+        <ColorPop title="สีเส้นขอบ" value={active.dataset.stroke || '#1f1b36'} onChange={(c) => shapeAttr('stroke', c)} icon={<span className="st-shape-sw st-shape-sw-line" style={{ borderColor: active.dataset.stroke }} />} />
+        <select className="st-wsel" value={active.dataset.sw || '2'} onChange={(e) => shapeAttr('sw', e.target.value)} aria-label="ความหนาเส้น" title="ความหนาเส้น">
+          {['0', '1', '2', '3', '4', '6', '8', '12'].map((w) => (
+            <option key={w} value={w}>
+              {w === '0' ? 'ไม่มีเส้น' : `เส้น ${w}`}
+            </option>
+          ))}
+        </select>
+        {!isLineShape(active.dataset.shape) && (
+          <button type="button" className="st-tb st-tb-wide" onMouseDown={(e) => e.preventDefault()} onClick={() => shapeAttr('fill', 'none')}>
+            ไม่มีสีพื้น
+          </button>
+        )}
+      </>
+    )}
+    {(active.dataset.tex !== undefined || active.dataset.graph) && (
+      <button type="button" className="st-tb st-tb-wide" onMouseDown={(e) => e.preventDefault()} onClick={editActive}>
+        <Pencil className="w-4 h-4" /> แก้ไข
+      </button>
+    )}
+    {active.dataset.tex === undefined && (
+      <select className="st-wsel" value={active.dataset.wrap || ''} onChange={(e) => setWrap(e.target.value)} aria-label="การจัดวางกับข้อความ" title="การจัดวางกับข้อความ">
+        <option value="">อยู่ในบรรทัดข้อความ</option>
+        <option value="left">ข้อความล้อม (ชิดซ้าย)</option>
+        <option value="right">ข้อความล้อม (ชิดขวา)</option>
+        <option value="behind">อยู่หลังข้อความ</option>
+        <option value="front">อยู่หน้าข้อความ</option>
+      </select>
+    )}
+    {active.dataset.tex === undefined &&
+      !active.dataset.shape &&
+      [40, 60, 80, 100].map((w) => (
+        <button
+          key={w}
+          type="button"
+          className="st-tb st-tb-wide"
+          data-on={active.style.width === `${w}%`}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => {
+            active.style.width = `${w}%`;
+            changed();
+            force((x) => x + 1);
+          }}
+        >
+          {w}%
+        </button>
+      ))}
+    <B title="ลบ (Delete)" act={removeActive}>
+      <Trash2 className="w-4 h-4" />
+    </B>
+    </>
+  ) : null;
+  const bar = !readOnly && (
+    <>
+      <WordRibbon
+        api={api}
+        sizeNow={sizeNow}
+        blockTag={blockTag}
+        isOn={docState}
+        inTable={!!curCell()}
+        object={objectTools}
+        objectLabel={active ? (active.dataset.tex !== undefined ? 'เครื่องมือสมการ' : active.dataset.graph ? 'รูปแบบกราฟ' : active.dataset.shape ? 'รูปแบบรูปร่าง' : 'รูปแบบรูปภาพ') : ''}
+        layoutExtra={layoutExtra}
+        hf={hf?.part ?? null}
+        closeHf={closeHf}
+        drawing={draw}
+      />
+      <input ref={fileIn} type="file" accept="image/*" hidden onChange={(e) => (addImage(e.target.files?.[0]), (e.target.value = ''))} />
     </>
   );
+
+  const side = !readOnly && panel && <WordPanel id={panel} api={api} onClose={() => setPanel(null)} findFocus={findFocus} />;
 
   return (
     <>
