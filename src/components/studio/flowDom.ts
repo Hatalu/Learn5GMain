@@ -59,6 +59,9 @@ export function hydrateFlow(root: HTMLElement) {
       el.dataset.done = t;
     }
     el.contentEditable = 'false';
+    // ข้อความไทยในสูตรใช้ฟอนต์เดียวกับข้อความรอบๆ (ไม่ใช้ฟอนต์สำรองของ KaTeX ที่ใหญ่และคนละแบบ) ไม่ถูกบันทึก
+    const fam = el.parentElement ? getComputedStyle(el.parentElement).fontFamily : '';
+    if (fam && el.style.getPropertyValue('--tf') !== fam) el.style.setProperty('--tf', fam);
   });
   root.querySelectorAll<HTMLElement>('figure[data-graph]').forEach((el) => {
     const g = el.dataset.graph || '';

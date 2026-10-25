@@ -340,6 +340,12 @@ export function KeyFace({ k }: { k: Key }) {
   );
 }
 
+/**
+ * ยกกำลัง/ตัวห้อย ติดกับตัวที่อยู่ก่อนเคอร์เซอร์ (ตัวอักษร ตัวเลข หรือวงเล็บทั้งก้อน) แบบ MathType
+ * #@ ของ MathLive = ส่วนที่เลือก หรือถ้าไม่ได้เลือก = ตัวก่อนหน้า (#0 จะสร้างช่องว่างใหม่ให้กรอกฐานเอง)
+ */
+const implicitBase = (ins: string) => ins.replace(/^#0(?=[\^_])/, '#@');
+
 export function MathPopover({
   initial,
   editing,
@@ -414,7 +420,7 @@ export function MathPopover({
             if (!ins) return;
             e.preventDefault();
             e.stopPropagation();
-            el.executeCommand(['insert', ins, { focus: true, feedback: false, selectionMode: 'placeholder', format: 'latex' }]);
+            el.executeCommand(['insert', implicitBase(ins), { focus: true, feedback: false, selectionMode: 'placeholder', format: 'latex' }]);
             setEmpty(!el.value.trim());
           },
           true
@@ -466,7 +472,7 @@ export function MathPopover({
     const el = mf.current;
     if (!el) return;
     gsfx.tap();
-    el.executeCommand(['insert', k.ins, { focus: true, feedback: false, selectionMode: 'placeholder', format: 'latex' }]);
+    el.executeCommand(['insert', implicitBase(k.ins), { focus: true, feedback: false, selectionMode: 'placeholder', format: 'latex' }]);
     setEmpty(!el.value.trim());
   };
   const cmd = (c: string) => {

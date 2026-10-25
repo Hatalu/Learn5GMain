@@ -2165,6 +2165,11 @@ html.dark .st-quizlink {
 .st-flow span[data-tex] .katex {
   font-size: 1em;
 }
+/* ภาษาไทยในสูตร (\text / อักษรนอกละติน) ใช้ฟอนต์ของข้อความรอบๆ (--tf ตั้งตอนวาดใน hydrateFlow) */
+.st-flow span[data-tex] .katex .text,
+.st-flow span[data-tex] .katex .brahmic_fallback {
+  font-family: var(--tf, inherit);
+}
 /* เอกสารมาตรฐาน Word: 16pt ระยะบรรทัดเดี่ยวแบบ Word ไม่มีช่องหลังย่อหน้า */
 .st-flow[data-std] {
   font-size: 16pt;

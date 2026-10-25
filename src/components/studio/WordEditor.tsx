@@ -271,10 +271,25 @@ export const WordEditor = forwardRef<
       s.addRange(r);
     }
   };
+  /** ช่องเลขหน้าในส่วนที่คลุมอยู่ (execCommand ข้ามชิ้นที่แก้ไม่ได้) ใส่สไตล์ให้เอง */
+  const styleFields = (f: (el: HTMLElement) => void) => {
+    const s = window.getSelection();
+    if (!s || !s.rangeCount || s.isCollapsed) return;
+    const r = s.getRangeAt(0);
+    cur()
+      ?.querySelectorAll<HTMLElement>('span[data-pg]')
+      .forEach((el) => r.intersectsNode(el) && f(el));
+  };
   const cmd = (c: string, v?: string) => {
     restore();
     document.execCommand('styleWithCSS', false, 'true');
     document.execCommand(c, false, v);
+    styleFields((el) => {
+      if (c === 'bold') el.style.fontWeight = el.style.fontWeight === 'bold' ? '' : 'bold';
+      else if (c === 'italic') el.style.fontStyle = el.style.fontStyle === 'italic' ? '' : 'italic';
+      else if (c === 'underline') el.style.textDecoration = el.style.textDecoration === 'underline' ? '' : 'underline';
+      else if (c === 'foreColor' && v) el.style.color = v;
+    });
     keep();
     changed();
     force((x) => x + 1);
@@ -310,6 +325,7 @@ export const WordEditor = forwardRef<
           el.removeAttribute('face');
           el.style.fontFamily = fam;
         });
+      styleFields((el) => (el.style.fontFamily = fam));
     }
     keep();
     changed();
@@ -339,6 +355,7 @@ export const WordEditor = forwardRef<
         el.removeAttribute('size');
         el.style.fontSize = px;
       });
+      styleFields((el) => (el.style.fontSize = px));
     }
     keep();
     changed();

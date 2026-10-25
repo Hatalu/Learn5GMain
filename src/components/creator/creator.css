@@ -341,6 +341,11 @@
 .l5g-tabs::-webkit-scrollbar {
   display: none;
 }
+/* หน้าต่างใส่สูตร: หมวดเยอะ ขึ้นบรรทัดใหม่ให้เห็นครบ (แถบเลื่อนซ่อนอยู่ เมาส์เลื่อนแนวนอนไม่ได้) */
+.l5g-math-sheet .l5g-tabs {
+  flex-wrap: wrap;
+  overflow: visible;
+}
 .l5g-tab {
   flex: none;
   padding: 6px 14px;

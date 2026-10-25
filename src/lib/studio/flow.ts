@@ -268,7 +268,9 @@ export function cleanFlowHtml(html: string, cleanSrc: SrcCheck): string {
       continue;
     }
     if (pg && tag === 'span') {
-      out.push(PAGE_FIELD);
+      // ช่องเลขหน้าเก็บสไตล์ของตัวเองได้ (ฟอนต์ ขนาด ตัวหนา สี) แบบเลขหน้าใน Word
+      const st = attrs.find((x) => x.startsWith('style='));
+      out.push(st ? PAGE_FIELD.replace('contenteditable', `${st} contenteditable`) : PAGE_FIELD);
       if (!m[0].endsWith('/>')) startSkip(tag);
       continue;
     }
@@ -321,6 +323,37 @@ export function paginate(root: HTMLElement, pageH: number, gap: number, my: numb
     else units.push(el);
   }
   for (const u of units) u.style.marginTop = '';
+  // ทางเร็ว: อ่านตำแหน่งทุกย่อหน้าครั้งเดียว แล้วคิดระยะดันสะสมเอง
+  // (ทางเดิมอ่าน-เขียนสลับทีละย่อหน้า เบราว์เซอร์ต้องจัดหน้าใหม่ทั้งเอกสารทุกย่อหน้า เอกสารยาวพิมพ์แล้วกระตุก)
+  const rects = units.map((u) => u.getBoundingClientRect());
+  const m0 = units.map((u) => parseFloat(getComputedStyle(u).marginTop) || 0);
+  const plan: number[] = [];
+  const want: number[] = [];
+  {
+    let shift = 0;
+    let force = false;
+    let end = my;
+    units.forEach((u, i) => {
+      const t = (rects[i].top - top0) / scale + shift;
+      const h = rects[i].height / scale;
+      const k = Math.max(0, Math.floor(t / P));
+      const cTop = k * P + my;
+      const cBot = k * P + pageH - mb;
+      let push = 0;
+      if (force) push = (k + 1) * P + my - t;
+      else if (t < cTop - 0.5) push = cTop - t;
+      else if (t + h > cBot + 0.5 && h <= pageH - my - mb) push = (k + 1) * P + my - t;
+      force = u.dataset.pb === '1';
+      plan[i] = push > 0.5 ? push : 0;
+      shift += plan[i];
+      want[i] = t + plan[i];
+      end = want[i] + h;
+    });
+    units.forEach((u, i) => plan[i] && (u.style.marginTop = `${plan[i] + m0[i]}px`));
+    // ตรวจครั้งเดียว: ตรงตามที่คิด (ไม่มี margin ยุบรวมกันแปลกๆ) ก็จบ
+    if (units.every((u, i) => !plan[i] || Math.abs((u.getBoundingClientRect().top - top0) / scale - want[i]) < 1.5)) return Math.max(1, Math.ceil((end + mb) / P), Math.ceil(free / P));
+    for (const u of units) u.style.marginTop = '';
+  }
   let forceNext = false;
   let last = my;
   for (const u of units) {

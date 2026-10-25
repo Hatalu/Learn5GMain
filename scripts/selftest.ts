@@ -1218,6 +1218,7 @@ t('โหมดเอกสาร: รูปร่าง หัว/ท้าย�
   assert.ok(hh.startsWith('<p>คณิต</p>') && hh.includes(PAGE_FIELD) && withPageField(wo, 'foot') === '');
   assert.equal(withPageField({ ...wo, head: hh }, 'head'), hh, 'ไม่ใส่ช่องซ้ำ');
   assert.equal(stripPageField(c(hh)), '<p>คณิต</p>');
+  assert.equal(c('<p><span data-pg="1" style="font-size: 28px; font-family: var(--sf-angsana); position: fixed">9</span></p>'), '<p><span data-pg="1" style="font-size: 28px; font-family: var(--sf-angsana)" contenteditable="false">#</span></p>', 'ช่องเลขหน้าเก็บฟอนต์/ขนาดของตัวเอง');
   // ฟอนต์เก็บแบบไม่ผูกกับ build: ชื่อ next/font และชื่อจาก Word แปลงเป็น var(--sf-...)
   assert.equal(c('<p><span style="font-family: &quot;TH SarabunPSK&quot;, &quot;TH Sarabun New&quot;, __Sarabun_7b1c3a, __Sarabun_Fallback_7b1c3a">ก</span></p>'), '<p><span style="font-family: var(--sf-thsarabun)">ก</span></p>');
   assert.equal(c('<span style="font-family: __Chakra_Petch_9f2e1d, __Chakra_Petch_Fallback_9f2e1d">x</span>'), '<span style="font-family: var(--sf-chakra)">x</span>');

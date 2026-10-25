@@ -4,10 +4,16 @@ import { buildPdf } from './pdf';
 
 /** ส่งออกหน้าสื่อ (DOM ของ PageView ที่ขนาดจริง) เป็นรูป/PDF ในเครื่องผู้ใช้ ไม่ส่งข้อมูลไปที่ไหน */
 
-async function snap(node: HTMLElement, W: number, H: number, kind: 'png' | 'jpeg', pixelRatio: number, quality = 0.92, warm = true): Promise<string> {
-  const { toJpeg, toPng } = await import('html-to-image');
+/** ฟอนต์ที่ฝังในรูปปก: ดึงไฟล์ฟอนต์ทั้งหมดแล้วแปลง base64 หนักมาก (หน้าค้าง) ทำครั้งเดียวต่อการเปิดหน้า */
+// shortcut: ฟอนต์ที่เพิ่งใช้ครั้งแรกหลังทำปกครั้งแรกจะไม่ฝังในรูปปก (ปกเล็ก 300px) ถ้าปกเพี้ยนจนเห็นชัดค่อยล้าง cache ตามชุดฟอนต์ที่ใช้
+let thumbFonts: Promise<string> | null = null;
+
+async function snap(node: HTMLElement, W: number, H: number, kind: 'png' | 'jpeg', pixelRatio: number, quality = 0.92, warm = true, thumb = false): Promise<string> {
+  const { toJpeg, toPng, getFontEmbedCSS } = await import('html-to-image');
   if (typeof document !== 'undefined' && document.fonts?.ready) await document.fonts.ready;
-  const opts = { width: W, height: H, pixelRatio, quality, backgroundColor: '#ffffff', cacheBust: false, skipAutoScale: true };
+  if (thumb) thumbFonts ??= getFontEmbedCSS(node).catch(() => '');
+  const fontEmbedCSS = thumb ? await thumbFonts! : undefined;
+  const opts = { width: W, height: H, pixelRatio, quality, backgroundColor: '#ffffff', cacheBust: false, skipAutoScale: true, ...(fontEmbedCSS !== undefined ? { fontEmbedCSS } : {}) };
   const run = () => (kind === 'png' ? toPng(node, opts) : toJpeg(node, opts));
   // ครั้งแรกบางเบราว์เซอร์ยังวาดรูป/ฟอนต์ไม่ทัน ถ่ายซ้ำอีกรอบให้ชัวร์
   if (warm) await run().catch(() => '');
@@ -65,9 +71,11 @@ export async function exportPdf(nodes: HTMLElement[], W: number, H: number, titl
 }
 
 /** รูปปกเล็ก (กว้าง 300px) เก็บในฐานข้อมูลไว้โชว์บนการ์ด จำกัดไม่เกิน ~58KB */
+let thumbWarm = false;
 export async function makeThumb(node: HTMLElement, W: number, H: number): Promise<string | null> {
   for (const q of [0.72, 0.55, 0.4]) {
-    const url = await snap(node, W, H, 'jpeg', 300 / W, q, q === 0.72).catch(() => '');
+    const url = await snap(node, W, H, 'jpeg', 300 / W, q, q === 0.72 && !thumbWarm, true).catch(() => '');
+    thumbWarm = true;
     if (url.startsWith('data:image/jpeg;base64,') && url.length <= 58000) return url;
   }
   return null;
