@@ -1,5 +1,5 @@
 /* eslint-disable @next/next/no-img-element */
-import React, { useLayoutEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { MOON_PHASES, type Dash, type DecoItem, type EduItem, type Fx, type GraphItem, type Item, type LineItem, type MathItem, type Page, type PageBg, type PageBorder, type TableItem, type TextItem, type WriteItem } from '@/lib/studio/doc';
 import { graphToSvg } from '@/lib/studio/graph';
 import { FLOW_GAP, defaultWordOpt, hasPageField, pageLabel, paginate, type WordOpt } from '@/lib/studio/flow';
@@ -1173,21 +1173,83 @@ function GraphView({ g }: { g: GraphItem }) {
 /** กล่องเนื้อหาโหมดเอกสาร: ขอบซ้าย/ขวา ฟอนต์หลัก และค่ามาตรฐาน Word (ใช้ทั้งจอแก้ไขและตอนแสดง/ส่งออก) */
 export const flowBoxStyle = (o: WordOpt, W: number): React.CSSProperties => ({ width: W, paddingLeft: o.ml, paddingRight: o.mr, fontFamily: (o.std ? FONTS.thsarabun : FONTS.sarabun).family });
 
+/**
+ * ผลตัดหน้าของเนื้อหาทั้งเอกสาร (ตำแหน่งบน/ล่างของแต่ละบล็อกบนสุด) ใช้ร่วมกันทุกหน้า
+ * เดิมแต่ละหน้าวาดเนื้อหาทั้งเอกสารซ้ำ (7 หน้า = 7 ชุด สมการ/กราฟทุกตัว) เปิด/สลับโหมดแล้วค้างนาน
+ */
+type FlowCut = { tops: number[]; bots: number[]; free: boolean[]; mts: string[] };
+const flowCuts = new Map<string, FlowCut>();
+let fontsDone = typeof document === 'undefined' || document.fonts?.status === 'loaded';
+
 export function FlowLayer({ html, index, W, H, opt = defaultWordOpt(false) }: { html: string; index: number; W: number; H: number; opt?: WordOpt }) {
   const ref = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    el.innerHTML = html;
-    hydrateFlow(el);
-    paginate(el, H, FLOW_GAP, opt.mt, opt.mb);
+  // ฟอนต์โหลดเสร็จทีหลังทำให้ความสูงเปลี่ยน: ตัดหน้าใหม่อีกรอบ
+  const [fontsReady, setFontsReady] = useState(fontsDone);
+  useEffect(() => {
+    if (fontsReady || !document.fonts) return;
     let off = false;
-    // ฟอนต์โหลดเสร็จทีหลังทำให้ความสูงเปลี่ยน
-    document.fonts?.ready.then(() => !off && paginate(el, H, FLOW_GAP, opt.mt, opt.mb));
+    document.fonts.ready.then(() => {
+      fontsDone = true;
+      if (!off) setFontsReady(true);
+    });
     return () => {
       off = true;
     };
-  }, [html, H, opt.mt, opt.mb, opt.ml, opt.mr, opt.std]);
+  }, [fontsReady]);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const key = [W, H, opt.mt, opt.mb, opt.ml, opt.mr, opt.std, fontsReady, html].join('|');
+    let cut = flowCuts.get(key);
+    if (!cut) {
+      el.innerHTML = html;
+      hydrateFlow(el);
+      paginate(el, H, FLOW_GAP, opt.mt, opt.mb);
+      const box = el.getBoundingClientRect();
+      const sc = box.height / (el.offsetHeight || 1) || 1;
+      const kids = Array.from(el.children) as HTMLElement[];
+      const rs = kids.map((k) => k.getBoundingClientRect());
+      cut = {
+        tops: rs.map((r) => (r.top - box.top) / sc),
+        bots: rs.map((r) => (r.bottom - box.top) / sc),
+        free: kids.map((k) => k.dataset.wrap === 'behind' || k.dataset.wrap === 'front'),
+        mts: kids.map((k) => k.style.marginTop),
+      };
+      if (flowCuts.size > 6) flowCuts.clear();
+      flowCuts.set(key, cut);
+    }
+    // เก็บเฉพาะบล็อกที่อยู่ในหน้านี้ บล็อกก่อนหน้าแทนด้วยช่องว่างสูงเท่าเดิม
+    const t = document.createElement('template');
+    t.innerHTML = html;
+    // ลำดับกราฟในทั้งเอกสาร (แตะในโหมด Canva แล้วยกกราฟตัวที่ถูกออกจากเนื้อหา)
+    t.content.querySelectorAll<HTMLElement>('figure[data-graph]').forEach((f, i) => (f.dataset.gi = String(i)));
+    const kids = Array.from(t.content.children) as HTMLElement[];
+    // ข้อความลอยนอกย่อหน้า (ไม่ใช่บล็อก) ตัดตามหน้าไม่ได้: วาดทั้งเอกสารแบบเดิม
+    const loose = Array.from(t.content.childNodes).some((n) => n.nodeType === 3 && n.textContent?.trim());
+    if (loose || kids.length !== cut.tops.length) {
+      el.innerHTML = html;
+      hydrateFlow(el);
+      paginate(el, H, FLOW_GAP, opt.mt, opt.mb);
+      return;
+    }
+    const lo = index * (H + FLOW_GAP);
+    const hi = lo + H + FLOW_GAP;
+    const out = document.createDocumentFragment();
+    let first = true;
+    kids.forEach((k, i) => {
+      if (!(cut.bots[i] > lo && cut.tops[i] < hi)) return;
+      if (!cut.free[i] && first) {
+        first = false;
+        const sp = document.createElement('div');
+        sp.style.cssText = `height:${cut.tops[i]}px;margin:0;padding:0;border:0`;
+        out.append(sp);
+        k.style.marginTop = '0px';
+      } else if (!cut.free[i]) k.style.marginTop = cut.mts[i];
+      out.append(k);
+    });
+    el.replaceChildren(out);
+    hydrateFlow(el);
+  }, [html, W, H, index, opt.mt, opt.mb, opt.ml, opt.mr, opt.std, fontsReady]);
   return <div ref={ref} className="st-flow" data-std={opt.std || undefined} aria-hidden="true" style={{ ...flowBoxStyle(opt, W), position: 'absolute', left: 0, top: -index * (H + FLOW_GAP), pointerEvents: 'none' }} />;
 }
 

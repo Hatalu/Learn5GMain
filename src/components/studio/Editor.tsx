@@ -213,13 +213,22 @@ export function StudioEditor({ id }: { id: string }) {
   }, []);
 
   /* ------------------------------------------------------------ โหลด */
+  // โหลดครั้งเดียวต่อสื่อ/ผู้ใช้: ออบเจกต์ user เปลี่ยนทุกครั้งที่ต่ออายุโทเคน (ราวทุกชั่วโมง/หลังบันทึกพลาด)
+  // เดิมผูกกับ user ทั้งก้อน = โหลดสื่อจากเซิร์ฟเวอร์ทับงานที่กำลังพิมพ์ (ตัวหนังสือหาย + จอค้าง)
+  const userId = user?.id;
+  const loadedFor = useRef('');
   useEffect(() => {
     if (isLoading) return;
     if (!user) return setStatus('denied');
+    if (loadedFor.current === `${id}:${user.id}`) return;
+    loadedFor.current = `${id}:${user.id}`;
     let off = false;
     (async () => {
       const { data, error } = await supabase.from('user_designs').select(DESIGN_COLS).eq('id', id).maybeSingle();
-      if (off) return;
+      if (off) {
+        loadedFor.current = '';
+        return;
+      }
       if (error || !data) return setStatus(error && /user_designs|schema cache/i.test(error.message) ? 'missing' : 'denied');
       setDoc(sanitizeDesign(data.content));
       setTitle(data.title);
@@ -235,7 +244,8 @@ export function StudioEditor({ id }: { id: string }) {
     return () => {
       off = true;
     };
-  }, [id, user, isLoading, supabase]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, userId, isLoading, supabase]);
 
   const W = doc?.size.w ?? 794;
   const H = doc?.size.h ?? 1123;
@@ -658,23 +668,52 @@ export function StudioEditor({ id }: { id: string }) {
   }, [doc, status, editId, fontsReady]);
 
   /* ------------------------------------------------------------ บันทึกอัตโนมัติ */
+  /*
+   * บันทึกทีละครั้ง (ครั้งใหม่ระหว่างกำลังบันทึก = รอแล้วบันทึกฉบับล่าสุดต่อ ไม่ยิงซ้อนกัน)
+   * พลาด = ลองใหม่ 3 รอบ (โทเคนหมดอายุระหว่างทำงานนาน ขอใหม่ก่อน) · รูปปกทำทีหลังแยกคำขอ ไม่ขวางการบันทึกงาน
+   */
+  const [thumbDoc, setThumbDoc] = useState<Design | null>(null);
+  const saving = useRef(false);
+  const saveAgain = useRef(false);
+  const doSaveRef = useRef<() => Promise<void>>(async () => undefined);
   const doSave = useCallback(async () => {
+    if (saving.current) {
+      saveAgain.current = true;
+      return;
+    }
     const d = docRef.current;
     if (!d || readOnly) return;
+    saving.current = true;
     setSave('saving');
-    const body: Record<string, unknown> = { title: cleanTitle(title) || 'สื่อไม่มีชื่อ', content: d, page_count: d.pages.length, is_public: isPublic };
-    // รูปปกทำจากหน้าแรกด้วย html-to-image (หนัก หน้าค้างชั่วครู่) ทำห่างๆ ทุก 2 นาทีพอ
-    if (Date.now() - lastThumb.current > 120000 && thumbEl.current) {
-      // รูปปกค้างได้ (แท็บอยู่เบื้องหลัง/รูปโหลดไม่เสร็จ) ห้ามให้มันขวางการบันทึกงาน
-      const t = await Promise.race([makeThumb(thumbEl.current, d.size.w, d.size.h).catch(() => null), new Promise<null>((r) => setTimeout(() => r(null), 8000))]);
-      if (t) {
-        body.thumb = t;
-        lastThumb.current = Date.now();
+    try {
+      const body = { title: cleanTitle(title) || 'สื่อไม่มีชื่อ', content: d, page_count: Math.min(30, d.pages.length), is_public: isPublic };
+      let error: { message: string; code?: string } | null = null;
+      for (let i = 0; i < 3; i++) {
+        ({ error } = await supabase.from('user_designs').update(body).eq('id', id));
+        if (!error) break;
+        console.warn('[studio] save failed', error.code, error.message);
+        if (/jwt|token|auth|401|PGRST30/i.test(`${error.code} ${error.message}`)) await supabase.auth.refreshSession().catch(() => null);
+        await new Promise((r) => setTimeout(r, 1200 * (i + 1)));
       }
+      setSave((s) => (error ? 'error' : docRef.current === d && s === 'saving' ? 'saved' : 'dirty'));
+      // รูปปก (html-to-image หนัก) ทุก 2 นาที และเฉพาะตอนอยู่หน้านี้ วาดหน้าแรกนอกจอเฉพาะตอนถ่าย
+      if (!error && Date.now() - lastThumb.current > 120000 && document.visibilityState === 'visible') {
+        lastThumb.current = Date.now();
+        setThumbDoc(d);
+        await new Promise((r) => setTimeout(r, 150));
+        const t = thumbEl.current ? await Promise.race([makeThumb(thumbEl.current, d.size.w, d.size.h).catch(() => null), new Promise<null>((r) => setTimeout(() => r(null), 8000))]) : null;
+        setThumbDoc(null);
+        if (t) await supabase.from('user_designs').update({ thumb: t }).eq('id', id);
+      }
+    } finally {
+      saving.current = false;
     }
-    const { error } = await supabase.from('user_designs').update(body).eq('id', id);
-    setSave((s) => (error ? 'error' : docRef.current === d && s === 'saving' ? 'saved' : 'dirty'));
+    if (saveAgain.current) {
+      saveAgain.current = false;
+      void doSaveRef.current();
+    }
   }, [readOnly, title, isPublic, supabase, id]);
+  doSaveRef.current = doSave;
 
   useEffect(() => {
     if (status !== 'ready' || readOnly || !doc) return;
@@ -913,7 +952,7 @@ export function StudioEditor({ id }: { id: string }) {
     // ลบกราฟลำดับที่ k ออกจากเนื้อหาเอกสาร (ลำดับใน HTML ตรงกับที่วาด)
     const t = document.createElement('template');
     t.innerHTML = d.flow;
-    t.content.querySelectorAll('figure[data-graph]')[k]?.remove();
+    t.content.querySelectorAll('figure[data-graph]')[Number(figs[k].dataset.gi ?? k)]?.remove();
     const next = mapItems({ ...d, flow: cleanFlowHtml(t.innerHTML, cleanSrc) }, pi, (items) => [...items, item]);
     commit(next);
     return { item, doc: next };
@@ -1830,9 +1869,12 @@ export function StudioEditor({ id }: { id: string }) {
       {typeof document !== 'undefined' &&
         createPortal(
           <div aria-hidden="true" style={{ position: 'fixed', left: -100000, top: 0, pointerEvents: 'none' }}>
-            <div ref={thumbEl} style={{ width: W, height: H }}>
-              <PageView page={doc.pages[0]} W={W} H={H} flow={doc.flow} index={0} wopt={doc.word} total={doc.pages.length} />
-            </div>
+            {/* หน้าแรกสำหรับรูปปก: วาดเฉพาะตอนถ่าย (เดิมวาดค้างไว้ตลอด = วาดทั้งเอกสารใหม่ทุกครั้งที่พิมพ์ หน้าเยอะยิ่งค้าง) */}
+            {thumbDoc && (
+              <div ref={thumbEl} style={{ width: W, height: H }}>
+                <PageView page={thumbDoc.pages[0]} W={W} H={H} flow={thumbDoc.flow} index={0} wopt={thumbDoc.word} total={thumbDoc.pages.length} />
+              </div>
+            )}
             {exporting && (
               <div ref={stageEl}>
                 {doc.pages.map((p, i) => (
