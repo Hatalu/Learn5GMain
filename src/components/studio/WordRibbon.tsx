@@ -220,6 +220,8 @@ export function WordRibbon({
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (window.matchMedia('(min-width: 1024px)').matches) setOpen(true);
+    // ริบบอนด้านบน: จอเล็กเริ่มแบบย่อ (เหลือแถวแท็บ) ให้เห็นกระดาษ
+    else setMin(true);
   }, []);
   const [keysOpen, setKeysOpen] = useState(false);
   const [min, setMin] = useState(false);

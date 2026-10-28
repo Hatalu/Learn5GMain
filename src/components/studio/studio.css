@@ -3548,3 +3548,11 @@ html.dark .st-top[data-word] {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
   }
 }
+/* เมนูดาวน์โหลดในเมนูไฟล์ (แถบซ้ายล่าง) เปิดขึ้นด้านบน ไม่ล้นจอ */
+.st-filepop .st-menu {
+  top: auto;
+  bottom: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  width: auto;
+}
