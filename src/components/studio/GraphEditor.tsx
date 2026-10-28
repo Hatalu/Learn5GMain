@@ -5,7 +5,9 @@ import { createPortal } from 'react-dom';
 import {
   ArrowUpRight,
   Check,
+  Copy,
   Crosshair,
+  Download,
   Eye,
   EyeOff,
   Grid3x3,
@@ -64,6 +66,7 @@ import {
   type LabelPos,
 } from '@/lib/studio/graph';
 import { MathPopover } from '@/components/creator/math/MathPopover';
+import { svgToPngBlob } from './flowDom';
 import './graph.css';
 
 type Tool = 'move' | 'point' | 'seg' | 'vec' | 'dash' | 'poly' | 'angle' | 'text' | 'draw';
@@ -495,6 +498,40 @@ export function GraphEditor({ initial, onDone, onClose, editing }: { initial: Gr
   };
   const [msg, setMsg] = useState('');
 
+  /* คัดลอก/บันทึกเป็นรูป: วาดจาก SVG ลงผืนผ้าใบที่ไม่ระบายพื้น ตั้ง "โปร่งใส" = ได้ PNG ไม่มีพื้นหลัง */
+  const [copyMsg, setCopyMsg] = useState('');
+  const flash = (m: string) => {
+    setCopyMsg(m);
+    window.setTimeout(() => setCopyMsg((t) => (t === m ? '' : t)), 2600);
+  };
+  const pngOf = () => svgToPngBlob(graphToSvg(spec), spec.w, spec.h, 3);
+  const saveImage = async () => {
+    try {
+      const url = URL.createObjectURL(await pngOf());
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = spec.clear ? 'graph-transparent.png' : 'graph.png';
+      a.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 4000);
+    } catch {
+      flash('บันทึกรูปไม่สำเร็จ');
+    }
+  };
+  const copyImage = async () => {
+    // ส่ง Promise เข้า ClipboardItem ทันที (Safari ต้องเรียกในจังหวะที่กดปุ่ม)
+    if (typeof ClipboardItem === 'undefined' || !navigator.clipboard?.write) {
+      await saveImage();
+      return flash('เบราว์เซอร์นี้คัดลอกรูปไม่ได้ บันทึกเป็นไฟล์ให้แทน');
+    }
+    try {
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngOf() })]);
+      flash(spec.clear ? 'คัดลอกแล้ว (พื้นหลังโปร่งใส)' : 'คัดลอกรูปแล้ว');
+    } catch {
+      await saveImage();
+      flash('คัดลอกไม่ได้ บันทึกเป็นไฟล์ให้แทน');
+    }
+  };
+
   const selObj = spec.objs.find((o) => o.id === sel) || null;
   const exprs = spec.objs.filter((o) => o.kind === 'expr');
   const shapes = spec.objs.filter((o) => o.kind !== 'expr');
@@ -532,6 +569,17 @@ export function GraphEditor({ initial, onDone, onClose, editing }: { initial: Gr
             ))}
           </div>
           <span className="flex-1" />
+          {copyMsg && (
+            <span className="ge-copymsg" role="status">
+              {copyMsg}
+            </span>
+          )}
+          <button type="button" className="ge-btn" onClick={copyImage} title={spec.clear ? 'คัดลอกเป็นรูป PNG พื้นหลังโปร่งใส' : 'คัดลอกเป็นรูป PNG'}>
+            <Copy className="w-4 h-4" /> คัดลอก
+          </button>
+          <button type="button" className="ge-btn" onClick={saveImage} title="บันทึกเป็นไฟล์รูป PNG">
+            <Download className="w-4 h-4" /> <span className="ge-hide-sm">บันทึกรูป</span>
+          </button>
           <button type="button" className="ge-btn" onClick={onClose}>
             <X className="w-4 h-4" /> ยกเลิก
           </button>

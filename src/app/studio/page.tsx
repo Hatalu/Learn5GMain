@@ -4,7 +4,7 @@
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Check, Compass, Copy, Crown, Eye, FolderHeart, Globe, Loader2, Lock, LogIn, MoreVertical, Palette, Pencil, Plus, Search, ShieldCheck, Sparkles, Trash2, Wand2 } from 'lucide-react';
+import { Check, Compass, Copy, Crown, Eye, FileUp, FolderHeart, Globe, Loader2, Lock, LogIn, MoreVertical, Palette, Pencil, Plus, Search, ShieldCheck, Sparkles, Trash2, Wand2 } from 'lucide-react';
 import { Navbar } from '@/components/navbar/Navbar';
 import { NightSky } from '@/components/fx/NightSky';
 import { useAuth } from '@/context/AuthContext';
@@ -19,6 +19,8 @@ import { blankDesign, designMediaPaths, sanitizeDesign, SIZES, type Design } fro
 import { TEMPLATES } from '@/components/studio/templates';
 import { PageThumb } from '@/components/studio/render';
 import { PaperModal } from '@/components/creator/PaperModal';
+import { ImportDialog, type ImportHow } from '@/components/studio/ImportDialog';
+import { setPendingImport } from '@/components/studio/importFile';
 import { TierCompare } from '@/components/creator/TierCompare';
 import { UsageMeter } from '@/components/creator/UsageMeter';
 import { JoinButton } from '@/components/membership/JoinButton';
@@ -103,7 +105,7 @@ function StudioHub() {
   }, [load]);
 
   /* ---------------- สร้างสื่อใหม่ ---------------- */
-  const create = async (key: string, design: Design, title: string) => {
+  const create = async (key: string, design: Design, title: string, pend?: { file: File; how: ImportHow }) => {
     gsfx.pick();
     if (tier === 'guest' || !user) return setGate('guest');
     if (atLimit) return setGate('limit');
@@ -120,7 +122,15 @@ function StudioHub() {
       if (missing(error?.code) || /user_designs/.test(error?.message || '')) return setDbMissing(true);
       return setErr('สร้างสื่อไม่สำเร็จ ลองใหม่อีกครั้ง');
     }
+    // ไฟล์ที่นำเข้าส่งต่อให้ตัวแก้ไขแปลง (รูปในไฟล์อัปโหลดหลังสร้างสื่อสำเร็จแล้วเท่านั้น)
+    if (pend) setPendingImport(pend);
     router.push(`/studio/edit?id=${data.id}`);
+  };
+  const [importDlg, setImportDlg] = useState(false);
+  const startImport = (file: File, how: ImportHow) => {
+    setImportDlg(false);
+    const d = blankDesign();
+    create('import', how === 'flow' ? { ...d, mode: 'word' } : d, file.name.replace(/\.[^.]+$/, '') || 'สื่อนำเข้า', { file, how });
   };
 
   /* ---------------- ทำใบงานจากชุดคำถาม (/studio?fromSet=<id> จากหน้าชุดคำถาม) ---------------- */
@@ -369,6 +379,24 @@ function StudioHub() {
                     </button>
                   ))}
                 </div>
+
+                <button
+                  type="button"
+                  className="sh-import mt-6"
+                  disabled={!!creating || dbMissing}
+                  onClick={() => {
+                    gsfx.tap();
+                    if (tier === 'guest' || !user) return setGate('guest');
+                    if (atLimit) return setGate('limit');
+                    setImportDlg(true);
+                  }}
+                >
+                  <span className="sh-import-ic">{creating === 'import' ? <Loader2 className="w-7 h-7 animate-spin" /> : <FileUp className="w-7 h-7" />}</span>
+                  <span className="sh-import-tx">
+                    <b>หรือนำเข้าไฟล์ Word / PDF ที่มีอยู่แล้ว</b>
+                    <small>สมการใน Word และ MathType กลายเป็นสมการของเว็บ แก้ต่อได้ทันที · รองรับ .docx .pdf .txt .md .html</small>
+                  </span>
+                </button>
 
                 <h2 className="l5g-sec-title mt-10">2. หรือเริ่มจากแม่แบบ</h2>
                 <p className="l5g-sec-note">มีของจัดวางไว้ให้แล้ว แก้คำ เปลี่ยนสี ย้ายตำแหน่งได้ทุกชิ้น</p>
@@ -692,6 +720,7 @@ function StudioHub() {
         </PaperModal>
       )}
 
+      {importDlg && <ImportDialog onPick={startImport} onClose={() => setImportDlg(false)} />}
       {rename && (
         <PaperModal title="เปลี่ยนชื่อสื่อ" icon={<Pencil className="w-5 h-5" />} onClose={() => setRename(null)} busy={busy}>
           <input className="l5g-input" value={renameVal} maxLength={80} autoFocus onChange={(e) => setRenameVal(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && doRename()} />

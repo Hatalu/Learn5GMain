@@ -7,6 +7,12 @@ import { answerOf, quizPages } from '../src/lib/studio/fromQuiz';
 import { cleanGraph, compileExpr, defaultShape, graphToSvg, GRAPH_TEMPLATES, intersections, parseEquation, shapeFacts, shapeText, texToExpr, type GShape } from '../src/lib/studio/graph';
 import { PAGE_FIELD, cleanFlowHtml, cleanWordOpt, defaultWordOpt, flowIsEmpty, pageLabel, stripPageField, withPageField } from '../src/lib/studio/flow';
 import { mathmlToOmml } from '../src/lib/studio/omml';
+import JSZip from 'jszip';
+import { parseXml } from '../src/lib/studio/xml';
+import { ommlToTex } from '../src/lib/studio/ommlTex';
+import { mtefToTex, oleEquationTex } from '../src/lib/studio/mtef';
+import { textToFlow } from '../src/lib/studio/textImport';
+import { cutBlocks, docxToFlow } from '../src/lib/studio/docxImport';
 import { prepTex } from '../src/lib/mathTex';
 import katex from 'katex';
 import { MATH_DEFAULTS, WORD_KEYS, assignMath, comboLabel, comboOf, conflictOf, mathKeyOf } from '../src/lib/studio/keys';
@@ -1317,4 +1323,82 @@ t('กราฟ: รูปทรงเฉพาะสร้างสมการ
   assert.ok(graphToSvg(dg).includes('<rect x="10" y="10" width="80" height="50"'));
 });
 
-console.log(`\n${passed} tests passed`);
+console.log('นำเข้าไฟล์ Word / MathType / ข้อความ');
+t('OMML ของ Word เป็น LaTeX (เศษส่วน ยกกำลัง ราก วงเล็บ ผลรวม ภาษาไทย)', () => {
+  const om = (xml: string) => ommlToTex(parseXml(`<m:oMath>${xml}</m:oMath>`).kids[0]);
+  const r = (s: string, sty = '') => `<m:r>${sty ? `<m:rPr><m:sty m:val="${sty}"/></m:rPr>` : ''}<m:t>${s}</m:t></m:r>`;
+  assert.equal(om(`<m:f><m:num>${r('1')}</m:num><m:den>${r('2')}</m:den></m:f>`), '\\frac{1}{2}');
+  assert.equal(om(`<m:sSup><m:e>${r('x')}</m:e><m:sup>${r('2')}</m:sup></m:sSup>`), '{x}^{2}');
+  assert.equal(om(`<m:sSub><m:e>${r('a')}</m:e><m:sub>${r('n')}</m:sub></m:sSub>`), '{a}_{n}');
+  assert.equal(om(`<m:rad><m:radPr><m:degHide m:val="1"/></m:radPr><m:deg/><m:e>${r('x')}</m:e></m:rad>`), '\\sqrt{x}');
+  assert.equal(om(`<m:rad><m:deg>${r('3')}</m:deg><m:e>${r('8')}</m:e></m:rad>`), '\\sqrt[3]{8}');
+  assert.ok(om(`<m:d><m:e>${r('x+1')}</m:e></m:d>`).startsWith('\\left( x+1'));
+  assert.equal(om(`<m:d><m:dPr><m:begChr m:val="{"/><m:endChr m:val=""/></m:dPr><m:e>${r('x')}</m:e></m:d>`), '\\left\\{ x \\right.');
+  const sum = om(`<m:nary><m:naryPr><m:chr m:val="∑"/></m:naryPr><m:sub>${r('i=1')}</m:sub><m:sup>${r('n')}</m:sup><m:e>${r('i')}</m:e></m:nary>`);
+  assert.equal(sum, '\\sum_{i=1}^{n} i');
+  assert.equal(om(r('2×3≤π')), '2\\times 3\\le \\pi');
+  // ภาษาไทยในสมการอยู่ใน \text{} (KaTeX วาดได้) และชื่อฟังก์ชันเป็นตัวตรง
+  assert.equal(om(r('พื้นที่') + r('=') + r('ab')), '\\text{พื้นที่}=ab');
+  assert.equal(om(`<m:func><m:fName>${r('sin', 'p')}</m:fName><m:e>${r('x')}</m:e></m:func>`), '\\sin x');
+  for (const tex of ['\\frac{1}{2}', sum, '\\text{พื้นที่}=ab']) katex.renderToString(tex, { throwOnError: true, strict: 'ignore' });
+});
+t('MathType (MTEF v5) เป็น LaTeX', () => {
+  const s = (str: string) => [...Buffer.from(str, 'latin1'), 0];
+  const ch = (c: string, face = 131) => [2, 0, face, c.charCodeAt(0), 0];
+  const bytes = [
+    ...[5, 1, 0, 7, 4], ...s('DSMT7'), 1,
+    1, 0,
+    ...ch('x'),
+    3, 0, 29, 0, 0, 1, 1, 1, 0, ...ch('2', 136), 0, 0,
+    ...ch('+', 134),
+    3, 0, 11, 0, 0, 1, 0, ...ch('1', 136), 0, 1, 0, ...ch('2', 136), 0, 0,
+    0,
+    0,
+  ];
+  assert.equal(mtefToTex(new Uint8Array(bytes)), 'x^{2}+\\frac{1}{2}');
+  assert.equal(mtefToTex(new Uint8Array([9, 9, 9])), null);
+  assert.equal(oleEquationTex(new Uint8Array(600)), null);
+});
+t('ข้อความ/Markdown: สูตร $...$ เป็นช่องสมการ หัวข้อ รายการ ตาราง', () => {
+  const h = textToFlow('# บทที่ 1\nพื้นที่ $\\frac{1}{2}bh$ ตร.ซม.\n- ข้อแรก **สำคัญ**\n- ข้อสอง\n\n$$x^2+1$$\n| a | b |\n|---|---|\n| 1 | 2 |', true);
+  assert.ok(h.includes('font-weight: bold">บทที่ 1</p>'));
+  assert.ok(h.includes('<span data-tex="\\frac{1}{2}bh"></span>'));
+  assert.ok(h.includes('<ul><li>ข้อแรก <b>สำคัญ</b></li><li>ข้อสอง</li></ul>'));
+  assert.ok(h.includes('<p style="text-align: center"><span data-tex="x^2+1"></span></p>'));
+  assert.ok(h.includes('<table><tbody><tr><td><p>a</p></td>'));
+  const clean = cleanFlowHtml(h, () => '');
+  assert.ok(clean.includes('data-tex="\\frac{1}{2}bh" contenteditable="false"'));
+  assert.equal(textToFlow('<b>x</b>', false), '<p>&lt;b&gt;x&lt;/b&gt;</p>');
+});
+t('ตัดเนื้อหาที่ยาวเกินที่รอยต่อบล็อก (ไม่ตัดกลางตาราง)', () => {
+  const html = '<p>a</p><table><tbody><tr><td><p>b</p></td></tr></tbody></table><p>c</p>';
+  assert.equal(cutBlocks(html, 1000), html);
+  assert.equal(cutBlocks(html, 30), '<p>a</p>');
+  assert.equal(cutBlocks(html, html.length - 2), '<p>a</p><table><tbody><tr><td><p>b</p></td></tr></tbody></table>');
+});
+
+// ไฟล์ docx จำลอง (มีสมการ Word + ภาษาไทย + ตัวหนา + กึ่งกลาง + ตาราง)
+(async () => {
+  const zip = new JSZip();
+  zip.file(
+    'word/document.xml',
+    `<?xml version="1.0"?><w:document xmlns:w="w" xmlns:m="m"><w:body>
+<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="40"/><w:szCs w:val="40"/></w:rPr><w:t>ใบงาน</w:t></w:r></w:p>
+<w:p><w:r><w:t xml:space="preserve">หาค่า </w:t></w:r><m:oMath><m:f><m:num><m:r><m:t>3</m:t></m:r></m:num><m:den><m:r><m:t>4</m:t></m:r></m:den></m:f></m:oMath></w:p>
+<w:tbl><w:tr><w:tc><w:p><w:r><w:t>ก</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:gridSpan w:val="2"/></w:tcPr><w:p><w:r><w:t>ข</w:t></w:r></w:p></w:tc></w:tr></w:tbl>
+<w:sectPr><w:pgMar w:top="1440" w:bottom="1440" w:left="1800" w:right="1800"/></w:sectPr></w:body></w:document>`
+  );
+  const r = await docxToFlow(await zip.generateAsync({ type: 'uint8array' }), async () => '');
+  const html = cleanFlowHtml(r.html, () => '');
+  assert.ok(html.includes('<p style="text-align: center"><span style="font-size: 26.67px; font-weight: bold">ใบงาน</span></p>'), html);
+  assert.ok(html.includes('หาค่า <span data-tex="\\frac{3}{4}" contenteditable="false"></span>'));
+  assert.ok(html.includes('<td colspan="2"><p>ข</p></td>'));
+  assert.deepEqual(r.margins, { mt: 96, mb: 96, ml: 120, mr: 120 });
+  assert.equal(r.stats.equations, 1);
+  passed++;
+  console.log('  ok  ไฟล์ Word จำลองนำเข้าครบ (สมการ ตัวหนา ขนาด กึ่งกลาง ตาราง ระยะขอบ)');
+  console.log(`\n${passed} tests passed`);
+})().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

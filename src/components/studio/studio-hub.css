@@ -127,6 +127,60 @@
   background: rgba(255, 255, 255, 0.7);
   color: #7c5cf0;
 }
+.sh-import {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 14px 18px;
+  background: #e3f6ff;
+  border: 3px solid var(--l5g-ink);
+  border-radius: 22px;
+  box-shadow: 0 6px 0 var(--l5g-ink);
+  color: var(--l5g-ink);
+  text-align: left;
+  transition: transform 0.25s var(--l5g-jelly), box-shadow 0.25s;
+}
+.sh-import:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 9px 0 var(--l5g-ink);
+}
+.sh-import:active:not(:disabled) {
+  transform: translateY(3px) scale(0.99);
+  box-shadow: 0 2px 0 var(--l5g-ink);
+}
+.sh-import-ic {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 54px;
+  height: 54px;
+  border: 3px solid var(--l5g-ink);
+  border-radius: 16px;
+  background: #22b8cf;
+  color: #fff;
+}
+.sh-import-tx {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sh-import-tx b {
+  font-size: 18px;
+}
+.sh-import-tx small {
+  font-weight: 600;
+  opacity: 0.75;
+}
+.dark .sh-import {
+  background: #26305a;
+  color: #fff;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sh-import {
+    transition: none;
+  }
+}
 .sh-features {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));

@@ -14,6 +14,7 @@ import {
   Download,
   Eye,
   FileImage,
+  FileUp,
   Group,
   LayoutDashboard,
   FileText,
@@ -40,7 +41,9 @@ import { cleanTitle } from '@/lib/game-creator/quiz';
 import { FREE_DESIGN_LIMIT, creatorTier } from '@/lib/game-creator/quota';
 import { blankPage, cleanSrc, makeChar, makeGraph, makeImage, makeLine, makeMath, makeShape, makeText, MAX_PAGES, sanitizeDesign, sizeLabel, uid, type Design, type EditMode, type Item, type Page } from '@/lib/studio/doc';
 import { cleanGraph, newSpec, type GraphSpec } from '@/lib/studio/graph';
-import { FLOW_GAP, cleanFlowHtml } from '@/lib/studio/flow';
+import { FLOW_GAP, cleanFlowHtml, flowIsEmpty } from '@/lib/studio/flow';
+import { ImportDialog, type ImportHow } from './ImportDialog';
+import { appendFlow, designFromImport, importAsFlow, importKind, importNote, importPdfPages, isImportable, takePendingImport, uploadSink } from './importFile';
 import { texToHtml } from '@/components/creator/math/MathText';
 import { MathPopover } from '@/components/creator/math/MathPopover';
 import '@/components/creator/creator.css';
@@ -1411,6 +1414,56 @@ export function StudioEditor({ id }: { id: string }) {
       const add = Array.from({ length: Math.min(MAX_PAGES, n) - d.pages.length }, () => ({ ...blankPage(), bg: { ...last.bg }, border: { ...last.border } }));
       return add.length ? { ...d, pages: [...d.pages, ...add] } : d;
     });
+  /* ------------------------------------------------------------ นำเข้าไฟล์ (Word / PDF / ข้อความ) */
+  const [importDlg, setImportDlg] = useState<{ file: File | null } | null>(null);
+  const [importing, setImporting] = useState<string | null>(null);
+  const runImport = async (file: File, how: ImportHow) => {
+    setImportDlg(null);
+    if (!user || tier === 'guest' || readOnly) return say('ต้องเข้าสู่ระบบก่อนจึงนำเข้าไฟล์ได้');
+    if (importing) return;
+    finishEdit();
+    setSelIds([]);
+    setImporting('กำลังเตรียมไฟล์…');
+    try {
+      const sink = uploadSink(user.id);
+      const d0 = docRef.current!;
+      const blank = d0.pages.length === 1 && !d0.pages[0].items.length && flowIsEmpty(d0.flow);
+      if (how === 'pages') {
+        const r = await importPdfPages(file, W, H, blank ? MAX_PAGES : MAX_PAGES - d0.pages.length, sink, setImporting);
+        const d = docRef.current!;
+        commit({ ...d, mode: 'canvas', pages: blank ? r.pages : [...d.pages, ...r.pages] });
+        if (!blank) setPageIdx(d.pages.length);
+        say(r.total > r.pages.length ? `นำเข้า ${r.pages.length} จาก ${r.total} หน้า (สื่อหนึ่งชิ้นมีได้ ${MAX_PAGES} หน้า)` : `นำเข้า ${r.pages.length} หน้าแล้ว แต่ละหน้าล็อกไว้ วางของทับได้เลย`);
+      } else {
+        const r = await importAsFlow(file, sink, setImporting);
+        const d = docRef.current!;
+        const fresh = flowIsEmpty(d.flow);
+        commit(fresh ? designFromImport(d, r) : { ...d, mode: 'word', flow: appendFlow(d.flow, r.html, true) });
+        if (fresh && blank && /^(สื่อใหม่|สื่อไม่มีชื่อ)?$/.test(title.trim())) setTitle(file.name.replace(/\.[^.]+$/, '').slice(0, 80));
+        say(importNote(r.stats, importKind(file)));
+      }
+      setAutoFit(true);
+    } catch (e) {
+      say(e instanceof Error && /[ก-๙]/.test(e.message) ? e.message : 'นำเข้าไฟล์ไม่สำเร็จ ไฟล์อาจเสียหรือมีรหัสผ่าน');
+    } finally {
+      setImporting(null);
+    }
+  };
+  // ไฟล์ที่เลือกมาจากหน้าคลังสื่อ (สร้างสื่อเปล่าแล้วนำเข้าที่นี่)
+  useEffect(() => {
+    if (status !== 'ready' || readOnly) return;
+    const p = takePendingImport();
+    if (p) runImport(p.file, p.how);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, readOnly]);
+  const dropFiles = (files: FileList) => {
+    const doc = Array.from(files).find(isImportable);
+    if (doc) return importKind(doc) === 'pdf' ? setImportDlg({ file: doc }) : runImport(doc, 'flow');
+    // โหมด Word: รูปที่ลากมาวางบนเนื้อเอกสาร WordEditor ใส่ที่ตำแหน่งนั้นเอง
+    if (mode === 'word') return say('ลากรูปไปวางบนกระดาษตรงที่ต้องการ');
+    ctl?.upload(files);
+  };
+
   const wordUpload = async (f: File) => {
     if (!user || tier === 'guest') {
       say('ต้องเข้าสู่ระบบก่อนจึงอัปโหลดรูปได้');
@@ -1541,6 +1594,11 @@ export function StudioEditor({ id }: { id: string }) {
             {copying ? <Loader2 className="w-4 h-4 animate-spin" /> : <Copy className="w-4 h-4" />} <span className="max-sm:hidden">ทำสำเนาไปแก้</span>
           </button>
         )}
+        {!readOnly && (
+          <button type="button" className="st-topbtn st-g st-g-sky" onClick={() => setImportDlg({ file: null })} disabled={!!importing} title="นำเข้าไฟล์ Word / PDF / ข้อความ (สมการกลายเป็น MathType แก้ต่อได้)">
+            <FileUp className="w-4 h-4" /> <span className="max-md:hidden">นำเข้าไฟล์</span>
+          </button>
+        )}
         <button type="button" className="st-topbtn st-g st-g-grape" onClick={() => (finishEdit(), setSelId(null), setPresent(ap))} title="นำเสนอเต็มจอ">
           <MonitorPlay className="w-4 h-4" /> <span className="max-sm:hidden">นำเสนอ</span>
         </button>
@@ -1580,10 +1638,10 @@ export function StudioEditor({ id }: { id: string }) {
               if (!readOnly && e.dataTransfer.types.includes('Files')) e.preventDefault();
             }}
             onDrop={(e) => {
-              if (readOnly) return;
+              if (readOnly || e.defaultPrevented) return;
               e.preventDefault();
-              if (!ctl.canUpload) return say('ต้องเข้าสู่ระบบก่อนจึงอัปโหลดรูปได้');
-              ctl.upload(e.dataTransfer.files);
+              if (!ctl.canUpload) return say('ต้องเข้าสู่ระบบก่อนจึงอัปโหลดรูปหรือนำเข้าไฟล์ได้');
+              dropFiles(e.dataTransfer.files);
             }}
           >
             {mode === 'word' ? (
@@ -1849,6 +1907,12 @@ export function StudioEditor({ id }: { id: string }) {
           <Loader2 className="w-6 h-6 animate-spin" /> {exportLabel}
         </div>
       )}
+      {importing && (
+        <div className="st-busy" role="status">
+          <Loader2 className="w-6 h-6 animate-spin" /> {importing}
+        </div>
+      )}
+      {importDlg && <ImportDialog file={importDlg.file} onPick={runImport} onClose={() => setImportDlg(null)} />}
 
       {help && <ShortcutHelp onClose={() => setHelp(false)} />}
       {present !== null && <Presenter doc={doc} start={present} onClose={() => setPresent(null)} />}
