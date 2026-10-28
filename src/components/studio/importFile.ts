@@ -38,6 +38,28 @@ export const uploadSink =
     return m.url;
   };
 
+/** ตรวจไฟล์ก่อนสร้างสื่อ (บัญชีฟรีมีสิทธิ์สร้างจำกัด ไฟล์เสียต้องไม่กินสิทธิ์) คืนข้อความผิดพลาด หรือ null = ใช้ได้ */
+export async function checkImportFile(file: File): Promise<string | null> {
+  const kind = importKind(file);
+  if (kind === 'doc') return 'ไฟล์ .doc รุ่นเก่าเปิดไม่ได้ ให้เปิดใน Word แล้วบันทึกเป็น .docx ก่อน';
+  if (!kind) return 'รองรับไฟล์ Word (.docx) PDF ข้อความ (.txt) Markdown (.md) และหน้าเว็บ (.html)';
+  if (file.size > FILE_MAX_MB * 1024 * 1024) return `ไฟล์ต้องไม่เกิน ${FILE_MAX_MB}MB`;
+  if (!file.size) return 'ไฟล์ว่างเปล่า';
+  try {
+    if (kind === 'pdf') {
+      const head = new TextDecoder().decode(await file.slice(0, 1024).arrayBuffer());
+      if (!head.includes('%PDF-')) return 'ไฟล์ PDF นี้เสียหรือไม่ใช่ PDF';
+    } else if (kind === 'docx') {
+      const JSZip = (await import('jszip')).default;
+      const z = await JSZip.loadAsync(await file.arrayBuffer());
+      if (!z.file('word/document.xml')) return 'ไฟล์นี้ไม่ใช่ไฟล์ Word (.docx)';
+    }
+  } catch {
+    return 'เปิดไฟล์ไม่ได้ ไฟล์อาจเสียหรือมีรหัสผ่าน';
+  }
+  return null;
+}
+
 /** แปลงไฟล์เป็นเนื้อหาโหมดเอกสาร (ยังไม่กรอง) */
 export async function importAsFlow(file: File, addImage: AddImage, onStep?: (msg: string) => void): Promise<ImportResult> {
   const kind = importKind(file);

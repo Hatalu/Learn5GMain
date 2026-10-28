@@ -1542,10 +1542,10 @@ export function StudioEditor({ id }: { id: string }) {
       <header className="st-top">
         <Link href="/studio?tab=library" className="st-topbtn" title="กลับไปคลังสื่อ">
           <ChevronLeft className="w-5 h-5" />
-          <span className="max-md:hidden">หน้าแรก</span>
+          <span className="max-lg:hidden">หน้าแรก</span>
         </Link>
         {!readOnly && (
-          <Pop title="ปรับขนาดสื่อ" width={330} className="st-topbtn st-g st-g-sky max-sm:!hidden" button={<><Scaling className="w-4 h-4" /> ปรับขนาด</>}>
+          <Pop title="ปรับขนาดสื่อ" width={330} className="st-topbtn st-g st-g-sky max-sm:!hidden" button={<><Scaling className="w-4 h-4" /> <span className="max-xl:hidden">ปรับขนาด</span></>}>
             {(close) => <SizePicker ctl={ctl} onDone={close} />}
           </Pop>
         )}
@@ -1584,9 +1584,9 @@ export function StudioEditor({ id }: { id: string }) {
           </div>
         )}
         {!readOnly && (
-          <button type="button" className={`st-topbtn st-g ${isPublic ? 'st-g-mint' : 'st-g-slate'}`} data-on={isPublic} onClick={() => setIsPublic(!isPublic)} title={isPublic ? 'Public: สมาชิกคนอื่นเห็นใน Discover แตะเพื่อเปลี่ยนเป็น Private' : 'Private: เห็นเฉพาะคุณ แตะเพื่อเปลี่ยนเป็น Public'}>
+          <button type="button" className={`st-topbtn st-g max-sm:!hidden ${isPublic ? 'st-g-mint' : 'st-g-slate'}`} data-on={isPublic} onClick={() => setIsPublic(!isPublic)} title={isPublic ? 'Public: สมาชิกคนอื่นเห็นใน Discover แตะเพื่อเปลี่ยนเป็น Private' : 'Private: เห็นเฉพาะคุณ แตะเพื่อเปลี่ยนเป็น Public'}>
             {isPublic ? <Globe className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-            <span className="max-md:hidden">{isPublic ? 'Public' : 'Private'}</span>
+            <span className="max-xl:hidden">{isPublic ? 'Public' : 'Private'}</span>
           </button>
         )}
         {readOnly && (
@@ -1595,12 +1595,12 @@ export function StudioEditor({ id }: { id: string }) {
           </button>
         )}
         {!readOnly && (
-          <button type="button" className="st-topbtn st-g st-g-sky" onClick={() => setImportDlg({ file: null })} disabled={!!importing} title="นำเข้าไฟล์ Word / PDF / ข้อความ (สมการกลายเป็น MathType แก้ต่อได้)">
-            <FileUp className="w-4 h-4" /> <span className="max-md:hidden">นำเข้าไฟล์</span>
+          <button type="button" className="st-topbtn st-g st-g-sky max-sm:!hidden" onClick={() => setImportDlg({ file: null })} disabled={!!importing} title="นำเข้าไฟล์ Word / PDF / ข้อความ (สมการกลายเป็น MathType แก้ต่อได้)">
+            <FileUp className="w-4 h-4" /> <span className="max-xl:hidden">นำเข้าไฟล์</span>
           </button>
         )}
         <button type="button" className="st-topbtn st-g st-g-grape" onClick={() => (finishEdit(), setSelId(null), setPresent(ap))} title="นำเสนอเต็มจอ">
-          <MonitorPlay className="w-4 h-4" /> <span className="max-sm:hidden">นำเสนอ</span>
+          <MonitorPlay className="w-4 h-4" /> <span className="max-xl:hidden">นำเสนอ</span>
         </button>
         <ExportMenu pages={doc.pages.length} busy={!!exporting} label={exportLabel} onPick={runExport} />
       </header>
@@ -1970,7 +1970,7 @@ function ExportMenu({ pages, busy, label, onPick }: { pages: number; busy: boole
     <div className="relative" ref={ref}>
       <button type="button" className="st-topbtn st-g st-g-sun" onClick={() => setOpen(!open)} disabled={busy} aria-expanded={open}>
         {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-        <span className="max-sm:hidden">{busy ? label : 'ดาวน์โหลด'}</span>
+        <span className="max-lg:hidden">{busy ? label : 'ดาวน์โหลด'}</span>
       </button>
       {open && (
         <div className="st-menu">

@@ -20,7 +20,7 @@ import { TEMPLATES } from '@/components/studio/templates';
 import { PageThumb } from '@/components/studio/render';
 import { PaperModal } from '@/components/creator/PaperModal';
 import { ImportDialog, type ImportHow } from '@/components/studio/ImportDialog';
-import { setPendingImport } from '@/components/studio/importFile';
+import { checkImportFile, setPendingImport } from '@/components/studio/importFile';
 import { TierCompare } from '@/components/creator/TierCompare';
 import { UsageMeter } from '@/components/creator/UsageMeter';
 import { JoinButton } from '@/components/membership/JoinButton';
@@ -127,8 +127,10 @@ function StudioHub() {
     router.push(`/studio/edit?id=${data.id}`);
   };
   const [importDlg, setImportDlg] = useState(false);
-  const startImport = (file: File, how: ImportHow) => {
+  const startImport = async (file: File, how: ImportHow) => {
     setImportDlg(false);
+    const bad = await checkImportFile(file);
+    if (bad) return setErr(bad);
     const d = blankDesign();
     create('import', how === 'flow' ? { ...d, mode: 'word' } : d, file.name.replace(/\.[^.]+$/, '') || 'สื่อนำเข้า', { file, how });
   };
