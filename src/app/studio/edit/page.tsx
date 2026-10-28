@@ -2,7 +2,6 @@
 
 import React, { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Navbar } from '@/components/navbar/Navbar';
 import { StudioEditor } from '@/components/studio/Editor';
 import '@/components/creator/creator.css';
 
@@ -14,7 +13,7 @@ function Inner() {
 export default function StudioEditPage() {
   return (
     <div className="st-screen">
-      <Navbar />
+      {/* ตัวแก้ไขเต็มจอ ไม่มีแถบนำทางของเว็บ (ปุ่มออกอยู่ซ้ายบนของตัวแก้ไข) */}
       <Suspense fallback={null}>
         <Inner />
       </Suspense>

@@ -6,15 +6,16 @@
  * - แบบเหมือนต้นฉบับ: วาดแต่ละหน้าเป็นรูป (ใช้ในโหมด Canva)
  */
 import { texOfText } from './ommlTex';
-import type { ImportResult } from './docxImport';
+import type { AddImage, ImportResult } from './docxImport';
 import { cutBlocks, MAX_IMPORT } from './docxImport';
 
-type PdfJs = typeof import('pdfjs-dist');
+type PdfJs = typeof import('pdfjs-dist/legacy/build/pdf.mjs');
 let lib: Promise<PdfJs> | null = null;
+// รุ่น legacy: pdf.js รุ่นปกติใช้คำสั่งใหม่มาก (Map.getOrInsertComputed) เบราว์เซอร์เก่าและแอป (Chromium 130) เปิด PDF ไม่ได้
 function pdfjs(): Promise<PdfJs> {
   if (!lib) {
-    lib = import('pdfjs-dist').then((p) => {
-      if (!p.GlobalWorkerOptions.workerSrc) p.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
+    lib = import('pdfjs-dist/legacy/build/pdf.mjs').then((p) => {
+      if (!p.GlobalWorkerOptions.workerSrc) p.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/legacy/build/pdf.worker.min.mjs', import.meta.url).toString();
       return p;
     });
   }
@@ -107,12 +108,49 @@ function lineHtml(l: Line, eq: { n: number }): string {
   return out.replace(/ {2,}/g, ' ').trim();
 }
 
-/** อ่านข้อความทั้งไฟล์เป็นเนื้อหาโหมดเอกสาร */
-export async function pdfToFlow(data: Uint8Array, onPage?: (i: number, n: number) => void): Promise<ImportResult> {
+/**
+ * ตำแหน่งรูปในหน้า (px ของ viewport scale 1, มุมบนซ้าย) จากรายการคำสั่งวาด: ติดตามเมทริกซ์ save/restore/transform
+ * รูปถูกวาดลงสี่เหลี่ยมหน่วย 1x1 ที่ผ่านเมทริกซ์ปัจจุบัน
+ */
+async function imageRects(p: PdfJs, page: Awaited<ReturnType<Awaited<ReturnType<typeof open>>['getPage']>>, vp: ReturnType<typeof page.getViewport>) {
+  const ops = await page.getOperatorList();
+  const O = p.OPS;
+  type M = number[];
+  const mul = (m: M, n: M): M => [m[0] * n[0] + m[2] * n[1], m[1] * n[0] + m[3] * n[1], m[0] * n[2] + m[2] * n[3], m[1] * n[2] + m[3] * n[3], m[0] * n[4] + m[2] * n[5] + m[4], m[1] * n[4] + m[3] * n[5] + m[5]];
+  let ctm: M = [1, 0, 0, 1, 0, 0];
+  const stack: M[] = [];
+  const out: { x: number; y: number; w: number; h: number }[] = [];
+  ops.fnArray.forEach((fn, i) => {
+    const a = ops.argsArray[i] as unknown[];
+    if (fn === O.save) stack.push(ctm);
+    else if (fn === O.restore) ctm = stack.pop() ?? ctm;
+    else if (fn === O.transform) ctm = mul(ctm, a as M);
+    else if (fn === O.paintFormXObjectBegin) {
+      stack.push(ctm);
+      if (Array.isArray(a?.[0]) && (a[0] as M).length === 6) ctm = mul(ctm, a[0] as M);
+    } else if (fn === O.paintFormXObjectEnd) ctm = stack.pop() ?? ctm;
+    else if (fn === O.paintImageXObject || fn === O.paintInlineImageXObject || fn === O.paintImageXObjectRepeat) {
+      const xs = [ctm[4], ctm[4] + ctm[0], ctm[4] + ctm[2], ctm[4] + ctm[0] + ctm[2]];
+      const ys = [ctm[5], ctm[5] + ctm[1], ctm[5] + ctm[3], ctm[5] + ctm[1] + ctm[3]];
+      const [x1, y1] = vp.convertToViewportPoint(Math.min(...xs), Math.min(...ys)) as number[];
+      const [x2, y2] = vp.convertToViewportPoint(Math.max(...xs), Math.max(...ys)) as number[];
+      const r = { x: Math.min(x1, x2), y: Math.min(y1, y2), w: Math.abs(x2 - x1), h: Math.abs(y2 - y1) };
+      // ข้ามรูปเล็กมาก (จุด/เส้น)
+      if (r.w >= 24 && r.h >= 24) out.push(r);
+    }
+  });
+  return out;
+}
+
+/** อ่านข้อความทั้งไฟล์เป็นเนื้อหาโหมดเอกสาร (รูปในหน้าตัดจากหน้าที่วาดแล้วส่งผ่าน addImage วางตามลำดับบน-ล่าง) */
+export async function pdfToFlow(data: Uint8Array, onPage?: (i: number, n: number) => void, addImage?: AddImage): Promise<ImportResult> {
   const doc = await open(data);
+  const p = await pdfjs();
   const eq = { n: 0 };
   const blocks: string[] = [];
   let paragraphs = 0;
+  let images = 0;
+  let dropped = 0;
   try {
     for (let pn = 1; pn <= doc.numPages; pn++) {
       onPage?.(pn, doc.numPages);
@@ -126,8 +164,38 @@ export async function pdfToFlow(data: Uint8Array, onPage?: (i: number, n: number
         const size = Math.hypot(a, b) || Math.abs(d) || 10;
         toks.push({ s: it.str, x: e, w: it.width || it.str.length * size * 0.5, y: vp.height - f, size });
       }
-      if (!toks.length) continue;
-      const base = median(toks.map((t) => t.size));
+      // รูปในหน้า: วาดหน้าครั้งเดียวแล้วตัดเฉพาะกรอบรูป
+      const pics: { y: number; html: string }[] = [];
+      // รูปเต็มหน้าเป็นพื้นหลังของหน้าที่มีข้อความ (ข้าม) แต่หน้าที่ไม่มีข้อความเลย (สแกน/รูปทั้งหน้า) ใช้รูปนั้นแทนหน้า
+      const rects = addImage ? (await imageRects(p, page, vp).catch(() => [])).filter((r) => !toks.length || r.w * r.h < vp.width * vp.height * 0.85) : [];
+      if (rects.length && addImage) {
+        const K = 2;
+        const c = document.createElement('canvas');
+        c.width = Math.round(vp.width * K);
+        c.height = Math.round(vp.height * K);
+        const g = c.getContext('2d')!;
+        g.fillStyle = '#fff';
+        g.fillRect(0, 0, c.width, c.height);
+        await page.render({ canvasContext: g, canvas: c, viewport: page.getViewport({ scale: K }), intent: 'print' }).promise;
+        for (const r of rects) {
+          const cut = document.createElement('canvas');
+          cut.width = Math.max(1, Math.round(r.w * K));
+          cut.height = Math.max(1, Math.round(r.h * K));
+          cut.getContext('2d')!.drawImage(c, r.x * K, r.y * K, r.w * K, r.h * K, 0, 0, cut.width, cut.height);
+          const blob = await new Promise<Blob | null>((ok) => cut.toBlob(ok, 'image/jpeg', 0.88));
+          const src = blob ? await addImage(new Uint8Array(await blob.arrayBuffer()), 'image/jpeg').catch(() => '') : '';
+          if (!src) {
+            dropped++;
+            continue;
+          }
+          images++;
+          const k = 96 / 72;
+          pics.push({ y: r.y, html: `<p style="margin-left: ${Math.max(0, Math.round((r.x - 72) * k))}px"><img src="${escAttr(src)}" style="width: ${Math.round(r.w * k)}px"></p>` });
+        }
+      }
+      pics.sort((a, b) => a.y - b.y);
+      if (!toks.length && !pics.length) continue;
+      const base = toks.length ? median(toks.map((t) => t.size)) : 12;
       // บรรทัดหลักจากชิ้นขนาดปกติ แล้วค่อยแปะชิ้นเล็ก (ยกกำลัง/ตัวห้อย) เข้าบรรทัดที่ใกล้สุด
       const big = toks.filter((t) => t.size >= base * 0.8).sort((p, q) => p.y - q.y || p.x - q.x);
       const small = toks.filter((t) => t.size < base * 0.8);
@@ -166,10 +234,12 @@ export async function pdfToFlow(data: Uint8Array, onPage?: (i: number, n: number
         top.toks = [];
         bot.toks = [];
       }
-      const left = Math.min(...lines.filter((l) => l.toks.length || l.frac).map((l) => l.x0));
+      const left = lines.length ? Math.min(...lines.filter((l) => l.toks.length || l.frac).map((l) => l.x0)) : 72;
       const k = 96 / 72;
       let prevY = -1;
       for (const l of lines) {
+        // รูปที่อยู่เหนือบรรทัดนี้ใส่ก่อน
+        while (pics.length && pics[0].y < l.y) blocks.push(pics.shift()!.html);
         if (!l.toks.length && !l.frac) continue;
         if (!l.toks.length && l.frac) l.x0 = l.frac[0].x0;
         // ช่องว่างแนวตั้งกว้าง = ย่อหน้าว่างคั่น
@@ -185,6 +255,7 @@ export async function pdfToFlow(data: Uint8Array, onPage?: (i: number, n: number
         blocks.push(`<p${st.length ? ` style="${st.join('; ')}"` : ''}>${html}</p>`);
         paragraphs++;
       }
+      for (const pic of pics) blocks.push(pic.html);
       if (pn < doc.numPages) blocks.push('<div data-pb="1"></div>');
       page.cleanup();
     }
@@ -193,7 +264,7 @@ export async function pdfToFlow(data: Uint8Array, onPage?: (i: number, n: number
   }
   const all = blocks.join('');
   const html = cutBlocks(all, MAX_IMPORT);
-  return { html, head: '', foot: '', stats: { paragraphs, equations: eq.n, failedEq: 0, images: 0, droppedImages: 0, truncated: html.length < all.length } };
+  return { html, head: '', foot: '', stats: { paragraphs, equations: eq.n, failedEq: 0, images, droppedImages: dropped, truncated: html.length < all.length } };
 }
 
 /** วาดแต่ละหน้าเป็นรูป JPEG (กว้าง width px) ทีละหน้า */

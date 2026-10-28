@@ -52,7 +52,8 @@ export function Pop({
     const raf = requestAnimationFrame(place);
     const out = (e: PointerEvent) => {
       const t = e.target as Node;
-      if (!box.current?.contains(t) && !btn.current?.contains(t)) setOpen(false);
+      // กดในป๊อปอัปอื่นที่เปิดซ้อนอยู่ (เช่น ปรับขนาดในเมนูไฟล์) ไม่ปิดตัวนี้
+      if (!box.current?.contains(t) && !btn.current?.contains(t) && !(t instanceof Element && t.closest('.st-pop'))) setOpen(false);
     };
     const key = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
     document.addEventListener('pointerdown', out, true);

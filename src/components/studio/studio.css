@@ -2245,8 +2245,22 @@ html.dark .st-quizlink {
   vertical-align: bottom;
   line-height: 0;
 }
-.st-flow :is(p, h1, h2, h3, div, blockquote, li):has(> span[data-shape][data-wrap='front'], > span[data-shape][data-wrap='behind']) {
+.st-flow :is(p, h1, h2, h3, div, blockquote, li):has(> span[data-shape][data-wrap='front'], > span[data-shape][data-wrap='behind'], > img[data-rel]) {
   position: relative;
+}
+/* รูปลอยที่ยึดกับย่อหน้า (นำเข้าจาก Word) ใช้ขนาดจริง ไม่บีบตามความกว้างย่อหน้า */
+.st-flow img[data-rel] {
+  max-width: none;
+}
+/* ชิ้นในบรรทัด (inline-block) ไม่รับระยะเยื้องบรรทัดแรกของย่อหน้า (ย่อหน้าแบบแขวนทำให้สมการเลื่อนทับข้อความ) */
+.st-flow :is(span[data-tex], span[data-shape], span[data-tab], img) {
+  text-indent: 0;
+}
+/* แท็บ: ความกว้างคิดตามตำแหน่งหยุดแท็บ (layoutTabs) */
+.st-flow span[data-tab] {
+  display: inline-block;
+  width: 48px;
+  height: 1px;
 }
 .st-flow [data-pb] {
   height: 0;
@@ -3431,4 +3445,106 @@ html.dark .st-wwarn {
 .st-rfonts button[data-on='true'] {
   background: var(--st-acc-soft);
   color: var(--st-acc-ink);
+}
+
+/* ---------------- ตัวแก้ไขเต็มจอ (ไม่มีแถบนำทางของเว็บ) ปุ่มออกซ้ายบน ---------------- */
+.st-exit {
+  flex-shrink: 0;
+}
+/* โหมด Canva: ไม่มีแถบบน ปุ่มออกอยู่บนสุดของแถบซ้าย เมนูไฟล์อยู่ล่างสุด */
+.st-rail .st-exit {
+  flex-direction: column;
+  gap: 0;
+  height: auto;
+  min-height: 52px;
+  padding: 4px 2px;
+  margin-bottom: 6px;
+  border-radius: 14px;
+  font-size: 12px;
+  background: var(--st-soft);
+  color: var(--st-ink);
+}
+.st-rail .st-exit:hover {
+  background: var(--st-acc-soft);
+}
+.st-rail-file {
+  width: 100%;
+  height: auto;
+}
+.st-filepop {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.st-filepop > * {
+  grid-column: 1 / -1;
+}
+/* ย้อนกลับ/ทำซ้ำ อยู่คู่กันแถวเดียว */
+.st-filepop > .st-topicon {
+  grid-column: auto;
+}
+.st-filepop .st-top-sep {
+  display: none;
+}
+.st-filepop .relative > .st-topbtn {
+  width: 100%;
+}
+.st-filepop .st-topbtn,
+.st-filepop .st-mode {
+  justify-content: center;
+}
+.st-filepop .st-title {
+  width: 100%;
+  max-width: none;
+  text-align: center;
+}
+/* ปุ่มที่ซ่อนป้ายบนจอเล็กในแถบบน ในเมนูไฟล์แสดงป้ายเสมอ */
+.st-filepop [class*='max-'] {
+  display: inline !important;
+}
+.st-filepop .st-topbtn[class*='max-sm'] {
+  display: inline-flex !important;
+}
+/* โหมด Word: แถบชื่อสีน้ำเงินแบบ Word + ริบบอนด้านบน */
+.st-top[data-word] {
+  min-height: 48px;
+  padding: 4px 10px;
+  background: #185abd;
+  border-bottom: 0;
+}
+.st-top[data-word] .st-topbtn:not(.st-g),
+.st-top[data-word] .st-save {
+  color: #fff;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+.st-top[data-word] .st-topbtn:not(.st-g):hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+.st-top[data-word] .st-title {
+  color: #fff;
+  background: transparent;
+}
+.st-top[data-word] .st-title:focus {
+  background: rgba(255, 255, 255, 0.16);
+}
+html.dark .st-top[data-word] {
+  background: #0f3a7d;
+}
+.st-topribbon {
+  flex-shrink: 0;
+}
+@media (max-width: 767px) {
+  /* แถบซ้ายเป็นแถบล่างบนมือถือ: ปุ่มออกลอยซ้ายบนแทน */
+  .st-rail .st-exit {
+    position: fixed;
+    top: 8px;
+    left: 8px;
+    z-index: 40;
+    min-height: 40px;
+    flex-direction: row;
+    padding: 0 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  }
 }

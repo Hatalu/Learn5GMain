@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import { answerOf, quizPages } from '../src/lib/studio/fromQuiz';
 import { cleanGraph, compileExpr, defaultShape, graphToSvg, GRAPH_TEMPLATES, intersections, parseEquation, shapeFacts, shapeText, texToExpr, type GShape } from '../src/lib/studio/graph';
-import { PAGE_FIELD, cleanFlowHtml, cleanWordOpt, defaultWordOpt, flowIsEmpty, pageLabel, stripPageField, withPageField } from '../src/lib/studio/flow';
+import { PAGE_FIELD, parseTabs, tabWidth, cleanFlowHtml, cleanWordOpt, defaultWordOpt, flowIsEmpty, pageLabel, stripPageField, withPageField } from '../src/lib/studio/flow';
 import { mathmlToOmml } from '../src/lib/studio/omml';
 import JSZip from 'jszip';
 import { parseXml } from '../src/lib/studio/xml';
@@ -1392,11 +1392,29 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
   const html = cleanFlowHtml(r.html, () => '');
   assert.ok(html.includes('<p style="text-align: center"><span style="font-size: 26.67px; font-weight: bold">ใบงาน</span></p>'), html);
   assert.ok(html.includes('หาค่า <span data-tex="\\frac{3}{4}" contenteditable="false"></span>'));
-  assert.ok(html.includes('<td colspan="2"><p>ข</p></td>'));
+  // ไม่มีสไตล์ตาราง = ไม่มีเส้น (แบบ Normal Table ของ Word) ระยะในช่องแบบ Word
+  assert.ok(html.includes('<td style="padding: 0px 7px; border: none" colspan="2"><p>ข</p></td>'), html);
   assert.deepEqual(r.margins, { mt: 96, mb: 96, ml: 120, mr: 120 });
   assert.equal(r.stats.equations, 1);
   passed++;
   console.log('  ok  ไฟล์ Word จำลองนำเข้าครบ (สมการ ตัวหนา ขนาด กึ่งกลาง ตาราง ระยะขอบ)');
+
+  // รูปแบบจากไฟล์ Word: แท็บ ระยะย่อหน้า เส้นขอบ รูปลอยยึดย่อหน้า ขนาดสมการ (ผ่านตัวกรอง ห้ามเกินที่อนุญาต)
+  {
+    const c = (h: string) => cleanFlowHtml(h, (v) => (v.startsWith('https://ok/') ? v : ''));
+    assert.equal(c('<p data-tabs="l47 c301 d48" style="padding-top: 4px; padding-bottom: 11px; border-top: 1px solid #000000"><span data-tab="1">x<b>y</b></span>a</p>'), '<p data-tabs="l47 c301 d48" style="padding-top: 4px; padding-bottom: 11px; border-top: 1px solid #000000"><span data-tab="1" contenteditable="false"></span>a</p>');
+    assert.equal(c('<p data-tabs="x1 onload">a</p>'), '<p>a</p>', 'ตำแหน่งแท็บผิดรูปแบบ = ทิ้ง');
+    assert.equal(c('<p><img src="https://ok/a.png" data-rel="p" data-wrap="behind" style="width: 20px; left: -3px; top: 4px"><span data-rel="p">b</span></p>'), '<p><img src="https://ok/a.png" data-rel="p" data-wrap="behind" style="width: 20px; left: -3px; top: 4px"><span>b</span></p>');
+    assert.equal(c('<span data-tex="x" data-w="12" style="font-size: 17px; color: red"></span>'), '<span data-tex="x" data-w="12" style="font-size: 17px" contenteditable="false"></span>');
+    assert.equal(c('<span data-tex="x" data-w="12x" style="border: 1px solid url(x)"></span>'), '<span data-tex="x" contenteditable="false"></span>');
+    const tb = parseTabs('l47 c301 r450 d40');
+    assert.equal(tabWidth(10, 0, tb), 37);
+    assert.equal(tabWidth(100, 20, tb), 191, 'แท็บกลาง: ข้อความอยู่กึ่งกลางตำแหน่ง');
+    assert.equal(tabWidth(400, 30, tb), 20, 'แท็บขวา: ข้อความชิดขวาที่ตำแหน่ง');
+    assert.equal(tabWidth(460, 0, tb), 20, 'เลยตำแหน่งสุดท้าย = ระยะแท็บตั้งต้น');
+    passed++;
+    console.log('  ok  รูปแบบจาก Word (แท็บ ระยะย่อหน้า รูปลอย ขนาดสมการ) ผ่านตัวกรอง');
+  }
   console.log(`\n${passed} tests passed`);
 })().catch((e) => {
   console.error(e);

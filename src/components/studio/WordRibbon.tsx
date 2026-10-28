@@ -19,6 +19,7 @@ import {
   CalendarDays,
   ChevronDown,
   ChevronLeft,
+  ChevronUp,
   ClipboardPaste,
   Copy,
   Eraser,
@@ -210,7 +211,7 @@ export function WordRibbon({
   closeHf: () => void;
   drawing: string | null;
   /** ซ้าย = แท็บหลักเรียงลง (หน้าแรก แทรก ...) / ขวา = บานจัดรูปแบบตามบริบท (รูปร่าง รูปภาพ ตาราง) แบบบาน Format ของ Word */
-  side: 'left' | 'right';
+  side: 'left' | 'right' | 'top';
   /** บานที่เปิดแทนแท็บด้านซ้าย (ค้นหา/แป้นลัด) */
   pane?: React.ReactNode;
 }) {
@@ -221,6 +222,11 @@ export function WordRibbon({
     if (window.matchMedia('(min-width: 1024px)').matches) setOpen(true);
   }, []);
   const [keysOpen, setKeysOpen] = useState(false);
+  const [min, setMin] = useState(false);
+  // เลือกรูป/รูปร่าง/สมการแล้วเปิดแท็บตามบริบทเองแบบ Word
+  useEffect(() => {
+    if (side === 'top' && object) setTab('object');
+  }, [side, !!object]); // eslint-disable-line react-hooks/exhaustive-deps
   const [clipMsg, setClipMsg] = useState('');
   const clip = async (op: 'cut' | 'copy' | 'paste') => {
     const m = await api.clip(op);
@@ -648,6 +654,54 @@ export function WordRibbon({
       {drawing && <p className="st-rhint">ลากบนกระดาษเพื่อวาด (Esc ยกเลิก)</p>}
     </>
   );
+
+  if (side === 'top') {
+    // ริบบอนด้านบนแบบ Word: แถวแท็บ (+ แท็บตามบริบท ตาราง/รูป) แล้วแถบกลุ่มเครื่องมือ ย่อได้
+    const cur: RibbonTab = (tab === 'object' && !object) || (tab === 'table' && !inTable) ? 'home' : tab;
+    return (
+      <div className="st-ribbon" data-min={min || undefined}>
+        <div className="st-rtabs" role="tablist" aria-label="ริบบอน">
+          {TABS.map((t) => (
+            <button key={t.id} type="button" role="tab" aria-selected={cur === t.id} className="st-rtab" data-on={cur === t.id} onMouseDown={noFocus} onClick={() => (setTab(t.id), setMin(false))}>
+              {t.label}
+            </button>
+          ))}
+          {inTable && (
+            <button type="button" role="tab" aria-selected={cur === 'table'} className="st-rtab st-rtab-ctx" data-on={cur === 'table'} onMouseDown={noFocus} onClick={() => (setTab('table'), setMin(false))}>
+              เค้าโครงตาราง
+            </button>
+          )}
+          {object && (
+            <button type="button" role="tab" aria-selected={cur === 'object'} className="st-rtab st-rtab-ctx" data-on={cur === 'object'} onMouseDown={noFocus} onClick={() => (setTab('object'), setMin(false))}>
+              {objectLabel}
+            </button>
+          )}
+          <span className="flex-1" />
+          {hf && (
+            <>
+              <button type="button" className="st-rtab st-rhf" onMouseDown={noFocus} onClick={api.insertPageNum}>
+                ใส่เลขหน้า
+              </button>
+              <button type="button" className="st-rtab st-rhf" onMouseDown={noFocus} onClick={closeHf}>
+                ปิด{hf === 'head' ? 'หัวกระดาษ' : 'ท้ายกระดาษ'}
+              </button>
+            </>
+          )}
+          {drawing && <span className="st-rhint">ลากบนกระดาษเพื่อวาด (Esc ยกเลิก)</span>}
+          {clipMsg && <span className="st-rhint">{clipMsg}</span>}
+          <button type="button" className="st-rtab st-rmin" title={min ? 'แสดงริบบอน' : 'ย่อริบบอน'} aria-label={min ? 'แสดงริบบอน' : 'ย่อริบบอน'} onMouseDown={noFocus} onClick={() => setMin(!min)}>
+            {min ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+          </button>
+        </div>
+        {!min && (
+          <div className="st-rbody" role="toolbar" aria-label="เครื่องมือ">
+            {render(cur)}
+          </div>
+        )}
+        {keysOpen && <MathKeysDialog onClose={() => setKeysOpen(false)} />}
+      </div>
+    );
+  }
 
   if (side === 'right') {
     // บานจัดรูปแบบด้านขวา: ขึ้นเฉพาะตอนเลือกรูปร่าง/รูปภาพ หรือคลิกในตาราง (ไม่มีอะไรเลือก = กระดาษกว้างเต็มที่)

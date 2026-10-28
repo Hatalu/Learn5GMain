@@ -2,6 +2,7 @@
 
 import { texToHtml } from '@/components/creator/math/MathText';
 import { cleanGraph, graphToSvg } from '@/lib/studio/graph';
+import { layoutTabs } from '@/lib/studio/flow';
 import { shapeById } from './shapes';
 
 /** รูปร่างแบบ Word: เส้นตรงวาดทแยงตามทิศที่ลาก (ln = ลงขวา, ln2 = ขึ้นขวา) */
@@ -105,5 +106,22 @@ export function hydrateFlow(root: HTMLElement) {
       makePng(key, svg, 300, Math.max(2, 300 / ar));
     }
     el.contentEditable = 'false';
+  });
+  fitEquations(root);
+  layoutTabs(root);
+}
+
+/**
+ * สมการ MathType จากไฟล์ Word (data-w = ความกว้างเดิม px): ผลวาด KaTeX ช่องไฟกว้างกว่า ถ้ากว้างเกินเดิมย่อลง (ไม่ต่ำกว่า 88%)
+ * บรรทัดจะไม่ล้นขึ้นบรรทัดใหม่ต่างจากต้นฉบับ · ใช้ zoom (ไม่ถูกบันทึก ตัวกรองไม่รับ) อ่านขนาดครั้งเดียวทั้งเอกสาร
+ */
+function fitEquations(root: HTMLElement) {
+  const els = Array.from(root.querySelectorAll<HTMLElement>('span[data-tex][data-w]'));
+  if (!els.length) return;
+  for (const el of els) el.style.removeProperty('zoom');
+  const ws = els.map((el) => el.offsetWidth);
+  els.forEach((el, i) => {
+    const want = Number(el.dataset.w) + 2;
+    if (ws[i] > want * 1.04) el.style.setProperty('zoom', String(Math.max(0.88, want / ws[i]).toFixed(3)));
   });
 }

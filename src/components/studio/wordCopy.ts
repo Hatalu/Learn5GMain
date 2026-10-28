@@ -82,6 +82,13 @@ export function wordClipboardHtml(root: HTMLElement, range: Range): string | nul
       out.dataset.tex = el.dataset.tex || '';
       el.replaceWith(out);
     });
+    // แท็บ -> อักขระแท็บของ Word
+    box.querySelectorAll<HTMLElement>('span[data-tab]').forEach((el) => {
+      const t = document.createElement('span');
+      t.setAttribute('style', 'mso-tab-count:1');
+      t.textContent = '\t';
+      el.replaceWith(t);
+    });
     // กราฟ/รูปร่าง/รูปภาพ -> รูปขนาดเท่าบนกระดาษ (หน่วย pt)
     box.querySelectorAll<HTMLElement>('figure, img, span[data-shape]').forEach((el) => {
       const r = el.getBoundingClientRect();

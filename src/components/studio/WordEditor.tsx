@@ -10,7 +10,7 @@ import {
   Trash2,
   Unlock,
 } from 'lucide-react';
-import { FLOW_GAP, WORD_SINGLE, cleanFlowHtml, flowIsEmpty, hasPageField, pageLabel, paginate, stripPageField, withPageField, type WordOpt } from '@/lib/studio/flow';
+import { FLOW_GAP, WORD_SINGLE, cleanFlowHtml, flowIsEmpty, hasPageField, layoutTabs, pageLabel, paginate, stripPageField, withPageField, type WordOpt } from '@/lib/studio/flow';
 import { cleanSrc, type Item, type Page } from '@/lib/studio/doc';
 import { cleanGraph, type GraphSpec } from '@/lib/studio/graph';
 import { wordClipboardHtml } from './wordCopy';
@@ -75,10 +75,9 @@ export const WordEditor = forwardRef<
     H: number;
     zoom: number;
     readOnly: boolean;
-    /** ที่วางแถบเครื่องมือ (แทนที่แถบตั้งค่าของโหมด Canva) */
-    /** ที่วางบานจัดรูปแบบด้านขวา */
-    rightEl: HTMLElement | null;
-    /** ที่วางแถบเครื่องมือด้านข้าง (แบบโหมด Canva) */
+    /** ที่วางริบบอนด้านบน (แบบ Word) */
+    topEl: HTMLElement | null;
+    /** ที่วางบานค้นหา/แป้นลัดด้านซ้าย */
     railEl: HTMLElement | null;
     /** ตัวเลือกขนาดกระดาษ (แผงเค้าโครง) */
     layoutExtra?: React.ReactNode;
@@ -88,7 +87,7 @@ export const WordEditor = forwardRef<
     openGraph: (spec: GraphSpec | null, done: (s: GraphSpec) => void) => void;
     upload: (file: File) => Promise<string | null>;
   }
->(function WordEditor({ html, pages, wopt, onWopt, W, H, zoom, readOnly, rightEl, railEl, layoutExtra, onChange, onNeedPages, openMath, openGraph, upload }, ref) {
+>(function WordEditor({ html, pages, wopt, onWopt, W, H, zoom, readOnly, topEl, railEl, layoutExtra, onChange, onNeedPages, openMath, openGraph, upload }, ref) {
   const ed = useRef<HTMLDivElement>(null);
   /** หัว/ท้ายกระดาษที่กำลังแก้ (ดับเบิลคลิกขอบบน/ล่างของกระดาษแบบ Word) */
   const hfRef = useRef<HTMLDivElement>(null);
@@ -207,6 +206,8 @@ export const WordEditor = forwardRef<
     if (!h.burst) {
       h.past.push(h.last);
       if (h.past.length > 300) h.past.shift();
+      // เอกสารที่ฝังรูปไว้ (แอปออฟไลน์) ยาวหลาย MB: จำกัดความจำรวมของประวัติ
+      while (h.past.length > 5 && h.past.reduce((n, x) => n + x.html.length, 0) > 60_000_000) h.past.shift();
       h.future = [];
     }
     window.clearTimeout(h.burst);
@@ -958,7 +959,21 @@ export const WordEditor = forwardRef<
           }
         } else if (el?.closest('li')) cmd(e.shiftKey ? 'outdent' : 'indent');
         else if (!e.shiftKey) {
-          document.execCommand('insertText', false, '  ');
+          // แท็บแบบ Word: ไปตำแหน่งหยุดแท็บถัดไป (ทุก 1.27 ซม. หรือตามที่ย่อหน้ากำหนด)
+          const s = window.getSelection();
+          const r = s?.rangeCount ? s.getRangeAt(0) : null;
+          if (r && cur()?.contains(r.startContainer)) {
+            r.deleteContents();
+            const t = document.createElement('span');
+            t.dataset.tab = '1';
+            t.contentEditable = 'false';
+            r.insertNode(t);
+            r.setStartAfter(t);
+            r.collapse(true);
+            s!.removeAllRanges();
+            s!.addRange(r);
+            layoutTabs(cur()!);
+          }
           changed();
         }
       });
@@ -1222,31 +1237,10 @@ export const WordEditor = forwardRef<
     </>
   ) : null;
   const objectLabel = active ? (active.dataset.tex !== undefined ? 'เครื่องมือสมการ' : active.dataset.graph ? 'รูปแบบกราฟ' : active.dataset.shape ? 'รูปแบบรูปร่าง' : 'รูปแบบรูปภาพ') : '';
-  // เครื่องมือแบบ Word แยกซ้าย-ขวา ไม่กินพื้นที่ด้านบนของกระดาษ: ซ้าย = แท็บหลัก, ขวา = บานจัดรูปแบบของชิ้นที่เลือก
-  const side = !readOnly && (
-    <>
-      <WordRibbon
-        side="left"
-        api={api}
-        sizeNow={sizeNow}
-        fontNow={fontNow}
-        blockTag={blockTag}
-        isOn={docState}
-        inTable={!!curCell()}
-        object={objectTools}
-        objectLabel={objectLabel}
-        layoutExtra={layoutExtra}
-        hf={hf?.part ?? null}
-        closeHf={closeHf}
-        drawing={draw}
-        pane={panel ? <WordPanel id={panel} api={api} onClose={() => setPanel(null)} findFocus={findFocus} /> : undefined}
-      />
-      <input ref={fileIn} type="file" accept="image/*" hidden onChange={(e) => (addImage(e.target.files?.[0]), (e.target.value = ''))} />
-    </>
-  );
-  const right = !readOnly && (
+  // ริบบอนแบบ Word ด้านบน (แท็บตามบริบท ตาราง/รูป อยู่ในริบบอน) · บานค้นหา/แป้นลัดเปิดด้านซ้าย
+  const top = !readOnly && (
     <WordRibbon
-      side="right"
+      side="top"
       api={api}
       sizeNow={sizeNow}
       fontNow={fontNow}
@@ -1261,11 +1255,17 @@ export const WordEditor = forwardRef<
       drawing={draw}
     />
   );
+  const side = !readOnly && (
+    <>
+      {panel && <WordPanel id={panel} api={api} onClose={() => setPanel(null)} findFocus={findFocus} />}
+      <input ref={fileIn} type="file" accept="image/*" hidden onChange={(e) => (addImage(e.target.files?.[0]), (e.target.value = ''))} />
+    </>
+  );
 
   return (
     <>
       {side && railEl && createPortal(side, railEl)}
-      {right && rightEl && createPortal(right, rightEl)}
+      {top && topEl && createPortal(top, topEl)}
       <div className="st-word" data-draw={draw ? '1' : undefined} data-hf={hf ? '1' : undefined} style={{ width: W * zoom, height: totalH * zoom }}>
         <div style={{ width: W, height: totalH, transform: `scale(${zoom})`, transformOrigin: '0 0', position: 'relative' }}>
           {pages.map((p, i) => (

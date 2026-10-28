@@ -418,12 +418,21 @@ function objTex(o: Obj): string {
     case 9: {
       // วงเล็บ: ช่องแรก = เนื้อใน ตามด้วยตัววงเล็บซ้าย/ขวา (ตัวไหนไม่มี = ไม่วาด)
       const DEF: [string, string][] = [['⟨', '⟩'], ['(', ')'], ['{', '}'], ['[', ']'], ['|', '|'], ['‖', '‖'], ['⌊', '⌋'], ['⌈', '⌉'], ['[', ']'], ['(', ')']];
-      const chars = k.filter((x) => x.t === 'char') as { c: string }[];
+      // ตัววงเล็บแบบขยายของ MathType อยู่ในช่วงอักขระส่วนตัว (เช่น U+EC07/EC08 = ค่าสัมบูรณ์) ใช้ตัวมาตรฐานของชนิดวงเล็บแทน
+      const chars = (k.filter((x) => x.t === 'char') as { c: string }[]).map((x) => ({ c: /[-]/.test(x.c) ? undefined : x.c }));
       const hasL = o.sel === 9 || o.vari & 1 || o.vari === 0;
       const hasR = o.sel === 9 || o.vari & 2 || o.vari === 0;
       const l = hasL ? (chars[0]?.c ?? DEF[o.sel][0]) : '';
       const r = hasR ? (chars[hasL ? 1 : 0]?.c ?? DEF[o.sel][1]) : '';
-      return `\\left${fenceTex(l)} ${s(0)} \\right${fenceTex(r, true)}`;
+      const body = s(0);
+      // เนื้อในเตี้ย (ไม่มีเศษส่วน/ราก/ตัวดำเนินการใหญ่): วงเล็บธรรมดา ช่องไฟเท่า MathType (\left \right ของ KaTeX เว้นกว้างกว่า)
+      if (!/\\(frac|dfrac|sqrt|sum|int|prod|begin|binom|left|overline|underline|lim)\b/.test(body)) {
+        const plain: Record<string, [string, string]> = { '(': ['(', ')'], '[': ['[', ']'], '|': ['\\lvert ', '\\rvert '], '‖': ['\\lVert ', '\\rVert '] };
+        const pl = l ? plain[l]?.[0] : '';
+        const pr = r ? plain[r === ')' ? '(' : r === ']' ? '[' : r]?.[1] : '';
+        if (pl !== undefined && pr !== undefined) return `${pl}${body}${pr}`;
+      }
+      return `\\left${fenceTex(l)} ${body} \\right${fenceTex(r, true)}`;
     }
     case 10:
       return isNull(lines[1]) ? `\\sqrt${grp(s(0))}` : `\\sqrt[${s(1)}]${grp(s(0))}`;

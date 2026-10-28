@@ -74,7 +74,7 @@ export async function importAsFlow(file: File, addImage: AddImage, onStep?: (msg
   }
   if (kind === 'pdf') {
     const { pdfToFlow } = await import('@/lib/studio/pdfImport');
-    return pdfToFlow(new Uint8Array(await file.arrayBuffer()), (i, n) => onStep?.(`กำลังอ่าน PDF หน้า ${i}/${n}…`));
+    return pdfToFlow(new Uint8Array(await file.arrayBuffer()), (i, n) => onStep?.(`กำลังอ่าน PDF หน้า ${i}/${n}…`), addImage);
   }
   const { textToFlow, htmlToFlow } = await import('@/lib/studio/textImport');
   const text = await file.text();

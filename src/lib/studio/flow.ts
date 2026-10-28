@@ -10,6 +10,8 @@ export const FLOW_MARGIN = { x: 76, y: 72 };
 export const FLOW_GAP = 28;
 /** บรรทัดเดี่ยวของ Word กับฟอนต์ TH Sarabun 16pt สูง 21pt (วัดจาก Word จริง) = 1.31 เท่าของขนาดตัวอักษร */
 export const WORD_SINGLE = 1.31;
+/** ความยาว HTML สูงสุดของเนื้อหา: เว็บเก็บรูปเป็นลิงก์ (ฐานข้อมูลรับสื่อไม่เกิน 900KB) แอปออฟไลน์ฝังรูปเป็น data URL ในไฟล์ จึงยาวกว่ามาก */
+export const FLOW_MAX = process.env.NEXT_PUBLIC_L5G_APP ? 25_000_000 : 400_000;
 
 /**
  * ตั้งค่าหน้ากระดาษแบบ Word: ระยะขอบ หัว/ท้ายกระดาษ เลขหน้า
@@ -108,7 +110,7 @@ const HEX = /^#[0-9a-fA-F]{6}$/;
 
 const TAGS = new Set(['p', 'div', 'br', 'h1', 'h2', 'h3', 'ul', 'ol', 'li', 'b', 'strong', 'i', 'em', 'u', 's', 'strike', 'sub', 'sup', 'span', 'font', 'table', 'thead', 'tbody', 'tr', 'td', 'th', 'hr', 'img', 'figure', 'blockquote']);
 const VOID = new Set(['br', 'hr', 'img']);
-const STYLE_PROPS = new Set(['color', 'background-color', 'font-size', 'font-family', 'font-weight', 'font-style', 'text-decoration', 'text-decoration-line', 'text-align', 'line-height', 'margin-left', 'padding-left', 'width', 'vertical-align', 'left', 'top', 'list-style-type', 'text-indent']);
+const STYLE_PROPS = new Set(['color', 'background-color', 'font-size', 'font-family', 'font-weight', 'font-style', 'text-decoration', 'text-decoration-line', 'text-align', 'line-height', 'margin-left', 'padding-left', 'width', 'vertical-align', 'left', 'top', 'list-style-type', 'text-indent', 'padding', 'padding-top', 'padding-bottom', 'border', 'border-top', 'border-right', 'border-bottom', 'border-left']);
 /** การจัดวางรูป/กราฟกับข้อความ (แบบ Word): ล้อมซ้าย/ขวา, หลังข้อความ, หน้าข้อความ (ไม่มี = อยู่ในบรรทัด) */
 export const WRAPS = ['left', 'right', 'behind', 'front'] as const;
 
@@ -172,7 +174,7 @@ export type SrcCheck = (v: string) => string;
 
 /** ทำความสะอาด HTML ของโหมดเอกสาร: เก็บเฉพาะแท็ก/แอตทริบิวต์ที่อนุญาต ข้อความทั้งหมดถูก escape */
 export function cleanFlowHtml(html: string, cleanSrc: SrcCheck): string {
-  const src = String(html || '').slice(0, 400_000);
+  const src = String(html || '').slice(0, FLOW_MAX);
   const out: string[] = [];
   const re = /<!--[\s\S]*?-->|<(\/?)([a-zA-Z][a-zA-Z0-9]*)((?:\s+[^\s=>/]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+))?)*)\s*\/?>|([^<]+)|(<)/g;
   let m: RegExpExecArray | null;
@@ -215,6 +217,8 @@ export function cleanFlowHtml(html: string, cleanSrc: SrcCheck): string {
     let a: RegExpExecArray | null;
     let tex = '';
     let pg = false;
+    let tab = false;
+    let dw = '';
     let graph = '';
     const shape: string[] = [];
     while ((a = ar.exec(m[3] || ''))) {
@@ -227,6 +231,14 @@ export function cleanFlowHtml(html: string, cleanSrc: SrcCheck): string {
         tex = val.slice(0, 2000);
       } else if (name === 'data-pg' && tag === 'span') {
         pg = true;
+      } else if (name === 'data-w' && tag === 'span' && /^\d{1,4}$/.test(val)) {
+        dw = val;
+      } else if (name === 'data-tab' && tag === 'span') {
+        tab = true;
+      } else if (name === 'data-tabs' && /^(p|li|div|h[1-3]|blockquote)$/.test(tag) && /^([lcrd]-?\d{1,4} ?){1,21}$/.test(val)) {
+        attrs.push(`data-tabs="${val.trim()}"`);
+      } else if (name === 'data-rel' && val === 'p' && (tag === 'img' || tag === 'span')) {
+        attrs.push('data-rel="p"');
       } else if (name === 'data-graph' && tag === 'figure') {
         try {
           graph = JSON.stringify(cleanGraph(JSON.parse(val)));
@@ -263,7 +275,10 @@ export function cleanFlowHtml(html: string, cleanSrc: SrcCheck): string {
     if (tag === 'img' && !attrs.some((x) => x.startsWith('src='))) continue;
     // สมการ/กราฟเก็บแค่ข้อมูลต้นทาง เนื้อหาข้างใน (ผลวาด) ทิ้ง แล้ววาดใหม่ตอนแสดงผล
     if (tex) {
-      out.push(`<span data-tex="${escAttr(tex)}" contenteditable="false"></span>`);
+      // สมการเก็บได้แค่ขนาดตัวอักษรของตัวเอง (สมการ MathType จากไฟล์ Word)
+      // data-w = ความกว้างเดิมในไฟล์ Word (px) ใช้ย่อสมการที่กว้างกว่าเดิมให้บรรทัดไม่ล้น (fitEquations)
+      const size = /font-size: \d{1,3}(\.\d+)?px/.exec(attrs.find((x) => x.startsWith('style=')) ?? '')?.[0];
+      out.push(`<span data-tex="${escAttr(tex)}"${dw ? ` data-w="${dw}"` : ''}${size ? ` style="${size}"` : ''} contenteditable="false"></span>`);
       if (!m[0].endsWith('/>')) startSkip(tag);
       continue;
     }
@@ -274,6 +289,12 @@ export function cleanFlowHtml(html: string, cleanSrc: SrcCheck): string {
       if (!m[0].endsWith('/>')) startSkip(tag);
       continue;
     }
+    // แท็บ: ความกว้างคิดตอนจัดหน้าตามตำแหน่งหยุดแท็บของย่อหน้า (layoutTabs)
+    if (tab && tag === 'span') {
+      out.push('<span data-tab="1" contenteditable="false"></span>');
+      if (!m[0].endsWith('/>')) startSkip(tag);
+      continue;
+    }
     // รูปร่างแบบ span: ข้างในเป็นผลวาด ทิ้งแล้ววาดใหม่ (span อื่นที่ติดค่าจัดวางมาไม่เก็บค่านั้น)
     if (tag === 'span' && shape[0]?.startsWith('data-shape')) {
       out.push(`<span ${[...shape, ...attrs].join(' ')} contenteditable="false"></span>`);
@@ -281,7 +302,7 @@ export function cleanFlowHtml(html: string, cleanSrc: SrcCheck): string {
       continue;
     }
     if (tag === 'span') {
-      const a = attrs.filter((x) => !x.startsWith('data-wrap') && !x.startsWith('data-lock'));
+      const a = attrs.filter((x) => !x.startsWith('data-wrap') && !x.startsWith('data-lock') && !x.startsWith('data-rel'));
       out.push(`<span${a.length ? ' ' + a.join(' ') : ''}>`);
       continue;
     }
@@ -299,18 +320,88 @@ export function cleanFlowHtml(html: string, cleanSrc: SrcCheck): string {
 /** ข้อความล้วนของเอกสาร (เช็กว่าว่างไหม) */
 export const flowIsEmpty = (html: string) =>
   !String(html || '')
-    .replace(/<(img|figure|hr|table)\b|<span data-(tex|shape|pg)/gi, 'X')
+    .replace(/<(img|figure|hr|table)\b|<span data-(tex|shape|pg|tab)/gi, 'X')
     .replace(/<[^>]*>/g, '')
     .replace(/&nbsp;|\s/g, '');
 
 /* ------------------------------------------------------------------ ตัดหน้า (ใช้ DOM ในเบราว์เซอร์) */
 
+/** ตำแหน่งหยุดแท็บของย่อหน้า: "l47 c301 r450 d48" (px จากขอบซ้ายคอลัมน์, d = ระยะแท็บตั้งต้น) */
+export function parseTabs(s: string | undefined): { stops: { x: number; k: string }[]; def: number } {
+  const stops: { x: number; k: string }[] = [];
+  let def = 48;
+  for (const t of (s || '').split(' ')) {
+    const m = /^([lcrd])(-?\d+)$/.exec(t);
+    if (!m) continue;
+    if (m[1] === 'd') def = Math.max(8, +m[2]);
+    else stops.push({ x: +m[2], k: m[1] });
+  }
+  return { stops: stops.sort((a, b) => a.x - b.x), def };
+}
+/** ความกว้างแท็บแบบ Word: x = ตำแหน่งแท็บบนบรรทัด, seg = ความกว้างข้อความถึงแท็บถัดไป (ใช้กับแท็บกลาง/ขวา) */
+export function tabWidth(x: number, seg: number, tabs: ReturnType<typeof parseTabs>): number {
+  const s = tabs.stops.find((t) => t.x > x + 0.5);
+  if (s) {
+    const w = s.k === 'r' ? s.x - x - seg : s.k === 'c' ? s.x - x - seg / 2 : s.x - x;
+    if (w >= 1) return w;
+  }
+  // ไม่มีตำแหน่งหยุดถัดไป: ระยะแท็บตั้งต้นที่อยู่หลังตำแหน่งที่กำหนดเองตัวสุดท้าย
+  const from = Math.max(x, tabs.stops.length ? tabs.stops[tabs.stops.length - 1].x : -Infinity);
+  return Math.floor(from / tabs.def + 1) * tabs.def - x;
+}
+const BLOCK = 'p, li, h1, h2, h3, blockquote, div, td, th';
+/** จัดความกว้างแท็บ (span[data-tab]) ทั้งเอกสาร: อ่านตำแหน่งครั้งเดียว คิดเอง แล้วค่อยเขียน */
+export function layoutTabs(root: HTMLElement) {
+  const tabs = Array.from(root.querySelectorAll<HTMLElement>('span[data-tab]'));
+  if (!tabs.length) return;
+  for (const t of tabs) t.style.width = '0px';
+  const info = tabs.map((t) => {
+    const p = (t.parentElement?.closest(BLOCK) as HTMLElement | null) ?? root;
+    const pr = p.getBoundingClientRect();
+    const scale = pr.width / (p.offsetWidth || 1) || 1;
+    const col = pr.left - (parseFloat(getComputedStyle(p).marginLeft) || 0) * scale;
+    const r = t.getBoundingClientRect();
+    let seg = 0;
+    if (/[cr]/.test(p.dataset.tabs || '')) {
+      // ข้อความหลังแท็บถึงแท็บถัดไป/ท้ายย่อหน้า
+      const rg = document.createRange();
+      rg.setStartAfter(t);
+      const next = tabs.find((o) => o !== t && p.contains(o) && t.compareDocumentPosition(o) & Node.DOCUMENT_POSITION_FOLLOWING);
+      if (next) rg.setEndBefore(next);
+      else rg.setEnd(p, p.childNodes.length);
+      seg = rg.getBoundingClientRect().width / scale;
+    }
+    return { p, x: (r.left - col) / scale, top: r.top, seg };
+  });
+  let shift = 0;
+  let prev: (typeof info)[number] | null = null;
+  const parsed = new Map<HTMLElement, ReturnType<typeof parseTabs>>();
+  const ws = info.map((it) => {
+    if (!prev || prev.p !== it.p || Math.abs(prev.top - it.top) > 2) shift = 0;
+    prev = it;
+    let tb = parsed.get(it.p);
+    if (!tb) parsed.set(it.p, (tb = parseTabs(it.p.dataset.tabs)));
+    const w = tabWidth(it.x + shift, it.seg, tb);
+    shift += w;
+    return w;
+  });
+  tabs.forEach((t, i) => (t.style.width = `${Math.round(ws[i] * 100) / 100}px`));
+}
+
+/** กล่องของย่อหน้าสำหรับตัดหน้า: รูป/รูปร่างที่ยึดกับย่อหน้า (นำเข้าจาก Word) ต้องอยู่หน้าเดียวกับย่อหน้า นับส่วนที่ยื่นลงล่างด้วย */
+function unitRect(u: HTMLElement): { top: number; height: number } {
+  const r = u.getBoundingClientRect();
+  let bottom = r.bottom;
+  u.querySelectorAll(':scope > img[data-rel], :scope > span[data-shape][data-wrap]').forEach((a) => (bottom = Math.max(bottom, a.getBoundingClientRect().bottom)));
+  return { top: r.top, height: bottom - r.top };
+}
 /**
  * จัดหน้าเนื้อหาในกล่องที่วางเรียงหน้าละ pageH + gap: ชิ้นที่คร่อมรอยต่อหน้าถูกดันไปขึ้นหน้าใหม่ด้วย margin-top
  * (margin-top ไม่ถูกบันทึก ตัวกรองไม่อนุญาต) คืนจำนวนหน้าที่ต้องใช้
  */
 export function paginate(root: HTMLElement, pageH: number, gap: number, my: number, mb = my): number {
   const P = pageH + gap;
+  layoutTabs(root);
   const units: HTMLElement[] = [];
   const top0 = root.getBoundingClientRect().top;
   const scale = root.getBoundingClientRect().height / (root.offsetHeight || 1) || 1;
@@ -325,7 +416,7 @@ export function paginate(root: HTMLElement, pageH: number, gap: number, my: numb
   for (const u of units) u.style.marginTop = '';
   // ทางเร็ว: อ่านตำแหน่งทุกย่อหน้าครั้งเดียว แล้วคิดระยะดันสะสมเอง
   // (ทางเดิมอ่าน-เขียนสลับทีละย่อหน้า เบราว์เซอร์ต้องจัดหน้าใหม่ทั้งเอกสารทุกย่อหน้า เอกสารยาวพิมพ์แล้วกระตุก)
-  const rects = units.map((u) => u.getBoundingClientRect());
+  const rects = units.map(unitRect);
   const m0 = units.map((u) => parseFloat(getComputedStyle(u).marginTop) || 0);
   const plan: number[] = [];
   const want: number[] = [];
@@ -357,7 +448,7 @@ export function paginate(root: HTMLElement, pageH: number, gap: number, my: numb
   let forceNext = false;
   let last = my;
   for (const u of units) {
-    const r = u.getBoundingClientRect();
+    const r = unitRect(u);
     const t = (r.top - top0) / scale;
     const h = r.height / scale;
     const k = Math.max(0, Math.floor(t / P));

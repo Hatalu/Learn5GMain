@@ -23,6 +23,7 @@ import {
   Loader2,
   Lock,
   Maximize,
+  Menu,
   MonitorPlay,
   Pencil,
   Plus,
@@ -171,7 +172,7 @@ export function StudioEditor({ id }: { id: string }) {
   const [mathDlg, setMathDlg] = useState<{ tex: string; itemId?: string; done?: (tex: string) => void; insert?: string } | null>(null);
   const [graphDlg, setGraphDlg] = useState<{ spec: GraphSpec; itemId?: string; done?: (s: GraphSpec) => void } | null>(null);
   const word = useRef<WordHandle>(null);
-  const [rightEl, setRightEl] = useState<HTMLDivElement | null>(null);
+  const [topEl, setTopEl] = useState<HTMLDivElement | null>(null);
   const [railEl, setRailEl] = useState<HTMLDivElement | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
   const [cell, setCell] = useState<[number, number] | null>(null);
@@ -226,12 +227,11 @@ export function StudioEditor({ id }: { id: string }) {
     if (loadedFor.current === `${id}:${user.id}`) return;
     loadedFor.current = `${id}:${user.id}`;
     let off = false;
+    let done = false;
     (async () => {
       const { data, error } = await supabase.from('user_designs').select(DESIGN_COLS).eq('id', id).maybeSingle();
-      if (off) {
-        loadedFor.current = '';
-        return;
-      }
+      if (off) return;
+      done = true;
       if (error || !data) return setStatus(error && /user_designs|schema cache/i.test(error.message) ? 'missing' : 'denied');
       setDoc(sanitizeDesign(data.content));
       setTitle(data.title);
@@ -246,6 +246,8 @@ export function StudioEditor({ id }: { id: string }) {
     })();
     return () => {
       off = true;
+      // ยกเลิกก่อนโหลดเสร็จ (เช่น effect รันซ้ำใน strict mode) ต้องโหลดใหม่รอบถัดไป
+      if (!done) loadedFor.current = '';
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, userId, isLoading, supabase]);
@@ -1444,6 +1446,7 @@ export function StudioEditor({ id }: { id: string }) {
       }
       setAutoFit(true);
     } catch (e) {
+      console.error('[studio] import failed', e);
       say(e instanceof Error && /[ก-๙]/.test(e.message) ? e.message : 'นำเข้าไฟล์ไม่สำเร็จ ไฟล์อาจเสียหรือมีรหัสผ่าน');
     } finally {
       setImporting(null);
@@ -1536,85 +1539,103 @@ export function StudioEditor({ id }: { id: string }) {
     [1, 1],
   ];
 
-  return (
-    <div className="st-shell" data-readonly={readOnly}>
-      {/* ---------------- แถบบน (โทนแบบ Canva) ---------------- */}
-      <header className="st-top">
-        <Link href="/studio?tab=library" className="st-topbtn" title="กลับไปคลังสื่อ">
-          <ChevronLeft className="w-5 h-5" />
-          <span className="max-lg:hidden">หน้าแรก</span>
-        </Link>
-        {!readOnly && (
-          <Pop title="ปรับขนาดสื่อ" width={330} className="st-topbtn st-g st-g-sky max-sm:!hidden" button={<><Scaling className="w-4 h-4" /> <span className="max-xl:hidden">ปรับขนาด</span></>}>
-            {(close) => <SizePicker ctl={ctl} onDone={close} />}
-          </Pop>
-        )}
-        <span className="st-top-sep max-sm:hidden" />
-        {!readOnly && (
-          <>
-            <button type="button" className="st-topbtn st-topicon" onClick={() => (mode === 'word' ? word.current?.undo() : undo())} disabled={mode !== 'word' && !past.current.length} title="ย้อนกลับ (Ctrl+Z)" aria-label="ย้อนกลับ">
-              <Undo2 className="w-5 h-5" />
-            </button>
-            <button type="button" className="st-topbtn st-topicon max-sm:!hidden" onClick={() => (mode === 'word' ? word.current?.redo() : redo())} disabled={mode !== 'word' && !future.current.length} title="ทำซ้ำ (Ctrl+Y)" aria-label="ทำซ้ำ">
-              <Redo2 className="w-5 h-5" />
-            </button>
-            <span className="st-save" data-s={save} title={save === 'error' ? 'บันทึกไม่สำเร็จ กดเพื่อลองใหม่' : undefined} onClick={() => save === 'error' && doSave()}>
-              {save === 'saved' ? <Check className="w-4 h-4" /> : save === 'error' ? <CloudOff className="w-4 h-4" /> : <Loader2 className="w-4 h-4 animate-spin" />}
-              <span className="max-lg:hidden">{save === 'saved' ? 'บันทึกแล้ว' : save === 'error' ? 'บันทึกไม่สำเร็จ' : 'กำลังบันทึก'}</span>
-            </span>
-          </>
-        )}
-        <div className="flex-1 min-w-0 flex justify-center">
-          {readOnly ? (
-            <p className="st-title-ro truncate">
-              {title} <span className="opacity-75 text-sm">· <Eye className="w-3.5 h-3.5 inline -mt-0.5" /> ของ {ownerName || 'สมาชิก'}</span>
-            </p>
-          ) : (
-            <input className="st-title" value={title} maxLength={80} onChange={(e) => setTitle(e.target.value)} aria-label="ชื่อสื่อ" placeholder="ตั้งชื่อสื่อ" />
+  // ปุ่มออก (ซ้ายบนเสมอ) กับเครื่องมือของสื่อ ใช้ทั้งแถบชื่อโหมด Word และเมนู "ไฟล์" ในแถบซ้ายโหมด Canva
+  const exitBtn = (
+    <Link href="/studio?tab=library" className="st-topbtn st-exit" title="ออกจากตัวแก้ไข (กลับไปคลังสื่อ)">
+      <ChevronLeft className="w-5 h-5" />
+      <span>ออก</span>
+    </Link>
+  );
+  const topCtl = (
+    <>
+          {!readOnly && (
+            <Pop title="ปรับขนาดสื่อ" width={330} className="st-topbtn st-g st-g-sky max-sm:!hidden" button={<><Scaling className="w-4 h-4" /> <span className="max-xl:hidden">ปรับขนาด</span></>}>
+              {(close) => <SizePicker ctl={ctl} onDone={close} />}
+            </Pop>
           )}
-        </div>
-        {!readOnly && (
-          <div className="st-mode" role="radiogroup" aria-label="โหมดแก้ไข">
-            <button type="button" role="radio" aria-checked={mode === 'canvas'} data-on={mode === 'canvas'} onClick={() => setMode('canvas')} title="ออกแบบอิสระ ลากวางได้ทุกอย่าง (แบบ Canva)">
-              <LayoutDashboard className="w-4 h-4" /> <span className="max-sm:hidden">Canva</span>
-            </button>
-            <button type="button" role="radio" aria-checked={mode === 'word'} data-on={mode === 'word'} onClick={() => setMode('word')} title="พิมพ์เอกสารต่อเนื่อง ขึ้นหน้าใหม่เอง (แบบ Word)">
-              <FileText className="w-4 h-4" /> <span className="max-sm:hidden">Word</span>
-            </button>
+          <span className="st-top-sep max-sm:hidden" />
+          {!readOnly && (
+            <>
+              <button type="button" className="st-topbtn st-topicon" onClick={() => (mode === 'word' ? word.current?.undo() : undo())} disabled={mode !== 'word' && !past.current.length} title="ย้อนกลับ (Ctrl+Z)" aria-label="ย้อนกลับ">
+                <Undo2 className="w-5 h-5" />
+              </button>
+              <button type="button" className="st-topbtn st-topicon max-sm:!hidden" onClick={() => (mode === 'word' ? word.current?.redo() : redo())} disabled={mode !== 'word' && !future.current.length} title="ทำซ้ำ (Ctrl+Y)" aria-label="ทำซ้ำ">
+                <Redo2 className="w-5 h-5" />
+              </button>
+              <span className="st-save" data-s={save} title={save === 'error' ? 'บันทึกไม่สำเร็จ กดเพื่อลองใหม่' : undefined} onClick={() => save === 'error' && doSave()}>
+                {save === 'saved' ? <Check className="w-4 h-4" /> : save === 'error' ? <CloudOff className="w-4 h-4" /> : <Loader2 className="w-4 h-4 animate-spin" />}
+                <span className="max-lg:hidden">{save === 'saved' ? 'บันทึกแล้ว' : save === 'error' ? 'บันทึกไม่สำเร็จ' : 'กำลังบันทึก'}</span>
+              </span>
+            </>
+          )}
+          <div className="flex-1 min-w-0 flex justify-center">
+            {readOnly ? (
+              <p className="st-title-ro truncate">
+                {title} <span className="opacity-75 text-sm">· <Eye className="w-3.5 h-3.5 inline -mt-0.5" /> ของ {ownerName || 'สมาชิก'}</span>
+              </p>
+            ) : (
+              <input className="st-title" value={title} maxLength={80} onChange={(e) => setTitle(e.target.value)} aria-label="ชื่อสื่อ" placeholder="ตั้งชื่อสื่อ" />
+            )}
           </div>
-        )}
-        {!readOnly && (
-          <button type="button" className={`st-topbtn st-g max-sm:!hidden ${isPublic ? 'st-g-mint' : 'st-g-slate'}`} data-on={isPublic} onClick={() => setIsPublic(!isPublic)} title={isPublic ? 'Public: สมาชิกคนอื่นเห็นใน Discover แตะเพื่อเปลี่ยนเป็น Private' : 'Private: เห็นเฉพาะคุณ แตะเพื่อเปลี่ยนเป็น Public'}>
-            {isPublic ? <Globe className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-            <span className="max-xl:hidden">{isPublic ? 'Public' : 'Private'}</span>
+          {!readOnly && (
+            <div className="st-mode" role="radiogroup" aria-label="โหมดแก้ไข">
+              <button type="button" role="radio" aria-checked={mode === 'canvas'} data-on={mode === 'canvas'} onClick={() => setMode('canvas')} title="ออกแบบอิสระ ลากวางได้ทุกอย่าง (แบบ Canva)">
+                <LayoutDashboard className="w-4 h-4" /> <span className="max-sm:hidden">Canva</span>
+              </button>
+              <button type="button" role="radio" aria-checked={mode === 'word'} data-on={mode === 'word'} onClick={() => setMode('word')} title="พิมพ์เอกสารต่อเนื่อง ขึ้นหน้าใหม่เอง (แบบ Word)">
+                <FileText className="w-4 h-4" /> <span className="max-sm:hidden">Word</span>
+              </button>
+            </div>
+          )}
+          {!readOnly && !process.env.NEXT_PUBLIC_L5G_APP && (
+            <button type="button" className={`st-topbtn st-g max-sm:!hidden ${isPublic ? 'st-g-mint' : 'st-g-slate'}`} data-on={isPublic} onClick={() => setIsPublic(!isPublic)} title={isPublic ? 'Public: สมาชิกคนอื่นเห็นใน Discover แตะเพื่อเปลี่ยนเป็น Private' : 'Private: เห็นเฉพาะคุณ แตะเพื่อเปลี่ยนเป็น Public'}>
+              {isPublic ? <Globe className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+              <span className="max-xl:hidden">{isPublic ? 'Public' : 'Private'}</span>
+            </button>
+          )}
+          {readOnly && (
+            <button type="button" className="st-topbtn st-g st-g-sky" onClick={copyMine} disabled={copying || tier === 'guest'}>
+              {copying ? <Loader2 className="w-4 h-4 animate-spin" /> : <Copy className="w-4 h-4" />} <span className="max-sm:hidden">ทำสำเนาไปแก้</span>
+            </button>
+          )}
+          {!readOnly && (
+            <button type="button" className="st-topbtn st-g st-g-sky max-sm:!hidden" onClick={() => setImportDlg({ file: null })} disabled={!!importing} title="นำเข้าไฟล์ Word / PDF / ข้อความ (สมการกลายเป็น MathType แก้ต่อได้)">
+              <FileUp className="w-4 h-4" /> <span className="max-xl:hidden">นำเข้าไฟล์</span>
+            </button>
+          )}
+          <button type="button" className="st-topbtn st-g st-g-grape" onClick={() => (finishEdit(), setSelId(null), setPresent(ap))} title="นำเสนอเต็มจอ">
+            <MonitorPlay className="w-4 h-4" /> <span className="max-xl:hidden">นำเสนอ</span>
           </button>
-        )}
-        {readOnly && (
-          <button type="button" className="st-topbtn st-g st-g-sky" onClick={copyMine} disabled={copying || tier === 'guest'}>
-            {copying ? <Loader2 className="w-4 h-4 animate-spin" /> : <Copy className="w-4 h-4" />} <span className="max-sm:hidden">ทำสำเนาไปแก้</span>
-          </button>
-        )}
-        {!readOnly && (
-          <button type="button" className="st-topbtn st-g st-g-sky max-sm:!hidden" onClick={() => setImportDlg({ file: null })} disabled={!!importing} title="นำเข้าไฟล์ Word / PDF / ข้อความ (สมการกลายเป็น MathType แก้ต่อได้)">
-            <FileUp className="w-4 h-4" /> <span className="max-xl:hidden">นำเข้าไฟล์</span>
-          </button>
-        )}
-        <button type="button" className="st-topbtn st-g st-g-grape" onClick={() => (finishEdit(), setSelId(null), setPresent(ap))} title="นำเสนอเต็มจอ">
-          <MonitorPlay className="w-4 h-4" /> <span className="max-xl:hidden">นำเสนอ</span>
-        </button>
-        <ExportMenu pages={doc.pages.length} busy={!!exporting} label={exportLabel} onPick={runExport} />
-      </header>
+          <ExportMenu pages={doc.pages.length} busy={!!exporting} label={exportLabel} onPick={runExport} />
+    </>
+  );
+
+  return (
+    <div className="st-shell" data-readonly={readOnly} data-mode={mode}>
+      {/* ---------------- แถบบน: โหมด Word = แถบชื่อ + ริบบอนแบบ Word / โหมด Canva = ไม่มีแถบบน (เครื่องมืออยู่แถบซ้าย) ---------------- */}
+      {(readOnly || mode === 'word') && (
+        <header className="st-top" data-word={mode === 'word' || undefined}>
+          {exitBtn}
+          {topCtl}
+        </header>
+      )}
+      {!readOnly && mode === 'word' && <div ref={setTopEl} className="st-topribbon" />}
 
       <div className="st-body">
         {!readOnly && mode === 'canvas' && (
           <>
             <nav className="st-rail" aria-label="เครื่องมือ">
+              {exitBtn}
               {RAIL.map((r) => (
                 <button key={r.id} type="button" className="st-rail-btn" data-on={panel === r.id} onClick={() => setPanel(panel === r.id ? null : r.id)} style={{ ['--c' as string]: r.color }}>
                   <span className="st-rail-ic">{r.icon}</span>
                   <span className="st-rail-tx">{r.label}</span>
                 </button>
               ))}
+              <span className="flex-1" />
+              <Pop title="ไฟล์และการแชร์" width={300} className="st-rail-btn st-rail-file" button={<><span className="st-rail-ic"><Menu className="w-5 h-5" /></span><span className="st-rail-tx">ไฟล์</span></>}>
+                <div className="st-filepop">{topCtl}</div>
+              </Pop>
             </nav>
             {panel && <Panels id={panel} ctl={ctl} onClose={() => setPanel(null)} />}
           </>
@@ -1656,7 +1677,7 @@ export function StudioEditor({ id }: { id: string }) {
                   H={H}
                   zoom={zoom}
                   readOnly={readOnly}
-                  rightEl={rightEl}
+                  topEl={topEl}
                   railEl={railEl}
                   layoutExtra={<SizePicker ctl={ctl} onDone={() => undefined} />}
                   onChange={(flow) => commit({ ...docRef.current!, flow }, 'flow')}
@@ -1885,7 +1906,6 @@ export function StudioEditor({ id }: { id: string }) {
             </div>
           </footer>
         </div>
-        {!readOnly && mode === 'word' && <div ref={setRightEl} className="contents" />}
       </div>
 
       {tier === 'free' && !readOnly && (
