@@ -16,7 +16,7 @@ import { quizPages } from '@/lib/studio/fromQuiz';
 import { removeMedia } from '@/lib/game-creator/media';
 import { gsfx } from '@/lib/game-creator/gsound';
 import { blankDesign, designMediaPaths, sanitizeDesign, SIZES, type Design } from '@/lib/studio/doc';
-import { TEMPLATES } from '@/components/studio/templates';
+import { TEMPLATES, TEMPLATE_CATS, type Template, type TemplateCat } from '@/components/studio/templates';
 import { PageThumb } from '@/components/studio/render';
 import { PaperModal } from '@/components/creator/PaperModal';
 import { ImportDialog, type ImportHow } from '@/components/studio/ImportDialog';
@@ -51,6 +51,74 @@ function Cover({ d }: { d: DesignRow }) {
     <div className="sh-cover-art" aria-hidden="true">
       <Palette className="w-10 h-10" />
     </div>
+  );
+}
+
+/** แม่แบบทั้งหมด กรองตามหมวด/คำค้น (ทั้งหมด = แบ่งหัวข้อตามหมวด) */
+function TemplateGallery({ disabled, creating, onPick }: { disabled: boolean; creating: string | null; onPick: (t: Template) => void }) {
+  const [cat, setCat] = useState<TemplateCat | 'all'>('all');
+  const [tq, setTq] = useState('');
+  const previews = useMemo(() => new Map(TEMPLATES.map((t) => [t.id, t.make()])), []);
+  const term = tq.trim().toLowerCase();
+  const shown = TEMPLATES.filter((t) => (cat === 'all' || t.cat === cat) && (!term || `${t.label} ${t.note}`.toLowerCase().includes(term)));
+  const groups = cat === 'all' && !term ? TEMPLATE_CATS.map((c) => ({ id: c.id, title: c.label, list: shown.filter((t) => t.cat === c.id) })) : [{ id: 'hit', title: '', list: shown }];
+  const pick = (c: TemplateCat | 'all') => {
+    gsfx.tap();
+    setCat(c);
+  };
+  return (
+    <>
+      <div className="sh-tpl-bar">
+        <div className="sh-cats" role="tablist" aria-label="หมวดแม่แบบ">
+          <button type="button" role="tab" aria-selected={cat === 'all'} data-on={cat === 'all'} onClick={() => pick('all')}>
+            ทั้งหมด <small>{TEMPLATES.length}</small>
+          </button>
+          {TEMPLATE_CATS.map((c) => (
+            <button key={c.id} type="button" role="tab" aria-selected={cat === c.id} data-on={cat === c.id} onClick={() => pick(c.id)}>
+              {c.label} <small>{TEMPLATES.filter((t) => t.cat === c.id).length}</small>
+            </button>
+          ))}
+        </div>
+        <label className="l5g-search">
+          <Search className="w-4 h-4" />
+          <input value={tq} onChange={(e) => setTq(e.target.value)} placeholder="ค้นหาแม่แบบ เช่น เศษส่วน, คัดลายมือ" aria-label="ค้นหาแม่แบบ" />
+        </label>
+      </div>
+      {!shown.length && <p className="sh-tpl-empty">ไม่พบแม่แบบที่ตรงกับ &quot;{tq}&quot;</p>}
+      {groups
+        .filter((g) => g.list.length)
+        .map((g) => (
+          <section key={g.id}>
+            {g.title && (
+              <h3 className="sh-tpl-cat">
+                {g.title} <small>{g.list.length} แบบ</small>
+              </h3>
+            )}
+            <div className="grid gap-5 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 mt-4">
+              {g.list.map((t, i) => {
+                const d = previews.get(t.id)!;
+                return (
+                  <button key={t.id} type="button" className="sh-tpl" disabled={disabled} onClick={() => onPick(t)} style={{ ['--a' as string]: t.accent, animationDelay: `${Math.min(i, 8) * 60}ms` }}>
+                    <span className="sh-tpl-art">
+                      <span className="sh-tpl-page">
+                        <PageThumb page={d.pages[0]} W={d.size.w} H={d.size.h} width={d.size.w > d.size.h ? 190 : 134} />
+                      </span>
+                      {d.pages.length > 1 && <span className="sh-tpl-pages">{d.pages.length} หน้า</span>}
+                      {creating === `tpl-${t.id}` && (
+                        <span className="sh-tpl-busy">
+                          <Loader2 className="w-8 h-8 animate-spin" />
+                        </span>
+                      )}
+                    </span>
+                    <b>{t.label}</b>
+                    <small>{t.note}</small>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        ))}
+    </>
   );
 }
 
@@ -279,7 +347,6 @@ function StudioHub() {
     window.history.replaceState(null, '', u.toString());
   };
 
-  const tplPreviews = useMemo(() => TEMPLATES.map((t) => ({ t, d: t.make() })), []);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -402,24 +469,7 @@ function StudioHub() {
 
                 <h2 className="l5g-sec-title mt-10">2. หรือเริ่มจากแม่แบบ</h2>
                 <p className="l5g-sec-note">มีของจัดวางไว้ให้แล้ว แก้คำ เปลี่ยนสี ย้ายตำแหน่งได้ทุกชิ้น</p>
-                <div className="grid gap-5 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 mt-4">
-                  {tplPreviews.map(({ t, d }, i) => (
-                    <button key={t.id} type="button" className="sh-tpl" disabled={!!creating || dbMissing} onClick={() => create(`tpl-${t.id}`, t.make(), t.label)} style={{ ['--a' as string]: t.accent, animationDelay: `${i * 60}ms` }}>
-                      <span className="sh-tpl-art">
-                        <span className="sh-tpl-page">
-                          <PageThumb page={d.pages[0]} W={d.size.w} H={d.size.h} width={d.size.w > d.size.h ? 190 : 134} />
-                        </span>
-                        {creating === `tpl-${t.id}` && (
-                          <span className="sh-tpl-busy">
-                            <Loader2 className="w-8 h-8 animate-spin" />
-                          </span>
-                        )}
-                      </span>
-                      <b>{t.label}</b>
-                      <small>{t.note}</small>
-                    </button>
-                  ))}
-                </div>
+                <TemplateGallery disabled={!!creating || dbMissing} creating={creating} onPick={(t) => create(`tpl-${t.id}`, t.make(), t.label)} />
 
                 <div className="sh-features mt-10">
                   {[

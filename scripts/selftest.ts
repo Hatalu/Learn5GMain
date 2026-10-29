@@ -1415,6 +1415,38 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
     passed++;
     console.log('  ok  รูปแบบจาก Word (แท็บ ระยะย่อหน้า รูปลอย ขนาดสมการ) ผ่านตัวกรอง');
   }
+  {
+    const { TEMPLATES, TEMPLATE_CATS } = await import('../src/components/studio/templates');
+    const { BORDER_IDS, EDU_IDS, FONT_IDS } = await import('../src/lib/studio/doc');
+    const fs = await import('node:fs');
+    // อ่าน id จากไฟล์ตรงๆ (stickers.tsx มี JSX ไม่ import ในสคริปต์นี้)
+    const idsIn = (f: string) => new Set([...fs.readFileSync(f, 'utf8').matchAll(/id: '([a-z0-9-]+)'/g)].map((m) => m[1]));
+    const stickers = idsIn('src/components/studio/stickers.tsx');
+    const shapes = idsIn('src/components/studio/shapes.ts');
+    const cats = new Set<string>(TEMPLATE_CATS.map((c) => c.id));
+    assert.ok(TEMPLATES.length >= 100, `แม่แบบ ${TEMPLATES.length}`);
+    assert.equal(new Set(TEMPLATES.map((t) => t.id)).size, TEMPLATES.length, 'id แม่แบบซ้ำ');
+    for (const t of TEMPLATES) {
+      assert.ok(cats.has(t.cat), `${t.id}: หมวด ${t.cat}`);
+      const d = t.make();
+      assert.equal(d.size.id, t.sizeId, `${t.id}: ขนาดหน้า`);
+      for (const p of d.pages) {
+        assert.ok((BORDER_IDS as readonly string[]).includes(p.border.style), `${t.id}: กรอบ ${p.border.style}`);
+        for (const it of p.items) {
+          const where = `${t.id}/${it.type}@${Math.round(it.x)},${Math.round(it.y)}`;
+          if (it.type === 'sticker') assert.ok(stickers.has(it.sticker), `${where}: สติกเกอร์ ${it.sticker}`);
+          if (it.type === 'shape') assert.ok(shapes.has(it.shape), `${where}: รูปทรง ${it.shape}`);
+          if (it.type === 'edu') assert.ok((EDU_IDS as readonly string[]).includes(it.kind), `${where}: ${it.kind}`);
+          if (it.type === 'text') assert.ok((FONT_IDS as readonly string[]).includes(it.font), `${where}: ฟอนต์ ${it.font}`);
+          if (it.type === 'table') assert.ok(it.cells.every((r) => r.length === it.cells[0].length), `${where}: แถวตารางยาวไม่เท่ากัน`);
+          if (it.rot) continue; // ชิ้นที่หมุน (เส้นเฉียง/ข้อความกลับหัว) ตรวจด้วยตา
+          assert.ok(it.x >= -0.5 && it.y >= -0.5 && it.x + it.w <= d.size.w + 0.5 && it.y + it.h <= d.size.h + 0.5, `${where}: ล้นหน้า ${it.w}x${it.h}`);
+        }
+      }
+    }
+    passed++;
+    console.log(`  ok  แม่แบบ ${TEMPLATES.length} แบบ: id/หมวด/สติกเกอร์/รูปทรง/ฟอนต์ถูกต้อง และไม่ล้นหน้า`);
+  }
   console.log(`\n${passed} tests passed`);
 })().catch((e) => {
   console.error(e);

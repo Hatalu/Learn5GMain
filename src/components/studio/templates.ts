@@ -1,39 +1,20 @@
-import { blankBg, blankBorder, makeEdu, makeLine, makeMath, makeShape, makeSticker, makeTable, makeText, makeWrite, SIZES, uid, type Design, type Item, type Page } from '@/lib/studio/doc';
-import { defaultWordOpt } from '@/lib/studio/flow';
+import { makeEdu, makeLine, makeMath, makeShape, makeSticker, makeTable, makeText, makeWrite, blankBg, type Item } from '@/lib/studio/doc';
+import { at, badge, design, header, label, lines, nameLine, page, type Template } from './tpl/kit';
+import { MATH_TEMPLATES } from './tpl/math';
+import { THAI_TEMPLATES } from './tpl/thai';
+import { ENG_TEMPLATES } from './tpl/eng';
+import { SCI_TEMPLATES } from './tpl/sci';
+import { ORG_TEMPLATES } from './tpl/org';
+import { TEST_TEMPLATES } from './tpl/test';
+import { CLASS_TEMPLATES } from './tpl/class';
+import { DECOR_TEMPLATES } from './tpl/decor';
 
-/** แม่แบบเริ่มต้น: กดแล้วได้สื่อพร้อมแก้ต่อ (ทุกชิ้นแก้/ลบได้) */
-export interface Template {
-  id: string;
-  label: string;
-  note: string;
-  sizeId: string;
-  accent: string;
-  make: () => Design;
-}
+export { TEMPLATE_CATS, type Template, type TemplateCat } from './tpl/kit';
 
-const at = <T extends Item>(it: T, x: number, y: number, w?: number, h?: number): T => ({ ...it, x, y, w: w ?? it.w, h: h ?? it.h });
-const page = (items: Item[], over: Partial<Page> = {}): Page => ({ id: uid(), bg: blankBg(), border: blankBorder(), items, ...over });
-const design = (sizeId: string, pages: Page[]): Design => {
-  const s = SIZES.find((x) => x.id === sizeId) ?? SIZES[0];
-  return { v: 1, size: { id: s.id, w: s.w, h: s.h }, pages, mode: 'canvas', flow: '', word: defaultWordOpt() };
-};
-const nameLine = (y: number, w = 714) =>
-  at(makeText({ text: 'ชื่อ ........................................................  ชั้น ...............  เลขที่ ...........', size: 20, align: 'left', font: 'sarabun' }), 40, y, w);
-
-/** หัวกระดาษแถบสี: ป้ายเล็ก + ชื่อใหญ่ + สติกเกอร์มุมขวา */
-const header = (tag: string, title: string, fill: string, color: string, sticker: string, W = 794): Item[] => [
-  at(makeShape('round', { fill, sw: 0 }), 40, 36, W - 80, 110),
-  at(makeText({ text: tag, size: 22, color, bold: true, font: 'kanit', align: 'left' }), 64, 48, W - 260),
-  at(makeText({ text: title, size: 38, bold: true, font: 'kanit', align: 'left' }), 64, 80, W - 260),
-  at(makeSticker(sticker), W - 150, 26, 100, 100),
-];
-const badge = (n: number | string, bg: string, x: number, y: number) => at(makeText({ text: String(n), size: 22, bold: true, color: '#ffffff', bg }), x, y, 52);
-const label = (text: string, color: string, y: number, x = 40, w = 714) => at(makeText({ text, size: 26, bold: true, color, font: 'kanit', align: 'left' }), x, y, w);
-const lines = (x: number, y: number, w: number, h: number, gap = 44) => at(makeWrite('lines', { gap }), x, y, w, h);
-
-export const TEMPLATES: Template[] = [
+const BASE: Template[] = [
   {
     id: 'worksheet',
+    cat: 'sheet',
     label: 'ใบงาน',
     note: 'หัวเรื่อง ช่องชื่อ คำถาม และบรรทัดเขียนตอบ',
     sizeId: 'a4p',
@@ -64,6 +45,7 @@ export const TEMPLATES: Template[] = [
   },
   {
     id: 'knowledge',
+    cat: 'sheet',
     label: 'ใบความรู้',
     note: 'หัวเรื่องเด่น กล่องเนื้อหา และจุดสำคัญ',
     sizeId: 'a4p',
@@ -91,6 +73,7 @@ export const TEMPLATES: Template[] = [
   },
   {
     id: 'certificate',
+    cat: 'decor',
     label: 'เกียรติบัตร',
     note: 'แนวนอน กรอบสวย พร้อมช่องชื่อและลายเซ็น',
     sizeId: 'a4l',
@@ -117,6 +100,7 @@ export const TEMPLATES: Template[] = [
   },
   {
     id: 'flashcards',
+    cat: 'card',
     label: 'แฟลชการ์ดคำศัพท์',
     note: 'การ์ด A6 คำศัพท์ + ภาพ 2 ใบ',
     sizeId: 'a6p',
@@ -141,6 +125,7 @@ export const TEMPLATES: Template[] = [
   },
   {
     id: 'poster',
+    cat: 'decor',
     label: 'โปสเตอร์ประกาศ',
     note: 'หัวใหญ่ เด่นไกล ติดบอร์ดได้',
     sizeId: 'a4p',
@@ -163,6 +148,7 @@ export const TEMPLATES: Template[] = [
   },
   {
     id: 'timetable',
+    cat: 'class',
     label: 'ตารางเรียน',
     note: 'ตาราง 6 x 6 แก้ช่องได้ทันที',
     sizeId: 'a4l',
@@ -187,6 +173,7 @@ export const TEMPLATES: Template[] = [
   },
   {
     id: 'match',
+    cat: 'sheet',
     label: 'ใบงานจับคู่',
     note: 'โยงเส้นจับคู่ภาพกับคำ',
     sizeId: 'a4p',
@@ -214,6 +201,7 @@ export const TEMPLATES: Template[] = [
   },
   {
     id: 'blank-grid',
+    cat: 'sheet',
     label: 'กระดาษตาราง',
     note: 'พื้นตารางสำหรับวาดหรือคณิต',
     sizeId: 'a4p',
@@ -225,6 +213,7 @@ export const TEMPLATES: Template[] = [
   },
   {
     id: 'quiz-mc',
+    cat: 'test',
     label: 'แบบทดสอบปรนัย',
     note: '5 ข้อ ตัวเลือก ก ข ค ง',
     sizeId: 'a4p',
@@ -246,6 +235,7 @@ export const TEMPLATES: Template[] = [
   },
   {
     id: 'fill-blank',
+    cat: 'sheet',
     label: 'เติมคำในช่องว่าง',
     note: 'กล่องคำที่กำหนด + 8 ประโยค',
     sizeId: 'a4p',
@@ -265,6 +255,7 @@ export const TEMPLATES: Template[] = [
   },
   {
     id: 'math-drill',
+    cat: 'math',
     label: 'คิดเลขเร็ว',
     note: 'โจทย์บวกลบ 20 ข้อ จับเวลาได้',
     sizeId: 'a4p',
@@ -288,6 +279,7 @@ export const TEMPLATES: Template[] = [
   },
   {
     id: 'handwriting',
+    cat: 'thai',
     label: 'คัดลายมือ',
     note: 'แบบตัวอย่าง + บรรทัด 4 เส้น',
     sizeId: 'a4p',
@@ -305,6 +297,7 @@ export const TEMPLATES: Template[] = [
   },
   {
     id: 'vocab',
+    cat: 'eng',
     label: 'ตารางคำศัพท์',
     note: 'คำศัพท์ คำอ่าน ความหมาย 10 คำ',
     sizeId: 'a4p',
@@ -320,6 +313,7 @@ export const TEMPLATES: Template[] = [
   },
   {
     id: 'true-false',
+    cat: 'test',
     label: 'ถูกหรือผิด',
     note: '10 ข้อ ช่องเขียน ถ / ผ',
     sizeId: 'a4p',
@@ -340,6 +334,7 @@ export const TEMPLATES: Template[] = [
   },
   {
     id: 'reading',
+    cat: 'thai',
     label: 'อ่านจับใจความ',
     note: 'กล่องเรื่องสั้น + คำถาม 3 ข้อ',
     sizeId: 'a4p',
@@ -363,6 +358,7 @@ export const TEMPLATES: Template[] = [
   },
   {
     id: 'experiment',
+    cat: 'sci',
     label: 'บันทึกการทดลอง',
     note: 'ปัญหา สมมติฐาน อุปกรณ์ ผล สรุป',
     sizeId: 'a4p',
@@ -395,6 +391,7 @@ export const TEMPLATES: Template[] = [
   },
   {
     id: 'mindmap',
+    cat: 'org',
     label: 'แผนผังความคิด',
     note: 'หัวข้อกลาง + 6 กิ่ง แนวนอน',
     sizeId: 'a4l',
@@ -426,6 +423,7 @@ export const TEMPLATES: Template[] = [
   },
   {
     id: 'kwl',
+    cat: 'org',
     label: 'ตาราง K-W-L',
     note: 'รู้แล้ว อยากรู้ ได้เรียนรู้',
     sizeId: 'a4l',
@@ -452,6 +450,7 @@ export const TEMPLATES: Template[] = [
   },
   {
     id: 'rubric',
+    cat: 'test',
     label: 'แบบประเมินผลงาน',
     note: 'เกณฑ์ 4 ระดับ 5 หัวข้อ',
     sizeId: 'a4l',
@@ -477,6 +476,7 @@ export const TEMPLATES: Template[] = [
   },
   {
     id: 'clock-time',
+    cat: 'math',
     label: 'ใบงานบอกเวลา',
     note: 'หน้าปัดนาฬิกา 6 เรือน',
     sizeId: 'a4p',
@@ -495,6 +495,7 @@ export const TEMPLATES: Template[] = [
   },
   {
     id: 'fraction',
+    cat: 'math',
     label: 'ระบายเศษส่วน',
     note: 'วงกลมแบ่งส่วน ระบายตามที่กำหนด',
     sizeId: 'a4p',
@@ -517,6 +518,7 @@ export const TEMPLATES: Template[] = [
   },
   {
     id: 'star-chart',
+    cat: 'class',
     label: 'ตารางสะสมดาว',
     note: 'บันทึกความดีรายวัน 8 คน',
     sizeId: 'a4l',
@@ -540,6 +542,7 @@ export const TEMPLATES: Template[] = [
   },
   {
     id: 'exit-ticket',
+    cat: 'test',
     label: 'บัตรทบทวนท้ายคาบ',
     note: 'A5 สรุปสิ่งที่เรียน + ระดับความเข้าใจ',
     sizeId: 'a5p',
@@ -564,3 +567,5 @@ export const TEMPLATES: Template[] = [
       ]),
   },
 ];
+
+export const TEMPLATES: Template[] = [...BASE, ...MATH_TEMPLATES, ...THAI_TEMPLATES, ...ENG_TEMPLATES, ...SCI_TEMPLATES, ...ORG_TEMPLATES, ...TEST_TEMPLATES, ...CLASS_TEMPLATES, ...DECOR_TEMPLATES];

@@ -119,6 +119,91 @@
 .sh-tpl:hover .sh-tpl-page {
   transform: scale(1.05) rotate(-2deg);
 }
+/* แถบกรองแม่แบบ: หมวด + ค้นหา */
+.sh-tpl-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+.sh-tpl-bar .l5g-search {
+  flex: 1 1 240px;
+  max-width: 360px;
+}
+.sh-cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+@media (max-width: 640px) {
+  /* มือถือ: หมวดเป็นแถวเดียวปัดซ้ายขวา */
+  .sh-cats {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    width: 100%;
+    padding: 2px 2px 8px;
+    scrollbar-width: none;
+  }
+  .sh-cats button {
+    flex: none;
+  }
+}
+.sh-cats button {
+  padding: 6px 13px;
+  border: 2.5px solid var(--l5g-ink);
+  border-radius: 999px;
+  background: var(--l5g-paper);
+  color: var(--l5g-ink);
+  font-weight: 800;
+  font-size: 0.9rem;
+  box-shadow: 0 3px 0 var(--l5g-ink);
+  transition: transform 0.2s var(--l5g-jelly);
+}
+.sh-cats button small {
+  opacity: 0.6;
+  font-size: 0.75rem;
+}
+.sh-cats button:hover {
+  transform: translateY(-2px);
+}
+.sh-cats button[data-on='true'] {
+  background: #7c5cf0;
+  color: #fff;
+}
+.sh-tpl-cat {
+  margin-top: 28px;
+  font-family: var(--font-mitr), sans-serif;
+  font-size: 1.3rem;
+  color: #fff;
+  text-shadow: 0 2px 0 var(--l5g-ink);
+}
+.sh-tpl-cat small {
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+.sh-tpl-empty {
+  margin-top: 20px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 2px 0 var(--l5g-ink);
+}
+.sh-tpl {
+  /* แม่แบบร้อยกว่าแบบ: ใบที่อยู่นอกจอไม่ต้องวาด */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 290px;
+}
+.sh-tpl-pages {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--l5g-ink);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
 .sh-tpl-busy {
   position: absolute;
   inset: 0;

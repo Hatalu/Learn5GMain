@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Sigma, BookOpenCheck, CloudUpload, LayoutTemplate, Loader2, PaintBucket, Pencil, QrCode, Search, Shapes, Smile, Sparkles, Square, Trash2, Type, Upload, UserRound, Wand2, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/context/AuthContext';
@@ -47,7 +47,7 @@ import {
 } from '@/lib/studio/doc';
 import { SHAPES } from './shapes';
 import { STICKERS, STICKER_CATS, StickerArt, type StickerCat } from './stickers';
-import { TEMPLATES } from './templates';
+import { TEMPLATES, TEMPLATE_CATS, type TemplateCat } from './templates';
 import { BorderArt, ItemView, PageThumb, bgStyle, textCss } from './render';
 import { ColorGrid, Slider } from './ui';
 import { FxPicker } from './Inspector';
@@ -137,6 +137,8 @@ export function fitPage(p: Page, from: { w: number; h: number }, to: { w: number
 }
 
 function TemplatePanel({ ctl }: { ctl: Ctl }) {
+  const [cat, setCat] = useState<TemplateCat>('sheet');
+  const previews = useMemo(() => new Map(TEMPLATES.map((t) => [t.id, t.make()])), []);
   const apply = (make: () => Design) => {
     const t = make();
     const pages = t.pages.map((p) => fitPage(p, t.size, ctl.doc.size));
@@ -153,9 +155,16 @@ function TemplatePanel({ ctl }: { ctl: Ctl }) {
   return (
     <>
       <p className="st-note">หน้าว่างจะถูกแทนด้วยแม่แบบ ถ้าหน้านี้มีของอยู่แล้วจะเพิ่มเป็นหน้าใหม่ต่อท้าย ทุกชิ้นแก้ไขได้</p>
+      <div className="st-chips mb-3" role="tablist" aria-label="หมวดแม่แบบ">
+        {TEMPLATE_CATS.map((c) => (
+          <button key={c.id} type="button" role="tab" aria-selected={cat === c.id} data-on={cat === c.id} onClick={() => setCat(c.id)}>
+            {c.label}
+          </button>
+        ))}
+      </div>
       <div className="grid grid-cols-2 gap-3">
-        {TEMPLATES.map((t) => {
-          const d = t.make();
+        {TEMPLATES.filter((t) => t.cat === cat).map((t) => {
+          const d = previews.get(t.id)!;
           return (
             <button key={t.id} type="button" className="st-tpl" onClick={() => apply(t.make)} style={{ ['--a' as string]: t.accent }}>
               <span className="st-tpl-art">

@@ -302,7 +302,7 @@ export const EDU_KINDS: { kind: EduKind; label: string; subject: EduSubject; box
   { kind: 'tally', label: 'รอยขีดนับ', subject: 'math', box: [300, 100], a: 8, b: 0, c: 0, color: '#2a2350', params: [{ k: 'a', label: 'จำนวน', min: 1, max: 50 }] },
   { kind: 'ruler', label: 'ไม้บรรทัด (ซม.)', subject: 'math', box: [600, 80], a: 15, b: 0, c: 0, color: '#ffe066', labels: true, params: [{ k: 'a', label: 'ยาว (ซม.)', min: 5, max: 30 }] },
   { kind: 'coord', label: 'ระนาบพิกัด', subject: 'math', box: [420, 420], a: 5, b: 0, c: 0, color: '#7c5cf0', labels: true, params: [{ k: 'a', label: 'ช่วง ±', min: 2, max: 10 }] },
-  { kind: 'protractor', label: 'ไม้โปรแทรกเตอร์', subject: 'math', box: [420, 230], a: 60, b: 0, c: 0, color: '#bde4ff', labels: true, params: [{ k: 'a', label: 'มุม (องศา)', min: 0, max: 180, step: 5 }] },
+  { kind: 'protractor', label: 'ไม้โปรแทรกเตอร์', subject: 'math', box: [420, 230], a: 60, b: 0, c: 0, color: '#bde4ff', labels: true, params: [{ k: 'a', label: 'มุม (องศา)', min: 0, max: 180, step: 5 }, { k: 'c', label: 'ซ่อนค่ามุม (0/1)', min: 0, max: 1 }] },
   { kind: 'bond', label: 'แผนภาพจำนวน', subject: 'math', box: [300, 240], a: 10, b: 6, c: 0, color: '#ffd166', params: [{ k: 'a', label: 'ผลรวม', min: 0, max: 999 }, { k: 'b', label: 'ส่วนที่ 1', min: 0, max: 999 }, { k: 'c', label: 'เว้นช่อง (0-3)', min: 0, max: 3 }] },
   { kind: 'blocks', label: 'บล็อกฐานสิบ', subject: 'math', box: [460, 240], a: 124, b: 0, c: 0, color: '#7cc6ff', labels: true, params: [{ k: 'a', label: 'จำนวน', min: 0, max: 999 }] },
   { kind: 'money', label: 'เหรียญและธนบัตร', subject: 'math', box: [520, 240], a: 87, b: 0, c: 0, color: '#ffd166', params: [{ k: 'a', label: 'จำนวนเงิน (บาท)', min: 1, max: 2000 }] },
@@ -357,7 +357,7 @@ export function clampEdu(kind: EduKind, a: number, b: number, c: number): [numbe
     case 'coord':
       return [i(a, 2, 10), 0, 0];
     case 'protractor':
-      return [i(a, 0, 180), 0, 0];
+      return [i(a, 0, 180), 0, i(c, 0, 1)];
     case 'bond': {
       const t = i(a, 0, 999);
       return [t, i(b, 0, t), i(c, 0, 3)];

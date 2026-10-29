@@ -661,7 +661,7 @@ function EduView({ e }: { e: EduItem }) {
       const [mx, my] = P(a, am);
       if (a > 0) body.push(<path key="arc" d={`M${cx + am},${cy} A${am},${am} 0 0 0 ${mx},${my}`} fill="none" stroke="#e8456b" strokeWidth={2.5} />);
       const [lx, ly] = P(a / 2, am + r * 0.13);
-      body.push(t(lx, ly, Math.max(11, r * 0.1), `${a}°`, 'middle', 'deg'));
+      if (!c) body.push(t(lx, ly, Math.max(11, r * 0.1), `${a}°`, 'middle', 'deg'));
       body.push(<circle key="c" cx={cx} cy={cy} r={4} fill={k} />);
       break;
     }
