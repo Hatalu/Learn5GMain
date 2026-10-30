@@ -2,12 +2,12 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Check, CircleAlert, Clock3, Eye, Flag, Gamepad2, Users, Loader2, MonitorPlay, Rocket, Shuffle } from 'lucide-react';
+import { ArrowLeft, Check, CircleAlert, Clock3, Eye, Flag, Gamepad2, Users, Loader2, Monitor, MonitorPlay, Rocket, Shuffle, Smartphone, Sparkles } from 'lucide-react';
 import { PaperModal } from './PaperModal';
 import { MusicPicker } from './live/MusicPicker';
 import { ModeArt } from './games/ModeArt';
 import { cleanNickname, NICK_MAX } from '@/lib/game-creator/templates';
-import { MODES, fmtDuration, modeById, modeFit, type GameMode } from '@/lib/game-creator/modes';
+import { MODES, PLAY_TYPES, fmtDuration, modeById, modeFit, playTypeOf, type GameMode, type PlayType } from '@/lib/game-creator/modes';
 import { mediaPrefix } from '@/lib/game-creator/prefix';
 import { sanitizeQuiz } from '@/lib/game-creator/quiz';
 import { createClient } from '@/lib/supabase/client';
@@ -33,10 +33,54 @@ export function rememberBackground(bg: unknown) {
 }
 
 /** การ์ดเลือกรูปแบบการเล่น พร้อมข้อจำกัดของแต่ละแบบ (ใช้ทั้งตอนเปิดห้องและทดลองเล่น) */
-export function ModePicker({ content, value, onPick }: { content: QuizContent | null; value: GameMode | null; onPick: (m: GameMode) => void }) {
+/** ป้ายวิธีเล่นบนการ์ดรูปแบบเกม (เข้าร่วมห้อง / เล่นในเครื่องเดียว + เดี่ยว/ทีม) */
+export function PlayTypeTag({ mode }: { mode: GameMode }) {
+  const m = modeById(mode);
+  const pt = PLAY_TYPES.find((p) => p.id === playTypeOf(m))!;
   return (
+    <span className="l5g-ptag-row">
+      <span className="l5g-ptag" style={{ ['--pc' as string]: pt.color }}>
+        {pt.id === 'room' ? <Smartphone className="w-3.5 h-3.5" strokeWidth={3} /> : <Monitor className="w-3.5 h-3.5" strokeWidth={3} />}
+        {pt.name}
+      </span>
+      {m.teams && (
+        <span className="l5g-ptag" style={{ ['--pc' as string]: '#25c48a' }}>
+          <Users className="w-3.5 h-3.5" strokeWidth={3} /> เดี่ยว & ทีม
+        </span>
+      )}
+    </span>
+  );
+}
+
+export function ModePicker({ content, value, onPick }: { content: QuizContent | null; value: GameMode | null; onPick: (m: GameMode) => void }) {
+  const [pt, setPt] = useState<PlayType>(value ? playTypeOf(modeById(value)) : 'room');
+  const list = MODES.filter((m) => playTypeOf(m) === pt);
+  return (
+    <>
+      <div className="l5g-ptypes" role="tablist" aria-label="วิธีเล่น">
+        {PLAY_TYPES.map((p) => {
+          const n = MODES.filter((m) => playTypeOf(m) === p.id).length;
+          return (
+            <button key={p.id} type="button" role="tab" aria-selected={pt === p.id} className="l5g-ptype" data-on={pt === p.id} style={{ ['--pc' as string]: p.color }} onClick={() => (gsfx.pick(), setPt(p.id))}>
+              <span className="l5g-ptype-ic">{p.id === 'room' ? <Smartphone className="w-6 h-6" /> : <Monitor className="w-6 h-6" />}</span>
+              <span className="min-w-0">
+                <b>{p.name}</b>
+                <small>{p.desc}</small>
+              </span>
+              <em>{n ? `${n} เกม` : 'เร็วๆ นี้'}</em>
+            </button>
+          );
+        })}
+      </div>
+      {!list.length ? (
+        <div className="l5g-ptype-empty">
+          <Sparkles className="w-8 h-8" />
+          <b>เกมแบบเล่นในเครื่องเดียว กำลังจะมาเร็วๆ นี้</b>
+          <span>ตอนนี้เลือก &quot;เข้าร่วมห้อง&quot; ก่อนได้เลย</span>
+        </div>
+      ) : (
     <div className="l5g-modes">
-      {MODES.map((m) => {
+      {list.map((m) => {
         const fit = content ? modeFit(content, m.id) : null;
         const ok = !!fit?.ok;
         return (
@@ -52,6 +96,7 @@ export function ModePicker({ content, value, onPick }: { content: QuizContent | 
           >
             <span className="l5g-modecard-art">
               <ModeArt mode={m.id} />
+              <PlayTypeTag mode={m.id} />
               {value === m.id && (
                 <span className="l5g-modecard-tick">
                   <Check className="w-4 h-4" strokeWidth={4} />
@@ -76,6 +121,8 @@ export function ModePicker({ content, value, onPick }: { content: QuizContent | 
         );
       })}
     </div>
+      )}
+    </>
   );
 }
 

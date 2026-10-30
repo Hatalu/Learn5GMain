@@ -44,6 +44,7 @@ export const MODE_MUSIC: Record<GameMode, string> = {
   fishing: 'lofi',
   turf: 'chip',
   treasure: 'quest',
+  egg: 'race',
 };
 
 /** ค่าที่ตั้งในห้อง: 'auto' = ตามรูปแบบการเล่น, 'off' = ไม่มีเพลง, หรือ id เพลง */

@@ -126,6 +126,34 @@ export function ModeArt({ mode }: { mode: GameMode }) {
       </div>
     );
   }
+  if (mode === 'egg') {
+    return (
+      <div className="ma ma-egg">
+        <svg viewBox="0 0 200 96" width="100%" height="100%" aria-hidden="true">
+          <rect x="0" y="62" width="200" height="34" fill="#8fdc6a" />
+          <ellipse cx="34" cy="74" rx="26" ry="9" fill="#9ff0c8" stroke="#2a2350" strokeWidth="2.5" />
+          {/* บอสหลับ */}
+          <g className="ma-egg-boss">
+            <ellipse cx="150" cy="58" rx="34" ry="26" fill="#ff8fbf" stroke="#2a2350" strokeWidth="3" />
+            <ellipse cx="150" cy="64" rx="20" ry="14" fill="#ffd6e8" />
+            <ellipse cx="130" cy="32" rx="7" ry="13" fill="#ff8fbf" stroke="#2a2350" strokeWidth="3" />
+            <ellipse cx="168" cy="32" rx="7" ry="13" fill="#ff8fbf" stroke="#2a2350" strokeWidth="3" />
+            <path d="M138 52 q5 4 10 0 M154 52 q5 4 10 0" stroke="#2a2350" strokeWidth="3" fill="none" strokeLinecap="round" />
+          </g>
+          <text className="ma-egg-z" x="178" y="22" fontSize="14" fontWeight="900" fill="#fff" stroke="#2a2350" strokeWidth="1.5">Z</text>
+          {/* ไข่ 3 ระดับ */}
+          <ellipse cx="96" cy="64" rx="9" ry="12" fill="#8fd16a" stroke="#2a2350" strokeWidth="2.5" />
+          <ellipse cx="112" cy="70" rx="8" ry="11" fill="#3d8bff" stroke="#2a2350" strokeWidth="2.5" />
+          <ellipse cx="80" cy="72" rx="9" ry="12" fill="#ffb31a" stroke="#2a2350" strokeWidth="2.5" />
+          <circle cx="78" cy="68" r="2" fill="#fff" />
+          <circle cx="94" cy="60" r="2" fill="#fff" />
+        </svg>
+        <span className="ma-egg-who">
+          <Avatar id={4} gear={{ h: 0, o: 0, m: 0, i: 0 }} size={38} />
+        </span>
+      </div>
+    );
+  }
   if (mode === 'fishing') {
     return (
       <div className="ma ma-fish">

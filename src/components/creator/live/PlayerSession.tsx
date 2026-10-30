@@ -12,6 +12,7 @@ import { BrawlGame } from '../games/BrawlGame';
 import { FishGame } from '../games/FishGame';
 import { TurfGame } from '../games/TurfGame';
 import { TreasureGame } from '../games/TreasureGame';
+import { EggGame } from '../games/egg/LazyEggGame';
 import { LookPicker } from './LookPicker';
 import { Medal, PodiumShow, type ShowEntry } from './PodiumShow';
 import { LiveError, liveEngine, playerApi, subscribeRoom, type LiveOutcome, type PlayerCreds, type PlayerStateRes, type PodiumEntry, type RosterEntry } from '@/lib/game-creator/live-client';
@@ -350,7 +351,7 @@ export function PlayerSession({
     if (st.room.game === 'tower') return <TowerGame key={st.room.round} {...props} />;
     if (st.room.game === 'brawl') return <BrawlGame key={st.room.round} {...props} />;
     if (st.room.game === 'fishing') return <FishGame key={st.room.round} {...props} />;
-    if (st.room.game === 'turf' || st.room.game === 'treasure') {
+    if (st.room.game === 'turf' || st.room.game === 'treasure' || st.room.game === 'egg') {
       // โลกเดียวกัน: รายชื่อทุกคน (เรียงตามเวลาเข้า) ใช้แบ่งทีม/สีให้ตรงกันทุกเครื่อง
       const world = {
         roomId: st.room.id,
@@ -360,7 +361,7 @@ export function PlayerSession({
         round: st.room.round,
         now: () => Date.now() + clockOffset.current,
       };
-      const Game = st.room.game === 'turf' ? TurfGame : TreasureGame;
+      const Game = st.room.game === 'turf' ? TurfGame : st.room.game === 'egg' ? EggGame : TreasureGame;
       return <Game key={st.room.round} {...props} world={world} startScore={me.score} />;
     }
     return (

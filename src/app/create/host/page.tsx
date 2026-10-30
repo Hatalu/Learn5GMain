@@ -93,6 +93,7 @@ function boardSub(game: GameMode, p: PlayerPublic) {
   if (game === 'fishing') return `ได้ปลา ${p.stats.fish || 0} ตัว · ตอบถูก ${p.correct}`;
   if (game === 'turf') return `ไอเท็ม ${p.stats.items || 0} ชิ้น · ตอบถูก ${p.correct}`;
   if (game === 'treasure') return `เปิดหีบ ${p.stats.chests || 0} ใบ · ตอบถูก ${p.correct}`;
+  if (game === 'egg') return `ขโมยไข่ ${p.stats.eggs || 0} ฟอง · หายาก ${p.stats.rare || 0} · ตอบถูก ${p.correct}`;
   return '';
 }
 

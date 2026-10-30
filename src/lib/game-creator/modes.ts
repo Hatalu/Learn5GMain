@@ -5,11 +5,19 @@
  */
 import type { QuizContent } from './types';
 import { playableQuiz } from './quiz';
+import { EGG_MAX_VALUE } from './eggValues';
 
-export type GameMode = 'quiz' | 'cafe' | 'tower' | 'racing' | 'brawl' | 'fishing' | 'turf' | 'treasure';
+export type GameMode = 'quiz' | 'cafe' | 'tower' | 'racing' | 'brawl' | 'fishing' | 'turf' | 'treasure' | 'egg';
 
 /** โหมดโลกเดียวกัน: ทุกคนเดินในแผนที่เดียว เห็นกันสดๆ (ส่งตำแหน่งผ่าน Realtime) */
-export const isWorldMode = (g: GameMode) => g === 'turf' || g === 'treasure';
+export const isWorldMode = (g: GameMode) => g === 'turf' || g === 'treasure' || g === 'egg';
+
+/** วิธีเล่น: room = ผู้เล่นเข้าห้องด้วยมือถือของตัวเอง / local = เล่นในเครื่องนี้เครื่องเดียว (เดี่ยวหรือทีม) */
+export type PlayType = 'room' | 'local';
+export const PLAY_TYPES: { id: PlayType; name: string; desc: string; color: string }[] = [
+  { id: 'room', name: 'เข้าร่วมห้อง', desc: 'ผู้เล่นแต่ละคนใช้มือถือ/แท็บเล็ตของตัวเอง', color: '#4a7bf0' },
+  { id: 'local', name: 'เล่นในเครื่องเดียว', desc: 'เล่นในเครื่องนี้เครื่องเดียว จะเดี่ยวหรือทีมก็ได้', color: '#ff9a3d' },
+];
 
 export interface ModeInfo {
   id: GameMode;
@@ -33,6 +41,8 @@ export interface ModeInfo {
   /** แบ่งทีมได้ (0 = ต่างคนต่างเล่น) */
   teams?: number[];
   scoreLabel: string;
+  /** วิธีเล่น (ไม่ใส่ = room) */
+  playType?: PlayType;
 }
 
 export const MODES: ModeInfo[] = [
@@ -163,7 +173,26 @@ export const MODES: ModeInfo[] = [
     defaultDuration: 300,
     scoreLabel: 'เพชร',
   },
+  {
+    id: 'egg',
+    name: 'ขโมยไข่บอสหลับ',
+    genre: 'ผจญภัย 3 มิติ (Steal & Run)',
+    tagline: '10 ไบโอม บอสหลับเฝ้าไข่ ตอบถูกได้ไข่ แล้ววิ่งหนีบอสกลับฐาน!',
+    steps: ['วิ่งออกจากฐานไปหาไข่ในไบโอม (มีไข่ 5 ฟองต่อไบโอม)', 'ถึงไข่แล้วกดขโมย ตอบให้ถูก ใครถูกก่อนได้ไข่ไป', 'บอสตื่น! วิ่งกลับฐานให้ทัน โดนจับไข่จะหลุด', 'ไข่หายากได้คะแนนเยอะ เก็บเหรียญอัปความเร็ววิ่ง'],
+    color: '#7c5cff',
+    dark: '#4a2fc0',
+    soft: '#ece6ff',
+    minQuestions: 3,
+    noVideo: false,
+    endless: true,
+    durations: [180, 300, 420, 600],
+    defaultDuration: 300,
+    teams: [0, 2, 3, 4],
+    scoreLabel: 'คะแนนไข่',
+  },
 ];
+
+export const playTypeOf = (m: ModeInfo): PlayType => m.playType || 'room';
 
 export const modeById = (id: unknown): ModeInfo => MODES.find((m) => m.id === id) || MODES[0];
 export const isGameMode = (id: unknown): id is GameMode => MODES.some((m) => m.id === id);
@@ -220,6 +249,8 @@ export function scoreCap(mode: GameMode, correct: number): number {
   if (mode === 'turf') return Math.min(TURF_CELLS, correct * 160 + 120);
   // หีบ 1 ใบ/ข้อถูก สูงสุด 60 เพชร + เพชรที่เดินเก็บตามพื้นเกาะ
   if (mode === 'treasure') return correct * 90 + 600;
+  // ไข่ 1 ฟอง/ข้อถูก สูงสุดคือไข่ความลับ
+  if (mode === 'egg') return correct * EGG_MAX_VALUE + 50;
   return Number.MAX_SAFE_INTEGER;
 }
 

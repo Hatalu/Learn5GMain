@@ -19,7 +19,7 @@ import { mediaPrefix, removeMedia } from '@/lib/game-creator/media';
 import type { UserGameSummary } from '@/lib/game-creator/types';
 import { gsfx } from '@/lib/game-creator/gsound';
 import { ChoiceShape, choiceStyle } from '@/components/creator/ChoiceShape';
-import { OpenGameModal } from '@/components/creator/OpenGameModal';
+import { OpenGameModal, PlayTypeTag } from '@/components/creator/OpenGameModal';
 import { PaperModal } from '@/components/creator/PaperModal';
 import '@/components/creator/creator.css';
 import '@/components/creator/creator-pages.css';
@@ -375,6 +375,7 @@ function CreateHub() {
                     <article key={m.id} className="l5g-tcard" style={{ ['--a' as string]: m.color, ['--soft' as string]: m.soft, animationDelay: `${i * 80}ms` }}>
                       <div className="l5g-tcard-art">
                         <ModeArt mode={m.id} />
+                        <PlayTypeTag mode={m.id} />
                       </div>
                       <div className="p-4 pt-3 flex flex-col flex-1">
                         <p className="text-xs font-extrabold tracking-wider" style={{ color: m.dark }}>

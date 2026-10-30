@@ -68,6 +68,7 @@ import { MODE_MUSIC } from '@/lib/music-tracks';
 import { FishGame } from '../games/FishGame';
 import { TurfGame } from '../games/TurfGame';
 import { TreasureGame } from '../games/TreasureGame';
+import { EggGame } from '../games/egg/LazyEggGame';
 import { ModePicker, ModeSteps } from '../OpenGameModal';
 import { modeById, modeQuiz, type GameMode } from '@/lib/game-creator/modes';
 import { localEngine } from './localEngine';
@@ -1062,6 +1063,8 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
               <TurfGame key={preview.key} engine={preview.engine} deadline={preview.deadline} goal={0} me={{ nickname: 'ทดลอง', avatar: 2 }} preview />
             ) : preview.mode === 'treasure' ? (
               <TreasureGame key={preview.key} engine={preview.engine} deadline={preview.deadline} goal={0} me={{ nickname: 'ทดลอง', avatar: 9 }} preview />
+            ) : preview.mode === 'egg' ? (
+              <EggGame key={preview.key} engine={preview.engine} deadline={preview.deadline} goal={0} me={{ nickname: 'ทดลอง', avatar: 4 }} preview />
             ) : preview.mode === 'fishing' ? (
               <FishGame key={preview.key} engine={preview.engine} deadline={preview.deadline} goal={0} me={{ nickname: 'ทดลอง', avatar: 7 }} preview />
             ) : preview.mode === 'racing' ? (

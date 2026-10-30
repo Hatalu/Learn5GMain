@@ -50,6 +50,7 @@ import { NO_OFFER, PLANS, comparePrice, perDay, quote, saveBaht, welcomePrice } 
 import { checkUnsubscribeToken, unsubscribeToken, winbackEmail } from '../src/lib/server/email';
 import { MEMBER_PLAY_SECONDS, TRIAL_GRACE_SECONDS, TRIAL_SECONDS, signTrialToken, trialPublicJwk, verifyTrialToken } from '../src/lib/server/trial';
 import { TURF_CELLS, cleanModeSettings, isWorldMode, modeFit, modeQuiz, scoreCap } from '../src/lib/game-creator/modes';
+import { EGG_MAX_VALUE, EGG_SLOTS_RARITY, RARITY, pickEggType, takeWins } from '../src/lib/game-creator/eggValues';
 import { endlessIndex } from '../src/lib/game-creator/quiz';
 import {
   checkAnswer,
@@ -1446,6 +1447,23 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
     }
     passed++;
     console.log(`  ok  แม่แบบ ${TEMPLATES.length} แบบ: id/หมวด/สติกเกอร์/รูปทรง/ฟอนต์ถูกต้อง และไม่ล้นหน้า`);
+  }
+  {
+    // ขโมยไข่บอสหลับ: ตารางไข่ 11 ชนิด, สุ่มชนิดตรงระดับ, ใครขโมยก่อนได้ไป, เพดานคะแนน
+    assert.equal(EGG_SLOTS_RARITY.length, 11);
+    assert.deepEqual(['common', 'rare', 'legend', 'secret'].map((r) => EGG_SLOTS_RARITY.filter((x) => x === r).length), [5, 3, 2, 1]);
+    assert.equal(EGG_SLOTS_RARITY[pickEggType(0, 0)], 'common');
+    assert.equal(EGG_SLOTS_RARITY[pickEggType(0.999, 0.5)], 'secret');
+    for (let i = 0; i < 500; i++) {
+      const t = pickEggType(Math.random(), Math.random());
+      assert.ok(t >= 0 && t < 11);
+    }
+    assert.ok(takeWins(100, 5, 200, 1) && !takeWins(200, 1, 100, 5) && takeWins(100, 1, 100, 5) && !takeWins(100, 5, 100, 1));
+    assert.ok(isWorldMode('egg'));
+    assert.equal(EGG_MAX_VALUE, RARITY.secret.value);
+    assert.ok(scoreCap('egg', 3) >= 3 * RARITY.secret.value);
+    passed++;
+    console.log('  ok  ขโมยไข่: ตารางไข่ สุ่มชนิด ตัดสินขโมยพร้อมกัน เพดานคะแนน');
   }
   console.log(`\n${passed} tests passed`);
 })().catch((e) => {

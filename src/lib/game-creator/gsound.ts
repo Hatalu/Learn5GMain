@@ -290,4 +290,13 @@ export const gsfx = {
   step() {
     play((c, t) => tone(c, 520, t, 0.07, { type: 'triangle', gain: 0.07, slideTo: 780 }));
   },
+  /** แตรไซเรน 1 ครั้ง (บอสตื่น) */
+  siren() {
+    play((c, t) => {
+      for (let i = 0; i < 2; i++) {
+        tone(c, 560, t + i * 0.8, 0.4, { type: 'sawtooth', gain: 0.07, slideTo: 1150, attack: 0.03 });
+        tone(c, 1150, t + i * 0.8 + 0.4, 0.4, { type: 'sawtooth', gain: 0.07, slideTo: 560 });
+      }
+    });
+  },
 };
