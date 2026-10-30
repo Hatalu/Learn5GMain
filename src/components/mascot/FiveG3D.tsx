@@ -2,6 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 import React, { useEffect, useRef, useState } from 'react';
+import { getGfx, gfxDpr, subscribeGfx } from '@/lib/gfx';
 
 /**
  * น้องไฟว์จีแบบ 3D (three.js สร้างจากรูปทรงล้วน ไม่มีไฟล์โมเดล) แรเงาแบบการ์ตูน + เส้นขอบหมึก ให้เข้ากับธีมขอบหนาของเว็บ
@@ -196,12 +197,12 @@ export function FiveG3D({ mood, onPose, className = '', label = 'น้องไ
       if (disposed) return;
       let renderer: InstanceType<typeof THREE.WebGLRenderer>;
       try {
-        renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: 'low-power' });
+        renderer = new THREE.WebGLRenderer({ alpha: true, antialias: getGfx() !== 'lite', powerPreference: 'low-power' });
       } catch {
         setFailed(true);
         return;
       }
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+      renderer.setPixelRatio(gfxDpr());
       renderer.domElement.style.cssText = 'width:100%;height:100%;display:block;touch-action:manipulation';
       el.appendChild(renderer.domElement);
 
@@ -478,6 +479,11 @@ export function FiveG3D({ mood, onPose, className = '', label = 'น้องไ
       fit();
       const ro = new ResizeObserver(fit);
       ro.observe(el);
+      // เปลี่ยนระดับกราฟิกในตั้งค่า: ปรับความคมทันทีไม่ต้องรีเฟรช
+      const unGfx = subscribeGfx(() => {
+        renderer.setPixelRatio(gfxDpr());
+        fit();
+      });
 
       /* ---------------- เมาส์/สัมผัส ---------------- */
       const ptr = { x: 0, y: 0 };
@@ -568,6 +574,7 @@ export function FiveG3D({ mood, onPose, className = '', label = 'น้องไ
         cancelAnimationFrame(raf);
         io.disconnect();
         ro.disconnect();
+        unGfx();
         window.removeEventListener('pointermove', onMove);
         geos.forEach((g) => g.dispose());
         Object.values(M).forEach((mt) => mt.dispose());

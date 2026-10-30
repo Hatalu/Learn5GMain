@@ -1,7 +1,9 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { usePathname } from 'next/navigation';
+import { getGfx, getServerGfx, subscribeGfx } from '@/lib/gfx';
+import { StarTrail } from './StarTrail';
 import { BkkParts, EventKey, Phase, Season, bkkParts, eventOf, phaseOf, seasonOf } from '@/lib/companion';
 
 const SKY: Record<Phase, string> = {
@@ -26,6 +28,28 @@ const STARS = Array.from({ length: 42 }, (_, i) => ({
   delay: (i % 9) * 0.45,
 }));
 const SEED = (n: number, mod: number, off = 0) => ((n * 2654435761 + off) >>> 0) % mod;
+
+const SPARKLE_COLORS = ['#ffd25e', '#ff94cc', '#bfa9ff', '#8cf0c8', '#9adcfb'];
+
+/** กราฟิกระดับสวย: ประกายดาว 4 แฉกลอยวิบวับทั่วท้องฟ้า */
+function Sparkles() {
+  return (
+    <>
+      {Array.from({ length: 18 }, (_, i) => (
+        <svg
+          key={i}
+          viewBox="-10 -10 20 20"
+          width={10 + (i % 4) * 5}
+          height={10 + (i % 4) * 5}
+          className="fx-sparkle"
+          style={{ left: `${SEED(i, 96, 11) + 2}%`, top: `${4 + SEED(i, 64, 5)}vh`, animationDuration: `${2.6 + (i % 5) * 0.7}s`, animationDelay: `-${(i * 0.55).toFixed(2)}s` }}
+        >
+          <path d="M0-10Q1.6-1.6 10 0Q1.6 1.6 0 10Q-1.6 1.6-10 0Q-1.6-1.6 0-10z" fill={SPARKLE_COLORS[i % SPARKLE_COLORS.length]} />
+        </svg>
+      ))}
+    </>
+  );
+}
 
 function Cloud({ className, style, tone }: { className?: string; style?: React.CSSProperties; tone: string }) {
   return (
@@ -130,6 +154,7 @@ export function AmbientSky({ at }: Props) {
   const covered = COVERED.some((p) => path === p || path.startsWith(p + '/'));
   const [now, setNow] = useState<BkkParts | null>(null);
   const [reduced, setReduced] = useState(false);
+  const gfx = useSyncExternalStore(subscribeGfx, getGfx, getServerGfx);
 
   useEffect(() => {
     // โหมดพัฒนาเท่านั้น: ?sky=2026-04-14T20:00:00+07:00 เพื่อดูฉากเวลา/ฤดู/วันสำคัญอื่น
@@ -203,7 +228,14 @@ export function AmbientSky({ at }: Props) {
         </div>
       )}
 
-      {!reduced && (
+      {!reduced && gfx === 'hd' && (
+        <>
+          <Sparkles />
+          <StarTrail />
+        </>
+      )}
+
+      {!reduced && gfx !== 'lite' && (
         <>
           {/* เมฆลอย */}
           {[0, 1, 2].map((i) => (

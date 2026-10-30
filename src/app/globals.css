@@ -349,3 +349,40 @@ h1, h2, h3 {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* ---------------- ระดับกราฟิก (ตั้งค่า > กราฟิก, src/lib/gfx.ts) ---------------- */
+/* ลื่น: แอนิเมชันเล่นครั้งเดียวแล้วหยุด (ยกเว้นตัวหมุนโหลด), ไม่มีเบลอ, ซ่อนอนุภาคฉากหลัง */
+html[data-gfx="lite"] *:not(.animate-spin),
+html[data-gfx="lite"] *::before,
+html[data-gfx="lite"] *::after {
+  animation-iteration-count: 1 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+html[data-gfx="lite"] :is(.fx-fall, .fx-rain, .fx-rise, .fx-cloud, .fx-boat, .fx-firefly, .fx-sparkle, .sun-rays, .confetti) { display: none !important; }
+html[data-gfx="lite"] .sky-gradient { transition: none; }
+
+/* สวย: ฉากหลังลอยไปมา, แถบเมนูกระจกเบลอ, ประกายดาวบนฟ้า, ปุ่มเรืองแสงตอนชี้ */
+html[data-gfx="hd"] body::before { animation: bgDrift 26s ease-in-out infinite alternate; }
+@keyframes bgDrift {
+  0% { transform: translate3d(0, 0, 0) scale(1.05); }
+  50% { transform: translate3d(-2%, 1.5%, 0) scale(1.12); }
+  100% { transform: translate3d(2%, -1%, 0) scale(1.08); }
+}
+html[data-gfx="hd"] .site-nav {
+  background-color: rgb(255 255 255 / 0.72);
+  -webkit-backdrop-filter: blur(18px) saturate(1.5);
+  backdrop-filter: blur(18px) saturate(1.5);
+}
+html[data-gfx="hd"].dark .site-nav { background-color: rgb(3 7 18 / 0.66); }
+html[data-gfx="hd"] body { text-rendering: optimizeLegibility; }
+html[data-gfx="hd"] .btn-jelly:hover { filter: drop-shadow(0 6px 14px rgb(124 92 255 / 0.35)) saturate(1.12); }
+.fx-sparkle { position: absolute; animation: fxSparkle ease-in-out infinite; }
+@keyframes fxSparkle {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(0.3) rotate(0deg); opacity: 0; }
+  50% { transform: translate3d(0, -14px, 0) scale(1) rotate(90deg); opacity: 0.95; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fx-sparkle { display: none !important; }
+  html[data-gfx="hd"] body::before { animation: none; }
+}

@@ -6,6 +6,7 @@
  * - มีไฟล์ public/models/egg/manifest.json = ใช้โมเดลจาก Blender (.glb) แทนบอสที่สร้างเอง
  */
 import * as THREE from 'three';
+import { getGfx, gfxDpr } from '@/lib/gfx';
 import { BIOMES, type BossPart, type EggStyle, type PropKind } from './biomes';
 import { RARITY, EGG_BIOMES, EGG_SLOTS_RARITY } from '@/lib/game-creator/eggValues';
 import { rng } from '../worldKit';
@@ -568,8 +569,8 @@ export class EggWorld {
   constructor(el: HTMLElement, seed: number, themes: number[]) {
     this.el = el;
     this.themes = themes;
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+    this.renderer = new THREE.WebGLRenderer({ antialias: getGfx() !== 'lite', powerPreference: 'high-performance' });
+    this.renderer.setPixelRatio(gfxDpr());
     this.renderer.domElement.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block';
     el.appendChild(this.renderer.domElement);
     const sc = this.scene;

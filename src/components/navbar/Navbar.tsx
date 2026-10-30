@@ -25,7 +25,7 @@ export function Navbar() {
   const showJoin = !isDev && !(user && hasMembership(profile)) && !pathname.startsWith('/membership');
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b-2 border-indigo-100 dark:border-indigo-950 bg-white/95 dark:bg-gray-950/95 transition-colors duration-200">
+    <header className="site-nav sticky top-0 z-50 w-full border-b-2 border-indigo-100 dark:border-indigo-950 bg-white/95 dark:bg-gray-950/95 transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-4">
         {/* Left: Brand with Glowing Logo */}
         <Link

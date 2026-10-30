@@ -1,6 +1,7 @@
 'use client';
 
 import './games.css';
+import { gfxDpr } from '@/lib/gfx';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowUpCircle, Coins, LogOut, Swords, Undo2, X } from 'lucide-react';
 import { Coin, Clock, Flag, Heart } from './art';
@@ -1093,7 +1094,7 @@ export function TowerGame({ engine, deadline, sync, preview, onLeave }: GameProp
       step(w, dt);
       const ctx = c.getContext('2d');
       if (ctx) {
-        const dpr = Math.min(1.5, window.devicePixelRatio || 1);
+        const dpr = gfxDpr();
         const rect = c.getBoundingClientRect();
         const pw = Math.max(1, Math.round(rect.width * dpr));
         const ph = Math.max(1, Math.round(rect.height * dpr));

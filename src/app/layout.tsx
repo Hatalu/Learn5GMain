@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Noto_Sans_Thai, Mitr } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
+import { GFX_BOOT } from '@/lib/gfx';
 
 const notoSansThai = Noto_Sans_Thai({
   subsets: ['thai', 'latin'],
@@ -52,6 +53,9 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${notoSansThai.variable} ${mitr.variable}`}
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: GFX_BOOT }} />
+      </head>
       <body className="min-h-screen bg-background font-sans antialiased selection:bg-indigo-500 selection:text-white transition-colors duration-200">
         <Providers>{children}</Providers>
       </body>

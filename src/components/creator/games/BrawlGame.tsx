@@ -1,6 +1,7 @@
 'use client';
 
 import './games.css';
+import { gfxDpr } from '@/lib/gfx';
 import './games-live.css';
 import './brawl-fish.css';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -1329,7 +1330,7 @@ export function BrawlGame({ engine, deadline, sync, me, preview, onLeave }: Game
         gsfx.fanfare();
         return;
       }
-      const dpr = Math.min(1.5, window.devicePixelRatio || 1);
+      const dpr = gfxDpr();
       const rect = c.getBoundingClientRect();
       const pw = Math.max(1, Math.round(rect.width * dpr));
       const ph = Math.max(1, Math.round(rect.height * dpr));
