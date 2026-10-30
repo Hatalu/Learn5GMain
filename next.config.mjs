@@ -1,4 +1,8 @@
 import path from 'path';
+import { createRequire } from 'module';
+
+// ไฟล์ WASM ของ MediaPipe (เกม AR) คัดลอกจาก node_modules ไป public ทุกครั้งที่ next dev/build (ไม่ขึ้นกับคำสั่ง build ของ Vercel)
+createRequire(import.meta.url)('./scripts/copy-mediapipe.cjs');
 
 const isDev = process.env.NODE_ENV !== 'production';
 const supabase = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -17,7 +21,8 @@ const supabaseHost = (() => {
  */
 const csp = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''} https://challenges.cloudflare.com`,
+  // 'wasm-unsafe-eval' = ให้ MediaPipe (ตรวจท่าทางเกม AR) รัน WebAssembly ได้ (ไฟล์อยู่ในโดเมนเราเอง)
+  `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'${isDev ? " 'unsafe-eval'" : ''} https://challenges.cloudflare.com`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
@@ -55,7 +60,7 @@ const nextConfig = {
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=()' },
+          { key: 'Permissions-Policy', value: 'camera=(self), microphone=(), geolocation=(), payment=()' },
           { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' },
           { key: 'Content-Security-Policy', value: csp },
           { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },

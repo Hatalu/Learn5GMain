@@ -154,6 +154,37 @@ export function ModeArt({ mode }: { mode: GameMode }) {
       </div>
     );
   }
+  if (mode === 'ar') {
+    return (
+      <div className="ma ma-ar">
+        <svg viewBox="0 0 200 96" width="100%" height="100%" aria-hidden="true">
+          <rect width="200" height="96" fill="#1b1260" />
+          {[12, 40, 70, 96, 128, 160, 186, 24, 112, 176].map((x, i) => (
+            <circle key={i} className="ma-ar-star" cx={x} cy={(i * 29) % 70 + 6} r={i % 3 ? 1.2 : 2} fill="#fff" style={{ animationDelay: `${i * 0.3}s` }} />
+          ))}
+          <circle cx="182" cy="84" r="22" fill="#ff8fc7" stroke="#2a2350" strokeWidth="2.5" />
+          {/* ยานเอเลียน */}
+          <g className="ma-ar-ufo">
+            <ellipse cx="132" cy="34" rx="12" ry="11" fill="#bff3ff" stroke="#2a2350" strokeWidth="2.5" />
+            <circle cx="132" cy="34" r="6" fill="#7be36b" />
+            <ellipse cx="132" cy="42" rx="26" ry="8" fill="#ffc53a" stroke="#2a2350" strokeWidth="2.5" />
+            <circle cx="118" cy="43" r="2" fill="#fff" />
+            <circle cx="132" cy="45" r="2" fill="#fff" />
+            <circle cx="146" cy="43" r="2" fill="#fff" />
+          </g>
+          {/* เลเซอร์ */}
+          <line className="ma-ar-laser" x1="58" y1="70" x2="126" y2="40" stroke="#2fb8ff" strokeWidth="5" strokeLinecap="round" />
+          <line className="ma-ar-laser" x1="58" y1="70" x2="126" y2="40" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
+          {/* เด็กยกมือ (โครงร่าง) */}
+          <g stroke="#2fb8ff" strokeWidth="4" strokeLinecap="round" fill="none">
+            <circle cx="40" cy="52" r="8" fill="#ffe0c2" stroke="#2a2350" strokeWidth="2.5" />
+            <path d="M40 60 v20 M30 64 h20 M50 64 l8 6 M30 64 l-6 12" />
+          </g>
+          <circle cx="58" cy="70" r="4" fill="#fff" stroke="#2fb8ff" strokeWidth="2" />
+        </svg>
+      </div>
+    );
+  }
   if (mode === 'fishing') {
     return (
       <div className="ma ma-fish">

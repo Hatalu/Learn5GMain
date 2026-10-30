@@ -299,4 +299,25 @@ export const gsfx = {
       }
     });
   },
+  /** ยิงเลเซอร์ (เกม AR) */
+  laser() {
+    play((c, t) => {
+      tone(c, 1800, t, 0.22, { type: 'square', gain: 0.06, slideTo: 220 });
+      tone(c, 2600, t, 0.12, { type: 'sine', gain: 0.05, slideTo: 600 });
+    });
+  },
+  /** ล็อกเป้า (วงเต็ม) */
+  lock() {
+    play((c, t) => {
+      tone(c, 880, t, 0.07, { type: 'triangle', gain: 0.09 });
+      tone(c, 1320, t + 0.07, 0.1, { type: 'triangle', gain: 0.09 });
+    });
+  },
+  /** ระเบิดพลังชาร์จ (ยกสองมือ) */
+  charge() {
+    play((c, t) => {
+      tone(c, 180, t, 0.6, { type: 'sawtooth', gain: 0.08, slideTo: 1400, attack: 0.05 });
+      noise(c, t + 0.55, 0.5, 0.12, 400);
+    });
+  },
 };

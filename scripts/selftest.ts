@@ -52,6 +52,8 @@ import { MEMBER_PLAY_SECONDS, TRIAL_GRACE_SECONDS, TRIAL_SECONDS, signTrialToken
 import { TURF_CELLS, cleanModeSettings, isWorldMode, modeFit, modeQuiz, scoreCap } from '../src/lib/game-creator/modes';
 import { BOSS_SPEED, EGG_BIOMES, EGG_MAX_VALUE, EGG_SLOTS_RARITY, RARITY, SIZE_MAX, SIZE_MIN, eggEpoch, eggKg, pickEggType, takeWins } from '../src/lib/game-creator/eggValues';
 import { GEAR_BASE } from '../src/lib/game-creator/gear';
+import { Dwell, Hold, OneEuro, aimPoint, arAnswerPoints, arStars, assignSides, bothUp, pickHand, toBody, toScreen, type Lm } from '../src/lib/game-creator/arPose';
+import { parseArSettings } from '../src/lib/game-creator/arSettings';
 import { HATS2, ITEMS2, MASKS2, OUTFITS2 } from '../src/components/creator/gearExtra';
 import { endlessIndex } from '../src/lib/game-creator/quiz';
 import {
@@ -1482,6 +1484,109 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
     assert.ok([HATS2, OUTFITS2, MASKS2, ITEMS2].every((a) => a.length >= 30));
     passed++;
     console.log('  ok  ขโมยไข่: ตารางไข่ น้ำหนักตามไบโอม/ขนาด รอบไข่ ตัดสินขโมยพร้อมกัน เพดานคะแนน + แฟชั่นครบคู่');
+  }
+  {
+    // สงครามอวกาศ AR: แปลงพิกัดกล้อง (cover + กระจก), เลือกมือ, กรอบเอื้อม, ค้างเป้า, แบ่งทีม, คัดข้อเลือกตอบ
+    // วิดีโอ 1280x720 บนจอ 800x800 แบบ cover: scale 1.111, ตัดซ้ายขวา (1422-800)/2 = 311px
+    const view = { vw: 1280, vh: 720, cw: 800, ch: 800, mirror: true };
+    const c = toScreen(0.5, 0.5, view);
+    assert.ok(Math.abs(c.x - 400) < 1e-6 && Math.abs(c.y - 400) < 1e-6);
+    const l = toScreen(0.25, 0, { ...view, mirror: false });
+    assert.ok(Math.abs(l.x - (-311.11 + 0.25 * 1422.22)) < 0.05 && Math.abs(l.y) < 1e-6);
+    // กระจก: ซ้ายของกล้อง = ขวาของจอ
+    assert.ok(toScreen(0.2, 0.5, view).x > 400 && toScreen(0.8, 0.5, view).x < 400);
+
+    // ร่างจำลอง (พิกัดกล้อง ก่อนกลับกระจก) ไหล่ที่ x 0.45/0.55 y 0.5
+    const pose = (cx: number, opt: { lHandY?: number; rHandY?: number } = {}): Lm[] => {
+      const L: Lm[] = Array.from({ length: 33 }, () => ({ x: cx, y: 0.5, visibility: 0.2 }));
+      const set = (i: number, x: number, y: number) => (L[i] = { x, y, visibility: 0.95 });
+      set(0, cx, 0.36);
+      set(11, cx + 0.05, 0.5);
+      set(12, cx - 0.05, 0.5);
+      set(13, cx + 0.09, 0.62);
+      set(14, cx - 0.09, 0.62);
+      set(15, cx + 0.1, opt.lHandY ?? 0.75);
+      set(16, cx - 0.1, opt.rHandY ?? 0.75);
+      set(23, cx + 0.04, 0.8);
+      set(24, cx - 0.04, 0.8);
+      return L;
+    };
+    assert.equal(toBody(pose(0.5).map((p, i) => (i === 11 ? { ...p, visibility: 0.1 } : p)), view), null);
+    const down = toBody(pose(0.5), view)!;
+    assert.ok(down && down.sw > 50);
+    assert.equal(pickHand(down, null), null); // มือวางลง = ไม่เล็ง
+    const up = toBody(pose(0.5, { rHandY: 0.4 }), view)!;
+    assert.equal(pickHand(up, null), 'r');
+    // สองมือยกสูงพอๆ กัน: ไม่สลับมือจนกว่าอีกข้างสูงกว่าชัดเจน
+    const both = toBody(pose(0.5, { rHandY: 0.4, lHandY: 0.38 }), view)!;
+    assert.equal(pickHand(both, 'r'), 'r');
+    assert.equal(pickHand(toBody(pose(0.5, { rHandY: 0.45, lHandY: 0.2 }), view)!, 'r'), 'l');
+    assert.ok(bothUp(toBody(pose(0.5, { rHandY: 0.2, lHandY: 0.2 }), view)!));
+    assert.ok(!bothUp(both));
+    // จุดเล็งอยู่ในกรอบฝั่งเสมอ แม้มือออกนอกกรอบเอื้อม
+    const area = { x: 400, y: 200, w: 400, h: 400 };
+    const far = toBody(pose(0.5, { rHandY: 0.0 }), view)!;
+    const a = aimPoint(far, 'r', 1.5, area)!;
+    assert.ok(a.x >= 400 && a.x <= 800 && a.y >= 200 && a.y <= 600 && a.y === 200);
+    // ยืนไกลกล้อง (ไหล่แคบ) ยกมือในท่าเดียวกัน = เล็งจุดเดียวกัน (สเกลตามไหล่)
+    const scaled = (k: number) => pose(0.5, { rHandY: 0.42 }).map((p) => ({ ...p, x: 0.5 + (p.x - 0.5) * k, y: 0.5 + (p.y - 0.5) * k }));
+    const near = aimPoint(toBody(scaled(1), view)!, 'r', 1.5, area)!;
+    const farAway = aimPoint(toBody(scaled(0.5), view)!, 'r', 1.5, area)!;
+    assert.ok(Math.abs(near.x - farAway.x) < 1 && Math.abs(near.y - farAway.y) < 1);
+
+    // แบ่งทีม: คนจอซ้าย = ทีม 0 (กล้องกลับกระจก: x กล้องมาก = จอซ้าย), ฝั่งละคนที่ไหล่กว้างสุด
+    const bL = toBody(pose(0.75), view)!;
+    const bR = toBody(pose(0.25), view)!;
+    const bR2 = toBody(scaled(0.5).map((p) => ({ ...p, x: p.x - 0.25 })), view)!;
+    const sides = assignSides([bR2, bL, bR], 400, 2);
+    assert.ok(sides[0] === bL && sides[1] === bR);
+    assert.equal(assignSides([bR2, bR], 400, 1)[0], bR);
+
+    // ค้างเป้า 850ms ถึงเลือก, มือแกว่งออกแวบเดียวไม่ล้างหลอด, ออกนอก 1.3r = เลิกเล็ง
+    const d = new Dwell(850);
+    const T = [{ id: 'a', x: 100, y: 100, r: 40 }, { id: 'b', x: 300, y: 100, r: 40 }];
+    let fired: string | null = null;
+    for (let i = 0; i < 10 && !fired; i++) fired = d.update({ x: 105, y: 100 }, T, 50);
+    assert.equal(fired, null);
+    d.update({ x: 148, y: 100 }, T, 50); // ขอบนอก r แต่ยังใน 1.3r = ยังเล็งตัวเดิม
+    assert.equal(d.hover, 'a');
+    d.update(null, T, 50);
+    assert.ok((d.prog.get('a') || 0) > 0.3);
+    for (let i = 0; i < 20 && !fired; i++) fired = d.update({ x: 100, y: 100 }, T, 50);
+    assert.equal(fired, 'a');
+    assert.equal(d.update({ x: 300, y: 100 }, T, 50), null); // พักหลังเลือก
+
+    // One Euro: สั่นเล็กๆ ถูกกรองเหลือน้อย, ขยับไกลตามทัน
+    const f = new OneEuro();
+    let out = 0;
+    let maxDev = 0;
+    for (let i = 0; i < 60; i++) {
+      out = f.filter(500 + (i % 2 ? 6 : -6), 1 / 30);
+      if (i > 10) maxDev = Math.max(maxDev, Math.abs(out - 500));
+    }
+    assert.ok(maxDev < 3);
+    for (let i = 0; i < 30; i++) out = f.filter(900, 1 / 30);
+    assert.ok(out > 880);
+    const h = new Hold(3, 3);
+    assert.ok(!h.update(true) && !h.update(true) && h.update(true) && h.update(false) && !h.update(false) === false);
+
+    // คะแนน: ถูกครั้งแรก 100 + ไวสุด 20, ถูกหลังผิด 50, ดาว
+    assert.equal(arAnswerPoints(true, 0, 20000), 120);
+    assert.equal(arAnswerPoints(true, 20000, 20000), 100);
+    assert.equal(arAnswerPoints(false, 0, 20000), 50);
+    assert.deepEqual([arStars(9, 10), arStars(6, 10), arStars(1, 10), arStars(0, 10)], [3, 2, 1, 0]);
+
+    // ชุดคำถาม: AR ใช้เฉพาะข้อเลือกตอบ 1 คำตอบ ไม่มีคลิป และเปิดห้องไม่ได้ (เล่นในเครื่องเดียว)
+    const ch = (id: string, ok: boolean) => ({ id, text: [{ t: 'x' as const, v: id }], media: null, correct: ok });
+    const mk = (id: string, extra: object = {}) => ({ id, text: [{ t: 'x' as const, v: 'q' }], media: null, choices: [ch('a', true), ch('b', false)], multi: false, time: 20, points: 1 as const, ...extra });
+    const content = { v: 1 as const, questions: [mk('1'), mk('2'), mk('3', { multi: true, choices: [ch('a', true), ch('b', true)] }), mk('4', { kind: 'text', answers: ['x'], choices: [] }), mk('5', { media: { kind: 'video', url: 'u', path: 'p' } })] };
+    assert.deepEqual(modeQuiz(content as never, 'ar').questions.map((q) => q.id), ['1', '2']);
+    assert.equal(modeFit(content as never, 'ar').ok, false);
+    assert.equal(MODES.find((m) => m.id === 'ar')?.playType, 'local');
+    assert.deepEqual(parseArSettings((k) => ({ teams: '2', n: '15', t: '30', lv: '2', music: 'boss' })[k] ?? null), { teams: 2, count: 15, time: 30, level: 2, music: 'boss' });
+    assert.deepEqual(parseArSettings((k) => ({ teams: '3', n: '7', t: '-1', lv: 'x', music: '<b>' })[k] ?? null), { teams: 0, count: 10, time: 0, level: 1, music: 'auto' });
+    passed++;
+    console.log('  ok  สงครามอวกาศ AR: พิกัดกล้อง cover+กระจก เลือกมือ กรอบเอื้อมตามไหล่ ค้างเป้า กรองสั่น แบ่งทีม คะแนน คัดข้อ');
   }
   console.log(`\n${passed} tests passed`);
 })().catch((e) => {

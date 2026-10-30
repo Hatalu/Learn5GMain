@@ -7,7 +7,7 @@ import type { QuizContent } from './types';
 import { playableQuiz } from './quiz';
 import { EGG_MAX_VALUE } from './eggValues';
 
-export type GameMode = 'quiz' | 'cafe' | 'tower' | 'racing' | 'brawl' | 'fishing' | 'turf' | 'treasure' | 'egg';
+export type GameMode = 'quiz' | 'cafe' | 'tower' | 'racing' | 'brawl' | 'fishing' | 'turf' | 'treasure' | 'egg' | 'ar';
 
 /** โหมดโลกเดียวกัน: ทุกคนเดินในแผนที่เดียว เห็นกันสดๆ (ส่งตำแหน่งผ่าน Realtime) */
 export const isWorldMode = (g: GameMode) => g === 'turf' || g === 'treasure' || g === 'egg';
@@ -46,6 +46,8 @@ export interface ModeInfo {
   scoreLabel: string;
   /** วิธีเล่น (ไม่ใส่ = room) */
   playType?: PlayType;
+  /** ตอบได้แค่แบบชี้เลือก 1 ตัวเลือก (ข้อพิมพ์คำตอบ/หลายคำตอบถูกข้าม) */
+  choiceOnly?: boolean;
 }
 
 export const MODES: ModeInfo[] = [
@@ -195,6 +197,23 @@ export const MODES: ModeInfo[] = [
     defaultReset: 120,
     scoreLabel: 'น้ำหนักสัตว์ (kg)',
   },
+  {
+    id: 'ar',
+    name: 'สงครามอวกาศ AR',
+    genre: 'ขยับร่างกายผ่านกล้อง (AR)',
+    tagline: 'ยกมือเล็งยานเอเลียนที่ถือคำตอบถูก ค้างไว้จนล็อกเป้า แล้วยิงเลเซอร์!',
+    steps: ['ยืนให้กล้องเห็นตั้งแต่หัวถึงเอว ระบบจับโครงร่างให้ดู', 'ยกมือเล็งยานที่ถือคำตอบถูก ค้างไว้จนวงล็อกเต็ม', 'ตอบถูก = ยิงเลเซอร์ ได้คะแนน แล้วรอบโบนัสยิงอุกกาบาต', 'แบ่ง 2 ทีมได้ จอแบ่งซ้าย-ขวา ทีมละฝั่ง'],
+    color: '#2fb8ff',
+    dark: '#1a5fd0',
+    soft: '#dff3ff',
+    minQuestions: 3,
+    noVideo: true,
+    endless: false,
+    teams: [0, 2],
+    scoreLabel: 'คะแนน',
+    playType: 'local',
+    choiceOnly: true,
+  },
 ];
 
 export const playTypeOf = (m: ModeInfo): PlayType => m.playType || 'room';
@@ -206,10 +225,12 @@ export const isGameMode = (id: unknown): id is GameMode => MODES.some((m) => m.i
 export function modeQuiz(content: QuizContent, mode: GameMode): QuizContent {
   const m = modeById(mode);
   const base = playableQuiz(content);
-  if (!m.noVideo) return base;
+  if (!m.noVideo && !m.choiceOnly) return base;
   return {
     v: 1,
-    questions: base.questions.filter((q) => q.media?.kind !== 'video' && !q.choices.some((c) => c.media?.kind === 'video')),
+    questions: base.questions.filter(
+      (q) => (!m.noVideo || (q.media?.kind !== 'video' && !q.choices.some((c) => c.media?.kind === 'video'))) && (!m.choiceOnly || (q.kind !== 'text' && !q.multi))
+    ),
   };
 }
 
@@ -223,11 +244,15 @@ export interface ModeFit {
 
 export function modeFit(content: QuizContent, mode: GameMode): ModeFit {
   const m = modeById(mode);
-  const all = playableQuiz(content).questions.length;
+  const playable = playableQuiz(content).questions;
+  const all = playable.length;
   const usable = modeQuiz(content, mode).questions.length;
-  const skippedVideo = all - usable;
+  const notChoice = m.choiceOnly ? playable.filter((q) => q.kind === 'text' || q.multi).length : 0;
+  const skippedVideo = all - usable - notChoice;
   const rules: ModeFit['rules'] = [{ text: `ต้องมีคำถามอย่างน้อย ${m.minQuestions} ข้อ (ใช้ได้ ${usable} ข้อ)`, pass: usable >= m.minQuestions }];
-  if (m.noVideo) rules.push({ text: skippedVideo ? `ไม่รองรับคลิป ข้อที่มีคลิป ${skippedVideo} ข้อจะถูกข้าม` : 'ไม่รองรับคลิปวิดีโอ', pass: true });
+  if (m.noVideo) rules.push({ text: skippedVideo > 0 ? `ไม่รองรับคลิป ข้อที่มีคลิป ${skippedVideo} ข้อจะถูกข้าม` : 'ไม่รองรับคลิปวิดีโอ', pass: true });
+  if (m.choiceOnly) rules.push({ text: notChoice ? `ใช้เฉพาะข้อเลือกตอบ 1 คำตอบ ข้อพิมพ์/หลายคำตอบ ${notChoice} ข้อจะถูกข้าม` : 'ใช้เฉพาะข้อเลือกตอบ 1 คำตอบ', pass: true });
+  if (m.playType === 'local') rules.push({ text: 'ใช้กล้องของเครื่องนี้ (ไม่มีกล้อง = แตะจอแทน)', pass: true });
   if (m.endless) rules.push({ text: 'คำถามจะวนซ้ำจนหมดเวลา/ถึงเส้นชัย', pass: true });
   return { ok: usable >= m.minQuestions, usable, skippedVideo, rules };
 }

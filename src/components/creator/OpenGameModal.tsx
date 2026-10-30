@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Check, CircleAlert, Clock3, Eye, Flag, Gamepad2, Users, Loader2, Monitor, MonitorPlay, RefreshCw, Rocket, Shuffle, Smartphone, Sparkles } from 'lucide-react';
+import { ArrowLeft, Check, CircleAlert, Clock3, Eye, Flag, Gamepad2, Gauge, ListOrdered, Users, Loader2, Monitor, MonitorPlay, Play, RefreshCw, Rocket, Shuffle, Smartphone, Sparkles } from 'lucide-react';
 import { PaperModal } from './PaperModal';
 import { MusicPicker } from './live/MusicPicker';
 import { ModeArt } from './games/ModeArt';
@@ -13,6 +13,7 @@ import { sanitizeQuiz } from '@/lib/game-creator/quiz';
 import { createClient } from '@/lib/supabase/client';
 import { gsfx } from '@/lib/game-creator/gsound';
 import type { QuizContent, RoomMode } from '@/lib/game-creator/types';
+import { AR_COUNTS, AR_DEFAULTS, AR_LEVELS, AR_TIMES, arQuery, type ArSettings } from '@/lib/game-creator/arSettings';
 
 const LAST_BG = 'l5g_room_bg';
 
@@ -141,6 +142,74 @@ export function ModeSteps({ mode }: { mode: GameMode }) {
   );
 }
 
+/** ตั้งค่าเกมแบบเล่นในเครื่องเดียว (ไม่เปิดห้อง): เดี่ยว/ทีม จำนวนข้อ เวลาต่อข้อ ความยาก เพลง */
+export function LocalSetup({ mode, usable, value, onChange }: { mode: GameMode; usable: number; value: ArSettings; onChange: (v: ArSettings) => void }) {
+  const info = modeById(mode);
+  const set = (p: Partial<ArSettings>) => (gsfx.tap(), onChange({ ...value, ...p }));
+  const counts = AR_COUNTS.filter((n) => n === 0 || n < usable);
+  return (
+    <>
+      <div className="l5g-modechip mb-3" style={{ ['--mc' as string]: info.color }}>
+        รูปแบบ: <b>{info.name}</b> <span className="opacity-70">(เล่นในเครื่องนี้ ไม่ต้องเปิดห้อง)</span>
+      </div>
+      <div className="grid gap-4">
+        <div>
+          <p className="l5g-qset-label flex items-center gap-1">
+            <Users className="w-4 h-4" /> ผู้เล่น
+          </p>
+          <div className="l5g-chips">
+            {(info.teams || [0]).map((t) => (
+              <button key={t} type="button" className="l5g-chipbtn" data-on={value.teams === t} onClick={() => set({ teams: t })}>
+                {t ? `${t} ทีม (จอแบ่งซ้าย-ขวา)` : 'เล่นเดี่ยว'}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <p className="l5g-qset-label flex items-center gap-1">
+            <ListOrdered className="w-4 h-4" /> จำนวนคำถาม (ชุดนี้ใช้ได้ {usable} ข้อ)
+          </p>
+          <div className="l5g-chips">
+            {counts.map((n) => (
+              <button key={n} type="button" className="l5g-chipbtn" data-on={value.count === n || (value.count >= usable && n === 0)} onClick={() => set({ count: n })}>
+                {n ? `${n} ข้อ` : `ทั้งหมด ${usable} ข้อ`}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <p className="l5g-qset-label flex items-center gap-1">
+            <Clock3 className="w-4 h-4" /> เวลาต่อข้อ
+          </p>
+          <div className="l5g-chips">
+            {AR_TIMES.map((t) => (
+              <button key={t} type="button" className="l5g-chipbtn" data-on={value.time === t} onClick={() => set({ time: t })}>
+                {t ? `${t} วินาที` : 'ตามชุดคำถาม (อย่างน้อย 20 วิ)'}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <p className="l5g-qset-label flex items-center gap-1">
+            <Gauge className="w-4 h-4" /> ความยาก (ยานเอเลียนลอยไปมา / อุกกาบาตเร็ว)
+          </p>
+          <div className="l5g-chips">
+            {AR_LEVELS.map((l, i) => (
+              <button key={i} type="button" className="l5g-chipbtn" data-on={value.level === i} onClick={() => set({ level: i })}>
+                {l}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <p className="l5g-qset-label">เพลงประกอบ (กดปุ่มเล่นเพื่อฟังตัวอย่าง)</p>
+          <MusicPicker value={value.music} mode={mode} onPick={(m) => onChange({ ...value, music: m })} />
+        </div>
+      </div>
+    </>
+  );
+}
+
 /** เปิดใช้งานชุดคำถาม: เลือกรูปแบบการเล่น -> Host (ดูคนอื่น) หรือ เล่นด้วย -> ได้เลขห้อง 6 หลัก */
 export function OpenGameModal({ gameId, title, username, onClose }: { gameId: string; title: string; username: string; onClose: () => void }) {
   const router = useRouter();
@@ -157,6 +226,7 @@ export function OpenGameModal({ gameId, title, username, onClose }: { gameId: st
   const [goal, setGoal] = useState(0);
   const [teams, setTeams] = useState(0);
   const [reset, setReset] = useState(0);
+  const [local, setLocal] = useState<ArSettings>(AR_DEFAULTS);
   const [nick, setNick] = useState(cleanNickname(username) || 'เจ้าของห้อง');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -171,6 +241,7 @@ export function OpenGameModal({ gameId, title, username, onClose }: { gameId: st
   }, [gameId]);
 
   const info = useMemo(() => (game ? modeById(game) : null), [game]);
+  const isLocal = !!info && playTypeOf(info) === 'local';
 
   const pick = (g: GameMode) => {
     setGame(g);
@@ -183,6 +254,11 @@ export function OpenGameModal({ gameId, title, username, onClose }: { gameId: st
 
   const open = async () => {
     if (!game) return;
+    if (isLocal) {
+      gsfx.start();
+      router.push(`/play/${game}?${arQuery(gameId, local)}`);
+      return;
+    }
     setBusy(true);
     setErr('');
     gsfx.tap();
@@ -219,7 +295,7 @@ export function OpenGameModal({ gameId, title, username, onClose }: { gameId: st
   );
 
   return (
-    <PaperModal title={step === 1 ? 'เลือกรูปแบบการเล่น' : 'ตั้งค่าห้อง'} icon={<Rocket className="w-5 h-5" />} iconBg="#ffcf3f" onClose={onClose} busy={busy} width={step === 1 ? 860 : 580}>
+    <PaperModal title={step === 1 ? 'เลือกรูปแบบการเล่น' : isLocal ? 'ตั้งค่าเกม' : 'ตั้งค่าห้อง'} icon={<Rocket className="w-5 h-5" />} iconBg="#ffcf3f" onClose={onClose} busy={busy} width={step === 1 ? 860 : 580}>
       <p className="font-bold opacity-80 -mt-1 mb-3 truncate">ชุดคำถาม: {title}</p>
 
       {step === 1 ? (
@@ -233,6 +309,19 @@ export function OpenGameModal({ gameId, title, username, onClose }: { gameId: st
             </button>
             <button type="button" className="l5g-btn l5g-btn-go" disabled={!game} onClick={() => (gsfx.tap(), setStep(2))}>
               ถัดไป
+            </button>
+          </div>
+        </>
+      ) : isLocal && game ? (
+        <>
+          <LocalSetup mode={game} usable={content ? modeFit(content, game).usable : 0} value={local} onChange={setLocal} />
+          <div className="l5g-math-foot">
+            <button type="button" className="l5g-btn l5g-btn-ghost" onClick={() => setStep(1)}>
+              <ArrowLeft className="w-4 h-4" /> ย้อนกลับ
+            </button>
+            <span className="flex-1" />
+            <button type="button" className="l5g-btn l5g-btn-go" onClick={open}>
+              <Play className="w-5 h-5" /> เริ่มเล่น
             </button>
           </div>
         </>

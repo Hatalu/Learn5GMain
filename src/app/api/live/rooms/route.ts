@@ -4,7 +4,7 @@ import { isSameOrigin, limit } from '@/lib/server/rate-limit';
 import { mediaPrefix } from '@/lib/game-creator/prefix';
 import { cleanBackground } from '@/lib/game-creator/backgrounds';
 import { sanitizeQuiz } from '@/lib/game-creator/quiz';
-import { isGameMode, modeById, modeFit, modeQuiz, type GameMode } from '@/lib/game-creator/modes';
+import { isGameMode, modeById, modeFit, modeQuiz, playTypeOf, type GameMode } from '@/lib/game-creator/modes';
 import { AVATAR_COUNT, cleanNickname } from '@/lib/game-creator/templates';
 import { MAX_OPEN_ROOMS, admin, cleanSettings, getHost, hashToken, isUuid, newToken, randomCode, sweepRooms } from '@/lib/server/live';
 
@@ -28,6 +28,7 @@ export async function POST(req: NextRequest) {
   if (!isUuid(body.gameId)) return NextResponse.json({ error: 'ไม่พบเกมนี้' }, { status: 400 });
   const mode = body.mode === 'play' ? 'play' : 'watch';
   const gameMode: GameMode = isGameMode(body.game) ? body.game : 'quiz';
+  if (playTypeOf(modeById(gameMode)) !== 'room') return NextResponse.json({ error: 'รูปแบบนี้เล่นในเครื่องเดียว ไม่ต้องเปิดห้อง' }, { status: 400 });
 
   // อ่านเกมด้วยสิทธิ์ของผู้ใช้เอง (RLS: อ่านได้เฉพาะเกมของตัวเอง)
   const supabase = await createClient();

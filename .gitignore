@@ -26,6 +26,9 @@ yarn-error.log*
 .env*.local
 .env
 
+# MediaPipe wasm (คัดลอกจาก node_modules ตอนโหลด next.config.mjs)
+/public/mediapipe/wasm/
+
 # vercel
 .vercel
 

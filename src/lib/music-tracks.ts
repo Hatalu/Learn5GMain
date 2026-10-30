@@ -45,6 +45,7 @@ export const MODE_MUSIC: Record<GameMode, string> = {
   turf: 'chip',
   treasure: 'quest',
   egg: 'race',
+  ar: 'boss',
 };
 
 /** ค่าที่ตั้งในห้อง: 'auto' = ตามรูปแบบการเล่น, 'off' = ไม่มีเพลง, หรือ id เพลง */

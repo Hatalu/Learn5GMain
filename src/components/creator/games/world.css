@@ -469,3 +469,46 @@
     animation: none;
   }
 }
+
+/* ปกโหมดสงครามอวกาศ AR */
+.ma-ar {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  background: #1b1260;
+}
+.ma-ar svg {
+  position: absolute;
+  inset: 0;
+}
+.ma-ar-ufo {
+  animation: maUfo 2.6s ease-in-out infinite;
+}
+.ma-ar-laser {
+  animation: maLaser 1.6s ease-in-out infinite;
+}
+.ma-ar-star {
+  animation: maTwinkle 1.8s ease-in-out infinite;
+}
+@keyframes maUfo {
+  50% {
+    transform: translate(-8px, 5px);
+  }
+}
+@keyframes maLaser {
+  0%, 40% {
+    opacity: 0;
+  }
+  50%, 70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes maTwinkle {
+  50% {
+    opacity: 0.25;
+  }
+}
