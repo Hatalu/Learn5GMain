@@ -52,7 +52,7 @@ import { MEMBER_PLAY_SECONDS, TRIAL_GRACE_SECONDS, TRIAL_SECONDS, signTrialToken
 import { TURF_CELLS, cleanModeSettings, isWorldMode, modeFit, modeQuiz, scoreCap } from '../src/lib/game-creator/modes';
 import { BOSS_SPEED, EGG_BIOMES, EGG_MAX_VALUE, EGG_SLOTS_RARITY, RARITY, SIZE_MAX, SIZE_MIN, eggEpoch, eggKg, pickEggType, takeWins } from '../src/lib/game-creator/eggValues';
 import { GEAR_BASE } from '../src/lib/game-creator/gear';
-import { Dwell, Hold, OneEuro, aimPoint, arAnswerPoints, arStars, assignSides, bothUp, pickHand, toBody, toScreen, type Lm } from '../src/lib/game-creator/arPose';
+import { BodySmoother, Dwell, Follow, Hold, OneEuro, aimFromHand, arAnswerPoints, arStars, assignSides, bothUp, raised, tip, toBody, toScreen, type Lm } from '../src/lib/game-creator/arPose';
 import { parseArSettings } from '../src/lib/game-creator/arSettings';
 import { HATS2, ITEMS2, MASKS2, OUTFITS2 } from '../src/components/creator/gearExtra';
 import { endlessIndex } from '../src/lib/game-creator/quiz';
@@ -1514,30 +1514,61 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
     assert.equal(toBody(pose(0.5).map((p, i) => (i === 11 ? { ...p, visibility: 0.1 } : p)), view), null);
     const down = toBody(pose(0.5), view)!;
     assert.ok(down && down.sw > 50);
-    assert.equal(pickHand(down, null), null); // มือวางลง = ไม่เล็ง
-    const up = toBody(pose(0.5, { rHandY: 0.4 }), view)!;
-    assert.equal(pickHand(up, null), 'r');
-    // สองมือยกสูงพอๆ กัน: ไม่สลับมือจนกว่าอีกข้างสูงกว่าชัดเจน
+    // ปล่อยแขนข้างตัว = ไม่เล็ง, ยกมือ = เล็ง (สองมือแยกกัน)
+    assert.ok(!raised(down, 'l') && !raised(down, 'r'));
     const both = toBody(pose(0.5, { rHandY: 0.4, lHandY: 0.38 }), view)!;
-    assert.equal(pickHand(both, 'r'), 'r');
-    assert.equal(pickHand(toBody(pose(0.5, { rHandY: 0.45, lHandY: 0.2 }), view)!, 'r'), 'l');
+    assert.ok(raised(both, 'l') && raised(both, 'r'));
     assert.ok(bothUp(toBody(pose(0.5, { rHandY: 0.2, lHandY: 0.2 }), view)!));
     assert.ok(!bothUp(both));
-    // จุดเล็งอยู่ในกรอบฝั่งเสมอ แม้มือออกนอกกรอบเอื้อม
-    const area = { x: 400, y: 200, w: 400, h: 400 };
-    const far = toBody(pose(0.5, { rHandY: 0.0 }), view)!;
-    const a = aimPoint(far, 'r', 1.5, area)!;
-    assert.ok(a.x >= 400 && a.x <= 800 && a.y >= 200 && a.y <= 600 && a.y === 200);
-    // ยืนไกลกล้อง (ไหล่แคบ) ยกมือในท่าเดียวกัน = เล็งจุดเดียวกัน (สเกลตามไหล่)
-    const scaled = (k: number) => pose(0.5, { rHandY: 0.42 }).map((p) => ({ ...p, x: 0.5 + (p.x - 0.5) * k, y: 0.5 + (p.y - 0.5) * k }));
-    const near = aimPoint(toBody(scaled(1), view)!, 'r', 1.5, area)!;
-    const farAway = aimPoint(toBody(scaled(0.5), view)!, 'r', 1.5, area)!;
-    assert.ok(Math.abs(near.x - farAway.x) < 1 && Math.abs(near.y - farAway.y) < 1);
+    // จุดเล็งตรงมือพอดี (gain 1) และสองมือเล็งคนละจุดได้พร้อมกัน
+    const full = { x: 0, y: 0, w: 800, h: 800 };
+    const tr = tip(both, 'r')!;
+    const ar = aimFromHand(both, 'r', 1, full)!;
+    const al = aimFromHand(both, 'l', 1, full)!;
+    assert.ok(Math.abs(ar.x - tr.x) < 1e-6 && Math.abs(ar.y - tr.y) < 1e-6);
+    assert.ok(al.x < 400 && ar.x > 400); // มือซ้ายของเด็กอยู่ซ้ายจอ (กระจก)
+    assert.equal(aimFromHand(down, 'r', 1, full), null);
+    // ยืดจากไหล่: ไกลจากไหล่กว่ามือจริง, และไม่หลุดนอกฝั่ง
+    const g = aimFromHand(both, 'r', 1.5, full)!;
+    assert.ok(Math.hypot(g.x - both.cx, g.y - both.cy) > Math.hypot(ar.x - both.cx, ar.y - both.cy));
+    const half = { x: 0, y: 200, w: 400, h: 400 };
+    const cl = aimFromHand(both, 'r', 1, half)!;
+    assert.ok(cl.x === 400 && cl.y >= 200);
+
+    // กรองร่างกาย: มือนิ่งแต่ผลตรวจสั่น ±8px -> หลังกรองสั่นไม่เกิน 3px, ขยับจริงตามทัน
+    const sm = new BodySmoother();
+    let t0 = 0;
+    let dev = 0;
+    for (let i = 0; i < 60; i++) {
+      t0 += 33;
+      const jit = toBody(pose(0.5, { rHandY: 0.4 + (i % 2 ? 0.01 : -0.01) }), view)!;
+      const out = sm.smooth(jit, t0);
+      if (i > 15) dev = Math.max(dev, Math.abs(out.pts[16].y - toBody(pose(0.5, { rHandY: 0.4 }), view)!.pts[16].y));
+    }
+    assert.ok(dev < 3, 'smoothed jitter ' + dev);
+    let moved = 0;
+    for (let i = 0; i < 15; i++) {
+      t0 += 33;
+      moved = sm.smooth(toBody(pose(0.5, { rHandY: 0.15 }), view)!, t0).pts[16].y;
+    }
+    assert.ok(Math.abs(moved - toBody(pose(0.5, { rHandY: 0.15 }), view)!.pts[16].y) < 6);
+    // ข้อมือหายแวบเดียว (ความชัดต่ำ) ใช้ตำแหน่งเดิม ไม่กระโดด
+    t0 += 33;
+    const hidden = pose(0.5, { rHandY: 0.15 }).map((p, i) => (i === 16 ? { x: 0.1, y: 0.9, visibility: 0.1 } : p));
+    assert.ok(Math.abs(sm.smooth(toBody(hidden, view)!, t0).pts[16].y - moved) < 1e-6);
+    // จอวาดไหลตามทุกเฟรม: เข้าใกล้เป้าเร็วแต่ไม่กระโดด
+    const fl = new Follow(26);
+    fl.step(0, 0, 0.016);
+    fl.step(100, 0, 0.016);
+    assert.ok(fl.x > 20 && fl.x < 50);
+    for (let i = 0; i < 20; i++) fl.step(100, 0, 0.016);
+    assert.ok(fl.x > 99);
 
     // แบ่งทีม: คนจอซ้าย = ทีม 0 (กล้องกลับกระจก: x กล้องมาก = จอซ้าย), ฝั่งละคนที่ไหล่กว้างสุด
     const bL = toBody(pose(0.75), view)!;
     const bR = toBody(pose(0.25), view)!;
-    const bR2 = toBody(scaled(0.5).map((p) => ({ ...p, x: p.x - 0.25 })), view)!;
+    // คนยืนไกลกว่า (ตัวเล็กลงครึ่งหนึ่ง) ฝั่งขวาเหมือนกัน
+    const bR2 = toBody(pose(0.5).map((p) => ({ ...p, x: 0.25 + (p.x - 0.5) * 0.5, y: 0.5 + (p.y - 0.5) * 0.5 })), view)!;
     const sides = assignSides([bR2, bL, bR], 400, 2);
     assert.ok(sides[0] === bL && sides[1] === bR);
     assert.equal(assignSides([bR2, bR], 400, 1)[0], bR);
@@ -1586,7 +1617,7 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
     assert.deepEqual(parseArSettings((k) => ({ teams: '2', n: '15', t: '30', lv: '2', music: 'boss' })[k] ?? null), { teams: 2, count: 15, time: 30, level: 2, music: 'boss' });
     assert.deepEqual(parseArSettings((k) => ({ teams: '3', n: '7', t: '-1', lv: 'x', music: '<b>' })[k] ?? null), { teams: 0, count: 10, time: 0, level: 1, music: 'auto' });
     passed++;
-    console.log('  ok  สงครามอวกาศ AR: พิกัดกล้อง cover+กระจก เลือกมือ กรอบเอื้อมตามไหล่ ค้างเป้า กรองสั่น แบ่งทีม คะแนน คัดข้อ');
+    console.log('  ok  สงครามอวกาศ AR: พิกัดกล้อง cover+กระจก เล็งสองมือ กรองร่างกายกันสั่น ค้างเป้า แบ่งทีม คะแนน คัดข้อ');
   }
   console.log(`\n${passed} tests passed`);
 })().catch((e) => {

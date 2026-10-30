@@ -15,18 +15,18 @@ import { Confetti } from '../../live/PlayerSession';
 import { gsfx } from '@/lib/game-creator/gsound';
 import { releaseMusic, setMusic } from '@/lib/music';
 import { roomTrack } from '@/lib/music-tracks';
-import { BONES, Dwell, Hold, OneEuro, aimPoint, arAnswerPoints, arStars, assignSides, bothUp, pickHand, toBody, AR_POINTS, type Body, type DwellTarget, type Hand as HandSide, type Rect } from '@/lib/game-creator/arPose';
+import { BONES, BodySmoother, Dwell, Follow, HANDS, Hold, aimFromHand, arAnswerPoints, arStars, assignSides, bothUp, toBody, AR_POINTS, type Body, type DwellTarget, type Hand as HandSide, type Rect } from '@/lib/game-creator/arPose';
 import type { ArSettings } from '@/lib/game-creator/arSettings';
 import { PoseTracker, type CamError } from './tracker';
 import { ALIEN_COLORS, SpaceScene, TEAM_COLORS } from './scene';
 import './ar.css';
 
 const TEAM_NAMES = ['ทีมฟ้า', 'ทีมส้ม'];
-/** ระยะเอื้อมแขน: น้อย = ขยับนิดเดียวเป้าไปไกล */
+/** จุดเล็งเทียบกับมือ: 1 = อยู่ที่มือพอดี, มากกว่า 1 = ยืดออกจากไหล่ (ขยับแขนน้อยลง) */
 const REACH = [
-  { v: 1.15, name: 'ขยับน้อย' },
-  { v: 1.5, name: 'ปกติ' },
-  { v: 1.95, name: 'เอื้อมมาก' },
+  { v: 1, name: 'ตรงมือพอดี' },
+  { v: 1.35, name: 'ยืดไกลขึ้น' },
+  { v: 1.75, name: 'ขยับแขนน้อย' },
 ];
 const DRIFT = [0.04, 0.1, 0.17];
 const DRIFT_SPEED = [0.55, 0.85, 1.25];
@@ -49,21 +49,29 @@ interface SideScore {
 }
 const emptyScore = (): SideScore => ({ score: 0, know: 0, bonus: 0, first: 0, wrong: 0, streak: 0, best: 0 });
 
-interface SideRT {
-  body: Body | null;
-  seenAt: number;
-  seenSince: number;
-  hand: HandSide | null;
-  fx: OneEuro;
-  fy: OneEuro;
-  aimAt: number;
+/** มือแต่ละข้าง: เป้าจากผลตรวจล่าสุด (aim) + จุดที่วาดไหลตามทุกเฟรม (disp) + หลอดค้างเป้าของตัวเอง */
+interface HandRT {
   aim: { x: number; y: number } | null;
+  disp: Follow;
   dwell: Dwell;
   hit: Dwell;
+}
+interface SideRT {
+  /** ร่างที่กรองแล้ว */
+  body: Body | null;
+  smooth: BodySmoother;
+  /** โครงร่างที่วาดบนจอ (ไหลตามร่างที่กรองแล้วทุกเฟรม) */
+  draw: { x: number; y: number; v: number }[];
+  seenAt: number;
+  seenSince: number;
+  hands: Record<HandSide, HandRT>;
   charge: Hold;
   chargeT: number;
 }
-const newRT = (): SideRT => ({ body: null, seenAt: -1e9, seenSince: 0, hand: null, fx: new OneEuro(), fy: new OneEuro(), aimAt: 0, aim: null, dwell: new Dwell(850), hit: new Dwell(260), charge: new Hold(3, 5), chargeT: 0 });
+const newHand = (): HandRT => ({ aim: null, disp: new Follow(), dwell: new Dwell(850), hit: new Dwell(260) });
+const newRT = (): SideRT => ({ body: null, smooth: new BodySmoother(), draw: [], seenAt: -1e9, seenSince: 0, hands: { l: newHand(), r: newHand() }, charge: new Hold(3, 5), chargeT: 0 });
+/** จุดเล็งที่ใช้จริงของมือนั้น (null = ไม่ได้ยกมือ) */
+const aimOf = (h: HandRT) => (h.aim && h.disp.on ? { x: h.disp.x, y: h.disp.y } : null);
 
 interface QSide {
   order: string[];
@@ -131,7 +139,7 @@ export function ArGame({ questions, settings, title, onExit }: { questions: Quiz
   const [phase, setPhase] = useState<Phase>('setup');
   const [camOn, setCamOn] = useState(false);
   const [camErr, setCamErr] = useState<CamError | null>(null);
-  const [reach, setReach] = useState(1);
+  const [reach, setReach] = useState(0);
   const [count, setCount] = useState(3);
   const [qi, setQi] = useState(0);
   const [sub, setSub] = useState<Sub>('enter');
@@ -162,14 +170,15 @@ export function ArGame({ questions, settings, title, onExit }: { questions: Quiz
   const list = useRef<QuizQuestion[]>([]);
   const pos = useRef(new Map<string, { x: number; y: number; r: number }>());
   const labels = useRef(new Map<string, HTMLDivElement>());
-  const rings = useRef<(SVGSVGElement | null)[]>([null, null]);
-  const reticles = useRef<(HTMLDivElement | null)[]>([null, null]);
+  // วงล็อก/เป้าเล็ง: ฝั่งละ 2 มือ (ดัชนี ฝั่ง * 2 + มือ)
+  const rings = useRef<(SVGSVGElement | null)[]>([null, null, null, null]);
+  const reticles = useRef<(HTMLDivElement | null)[]>([null, null, null, null]);
   const chargeBars = useRef<(HTMLDivElement | null)[]>([null, null]);
   const timeBar = useRef<HTMLDivElement>(null);
   const phaseRef = useRef<Phase>('setup');
   const pausedRef = useRef(false);
   const awayRef = useRef(false);
-  const reachRef = useRef(REACH[1].v);
+  const reachRef = useRef(REACH[0].v);
   const scoreRef = useRef<SideScore[]>([emptyScore(), emptyScore()]);
   const calibRef = useRef(calib);
   const floatId = useRef(0);
@@ -269,8 +278,10 @@ export function ArGame({ questions, settings, title, onExit }: { questions: Quiz
         ord.push(order);
         sides.push({ order, alive: new Set(order), done: false, got: false, firstTry: true, chargeUsed: false });
         order.forEach((cid, i) => sc?.alien(aid(s, cid), ALIEN_COLORS[i % ALIEN_COLORS.length]));
-        rts.current[s].dwell.reset();
-        rts.current[s].hit.reset();
+        for (const h of HANDS) {
+          rts.current[s].hands[h].dwell.reset();
+          rts.current[s].hands[h].hit.reset();
+        }
       }
       const base = settings.time > 0 ? settings.time : q.time > 0 ? Math.max(20, q.time) : 45;
       Q.current = { idx, q, limitMs: base * 1000, usedMs: 0, sides, sub: 'enter', subT: 0, meteors: [], spawnT: 0, sirened: false, lastSec: -1 };
@@ -441,12 +452,12 @@ export function ArGame({ questions, settings, title, onExit }: { questions: Quiz
       const qr = Q.current;
       const sc = scene.current;
 
-      /* ---- ตรวจท่าทาง ---- */
+      /* ---- ตรวจท่าทาง: ผลใหม่มาเมื่อกล้องมีเฟรมใหม่ ---- */
       const tr = tracker.current;
-      const bodies: Body[] = [];
       if (tr?.ready && tr.tick(now)) {
         const v = video.current!;
         const view = { vw: v.videoWidth || 1280, vh: v.videoHeight || 720, cw, ch, mirror: true };
+        const bodies: Body[] = [];
         for (const l of tr.poses) {
           const b = toBody(l, view);
           if (b) bodies.push(b);
@@ -454,62 +465,22 @@ export function ArGame({ questions, settings, title, onExit }: { questions: Quiz
         const as = assignSides(bodies, cw / 2, sidesN === 2 ? 2 : 1);
         for (let s = 0; s < sidesN; s++) {
           const rt = rts.current[s];
-          const b = as[s];
+          const raw = as[s];
+          if (!raw) {
+            rt.charge.update(false);
+            continue;
+          }
+          // หายไปนาน = คนใหม่/กลับมาใหม่ เริ่มกรองใหม่ (ไม่ลากจากตำแหน่งเก่า)
+          if (now - rt.seenAt > 400) {
+            rt.seenSince = now;
+            rt.smooth.reset();
+            rt.draw = [];
+          }
+          rt.seenAt = now;
+          const b = rt.smooth.smooth(raw, now);
           rt.body = b;
-          rt.charge.update(!!b && bothUp(b));
-          if (b) {
-            if (now - rt.seenAt > 400) rt.seenSince = now;
-            rt.seenAt = now;
-            rt.hand = pickHand(b, rt.hand);
-            const raw = rt.hand ? aimPoint(b, rt.hand, reachRef.current, area(s)) : null;
-            if (raw) {
-              const fdt = rt.aim ? Math.max(0.001, (now - rt.aimAt) / 1000) : 0;
-              rt.aim = { x: rt.fx.filter(raw.x, fdt), y: rt.fy.filter(raw.y, fdt) };
-              rt.aimAt = now;
-            } else {
-              rt.aim = null;
-              rt.fx.reset();
-              rt.fy.reset();
-            }
-          }
-        }
-        // วาดโครงร่างทุกคนที่เห็น (สีตามฝั่ง)
-        const cv = skel.current;
-        if (cv) {
-          if (cv.width !== cw || cv.height !== ch) {
-            cv.width = cw;
-            cv.height = ch;
-          }
-          const g = cv.getContext('2d');
-          if (g) {
-            g.clearRect(0, 0, cw, ch);
-            g.lineCap = 'round';
-            for (const b of bodies) {
-              const s = sidesN === 2 && b.cx >= cw / 2 ? 1 : 0;
-              const active = rts.current[s].body === b;
-              g.strokeStyle = active ? TEAM_COLORS[s] : 'rgba(255,255,255,.45)';
-              g.lineWidth = Math.max(3, b.sw * 0.06);
-              g.globalAlpha = active ? 0.9 : 0.5;
-              for (const [a, c] of BONES) {
-                const p = b.pts[a];
-                const q = b.pts[c];
-                if (p.v < 0.5 || q.v < 0.5) continue;
-                g.beginPath();
-                g.moveTo(p.x, p.y);
-                g.lineTo(q.x, q.y);
-                g.stroke();
-              }
-              g.fillStyle = '#fff';
-              for (const i of [11, 12, 13, 14, 15, 16]) {
-                const p = b.pts[i];
-                if (p.v < 0.5) continue;
-                g.beginPath();
-                g.arc(p.x, p.y, Math.max(4, b.sw * 0.05), 0, Math.PI * 2);
-                g.fill();
-              }
-            }
-            g.globalAlpha = 1;
-          }
+          rt.charge.update(bothUp(b));
+          for (const h of HANDS) rt.hands[h].aim = aimFromHand(b, h, reachRef.current, area(s));
         }
       }
       // หายจากกล้องนานเกิน 0.4 วิ = ไม่มีเป้า
@@ -517,10 +488,63 @@ export function ArGame({ questions, settings, title, onExit }: { questions: Quiz
         const rt = rts.current[s];
         if (now - rt.seenAt > 400) {
           rt.body = null;
-          rt.aim = null;
-          rt.fx.reset();
-          rt.fy.reset();
+          rt.draw = [];
+          for (const h of HANDS) {
+            rt.hands[h].aim = null;
+            rt.hands[h].disp.reset();
+          }
         }
+        // จุดเล็ง + โครงร่างไหลตามทุกเฟรม (ไม่กระตุกเป็นขั้นตามจังหวะตรวจ)
+        for (const h of HANDS) {
+          const hd = rt.hands[h];
+          if (hd.aim) hd.disp.step(hd.aim.x, hd.aim.y, dt);
+          else hd.disp.reset();
+        }
+        if (rt.body) {
+          const k = 1 - Math.exp(-dt * 26);
+          rt.draw = rt.body.pts.map((p, i) => {
+            const d = rt.draw[i];
+            return d ? { x: d.x + (p.x - d.x) * k, y: d.y + (p.y - d.y) * k, v: p.v } : { ...p };
+          });
+        }
+      }
+      // วาดโครงร่างของคนที่คุมแต่ละฝั่ง
+      const cv = skel.current;
+      const g2 = cv && tr ? cv.getContext('2d') : null;
+      if (cv && g2) {
+        if (cv.width !== cw || cv.height !== ch) {
+          cv.width = cw;
+          cv.height = ch;
+        }
+        g2.clearRect(0, 0, cw, ch);
+        g2.lineCap = 'round';
+        for (let s = 0; s < sidesN; s++) {
+          const rt = rts.current[s];
+          const pts = rt.draw;
+          if (!rt.body || !pts.length) continue;
+          const sw = rt.body.sw;
+          g2.strokeStyle = TEAM_COLORS[s];
+          g2.lineWidth = Math.max(3, sw * 0.06);
+          g2.globalAlpha = 0.9;
+          for (const [i, j] of BONES) {
+            const p = pts[i];
+            const q = pts[j];
+            if (p.v < 0.5 || q.v < 0.5) continue;
+            g2.beginPath();
+            g2.moveTo(p.x, p.y);
+            g2.lineTo(q.x, q.y);
+            g2.stroke();
+          }
+          g2.fillStyle = '#fff';
+          for (const i of [11, 12, 13, 14, 15, 16]) {
+            const p = pts[i];
+            if (p.v < 0.5) continue;
+            g2.beginPath();
+            g2.arc(p.x, p.y, Math.max(4, sw * 0.05), 0, Math.PI * 2);
+            g2.fill();
+          }
+        }
+        g2.globalAlpha = 1;
       }
 
       /* ---- พักอัตโนมัติเมื่อไม่มีใครอยู่หน้ากล้อง ---- */
@@ -538,7 +562,8 @@ export function ArGame({ questions, settings, title, onExit }: { questions: Quiz
         const x = (s + 0.5) * half;
         const y = ch * 0.92;
         sc?.place(`ship${s}`, x, y, Math.min(ch * 0.05, 42), T);
-        const a = rts.current[s].aim;
+        const hs = rts.current[s].hands;
+        const a = aimOf(hs.r) || aimOf(hs.l);
         if (a) sc?.aimShip(`ship${s}`, a.x, a.y);
       }
 
@@ -551,7 +576,7 @@ export function ArGame({ questions, settings, title, onExit }: { questions: Quiz
           const rt = rts.current[s];
           const seenOk = !!rt.body && now - rt.seenSince > 700;
           if (seenOk !== next[s].seen) (next[s].seen = seenOk), (changed = true);
-          const handOk = !!rt.aim;
+          const handOk = HANDS.some((h) => !!aimOf(rt.hands[h]));
           if (handOk !== next[s].hand) (next[s].hand = handOk), (changed = true);
           const id = `p${s}`;
           const A = area(s);
@@ -562,7 +587,7 @@ export function ArGame({ questions, settings, title, onExit }: { questions: Quiz
             const p = { x: A.x + A.w / 2, y: A.y + A.h * 0.22, r };
             pos.current.set(id, p);
             sc?.place(id, p.x, p.y, r, T);
-            if (rt.dwell.update(rt.aim, [{ id, ...p }], dt * 1000)) {
+            if (HANDS.map((h) => rt.hands[h].dwell.update(aimOf(rt.hands[h]), [{ id, ...p }], dt * 1000)).some(Boolean)) {
               next[s].ok = true;
               changed = true;
               sc?.laser(`ship${s}`, p.x, p.y, TEAM_COLORS[s]);
@@ -689,10 +714,14 @@ export function ArGame({ questions, settings, title, onExit }: { questions: Quiz
               const p = pos.current.get(aid(s, cid));
               if (p) targets.push({ id: cid, x: p.x, y: p.y, r: p.r * 1.25 });
             }
-            const hit = rt.dwell.update(rt.aim, targets, dt * 1000);
-            if (hit) {
-              gsfx.lock();
-              choose(s, hit);
+            // สองมือเล็งได้พร้อมกัน มือไหนค้างครบก่อนได้ตอบ
+            for (const h of HANDS) {
+              const hit = rt.hands[h].dwell.update(aimOf(rt.hands[h]), targets, dt * 1000);
+              if (hit) {
+                gsfx.lock();
+                choose(s, hit);
+                break;
+              }
             }
           }
         });
@@ -719,10 +748,10 @@ export function ArGame({ questions, settings, title, onExit }: { questions: Quiz
             const rt = rts.current[s];
             const mine = qr.meteors.filter((m) => m.s === s && m.t > 0.12);
             const targets = mine.map((m) => ({ id: m.id, ...pos.current.get(m.id)! })).map((t) => ({ ...t, r: t.r * 1.4 + 14 }));
-            const hit = frozen ? null : rt.hit.update(rt.aim, targets, dt * 1000);
-            if (hit) {
-              const m = mine.find((o) => o.id === hit);
-              const p = pos.current.get(hit);
+            for (const h of HANDS) {
+              const hit = frozen ? null : rt.hands[h].hit.update(aimOf(rt.hands[h]), targets, dt * 1000);
+              const m = hit ? mine.find((o) => o.id === hit && qr.meteors.includes(o)) : null;
+              const p = hit ? pos.current.get(hit) : null;
               if (m && p) shootMeteor(m, p);
             }
             // ชาร์จพลัง: ยกสองมือค้าง 0.7 วิ
@@ -746,14 +775,15 @@ export function ArGame({ questions, settings, title, onExit }: { questions: Quiz
         if (!p) return;
         el.style.transform = `translate(${p.x}px, ${p.y + p.r * 0.85}px) translateX(-50%)`;
       });
-      for (let s = 0; s < sidesN; s++) {
-        const rt = rts.current[s];
-        const ring = rings.current[s];
+      for (let k = 0; k < sidesN * 2; k++) {
+        const s = k >> 1;
+        const hd = rts.current[s].hands[HANDS[k & 1]];
+        const ring = rings.current[k];
         if (ring) {
-          const qid = ph === 'calib' ? `p${s}` : qr && rt.dwell.hover ? aid(s, rt.dwell.hover) : null;
-          const hov = ph === 'calib' ? (rt.dwell.hover ? qid : null) : qid;
+          const hv = hd.dwell.hover;
+          const hov = !hv ? null : ph === 'calib' ? hv : qr ? aid(s, hv) : null;
           const p = hov ? pos.current.get(hov) : null;
-          const prog = ph === 'calib' ? rt.dwell.prog.get(`p${s}`) || 0 : rt.dwell.hover ? rt.dwell.prog.get(rt.dwell.hover) || 0 : 0;
+          const prog = hv ? hd.dwell.prog.get(hv) || 0 : 0;
           if (p && prog > 0) {
             const size = p.r * 2.9;
             ring.style.opacity = '1';
@@ -763,9 +793,9 @@ export function ArGame({ questions, settings, title, onExit }: { questions: Quiz
             if (arc) arc.style.strokeDashoffset = `${(1 - prog) * 289}`;
           } else ring.style.opacity = '0';
         }
-        const ret = reticles.current[s];
+        const ret = reticles.current[k];
         if (ret) {
-          const a = rt.aim;
+          const a = aimOf(hd);
           if (a) {
             ret.style.opacity = '1';
             ret.style.transform = `translate(${a.x}px, ${a.y}px)`;
@@ -898,13 +928,13 @@ export function ArGame({ questions, settings, title, onExit }: { questions: Quiz
         )}
 
       {/* วงล็อกเป้า + เป้าเล็ง */}
-      {[...Array(sidesN).keys()].map((s) => (
-        <React.Fragment key={s}>
-          <svg ref={(el) => void (rings.current[s] = el)} className="ar-ring" viewBox="0 0 100 100" style={{ ['--tc' as string]: TEAM_COLORS[s] }} aria-hidden="true">
+      {[...Array(sidesN * 2).keys()].map((k) => (
+        <React.Fragment key={k}>
+          <svg ref={(el) => void (rings.current[k] = el)} className="ar-ring" viewBox="0 0 100 100" style={{ ['--tc' as string]: TEAM_COLORS[k >> 1] }} aria-hidden="true">
             <circle cx="50" cy="50" r="46" className="ar-ring-bg" />
             <circle cx="50" cy="50" r="46" className="ar-ring-p" />
           </svg>
-          <div ref={(el) => void (reticles.current[s] = el)} className="ar-reticle" style={{ ['--tc' as string]: TEAM_COLORS[s] }} aria-hidden="true">
+          <div ref={(el) => void (reticles.current[k] = el)} className="ar-reticle" style={{ ['--tc' as string]: TEAM_COLORS[k >> 1] }} aria-hidden="true">
             <i />
           </div>
         </React.Fragment>
@@ -999,7 +1029,7 @@ export function ArGame({ questions, settings, title, onExit }: { questions: Quiz
                 <Users className="w-5 h-5" /> {sidesN === 2 ? 'ทีมฟ้ายืนฝั่งซ้ายของจอ ทีมส้มยืนฝั่งขวา ส่งตัวแทนฝั่งละ 1 คน' : 'ยืนหรือนั่งหน้ากล้อง ห่างราว 1.5-2 เมตร'}
               </li>
               <li>
-                <Hand className="w-5 h-5" /> ยกมือเล็งยานที่ถือคำตอบถูก ค้างไว้จนวงเต็ม ไม่ต้องกระโดด นั่งเล่นก็ได้
+                <Hand className="w-5 h-5" /> ยกมือเล็งยานที่ถือคำตอบถูก ค้างไว้จนวงเต็ม ใช้ได้ทั้งสองมือ ไม่ต้องกระโดด นั่งเล่นก็ได้
               </li>
               <li>
                 <ShieldCheck className="w-5 h-5" /> เว้นที่รอบตัวให้ปลอดภัย ภาพกล้องประมวลผลในเครื่องนี้ ไม่บันทึก ไม่ส่งไปไหน
@@ -1047,7 +1077,7 @@ export function ArGame({ questions, settings, title, onExit }: { questions: Quiz
               ))}
             </div>
             <div className="ar-calib-row">
-              <span>ระยะเอื้อมแขน</span>
+              <span>จุดเล็ง</span>
               {REACH.map((r, i) => (
                 <button key={i} type="button" className="ar-chip" data-on={reach === i} onClick={() => (gsfx.tap(), setReach(i))}>
                   {r.name}

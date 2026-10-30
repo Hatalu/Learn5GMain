@@ -1,8 +1,9 @@
 /**
  * ตรรกะตรวจท่าทางเกม AR (ไม่ใช้ DOM จึงทดสอบใน selftest ได้)
  * - จุดจาก MediaPipe เป็นค่า 0..1 ของเฟรมวิดีโอ ต้องแปลงผ่าน object-fit: cover + กลับซ้ายขวา (กระจก) ให้ตรงกับที่เห็นบนจอ
- * - เล็งด้วย "กรอบเอื้อมแขน" รอบไหล่ของเด็กแต่ละคน: ยืนใกล้/ไกลกล้องแค่ไหนก็เล็งได้ทั่วฝั่งของตัวเอง
- * - กรองสั่นด้วย One Euro filter, เลือกตอบด้วยการค้างเป้า (dwell) ไม่ต้องทำท่ายิงที่ตรวจพลาดง่าย
+ * - จุดเล็งอยู่ที่มือจริงบนจอ (ขยายระยะจากไหล่ได้นิดหน่อย) ใช้ได้ทั้งสองมือพร้อมกัน มือละเป้า
+ * - กันสั่น 3 ชั้น: กรองทุกจุดบนร่างกาย (One Euro), จุดอ้างอิงไหล่กรองหนักกว่า, จอวาดไหลตามทุกเฟรม (Follow)
+ * - เลือกตอบด้วยการค้างเป้า (dwell) ไม่ต้องทำท่ายิงที่ตรวจพลาดง่าย
  */
 
 export interface Lm {
@@ -96,6 +97,28 @@ export class OneEuro {
   }
 }
 
+/** จุดบนจอที่ไหลตามเป้าหมายทุกเฟรม (ผลตรวจมา 15-30 ครั้ง/วิ แต่จอวาด 60: ไม่ให้เห็นเป็นขั้นบันได) */
+export class Follow {
+  x = 0;
+  y = 0;
+  on = false;
+  constructor(private rate = 26) {}
+  step(tx: number, ty: number, dt: number) {
+    if (!this.on) {
+      this.x = tx;
+      this.y = ty;
+      this.on = true;
+      return;
+    }
+    const k = 1 - Math.exp(-dt * this.rate);
+    this.x += (tx - this.x) * k;
+    this.y += (ty - this.y) * k;
+  }
+  reset() {
+    this.on = false;
+  }
+}
+
 /* ------------------------------ ร่างกาย 1 คน ------------------------------ */
 
 export interface Body {
@@ -121,6 +144,41 @@ export function toBody(lms: Lm[], v: View): Body | null {
   return { pts, cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2, sw };
 }
 
+/**
+ * กรองร่างกาย 1 คนให้นิ่ง: ทุกจุดผ่าน One Euro (นิ่งตอนอยู่กับที่ ตามทันตอนขยับเร็ว)
+ * จุดที่ชัดน้อยชั่วขณะ (มือบังกันแวบเดียว) ใช้ค่าเดิมต่อได้ 250ms แทนการกระโดด
+ * ไหล่กลาง/ความกว้างไหล่ (ใช้อ้างอิง) กรองหนักกว่า เพราะตัวคนขยับช้ากว่ามือ
+ */
+export class BodySmoother {
+  private f: [OneEuro, OneEuro][] = [];
+  private last: { x: number; y: number; v: number; t: number }[] = [];
+  private ref = [new OneEuro(0.6, 0.004), new OneEuro(0.6, 0.004), new OneEuro(0.4, 0.002)];
+  private at = 0;
+  constructor(
+    private minCutoff = 1.0,
+    private beta = 0.015
+  ) {}
+  reset() {
+    this.f = [];
+    this.last = [];
+    this.ref.forEach((r) => r.reset());
+    this.at = 0;
+  }
+  smooth(b: Body, now: number): Body {
+    const dt = this.at ? Math.max(0.001, (now - this.at) / 1000) : 0;
+    this.at = now;
+    const pts = b.pts.map((p, i) => {
+      const f = (this.f[i] ||= [new OneEuro(this.minCutoff, this.beta), new OneEuro(this.minCutoff, this.beta)]);
+      const prev = this.last[i];
+      if (p.v < VIS && prev && prev.v >= VIS && now - prev.t < 250) return { x: prev.x, y: prev.y, v: prev.v };
+      const q = { x: f[0].filter(p.x, dt), y: f[1].filter(p.y, dt), v: p.v };
+      this.last[i] = { ...q, t: p.v >= VIS ? now : prev?.t ?? now };
+      return q;
+    });
+    return { pts, cx: this.ref[0].filter(b.cx, dt), cy: this.ref[1].filter(b.cy, dt), sw: this.ref[2].filter(b.sw, dt) };
+  }
+}
+
 /** แบ่งคนเข้าทีมตามตำแหน่งบนจอ (ซ้าย/ขวาของเส้นแบ่ง) ฝั่งละคนเดียว: เลือกคนที่อยู่ใกล้กล้องที่สุด (ไหล่กว้างสุด) */
 export function assignSides(bodies: Body[], splitX: number, sides: 1 | 2): (Body | null)[] {
   if (sides === 1) return [bodies.reduce<Body | null>((best, b) => (!best || b.sw > best.sw ? b : best), null)];
@@ -136,8 +194,10 @@ export function assignSides(bodies: Body[], splitX: number, sides: 1 | 2): (Body
 
 export type Hand = 'l' | 'r';
 
+export const HANDS: Hand[] = ['l', 'r'];
+
 /** จุดปลายมือ: เฉลี่ยข้อมือกับปลายนิ้วชี้ (นิ่งกว่าปลายนิ้วอย่างเดียว ชี้ตรงกว่าข้อมืออย่างเดียว) */
-function tip(b: Body, h: Hand): { x: number; y: number } | null {
+export function tip(b: Body, h: Hand): { x: number; y: number } | null {
   const w = b.pts[h === 'l' ? P.lWrist : P.rWrist];
   const i = b.pts[h === 'l' ? P.lIndex : P.rIndex];
   if (!w || w.v < VIS) return null;
@@ -145,26 +205,10 @@ function tip(b: Body, h: Hand): { x: number; y: number } | null {
   return { x: (w.x + i.x) / 2, y: (w.y + i.y) / 2 };
 }
 
-/** มือยกขึ้น = ปลายมือสูงกว่าระดับอก (ไหล่ + 0.8 เท่าความกว้างไหล่) วางมือลง = ไม่เล็ง (กันเลือกโดยไม่ตั้งใจ) */
+/** มือยกขึ้น = ปลายมือสูงกว่าระดับท้อง (ไหล่ + 1.2 เท่าความกว้างไหล่) เล็งเป้าต่ำได้ แต่ปล่อยแขนข้างตัว = ไม่เล็ง */
 export function raised(b: Body, h: Hand): boolean {
   const t = tip(b, h);
-  return !!t && t.y < b.cy + b.sw * 0.8;
-}
-
-/**
- * เลือกมือที่ใช้เล็ง: ยกมือเดียว = มือนั้น, ยกสองมือ = มือที่สูงกว่า
- * แต่ถ้ามือเดิมยังยกอยู่ ต้องให้อีกมือสูงกว่าชัดเจน (0.35 ไหล่) ถึงจะสลับ (กันเป้ากระโดดไปมา)
- */
-export function pickHand(b: Body, prev: Hand | null): Hand | null {
-  const L = raised(b, 'l') ? tip(b, 'l') : null;
-  const R = raised(b, 'r') ? tip(b, 'r') : null;
-  if (!L && !R) return null;
-  if (!L) return 'r';
-  if (!R) return 'l';
-  const margin = b.sw * 0.35;
-  if (prev === 'l') return R.y < L.y - margin ? 'r' : 'l';
-  if (prev === 'r') return L.y < R.y - margin ? 'l' : 'r';
-  return L.y <= R.y ? 'l' : 'r';
+  return !!t && t.y < b.cy + b.sw * 1.2;
 }
 
 /** กรอบเล็งของฝั่ง (พิกเซลบนจอ) */
@@ -176,20 +220,15 @@ export interface Rect {
 }
 
 /**
- * ปลายมือ -> จุดเล็งในฝั่งของตัวเอง
- * กรอบเอื้อม: กว้าง reach x ความกว้างไหล่ ไปซ้าย/ขวาของไหล่, สูงจากเหนือหัวถึงระดับอก
- * reach น้อย = ขยับแขนนิดเดียวเป้าไปไกล (ไว), มาก = ต้องเอื้อมแขนมากขึ้น (นิ่ง)
+ * มือ -> จุดเล็ง: อยู่ที่มือจริงบนจอ (gain 1) หรือยืดออกจากไหล่ (gain > 1 = ขยับแขนน้อยลง)
+ * ไม่ยกมือ = ไม่เล็ง (กันเลือกโดยไม่ตั้งใจ) และไม่หลุดออกนอกฝั่งของตัวเอง
  */
-export function aimPoint(b: Body, h: Hand, reach: number, area: Rect): { x: number; y: number } | null {
-  const t = tip(b, h);
-  if (!t) return null;
-  const halfW = b.sw * reach;
-  const top = b.cy - b.sw * reach * 1.25;
-  const bottom = b.cy + b.sw * 0.75;
-  const u = (t.x - (b.cx - halfW)) / (2 * halfW);
-  const w = (t.y - top) / (bottom - top);
-  const cl = (n: number) => Math.min(1, Math.max(0, n));
-  return { x: area.x + cl(u) * area.w, y: area.y + cl(w) * area.h };
+export function aimFromHand(b: Body, h: Hand, gain: number, area: Rect): { x: number; y: number } | null {
+  if (!raised(b, h)) return null;
+  const t = tip(b, h)!;
+  const x = b.cx + (t.x - b.cx) * gain;
+  const y = b.cy + (t.y - b.cy) * gain;
+  return { x: Math.min(area.x + area.w, Math.max(area.x, x)), y: Math.min(area.y + area.h, Math.max(area.y, y)) };
 }
 
 /** ยกสองมือเหนือหัว (ปลายมือสูงกว่าจมูก) = ท่าชาร์จพลัง */

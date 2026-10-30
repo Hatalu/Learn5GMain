@@ -35,7 +35,8 @@ export class PoseTracker {
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({
         audio: false,
-        video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
+        // 960x540 พอสำหรับตรวจท่า (โมเดลย่อภาพเหลือ 256 อยู่แล้ว) เครื่องส่งภาพน้อยลง ตรวจได้ถี่ขึ้น
+        video: { facingMode: 'user', width: { ideal: 960 }, height: { ideal: 540 }, frameRate: { ideal: 30 } },
       });
     } catch (e) {
       const n = (e as { name?: string })?.name;
