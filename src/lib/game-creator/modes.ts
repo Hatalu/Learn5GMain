@@ -40,6 +40,9 @@ export interface ModeInfo {
   defaultGoal?: number;
   /** แบ่งทีมได้ (0 = ต่างคนต่างเล่น) */
   teams?: number[];
+  /** ไข่ทุกไบโอมเกิดใหม่ทุกกี่วินาที (ขโมยไข่) */
+  resets?: number[];
+  defaultReset?: number;
   scoreLabel: string;
   /** วิธีเล่น (ไม่ใส่ = room) */
   playType?: PlayType;
@@ -177,8 +180,8 @@ export const MODES: ModeInfo[] = [
     id: 'egg',
     name: 'ขโมยไข่บอสหลับ',
     genre: 'ผจญภัย 3 มิติ (Steal & Run)',
-    tagline: '10 ไบโอม บอสหลับเฝ้าไข่ ตอบถูกได้ไข่ แล้ววิ่งหนีบอสกลับฐาน!',
-    steps: ['วิ่งออกจากฐานไปหาไข่ในไบโอม (มีไข่ 5 ฟองต่อไบโอม)', 'ถึงไข่แล้วกดขโมย ตอบให้ถูก ใครถูกก่อนได้ไข่ไป', 'บอสตื่น! วิ่งกลับฐานให้ทัน โดนจับไข่จะหลุด', 'ไข่หายากได้คะแนนเยอะ เก็บเหรียญอัปความเร็ววิ่ง'],
+    tagline: 'ฐาน > 5 ไบโอม ยิ่งไกลไข่ยิ่งหนัก บอสยิ่งเร็ว พาไข่กลับฐานฟักเป็นสัตว์!',
+    steps: ['วิ่งจากฐานขึ้นไปทีละไบโอม ไบโอมละ 5 ฟอง ยิ่งไกลยิ่งหนัก', 'ถึงไข่แล้วกดขโมย ตอบให้ถูก ใครถูกก่อนได้ไข่ไป', 'บอสตื่น! วิ่งกลับฐานฟักไข่เป็นสัตว์ โดนจับไข่กลับที่เดิม', 'ไข่เกิดใหม่เป็นรอบ เก็บสัตว์ในกระเป๋า อัปความเร็ววิ่ง'],
     color: '#7c5cff',
     dark: '#4a2fc0',
     soft: '#ece6ff',
@@ -188,7 +191,9 @@ export const MODES: ModeInfo[] = [
     durations: [180, 300, 420, 600],
     defaultDuration: 300,
     teams: [0, 2, 3, 4],
-    scoreLabel: 'คะแนนไข่',
+    resets: [60, 120, 180, 300],
+    defaultReset: 120,
+    scoreLabel: 'น้ำหนักสัตว์ (kg)',
   },
 ];
 
@@ -227,13 +232,14 @@ export function modeFit(content: QuizContent, mode: GameMode): ModeFit {
   return { ok: usable >= m.minQuestions, usable, skippedVideo, rules };
 }
 
-export function cleanModeSettings(mode: GameMode, input: unknown): { duration: number; goal: number; teams: number } {
+export function cleanModeSettings(mode: GameMode, input: unknown): { duration: number; goal: number; teams: number; reset: number } {
   const m = modeById(mode);
   const s = input && typeof input === 'object' ? (input as Record<string, unknown>) : {};
   const duration = m.durations?.includes(s.duration as number) ? (s.duration as number) : m.defaultDuration || 0;
   const goal = m.goals?.includes(s.goal as number) ? (s.goal as number) : m.defaultGoal || 0;
   const teams = m.teams?.includes(s.teams as number) ? (s.teams as number) : 0;
-  return { duration, goal, teams };
+  const reset = m.resets?.includes(s.reset as number) ? (s.reset as number) : m.defaultReset || 0;
+  return { duration, goal, teams, reset };
 }
 
 /* ------------------------------ เพดานคะแนน (กันโกงฝั่งเบราว์เซอร์) ------------------------------ */

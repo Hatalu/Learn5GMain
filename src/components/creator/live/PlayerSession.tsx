@@ -362,7 +362,7 @@ export function PlayerSession({
         now: () => Date.now() + clockOffset.current,
       };
       const Game = st.room.game === 'turf' ? TurfGame : st.room.game === 'egg' ? EggGame : TreasureGame;
-      return <Game key={st.room.round} {...props} world={world} startScore={me.score} />;
+      return <Game key={st.room.round} {...props} world={world} startScore={me.score} reset={st.room.reset || 120} startedAt={st.room.startedAt ? new Date(st.room.startedAt).getTime() : undefined} />;
     }
     return (
       <RaceGame

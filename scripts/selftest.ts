@@ -50,7 +50,9 @@ import { NO_OFFER, PLANS, comparePrice, perDay, quote, saveBaht, welcomePrice } 
 import { checkUnsubscribeToken, unsubscribeToken, winbackEmail } from '../src/lib/server/email';
 import { MEMBER_PLAY_SECONDS, TRIAL_GRACE_SECONDS, TRIAL_SECONDS, signTrialToken, trialPublicJwk, verifyTrialToken } from '../src/lib/server/trial';
 import { TURF_CELLS, cleanModeSettings, isWorldMode, modeFit, modeQuiz, scoreCap } from '../src/lib/game-creator/modes';
-import { EGG_MAX_VALUE, EGG_SLOTS_RARITY, RARITY, pickEggType, takeWins } from '../src/lib/game-creator/eggValues';
+import { BOSS_SPEED, EGG_BIOMES, EGG_MAX_VALUE, EGG_SLOTS_RARITY, RARITY, SIZE_MAX, SIZE_MIN, eggEpoch, eggKg, pickEggType, takeWins } from '../src/lib/game-creator/eggValues';
+import { GEAR_BASE } from '../src/lib/game-creator/gear';
+import { HATS2, ITEMS2, MASKS2, OUTFITS2 } from '../src/components/creator/gearExtra';
 import { endlessIndex } from '../src/lib/game-creator/quiz';
 import {
   checkAnswer,
@@ -717,11 +719,11 @@ t('คำถามวนซ้ำ: ครบทุกข้อในแต่ล
 });
 
 t('ตั้งค่าห้อง: เวลา/เส้นชัย/ทีม ต้องเป็นค่าที่อนุญาต', () => {
-  assert.deepEqual(cleanModeSettings('cafe', { duration: 300 }), { duration: 300, goal: 0, teams: 0 });
-  assert.deepEqual(cleanModeSettings('cafe', { duration: 99999 }), { duration: 300, goal: 0, teams: 0 });
-  assert.deepEqual(cleanModeSettings('racing', { goal: 20 }), { duration: 0, goal: 20, teams: 0 });
-  assert.deepEqual(cleanModeSettings('racing', { goal: -5 }), { duration: 0, goal: 15, teams: 0 });
-  assert.deepEqual(cleanModeSettings('quiz', { duration: 300, goal: 20 }), { duration: 0, goal: 0, teams: 0 });
+  assert.deepEqual(cleanModeSettings('cafe', { duration: 300 }), { duration: 300, goal: 0, teams: 0, reset: 0 });
+  assert.deepEqual(cleanModeSettings('cafe', { duration: 99999 }), { duration: 300, goal: 0, teams: 0, reset: 0 });
+  assert.deepEqual(cleanModeSettings('racing', { goal: 20 }), { duration: 0, goal: 20, teams: 0, reset: 0 });
+  assert.deepEqual(cleanModeSettings('racing', { goal: -5 }), { duration: 0, goal: 15, teams: 0, reset: 0 });
+  assert.deepEqual(cleanModeSettings('quiz', { duration: 300, goal: 20 }), { duration: 0, goal: 0, teams: 0, reset: 0 });
   // แบ่งทีมได้เฉพาะศึกยึดอาณาจักร และเฉพาะ 2/3/4 ทีม
   assert.equal(cleanModeSettings('turf', { teams: 3 }).teams, 3);
   assert.equal(cleanModeSettings('turf', { teams: 9 }).teams, 0);
@@ -756,8 +758,8 @@ t('รูปแบบใหม่ Monster Brawl / Fishing Frenzy: ข้อข�
   assert.equal(modeFit(QS(2), 'fishing').ok, false);
   assert.equal(modeFit(QS(3), 'fishing').ok, true);
   assert.equal(modeQuiz(QS(6, [0]), 'fishing').questions.length, 5);
-  assert.deepEqual(cleanModeSettings('brawl', { duration: 600 }), { duration: 600, goal: 0, teams: 0 });
-  assert.deepEqual(cleanModeSettings('fishing', { duration: 1 }), { duration: 300, goal: 0, teams: 0 });
+  assert.deepEqual(cleanModeSettings('brawl', { duration: 600 }), { duration: 600, goal: 0, teams: 0, reset: 0 });
+  assert.deepEqual(cleanModeSettings('fishing', { duration: 1 }), { duration: 300, goal: 0, teams: 0, reset: 0 });
 });
 
 t('เครื่องประดับ: รับเฉพาะเลขที่มีจริง ค่าอื่นกลายเป็น "ไม่ใส่"', () => {
@@ -1460,10 +1462,26 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
     }
     assert.ok(takeWins(100, 5, 200, 1) && !takeWins(200, 1, 100, 5) && takeWins(100, 1, 100, 5) && !takeWins(100, 5, 100, 1));
     assert.ok(isWorldMode('egg'));
-    assert.equal(EGG_MAX_VALUE, RARITY.secret.value);
-    assert.ok(scoreCap('egg', 3) >= 3 * RARITY.secret.value);
+    // น้ำหนัก: ไบโอมไกล/หายาก/ใหญ่ = หนักกว่า, ไม่เกินเพดาน
+    assert.ok(eggKg(4, 10, SIZE_MAX) === EGG_MAX_VALUE || eggKg(4, 10, SIZE_MAX) <= EGG_MAX_VALUE);
+    assert.ok(eggKg(0, 0, SIZE_MIN) >= 1);
+    for (let t = 1; t < EGG_BIOMES; t++) assert.ok(eggKg(t, 0, 1) > eggKg(t - 1, 0, 1) && BOSS_SPEED[t] > BOSS_SPEED[t - 1]);
+    assert.ok(eggKg(2, 10, 1) > eggKg(2, 8, 1) && eggKg(2, 8, 1) > eggKg(2, 5, 1) && eggKg(2, 5, 1) > eggKg(2, 0, 1));
+    assert.ok(eggKg(1, 0, SIZE_MAX) > eggKg(1, 0, SIZE_MIN));
+    assert.ok(scoreCap('egg', 3) >= 3 * EGG_MAX_VALUE);
+    assert.equal(eggEpoch(1000 + 119999, 1000, 120), 0);
+    assert.equal(eggEpoch(1000 + 120000, 1000, 120), 1);
+    assert.equal(cleanModeSettings('egg', { reset: 180 }).reset, 180);
+    assert.equal(cleanModeSettings('egg', { reset: 7 }).reset, 120);
+    // แฟชั่นชุดที่ 2: ชื่อกับภาพต้องครบคู่กัน
+    const n = (k: 'h' | 'o' | 'm' | 'i') => GEAR_SLOTS.find((x) => x.key === k)!.items.length;
+    assert.equal(n('h'), GEAR_BASE.h + HATS2.length);
+    assert.equal(n('o'), GEAR_BASE.o + OUTFITS2.length);
+    assert.equal(n('m'), GEAR_BASE.m + MASKS2.length);
+    assert.equal(n('i'), GEAR_BASE.i + ITEMS2.length);
+    assert.ok([HATS2, OUTFITS2, MASKS2, ITEMS2].every((a) => a.length >= 30));
     passed++;
-    console.log('  ok  ขโมยไข่: ตารางไข่ สุ่มชนิด ตัดสินขโมยพร้อมกัน เพดานคะแนน');
+    console.log('  ok  ขโมยไข่: ตารางไข่ น้ำหนักตามไบโอม/ขนาด รอบไข่ ตัดสินขโมยพร้อมกัน เพดานคะแนน + แฟชั่นครบคู่');
   }
   console.log(`\n${passed} tests passed`);
 })().catch((e) => {

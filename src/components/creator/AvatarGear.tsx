@@ -1,6 +1,8 @@
 'use client';
 
 import React from 'react';
+import { HATS2, ITEMS2, MASKS2, OUTFITS2 } from './gearExtra';
+import { GEAR_BASE } from '@/lib/game-creator/gear';
 
 /**
  * ภาพเครื่องประดับของตัวละคร (SVG ล้วน ห้ามใช้อิโมจิ) วาดบนพิกัด 0-100 เดียวกับ Avatar
@@ -126,7 +128,7 @@ function hatShape(id: number) {
         </>
       );
     default:
-      return null;
+      return HATS2[id - GEAR_BASE.h]?.() ?? null;
   }
 }
 
@@ -147,7 +149,7 @@ export function OutfitBack({ id }: { id: number }) {
         <path d="M70 70 Q80 84 78 96" fill="none" stroke="#c9354a" strokeWidth="2" opacity="0.6" />
       </>
     );
-  return null;
+  return OUTFITS2[id - GEAR_BASE.o]?.back?.() ?? null;
 }
 
 export function OutfitFront({ id, robot }: { id: number; robot?: boolean }) {
@@ -228,7 +230,7 @@ export function OutfitFront({ id, robot }: { id: number; robot?: boolean }) {
         </>
       );
     default:
-      return null;
+      return OUTFITS2[id - GEAR_BASE.o]?.front?.() ?? null;
   }
 }
 
@@ -346,7 +348,7 @@ export function MaskArt({ id, a }: { id: number; a: FaceAnchor }) {
       );
     }
     default:
-      return null;
+      return MASKS2[id - GEAR_BASE.m]?.(a) ?? null;
   }
 }
 
@@ -436,7 +438,7 @@ function itemShape(id: number) {
         </>
       );
     default:
-      return null;
+      return ITEMS2[id - GEAR_BASE.i]?.() ?? null;
   }
 }
 

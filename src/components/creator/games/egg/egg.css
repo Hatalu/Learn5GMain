@@ -289,3 +289,237 @@
     animation: none;
   }
 }
+
+.eg-reset {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ฟักไข่: ไข่สั่น -> แตก -> สัตว์เด้งออกมา */
+.eg-hatch {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  display: grid;
+  place-items: center;
+  background: rgba(42, 35, 80, 0.38);
+  animation: eg-fade 0.25s ease both;
+}
+.eg-hatch-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 220px;
+  padding: 14px 22px 18px;
+  border-radius: 26px;
+  border: 4px solid var(--l5g-ink);
+  background: #fff8ec;
+  color: var(--l5g-ink);
+  box-shadow: 0 7px 0 var(--l5g-ink), 0 0 0 6px var(--rc) inset;
+  animation: eg-pop 0.45s var(--l5g-jelly) both;
+}
+.eg-hatch-card em {
+  font-style: normal;
+  font-family: var(--font-mitr), sans-serif;
+  font-size: 1.4rem;
+  padding: 0 14px;
+  border-radius: 99px;
+  background: var(--rc);
+  color: #fff;
+  -webkit-text-stroke: 1px var(--l5g-ink);
+}
+.eg-hatch-stage {
+  position: relative;
+  width: 150px;
+  height: 140px;
+  display: grid;
+  place-items: center;
+}
+.eg-hatch-egg {
+  animation: eg-shake 0.18s ease-in-out infinite;
+}
+.eg-hatch[data-phase='1'] .eg-hatch-egg {
+  animation-duration: 0.09s;
+}
+.eg-hatch-pet {
+  animation: eg-burst 0.6s var(--l5g-jelly) both;
+}
+.eg-hatch[data-phase='2'] .eg-hatch-stage::before {
+  content: '';
+  position: absolute;
+  inset: -10px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, var(--rc) 0 10deg, transparent 10deg 20deg);
+  opacity: 0.35;
+  animation: eg-spin 4s linear infinite;
+}
+.eg-hatch-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  animation: eg-pop 0.4s 0.15s var(--l5g-jelly) both;
+}
+.eg-hatch-info b {
+  font-family: var(--font-mitr), sans-serif;
+  font-size: 1.3rem;
+}
+.eg-hatch-kg {
+  font-weight: 900;
+  font-size: 1rem;
+}
+.eg-rar {
+  font-size: 0.75rem;
+  font-weight: 900;
+  padding: 1px 10px;
+  border-radius: 99px;
+  border: 2px solid var(--l5g-ink);
+  background: var(--rc);
+  color: #fff;
+}
+@keyframes eg-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes eg-pop {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+}
+@keyframes eg-shake {
+  25% {
+    transform: rotate(-8deg);
+  }
+  75% {
+    transform: rotate(8deg);
+  }
+}
+@keyframes eg-burst {
+  0% {
+    transform: scale(0.2) translateY(30px);
+  }
+  60% {
+    transform: scale(1.2) translateY(-8px);
+  }
+}
+@keyframes eg-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+/* กระเป๋าสัตว์ */
+.eg-bag {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 6;
+  transform: translate(-50%, -50%);
+  width: min(560px, calc(100% - 20px));
+  max-height: calc(100% - 20px);
+  display: flex;
+  flex-direction: column;
+  border-radius: 24px;
+  border: 4px solid var(--l5g-ink);
+  background: #fff8ec;
+  color: var(--l5g-ink);
+  box-shadow: 0 7px 0 var(--l5g-ink);
+  animation: eg-pop 0.3s var(--l5g-jelly) both;
+  overflow: hidden;
+}
+.eg-bag-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 10px 10px 14px;
+  background: #7c5cff;
+  color: #fff;
+  border-bottom: 3px solid var(--l5g-ink);
+}
+.eg-bag-head b {
+  font-family: var(--font-mitr), sans-serif;
+}
+.eg-bag-total {
+  padding: 2px 10px;
+  border-radius: 99px;
+  border: 2.5px solid var(--l5g-ink);
+  background: #ffcf3f;
+  color: var(--l5g-ink);
+  font-weight: 800;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+.eg-bag-x {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  border: 2.5px solid var(--l5g-ink);
+  background: #fff;
+  color: var(--l5g-ink);
+  display: grid;
+  place-items: center;
+}
+.eg-bag-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 8px;
+  padding: 10px;
+  overflow-y: auto;
+}
+.eg-pet {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 6px 4px 6px;
+  border-radius: 16px;
+  border: 3px solid var(--rc);
+  background: #fff;
+  transition: transform 0.18s var(--l5g-jelly);
+}
+.eg-pet:hover {
+  transform: translateY(-2px);
+}
+.eg-pet:active {
+  transform: scale(0.94, 0.9);
+}
+.eg-pet[data-on='true'] {
+  border-color: var(--l5g-ink);
+  background: #ffe9a8;
+  box-shadow: 0 3px 0 var(--l5g-ink);
+}
+.eg-pet b {
+  font-size: 0.75rem;
+  line-height: 1.15;
+  text-align: center;
+}
+.eg-pet small {
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+.eg-pet i {
+  font-style: normal;
+  font-size: 0.65rem;
+  font-weight: 900;
+  padding: 0 8px;
+  border-radius: 99px;
+  background: var(--l5g-ink);
+  color: #fff;
+}
+.eg-bag-empty {
+  padding: 26px 16px;
+  text-align: center;
+  font-weight: 700;
+  opacity: 0.75;
+}
+@media (prefers-reduced-motion: reduce) {
+  .eg-hatch-egg,
+  .eg-hatch-pet,
+  .eg-hatch-stage::before,
+  .eg-hatch-card,
+  .eg-bag {
+    animation: none;
+  }
+}

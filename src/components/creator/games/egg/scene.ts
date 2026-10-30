@@ -1,39 +1,63 @@
 /**
  * โลก 3 มิติของโหมด "ขโมยไข่บอสหลับ" (three.js ล้วน ไม่มีไฟล์โมเดล)
- * - ฐานปลอดภัยตรงกลาง + 10 ไบโอมเป็นชิ้นพายรอบฐาน ไข่ 5 จุดต่อไบโอม (ใกล้ฐาน = ง่าย ไกล = หายากแต่ใกล้บอส)
- * - ตัวละคร/บอส/ไข่สร้างจากรูปทรงสไตล์การ์ตูน (toon + เส้นหมึก inverted hull)
+ * - แผนที่เส้นตรง: ฐานปลอดภัย (z > 0) -> ไบโอม 1 -> ... -> ไบโอม 5 ไปทาง -z (ขึ้นจอ)
+ * - ไบโอมละ 5 ฟอง ตำแหน่ง/ชนิดสุ่มใหม่ทุกรอบไข่ บอสนอนท้ายไบโอม
+ * - ตัวละครผู้เล่น = รูปตัวละคร+ชุดที่เลือกในห้องรอ (ป้ายภาพหันหากล้อง) / บอส ไข่ สัตว์ = รูปทรงการ์ตูน toon
  * - มีไฟล์ public/models/egg/manifest.json = ใช้โมเดลจาก Blender (.glb) แทนบอสที่สร้างเอง
  */
 import * as THREE from 'three';
-import { BIOMES, type Biome, type BossPart, type EggStyle, type PropKind } from './biomes';
-import { RARITY, EGG_SLOTS_RARITY } from '@/lib/game-creator/eggValues';
+import { BIOMES, type BossPart, type EggStyle, type PropKind } from './biomes';
+import { RARITY, EGG_BIOMES, EGG_SLOTS_RARITY } from '@/lib/game-creator/eggValues';
 import { rng } from '../worldKit';
+import { petLook, petScale } from './pets';
 
-export const SAFE_R = 12;
-export const R_IN = 15;
-export const R_OUT = 80;
-export const WEDGE = (Math.PI * 2) / BIOMES.length;
+export const HALF_W = 18;
+export const SAFE_Z = 18;
+export const BIOME_L = 34;
 export const SLOTS = 5;
-const SLOT_R = [27, 36, 46, 56, 65];
-const SLOT_OFF = [-0.22, 0.2, -0.16, 0.22, -0.02];
-export const BOSS_R = 72;
+export const END_Z = -EGG_BIOMES * BIOME_L;
 const INK = 0x2a2350;
 
-export const biomeAt = (x: number, z: number) => {
-  if (Math.hypot(x, z) < R_IN) return -1;
-  const a = (Math.atan2(z, x) + Math.PI * 2) % (Math.PI * 2);
-  return Math.min(BIOMES.length - 1, Math.floor(a / WEDGE));
-};
-const polar = (a: number, r: number) => ({ x: Math.cos(a) * r, z: Math.sin(a) * r });
-export const slotPos = (b: number, k: number) => polar(b * WEDGE + WEDGE * (0.5 + SLOT_OFF[k]), SLOT_R[k]);
-export const bossHome = (b: number) => polar(b * WEDGE + WEDGE * 0.5, BOSS_R);
-/** ช่องไข่ไกลฐาน = โอกาสได้ไข่หายากมากขึ้น (ใช้ปรับเลขสุ่มก่อนส่งให้ pickEggType) */
-export const slotBias = (k: number, r: number) => 1 - Math.pow(1 - r, 1 + k * 0.55);
+/** ไบโอมลำดับที่ (0-4) ของตำแหน่งนี้ -1 = อยู่ในฐาน */
+export const tierAt = (z: number) => (z >= 0 ? -1 : Math.min(EGG_BIOMES - 1, Math.floor(-z / BIOME_L)));
+export const inSafe = (z: number) => z > 0.5;
+export const bossHome = (tier: number) => ({ x: tier % 2 ? 7 : -7, z: -(tier + 1) * BIOME_L + 5 });
+
+/** 5 ไบโอมของห้องนี้ (สุ่มธีมจาก 10 แบบตาม seed ของห้อง) */
+export function pickThemes(seed: number) {
+  const r = rng(seed ^ 0x5bd1e995);
+  const ids = BIOMES.map((_, i) => i);
+  for (let i = ids.length - 1; i > 0; i--) {
+    const j = Math.floor(r() * (i + 1));
+    [ids[i], ids[j]] = [ids[j], ids[i]];
+  }
+  return ids.slice(0, EGG_BIOMES);
+}
 
 export interface Obstacle {
   x: number;
   z: number;
   r: number;
+}
+
+/** ตำแหน่งไข่ 25 ฟองของรอบไข่ ep (ทุกเครื่องได้ตรงกัน) */
+export function slotLayout(seed: number, ep: number, obstacles: Obstacle[]) {
+  const out: { x: number; z: number }[] = [];
+  for (let t = 0; t < EGG_BIOMES; t++) {
+    const r = rng(seed + ep * 7349 + t * 131);
+    const boss = bossHome(t);
+    const mine: { x: number; z: number }[] = [];
+    for (let k = 0; k < 400 && mine.length < SLOTS; k++) {
+      const p = { x: (r() * 2 - 1) * (HALF_W - 3), z: -t * BIOME_L - 4 - r() * (BIOME_L - 13) };
+      if (Math.hypot(p.x - boss.x, p.z - boss.z) < 6) continue;
+      if (obstacles.some((o) => Math.hypot(o.x - p.x, o.z - p.z) < o.r + 1.6)) continue;
+      if (mine.some((q) => Math.hypot(q.x - p.x, q.z - p.z) < 5)) continue;
+      mine.push(p);
+    }
+    while (mine.length < SLOTS) mine.push({ x: (mine.length - 2) * 5, z: -t * BIOME_L - 10 });
+    out.push(...mine);
+  }
+  return out;
 }
 
 /* ------------------------------------------------------------------ วัสดุ */
@@ -214,68 +238,103 @@ export function makeEgg(b: number, type: number, size = 1) {
   return g;
 }
 
-/* ------------------------------------------------------------------ ตัวละครผู้เล่น */
+/* ------------------------------------------------------------------ ตัวละครผู้เล่น (รูปจากห้องรอ) */
 
 export interface CharRig {
   root: THREE.Group;
-  body: THREE.Object3D;
-  feet: THREE.Object3D[];
-  hand: THREE.Group;
+  body: THREE.Group;
+  sprite: THREE.Sprite;
   label: THREE.Sprite | null;
-  carry: THREE.Group | null;
+  hand: THREE.Group;
+  carry: THREE.Object3D | null;
   carryKey: string;
+  pet: THREE.Object3D | null;
+  petKey: string;
   quiz: THREE.Object3D;
+  img: HTMLImageElement | null;
+  face: number;
 }
 
-export function makeChar(color: string, name: string, mine: boolean): CharRig {
+const CHAR_H = 2.6;
+
+/** ตัวละคร = ป้ายภาพหันหากล้อง (รูป Avatar + ชุดที่เลือก) มีเงา ป้ายชื่อ ช่องถือของ */
+export function makeChar(name: string, mine: boolean): CharRig {
   const root = new THREE.Group();
-  blob(root, 0.75);
+  blob(root, 0.8);
   const body = new THREE.Group();
   root.add(body);
-  part(body, SPHERE(), toon(color), [0, 0.85, 0], [0.55, 0.62, 0.5]);
-  part(body, SPHERE(), toon('#fff4e6'), [0, 1.62, 0], [0.5, 0.46, 0.46]);
-  // ผมสีเดียวกับตัว
-  part(body, SPHERE(), toon(color), [0, 1.86, -0.06], [0.52, 0.28, 0.48], { ink: 0.04 });
-  for (const sx of [-1, 1]) {
-    part(body, SPHERE(), toon(INK), [sx * 0.17, 1.62, 0.41], [0.07, 0.1, 0.05], { ink: 0 });
-    part(body, SPHERE(), toon('#ff9db5'), [sx * 0.3, 1.5, 0.37], [0.08, 0.05, 0.03], { ink: 0 });
-    part(body, SPHERE(), toon(color), [sx * 0.56, 0.9, 0.05], [0.16, 0.16, 0.16], { ink: 0.04 });
-  }
-  const feet = [-1, 1].map((sx) => part(root, SPHERE(), toon('#5a4a7a'), [sx * 0.22, 0.14, 0.05], [0.17, 0.12, 0.24], { ink: 0.04 }));
+  const mat = new THREE.SpriteMaterial({ color: 0xffffff, transparent: true, alphaTest: 0.05 });
+  const sprite = new THREE.Sprite(mat);
+  sprite.center.set(0.5, 0.06);
+  sprite.scale.set(CHAR_H * (128 / 132), CHAR_H, 1);
+  sprite.visible = false;
+  body.add(sprite);
   const hand = new THREE.Group();
-  hand.position.set(0, 2.2, 0);
+  hand.position.set(0, CHAR_H + 0.25, 0);
   body.add(hand);
   const quiz = labelSprite('?', '#9b6cf0', '#fff');
   quiz.scale.set(0.55, 0.55, 1);
-  quiz.position.set(0.55, 2.55, 0);
+  quiz.position.set(0.9, CHAR_H + 0.4, 0);
   quiz.visible = false;
   root.add(quiz);
   const label = labelSprite(mine ? 'ฉัน' : name, mine ? '#ffcf3f' : '#ffffff');
-  label.position.y = 2.95;
+  label.position.y = CHAR_H + 0.75;
   root.add(label);
-  return { root, body, feet, hand, label, carry: null, carryKey: '', quiz };
+  return { root, body, sprite, label, hand, carry: null, carryKey: '', pet: null, petKey: '', quiz, img: null, face: 1 };
 }
 
-export function setCarry(rig: CharRig, b: number, type: number) {
-  const key = b < 0 ? '' : `${b}:${type}`;
+/** ใส่รูปตัวละครเมื่อโหลดเสร็จ */
+export function setCharImage(rig: CharRig, img: HTMLImageElement | null) {
+  if (!img || rig.img === img) return;
+  rig.img = img;
+  const tex = new THREE.Texture(img);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.needsUpdate = true;
+  rig.sprite.material.map = tex;
+  rig.sprite.material.needsUpdate = true;
+  rig.sprite.visible = true;
+}
+
+/** ถือไข่เหนือหัว (b = ลำดับธีม -1 = ไม่ถือ) */
+export function setCarry(rig: CharRig, b: number, type: number, size: number) {
+  const key = b < 0 ? '' : `${b}:${type}:${size.toFixed(2)}`;
   if (rig.carryKey === key) return;
   rig.carryKey = key;
   if (rig.carry) rig.hand.remove(rig.carry);
   rig.carry = null;
   if (b >= 0) {
-    rig.carry = makeEgg(b, type, 0.8);
+    rig.carry = makeEgg(b, type, size * 0.85);
     rig.hand.add(rig.carry);
   }
 }
 
-/** ท่าเดิน: ตัวเด้ง เท้าสลับ */
-export function poseChar(rig: CharRig, moving: boolean, t: number, stunned: boolean) {
+/** สัตว์ที่ถือโชว์ (เดินข้างตัว ขนาดตามน้ำหนัก) */
+export function setPet(rig: CharRig, b: number, type: number, kg: number) {
+  const key = b < 0 ? '' : `${b}:${type}:${kg}`;
+  if (rig.petKey === key) return;
+  rig.petKey = key;
+  if (rig.pet) rig.root.remove(rig.pet);
+  rig.pet = null;
+  if (b >= 0) {
+    rig.pet = makePet(b, type, kg);
+    rig.pet.position.set(1.5, 0, 0.3);
+    rig.root.add(rig.pet);
+  }
+}
+
+/** ท่าเดิน: ตัวเด้ง เอียงซ้ายขวา หันตามทางเดิน */
+export function poseChar(rig: CharRig, moving: boolean, t: number, stunned: boolean, dirX = 0) {
+  if (Math.abs(dirX) > 0.15) rig.face = dirX > 0 ? 1 : -1;
   const s = moving ? Math.sin(t * 14) : 0;
-  rig.body.position.y = moving ? Math.abs(s) * 0.12 : Math.sin(t * 3) * 0.02;
-  rig.body.rotation.z = stunned ? Math.sin(t * 12) * 0.25 : s * 0.05;
-  rig.feet[0].position.z = 0.05 + s * 0.22;
-  rig.feet[1].position.z = 0.05 - s * 0.22;
+  rig.body.position.y = moving ? Math.abs(s) * 0.18 : Math.sin(t * 3) * 0.03;
+  rig.sprite.scale.x = Math.abs(rig.sprite.scale.x) * rig.face;
+  rig.sprite.material.rotation = stunned ? Math.sin(t * 14) * 0.3 : s * 0.06;
   if (rig.carry) rig.carry.rotation.y = t * 1.5;
+  if (rig.pet) {
+    rig.pet.position.x = -rig.face * (1.2 + ((rig.pet.userData.s as number) || 1) * 0.6);
+    rig.pet.position.y = moving ? Math.abs(Math.sin(t * 12 + 1)) * 0.25 : 0;
+    rig.pet.rotation.y = moving ? 0 : Math.sin(t * 1.5) * 0.4;
+  }
 }
 
 /* ------------------------------------------------------------------ บอส */
@@ -335,12 +394,13 @@ function bossParts(body: THREE.Group, parts: BossPart[], c: string, belly: strin
   }
 }
 
-export function makeBoss(b: number): BossRig {
-  const bi: Biome = BIOMES[b];
+export function makeBoss(b: number, tier: number): BossRig {
+  const bi = BIOMES[b];
+  const big = bi.boss.scale * (1 + tier * 0.12);
   const root = new THREE.Group();
-  blob(root, 2.2 * bi.boss.scale);
+  blob(root, 2.2 * big);
   const body = new THREE.Group();
-  body.scale.setScalar(bi.boss.scale);
+  body.scale.setScalar(big);
   root.add(body);
   part(body, SPHERE(), toon(bi.boss.body), [0, 1.95, 0], [1.75, 1.6, 1.55], { ink: 0.08 });
   part(body, SPHERE(), toon(bi.boss.belly), [0, 1.65, 0.85], [1.15, 1.05, 0.75], { ink: 0 });
@@ -366,11 +426,10 @@ export function makeBoss(b: number): BossRig {
     return s;
   });
   const label = labelSprite(bi.boss.name, '#2a2350', '#ffffff');
-  label.position.y = 5.2 * bi.boss.scale;
+  label.position.y = 5.2 * big;
   root.add(label);
-  const home = bossHome(b);
+  const home = bossHome(tier);
   root.position.set(home.x, 0, home.z);
-  root.rotation.y = Math.atan2(-home.x, -home.z);
   const rig = { root, body, eyesOpen, eyesShut, zzz, home, awake: true };
   setBossAwake(rig, false);
   return rig;
@@ -457,6 +516,41 @@ function makeProp(kind: PropKind, color: string, r: () => number) {
   return { g, rad: rad * s };
 }
 
+/* ------------------------------------------------------------------ สัตว์ที่ฟักได้ */
+
+export function makePet(b: number, t: number, kg: number) {
+  const p = petLook(b, t);
+  const k = petScale(kg);
+  const g = new THREE.Group();
+  g.userData.s = k;
+  blob(g, 0.75 * k);
+  const body = new THREE.Group();
+  body.scale.setScalar(0.34 * k);
+  g.add(body);
+  part(body, SPHERE(), toon(p.body), [0, 1.95, 0], [1.75, 1.6, 1.55], { ink: 0.1 });
+  part(body, SPHERE(), toon(p.belly), [0, 1.65, 0.85], [1.15, 1.05, 0.75], { ink: 0 });
+  for (const sx of [-1, 1]) {
+    part(body, SPHERE(), toon(p.body), [sx * 0.95, 0.35, 0.35], [0.55, 0.35, 0.7]);
+    const e = part(body, SPHERE(), toon('#ffffff'), [sx * 0.6, 2.45, 1.3], [0.4, 0.46, 0.22], { ink: 0.08 });
+    part(e, SPHERE(), toon(INK), [0, -0.05, 0.8], [0.55, 0.6, 0.4], { ink: 0 });
+    part(body, SPHERE(), toon('#ff9db5'), [sx * 1.1, 2.0, 1.25], [0.3, 0.18, 0.1], { ink: 0 });
+  }
+  bossParts(body, p.parts, p.body, p.belly);
+  if (p.rarity === 'legend' || p.rarity === 'secret') {
+    const ring = new THREE.Group();
+    ring.name = 'sparkle';
+    for (let i = 0; i < 5; i++) {
+      const s = new THREE.Mesh(OCTA(), toon(RARITY[p.rarity].color, RARITY[p.rarity].color));
+      const a = (i / 5) * Math.PI * 2;
+      s.position.set(Math.cos(a) * 1.1 * k, 1.1 * k, Math.sin(a) * 1.1 * k);
+      s.scale.setScalar(0.12 * k);
+      ring.add(s);
+    }
+    g.add(ring);
+  }
+  return g;
+}
+
 /* ------------------------------------------------------------------ โลก */
 
 export class EggWorld {
@@ -467,99 +561,88 @@ export class EggWorld {
   bosses: BossRig[] = [];
   eggs = new Map<number, THREE.Group>();
   nest = new THREE.Group();
+  themes: number[];
   private nestCount = 0;
   private el: HTMLElement;
 
-  constructor(el: HTMLElement, seed: number) {
+  constructor(el: HTMLElement, seed: number, themes: number[]) {
     this.el = el;
+    this.themes = themes;
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
     this.renderer.domElement.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block';
     el.appendChild(this.renderer.domElement);
     const sc = this.scene;
     sc.background = new THREE.Color('#8fd8ff');
-    sc.fog = new THREE.Fog('#8fd8ff', 60, 140);
+    sc.fog = new THREE.Fog('#8fd8ff', 55, 120);
     sc.add(new THREE.HemisphereLight(0xffffff, 0x88aacc, 1.6));
     const sun = new THREE.DirectionalLight(0xffffff, 1.6);
     sun.position.set(20, 40, 25);
     sc.add(sun);
     this.buildGround(seed);
-    BIOMES.forEach((_, b) => {
-      const boss = makeBoss(b);
+    themes.forEach((b, tier) => {
+      const boss = makeBoss(b, tier);
       this.bosses.push(boss);
       sc.add(boss.root);
     });
+    this.nest.position.set(0, 0, SAFE_Z * 0.55);
     sc.add(this.nest);
     this.loadModels();
   }
 
   private buildGround(seed: number) {
     const sc = this.scene;
-    const sea = new THREE.Mesh(new THREE.CircleGeometry(220, 48).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#4cc3ef' }));
-    sea.position.y = -0.4;
+    const plane = (w: number, l: number, color: string, x: number, z: number, y = 0) => {
+      const m = new THREE.Mesh(G('plane', () => new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2)), toon(color));
+      m.scale.set(w, 1, l);
+      m.position.set(x, y, z);
+      sc.add(m);
+      return m;
+    };
+    const sea = new THREE.Mesh(new THREE.PlaneGeometry(400, 500).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#4cc3ef' }));
+    sea.position.set(0, -0.4, END_Z / 2);
     sc.add(sea);
-    const sand = new THREE.Mesh(new THREE.CircleGeometry(R_OUT + 3, 80).rotateX(-Math.PI / 2), toon('#ffe3a8'));
-    sand.position.y = -0.05;
-    sc.add(sand);
-    // ลานกลาง (ฐานปลอดภัย)
-    const plaza = new THREE.Mesh(new THREE.CircleGeometry(R_IN, 64).rotateX(-Math.PI / 2), toon('#ffe9c2'));
-    plaza.position.y = 0.01;
-    sc.add(plaza);
-    const safe = new THREE.Mesh(new THREE.CircleGeometry(SAFE_R, 64).rotateX(-Math.PI / 2), toon('#9ff0c8'));
-    safe.position.y = 0.02;
-    sc.add(safe);
-    const ring = new THREE.Mesh(new THREE.RingGeometry(SAFE_R - 0.6, SAFE_R, 64).rotateX(-Math.PI / 2), toon('#25c48a'));
-    ring.position.y = 0.03;
-    sc.add(ring);
-    const wall = new THREE.Mesh(new THREE.CylinderGeometry(SAFE_R, SAFE_R, 2.4, 64, 1, true), new THREE.MeshBasicMaterial({ color: '#3fffb0', transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false }));
-    wall.position.y = 1.2;
+    plane(HALF_W * 2 + 6, SAFE_Z - END_Z + 6, '#ffe3a8', 0, (SAFE_Z + END_Z) / 2, -0.05);
+
+    // ฐานปลอดภัย (z 0..SAFE_Z)
+    plane(HALF_W * 2, SAFE_Z, '#9ff0c8', 0, SAFE_Z / 2, 0.01);
+    plane(HALF_W * 2, 0.8, '#25c48a', 0, 0.4, 0.02);
+    const wall = new THREE.Mesh(new THREE.PlaneGeometry(HALF_W * 2, 2.6), new THREE.MeshBasicMaterial({ color: '#3fffb0', transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false }));
+    wall.position.set(0, 1.3, 0);
     sc.add(wall);
-    // รังกลางฐาน: ไข่ที่ทุกคนพากลับมากองโชว์
-    part(sc, G('torus', () => new THREE.TorusGeometry(1, 0.35, 10, 24).rotateX(Math.PI / 2)), toon('#c98a4b'), [0, 0.35, 0], [2.4, 2.4, 1.6]);
-    part(sc, CYL(), toon('#e8b878'), [0, 0.12, 0], [2.4, 0.2, 2.4], { ink: 0.04 });
-    // ป้าย "ฐานปลอดภัย"
+    part(sc, G('torus', () => new THREE.TorusGeometry(1, 0.35, 10, 24).rotateX(Math.PI / 2)), toon('#c98a4b'), [0, 0.35, SAFE_Z * 0.55], [2.4, 2.4, 1.6]);
+    part(sc, CYL(), toon('#e8b878'), [0, 0.12, SAFE_Z * 0.55], [2.4, 0.2, 2.4], { ink: 0.04 });
     const sign = labelSprite('ฐานปลอดภัย', '#25c48a', '#ffffff');
-    sign.position.set(0, 4.2, 0);
+    sign.position.set(0, 3.2, 2.5);
     sign.scale.multiplyScalar(1.6);
     sc.add(sign);
+    // ซุ้มประตูฐาน
+    for (const sx of [-1, 1]) part(sc, CYL(), toon('#25c48a'), [sx * (HALF_W - 0.6), 1.6, 0.2], [0.5, 3.2, 0.5], { ink: 0.05 });
 
-    BIOMES.forEach((bi, b) => {
-      const a0 = b * WEDGE;
-      const geo = new THREE.RingGeometry(R_IN, R_OUT, 18, 1, a0, WEDGE).rotateX(Math.PI / 2);
-      const m = new THREE.Mesh(geo, new THREE.MeshToonMaterial({ color: bi.ground, gradientMap: grad, side: THREE.DoubleSide }));
-      sc.add(m);
-      // ทางเดินจากฐานถึงบอส
-      const mid = a0 + WEDGE / 2;
-      const path = new THREE.Mesh(G('path', () => new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2)), toon(bi.ground2));
-      const pl = BOSS_R - R_IN;
-      path.scale.set(pl, 1, 3.2);
-      path.position.set(Math.cos(mid) * (R_IN + pl / 2), 0.02, Math.sin(mid) * (R_IN + pl / 2));
-      path.rotation.y = -mid;
-      sc.add(path);
-      // ป้ายชื่อไบโอมที่ทางเข้า
-      const tag = labelSprite(bi.name, bi.ground, '#2a2350');
-      const tp = polar(mid, R_IN + 2.5);
-      tag.position.set(tp.x, 2.2, tp.z);
-      tag.scale.multiplyScalar(1.4);
+    this.themes.forEach((b, tier) => {
+      const bi = BIOMES[b];
+      const z0 = -tier * BIOME_L;
+      const zc = z0 - BIOME_L / 2;
+      plane(HALF_W * 2, BIOME_L, bi.ground, 0, zc, 0.01);
+      plane(3.4, BIOME_L, bi.ground2, 0, zc, 0.02);
+      // ป้ายไบโอมที่ทางเข้า
+      const tag = labelSprite(`ไบโอม ${tier + 1} · ${bi.name}`, bi.ground, '#2a2350');
+      tag.position.set(0, 2.6, z0 - 1.5);
+      tag.scale.multiplyScalar(1.5);
       sc.add(tag);
-      // รั้วเตี้ยแบ่งไบโอม
-      for (let r = R_IN + 1; r < R_OUT; r += 3.2) {
-        const p = polar(a0, r);
-        part(sc, CYL(), toon('#fff6e6'), [p.x, 0.5, p.z], [0.18, 1, 0.18], { ink: 0.04 });
-      }
-      // ของตกแต่ง (ไม่ทับจุดไข่ ทางเดิน ที่นอนบอส)
-      const rr = rng(seed + b * 7919);
-      const keep = [...Array.from({ length: SLOTS }, (_, k) => slotPos(b, k)), bossHome(b)];
+      // รั้วสองข้าง + เส้นแบ่งไบโอม
+      for (let z = z0 - 1; z > z0 - BIOME_L; z -= 3.4)
+        for (const sx of [-1, 1]) part(sc, CYL(), toon('#fff6e6'), [sx * HALF_W, 0.5, z], [0.18, 1, 0.18], { ink: 0.04 });
+      plane(HALF_W * 2, 0.5, '#fff6e6', 0, z0 - 0.25, 0.03);
+      // ของตกแต่ง (ไม่ทับทางเดินกลาง/ที่นอนบอส)
+      const rr = rng(seed + tier * 7919);
+      const boss = bossHome(tier);
       let placed = 0;
-      for (let k = 0; k < 120 && placed < 16; k++) {
-        const a = a0 + 0.06 + rr() * (WEDGE - 0.12);
-        const r = R_IN + 4 + rr() * (R_OUT - R_IN - 7);
-        const p = polar(a, r);
-        if (keep.some((q) => Math.hypot(q.x - p.x, q.z - p.z) < 5.5)) continue;
-        // ทางเดินกลางไบโอม
-        const off = Math.abs(Math.sin(a - mid) * r);
-        if (off < 3.2 && r < BOSS_R + 3) continue;
-        if (this.obstacles.some((o) => Math.hypot(o.x - p.x, o.z - p.z) < o.r + 2)) continue;
+      for (let k = 0; k < 160 && placed < 13; k++) {
+        const p = { x: (rr() * 2 - 1) * (HALF_W - 2), z: z0 - 3 - rr() * (BIOME_L - 5) };
+        if (Math.abs(p.x) < 3.6) continue;
+        if (Math.hypot(p.x - boss.x, p.z - boss.z) < 6) continue;
+        if (this.obstacles.some((o) => Math.hypot(o.x - p.x, o.z - p.z) < o.r + 2.5)) continue;
         const { g, rad } = makeProp(bi.props[placed % bi.props.length], bi.propColor, rr);
         g.position.set(p.x, 0, p.z);
         g.rotation.y = rr() * 6.28;
@@ -568,6 +651,10 @@ export class EggWorld {
         placed++;
       }
     });
+    // ป้ายสุดทาง
+    const end = labelSprite('สุดทาง', '#2a2350', '#ffffff');
+    end.position.set(0, 2.4, END_Z + 1);
+    sc.add(end);
   }
 
   /** โมเดลจาก Blender: public/models/egg/manifest.json = { "bosses": { "<biome id>": "<ไฟล์>.glb" } } */
@@ -581,10 +668,10 @@ export class EggWorld {
       const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
       const loader = new GLTFLoader();
       for (const [id, file] of list) {
-        const b = BIOMES.findIndex((x) => x.id === id);
-        if (b < 0 || !/^[\w.-]+\.glb$/.test(file)) continue;
+        const tier = this.themes.findIndex((b) => BIOMES[b].id === id);
+        if (tier < 0 || !/^[\w.-]+\.glb$/.test(file)) continue;
         loader.load(`/models/egg/${file}`, (gltf) => {
-          const rig = this.bosses[b];
+          const rig = this.bosses[tier];
           const model = gltf.scene;
           // ย่อ/ขยายให้สูงประมาณ 4 หน่วย วางเท้าแตะพื้น
           const box = new THREE.Box3().setFromObject(model);
@@ -603,19 +690,18 @@ export class EggWorld {
     }
   }
 
-  setEgg(key: number, b: number, type: number | null) {
+  /** วาดไข่ช่อง key (tier = ไบโอมลำดับที่, type = ชนิด, size = ขนาดสุ่ม) null = ไม่มีไข่ */
+  setEgg(key: number, pos: { x: number; z: number }, tier: number, type: number | null, size = 1) {
     const old = this.eggs.get(key);
     if (old) {
       this.scene.remove(old);
       this.eggs.delete(key);
     }
     if (type === null) return;
-    const g = makeEgg(b, type, 1);
-    const p = slotPos(b, key % SLOTS);
-    g.position.set(p.x, 0, p.z);
-    // แท่นไข่ + ลำแสงบอกความหายาก
-    part(g, CYL(), toon('#fff6e6'), [0, 0.08, 0], [0.8, 0.16, 0.8], { ink: 0.04 });
     const rar = EGG_SLOTS_RARITY[type];
+    const g = makeEgg(this.themes[tier], type, eggVisual(tier, type, size));
+    g.position.set(pos.x, 0, pos.z);
+    part(g, CYL(), toon('#fff6e6'), [0, 0.08, 0], [0.8, 0.16, 0.8], { ink: 0.04 });
     if (rar !== 'common') {
       const beam = new THREE.Mesh(G('beam', () => new THREE.CylinderGeometry(0.3, 0.5, 6, 12, 1, true)), new THREE.MeshBasicMaterial({ color: RARITY[rar].color, transparent: true, opacity: 0.2, depthWrite: false, side: THREE.DoubleSide }));
       beam.position.y = 3;
@@ -625,28 +711,31 @@ export class EggWorld {
     this.eggs.set(key, g);
   }
 
-  /** ไข่ที่พากลับมาถึงฐาน: กองโชว์ในรัง (สูงสุด 14 ฟอง) */
-  addToNest(b: number, type: number) {
-    const egg = makeEgg(b, type, 0.7);
-    const i = this.nestCount++ % 14;
+  /** สัตว์ที่ฟักแล้ว: มายืนเล่นในรังกลางฐาน (สูงสุด 12 ตัว) */
+  addToNest(b: number, type: number, kg: number) {
+    const pet = makePet(b, type, Math.min(kg, 60));
+    const i = this.nestCount++ % 12;
     const a = i * 2.4;
-    const r = i < 6 ? 1.2 : 0.6;
-    egg.position.set(Math.cos(a) * r, 0.25 + (i >= 6 ? 0.45 : 0), Math.sin(a) * r);
-    if (this.nest.children.length >= 14) this.nest.remove(this.nest.children[0]);
-    this.nest.add(egg);
+    const r = 3 + (i % 3) * 1.6;
+    pet.position.set(Math.cos(a) * r, 0, Math.sin(a) * r * 0.7);
+    if (this.nest.children.length >= 12) this.nest.remove(this.nest.children[0]);
+    this.nest.add(pet);
   }
 
   animateEggs(t: number) {
     this.eggs.forEach((g, k) => {
       const e = g.children[0];
-      if (e) e.position.y = 0.62 + Math.sin(t * 2 + k) * 0.08 + 0.15;
+      if (e) e.position.y = (e.userData.y0 ?? (e.userData.y0 = e.position.y)) + Math.sin(t * 2 + k) * 0.08 + 0.1;
       const sp = g.getObjectByName('sparkle');
       if (sp) sp.rotation.y = t * 1.6;
     });
+    this.nest.children.forEach((p, i) => {
+      p.position.y = Math.abs(Math.sin(t * 3 + i)) * 0.25;
+      p.rotation.y = Math.sin(t * 0.8 + i) * 0.8;
+    });
   }
 
-  /** ang = ทิศ "ขึ้นจอ" ในโลก (มุมของไบโอมที่อยู่) กล้องอยู่ด้านฐาน มองออกไปทางบอส */
-  render(cx: number, cz: number, ang = -Math.PI / 2) {
+  render(cx: number, cz: number) {
     const w = this.el.clientWidth || 1;
     const h = this.el.clientHeight || 1;
     const c = this.renderer.domElement;
@@ -655,12 +744,10 @@ export class EggWorld {
       this.camera.aspect = w / h;
       this.camera.updateProjectionMatrix();
     }
-    // จอแนวตั้งมองไกลขึ้น จะได้เห็นรอบตัว
+    // จอแนวตั้งมองไกลขึ้น จะได้เห็นทางข้างหน้า
     const far = w < h ? 1.35 : 1;
-    const fx = Math.cos(ang);
-    const fz = Math.sin(ang);
-    this.camera.position.set(cx - fx * 15 * far, 19 * far, cz - fz * 15 * far);
-    this.camera.lookAt(cx + fx * 1.5, 0.8, cz + fz * 1.5);
+    this.camera.position.set(cx * 0.6, 17 * far, cz + 14 * far);
+    this.camera.lookAt(cx * 0.6, 0.8, cz - 3);
     this.renderer.render(this.scene, this.camera);
   }
 
@@ -678,3 +765,6 @@ export class EggWorld {
     });
   }
 }
+
+/** ขนาดไข่ที่เห็น: ระดับความหายาก x ขนาดสุ่ม x ไบโอมไกล */
+export const eggVisual = (tier: number, type: number, size: number) => RARITY[EGG_SLOTS_RARITY[type]].size * size * (1 + tier * 0.1);

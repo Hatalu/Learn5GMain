@@ -2822,7 +2822,7 @@
   border-radius: 18px;
   background: color-mix(in srgb, var(--lc) 18%, #fff);
   border: 2.5px dashed color-mix(in srgb, var(--lc) 70%, var(--l5g-ink));
-  max-height: 210px;
+  max-height: 260px;
   overflow-y: auto;
 }
 .l5g-look-grid button {

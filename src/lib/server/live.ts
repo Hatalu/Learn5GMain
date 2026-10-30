@@ -360,6 +360,7 @@ export interface PlayerState {
     duration: number;
     goal: number;
     teams: number;
+    reset: number;
     startedAt: string | null;
     music: string;
     musicPlayers: boolean;
@@ -431,6 +432,7 @@ export async function playerState(db: SupabaseClient, room: RoomRow, p0: PlayerR
       duration: room.settings.duration,
       goal: room.settings.goal,
       teams: room.settings.teams,
+      reset: room.settings.reset,
       startedAt: room.started_at,
       music: room.settings.music,
       musicPlayers: room.settings.musicPlayers,

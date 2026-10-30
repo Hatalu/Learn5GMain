@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Check, CircleAlert, Clock3, Eye, Flag, Gamepad2, Users, Loader2, Monitor, MonitorPlay, Rocket, Shuffle, Smartphone, Sparkles } from 'lucide-react';
+import { ArrowLeft, Check, CircleAlert, Clock3, Eye, Flag, Gamepad2, Users, Loader2, Monitor, MonitorPlay, RefreshCw, Rocket, Shuffle, Smartphone, Sparkles } from 'lucide-react';
 import { PaperModal } from './PaperModal';
 import { MusicPicker } from './live/MusicPicker';
 import { ModeArt } from './games/ModeArt';
@@ -156,6 +156,7 @@ export function OpenGameModal({ gameId, title, username, onClose }: { gameId: st
   const [duration, setDuration] = useState(0);
   const [goal, setGoal] = useState(0);
   const [teams, setTeams] = useState(0);
+  const [reset, setReset] = useState(0);
   const [nick, setNick] = useState(cleanNickname(username) || 'เจ้าของห้อง');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -177,6 +178,7 @@ export function OpenGameModal({ gameId, title, username, onClose }: { gameId: st
     setDuration(m.defaultDuration || 0);
     setGoal(m.defaultGoal || 0);
     setTeams(0);
+    setReset(m.defaultReset || 0);
   };
 
   const open = async () => {
@@ -188,7 +190,7 @@ export function OpenGameModal({ gameId, title, username, onClose }: { gameId: st
       const r = await fetch('/api/live/rooms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gameId, game, mode, nickname: nick, settings: { shuffleQuestions, shuffleChoices, revealAnswer, music, musicPlayers, duration, goal, teams }, background: lastBackground() }),
+        body: JSON.stringify({ gameId, game, mode, nickname: nick, settings: { shuffleQuestions, shuffleChoices, revealAnswer, music, musicPlayers, duration, goal, teams, reset }, background: lastBackground() }),
       });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || 'เปิดห้องไม่สำเร็จ');
@@ -274,6 +276,20 @@ export function OpenGameModal({ gameId, title, username, onClose }: { gameId: st
                 {info.teams.map((t) => (
                   <button key={t} type="button" className="l5g-chipbtn" data-on={teams === t} onClick={() => (gsfx.tap(), setTeams(t))}>
                     {t ? `${t} ทีม` : 'ต่างคนต่างสี'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {info?.resets && (
+            <div className="mt-4">
+              <p className="l5g-qset-label flex items-center gap-1">
+                <RefreshCw className="w-4 h-4" /> ไข่ทุกไบโอมเกิดใหม่ทุก
+              </p>
+              <div className="l5g-chips">
+                {info.resets.map((r) => (
+                  <button key={r} type="button" className="l5g-chipbtn" data-on={reset === r} onClick={() => (gsfx.tap(), setReset(r))}>
+                    {fmtDuration(r)}
                   </button>
                 ))}
               </div>

@@ -5,27 +5,27 @@ import '../games-live.css';
 import '../brawl-fish.css';
 import '../world.css';
 import './egg.css';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Crown, Egg, Gauge, Hand, LogOut, Siren, Zap } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Backpack, Crown, Egg, Gauge, Hand, LogOut, RefreshCw, Siren, Weight, X, Zap } from 'lucide-react';
 import { QuestionDock } from '../QuestionPad';
 import { CoachArrow, DOCK_CHOICES, useCoach } from '../Coach';
 import type { GameProps } from '../types';
 import { gsfx } from '@/lib/game-creator/gsound';
 import type { LiveOutcome } from '@/lib/game-creator/live-client';
-import { EGG_SLOTS_RARITY, RARITY, SPEED_COST, pickEggType, takeWins } from '@/lib/game-creator/eggValues';
-import { TEAM_COLORS, TEAM_NAMES, fmtLeft, hashStr, ownerOf, rng, useMoveInput, useWorldNet, type NetMsg } from '../worldKit';
+import { BOSS_SPEED, EGG_BIOMES, EGG_SLOTS_RARITY, RARITY, SIZE_MAX, SIZE_MIN, SPEED_COST, eggEpoch, eggKg, pickEggType, takeWins } from '@/lib/game-creator/eggValues';
+import { TEAM_COLORS, TEAM_NAMES, avatarSprite, fmtLeft, hashStr, ownerOf, rng, useMoveInput, useWorldNet, type NetMsg } from '../worldKit';
 import { BIOMES } from './biomes';
-import { EggWorld, R_OUT, SAFE_R, SLOTS, WEDGE, biomeAt, bossHome, makeChar, poseBoss, poseChar, setBossAwake, setCarry, slotBias, slotPos, type CharRig } from './scene';
+import { petLook, type PetInfo } from './pets';
+import { EggArt, PetArt } from './PetArt';
+import { END_Z, EggWorld, HALF_W, SAFE_Z, SLOTS, bossHome, eggVisual, inSafe, makeChar, pickThemes, poseBoss, poseChar, setBossAwake, setCarry, setCharImage, setPet, slotLayout, tierAt, type CharRig } from './scene';
 
-const N_SLOTS = BIOMES.length * SLOTS;
+const N_SLOTS = EGG_BIOMES * SLOTS;
 const BASE_SPEED = 7.5;
-const SPEED_STEP = 1.0;
+const SPEED_STEP = 0.9;
 const CARRY_MUL = 0.82;
-const BOSS_SPEED = 7.1;
 const BOSS_WAKE_MS = 1000;
 const CATCH_R = 1.7;
-const STUN_MS = 1600;
-const RESPAWN_MS = 7000;
+const STUN_MS = 900;
 const HOLD_MAX_MS = 60000;
 const REACH = 2.4;
 
@@ -37,11 +37,19 @@ interface Slot {
   t: number;
   until: number;
 }
+interface Carry {
+  k: number;
+  ep: number;
+  gen: number;
+  tier: number;
+  type: number;
+  size: number;
+  kg: number;
+}
 interface Chase {
-  b: number;
+  tier: number;
   x: number;
   z: number;
-  yaw: number;
   st: 'wake' | 'chase' | 'return';
   at: number;
   speed: number;
@@ -52,9 +60,10 @@ interface Ghost {
   z: number;
   tx: number;
   tz: number;
-  yaw: number;
+  dx: number;
   moving: boolean;
   carry: string;
+  pet: string;
   q: boolean;
   score: number;
   boss: [number, number, number] | null;
@@ -64,53 +73,79 @@ interface Ghost {
 interface Bot {
   idx: number;
   name: string;
+  avatar: number;
   x: number;
   z: number;
-  yaw: number;
   tx: number;
   tz: number;
-  carry: number;
+  dx: number;
+  carry: Carry | null;
   score: number;
   next: number;
   rig: CharRig | null;
 }
+interface Hatch extends PetInfo {
+  at: number;
+}
 
-export function EggGame({ engine, deadline, sync, me, preview, onLeave, world: info, startScore = 0 }: GameProps) {
+export function EggGame({ engine, deadline, sync, me, preview, onLeave, world: info, startScore = 0, reset = 120, startedAt }: GameProps) {
   const host = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const now = useCallback(() => (info ? info.now() : Date.now()), [info]);
+  const t0 = useRef(startedAt || Date.now()).current;
   const myIdx = info ? Math.max(0, info.players.findIndex((p) => p.id === info.myId)) : 0;
   const teams = info?.teams || 0;
   const seed = useRef(hashStr(`${info?.roomId || 'preview'}:${info?.round || 0}`)).current;
+  const themes = useMemo(() => pickThemes(seed), [seed]);
   const colorOf = (idx: number) => TEAM_COLORS[info ? ownerOf(info, info.players[idx]?.id || '') : idx % TEAM_COLORS.length] || TEAM_COLORS[0];
+  const bots = useRef<Bot[]>([]);
   const nameOf = (idx: number) => info?.players[idx]?.nickname || bots.current.find((b) => b.idx === idx)?.name || 'เพื่อน';
+  const bagKey = `l5g_egg_bag_${info?.roomId || 'preview'}_${info?.round || 0}`;
 
-  /** ชนิดไข่ของช่องนี้ในรอบ gen (ทุกเครื่องคิดได้ตรงกันโดยไม่ต้องส่ง) */
-  const typeOf = useCallback(
-    (k: number, gen: number) => {
-      const r = rng(hashStr(`${seed}:${k}:${gen}`));
-      return pickEggType(slotBias(k % SLOTS, r()), r());
+  /** รอบไข่ปัจจุบัน (ทุกไบโอมเกิดใหม่เมื่อเปลี่ยนรอบ) */
+  const epNow = useCallback(() => eggEpoch(now(), t0, reset), [now, t0, reset]);
+  /** ไข่ช่อง k ของรอบ ep ครั้งที่ gen: ชนิด ขนาด น้ำหนัก (ทุกเครื่องคิดได้ตรงกัน) */
+  const eggOf = useCallback(
+    (k: number, ep: number, gen: number) => {
+      const r = rng(hashStr(`${seed}:${ep}:${k}:${gen}`));
+      const tier = Math.floor(k / SLOTS);
+      const type = pickEggType(r(), r());
+      const size = SIZE_MIN + r() * (SIZE_MAX - SIZE_MIN);
+      return { tier, type, size, kg: eggKg(tier, type, size), b: themes[tier] };
     },
-    [seed]
+    [seed, themes]
   );
 
+  const ep = useRef(epNow());
   const slots = useRef<Slot[]>(Array.from({ length: N_SLOTS }, () => ({ gen: 0, st: 'idle', by: -1, t: 0, until: 0 })));
+  const layout = useRef<{ ep: number; pos: { x: number; z: number }[] }>({ ep: -1, pos: [] });
   const ghosts = useRef(new Map<number, Ghost>());
-  const bots = useRef<Bot[]>([]);
   const worldRef = useRef<EggWorld | null>(null);
-  const shown = useRef(new Map<number, string>()); // ไข่ที่วาดอยู่ (key -> gen:type)
+  const shown = useRef(new Map<number, string>());
 
-  const spawn = (() => {
-    const a = rng(hashStr(`spawn:${myIdx}`))() * Math.PI * 2;
-    return { x: Math.cos(a) * 5, z: Math.sin(a) * 5 };
-  })();
-  const hero = useRef({ x: spawn.x, z: spawn.z, yaw: 0, moving: false, carry: -1, carryType: 0, stun: 0, answering: -1, speedLv: 0, holdAt: 0 });
+  const spawnX = (rng(hashStr(`spawn:${myIdx}`))() * 2 - 1) * 8;
+  const hero = useRef({ x: spawnX, z: SAFE_Z * 0.3, dx: 0, moving: false, carry: null as Carry | null, stun: 0, answering: -1, speedLv: 0, holdAt: 0 });
   const chase = useRef<Chase | null>(null);
   const score = useRef(Math.max(0, startScore));
   const coins = useRef(Math.max(0, startScore));
   const stats = useRef({ eggs: 0, rare: 0, caught: 0 });
 
-  const [hud, setHud] = useState({ score: score.current, coins: coins.current, left: 0, near: -1, nearSt: 'none' as 'none' | 'ok' | 'held' | 'busy', inSafe: true, carry: -1, chased: false, stun: 0, lv: 0, biome: -1 });
+  const [bag, setBag] = useState<PetInfo[]>(() => {
+    try {
+      const v = JSON.parse(sessionStorage.getItem(bagKey) || '[]');
+      return Array.isArray(v) ? v.filter((p) => Number.isInteger(p?.b) && Number.isInteger(p?.t) && Number(p?.kg) > 0).slice(0, 300) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [held, setHeld] = useState(-1);
+  const heldRef = useRef<PetInfo | null>(null);
+  heldRef.current = held >= 0 ? bag[held] || null : null;
+  const [bagOpen, setBagOpen] = useState(false);
+  const [hatch, setHatch] = useState<Hatch | null>(null);
+  const [hatchPhase, setHatchPhase] = useState(0);
+
+  const [hud, setHud] = useState({ score: score.current, coins: coins.current, left: 0, resetLeft: 0, near: -1, nearSt: 'none' as 'none' | 'ok' | 'held' | 'busy', safe: true, carry: false, chased: false, stun: 0, lv: 0, tier: -1 });
   const [board, setBoard] = useState<{ name: string; v: number; me: boolean; color: string }[]>([]);
   const [over, setOver] = useState(false);
   const [answering, setAnswering] = useState(-1);
@@ -121,31 +156,46 @@ export function EggGame({ engine, deadline, sync, me, preview, onLeave, world: i
   const say = (text: string, kind: 'ok' | 'bad' | 'wave') => setBanner({ text, kind, at: Date.now() });
   const { joy, handlers, dir } = useMoveInput(!over);
 
-  const carrying = hud.carry >= 0;
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(bagKey, JSON.stringify(bag));
+    } catch {
+      /* ignore */
+    }
+  }, [bag, bagKey]);
+
   const coach = useCoach(
     [
-      { id: 'move', target: '.eg-stage', text: 'ลากนิ้วบนจอ หรือกดลูกศร วิ่งไปหาไข่' },
-      { id: 'steal', target: '.eg-steal', text: 'ถึงไข่แล้ว กดขโมย!', when: () => hud.nearSt === 'ok', doneIf: () => answering >= 0 || carrying },
-      { id: 'answer', target: DOCK_CHOICES, text: 'เลือกตัวเลือก ตอบถูกได้ไข่', when: () => answering >= 0, doneIf: () => carrying },
-      { id: 'run', target: '.eg-home', text: 'บอสตื่นแล้ว! วิ่งกลับฐานสีเขียว', when: () => carrying },
-      { id: 'speed', target: '.eg-speed', text: 'ใช้เหรียญอัปความเร็ววิ่ง', when: () => hud.inSafe && hud.coins >= SPEED_COST[hud.lv], optional: true },
+      { id: 'move', target: '.eg-stage', text: 'ลากนิ้วบนจอ หรือกดลูกศร วิ่งขึ้นไปหาไข่' },
+      { id: 'steal', target: '.eg-steal', text: 'ถึงไข่แล้ว กดขโมย!', when: () => hud.nearSt === 'ok', doneIf: () => answering >= 0 || hud.carry },
+      { id: 'answer', target: DOCK_CHOICES, text: 'เลือกตัวเลือก ตอบถูกได้ไข่', when: () => answering >= 0, doneIf: () => hud.carry },
+      { id: 'run', target: '.eg-home', text: 'บอสตื่นแล้ว! วิ่งลงกลับฐาน', when: () => hud.carry },
+      { id: 'bag', target: '.eg-bagbtn', text: 'ดูสัตว์ที่ฟักได้ในกระเป๋า', when: () => bag.length > 0 && !hatch, optional: true },
     ],
     { loops: 1, active: !over }
   );
 
-  /* ---------- สถานะช่องไข่ (กติกาเดียวกันทุกเครื่อง) ---------- */
+  /* ---------- รอบไข่ + สถานะช่อง (กติกาเดียวกันทุกเครื่อง) ---------- */
   const tickSlots = useCallback(() => {
+    const e = epNow();
+    if (e !== ep.current) {
+      ep.current = e;
+      slots.current.forEach((s) => Object.assign(s, { gen: 0, st: 'idle', by: -1, t: 0, until: 0 }));
+      if (hero.current.answering >= 0) {
+        hero.current.answering = -1;
+        setAnswering(-1);
+      }
+      setBanner({ text: 'ไข่ทุกไบโอมเกิดใหม่แล้ว!', kind: 'wave', at: Date.now() });
+      gsfx.levelUp();
+    }
     const t = now();
     slots.current.forEach((s) => {
-      if (s.st === 'gone' && t > s.until) Object.assign(s, { st: 'idle', by: -1, gen: s.gen + 1 });
-      else if (s.st === 'held' && t > s.until) Object.assign(s, { st: 'idle', by: -1 });
+      if (s.st === 'held' && t > s.until) Object.assign(s, { st: 'idle', by: -1 });
     });
-  }, [now]);
+  }, [now, epNow]);
 
-  /* ---------- ไข่ที่ถือหลุดมือ (โดนแย่ง/โดนจับ) ---------- */
   const dropMine = useCallback((why: string, kind: 'bad' | 'wave' = 'bad') => {
-    const h = hero.current;
-    h.carry = -1;
+    hero.current.carry = null;
     if (chase.current) chase.current.st = 'return';
     say(why, kind);
   }, []);
@@ -153,12 +203,13 @@ export function EggGame({ engine, deadline, sync, me, preview, onLeave, world: i
 
   /** ช่อง k ถูกคนลำดับ i ขโมยตอนเวลา t (ใครเวลาน้อยกว่าได้ไป) */
   const applyTake = useCallback(
-    (k: number, gen: number, i: number, t: number) => {
+    (k: number, e: number, gen: number, i: number, t: number) => {
       const s = slots.current[k];
-      if (!s || s.gen !== gen || s.st === 'gone') return;
+      if (!s || e !== ep.current || s.gen !== gen || s.st === 'gone') return;
       if (s.st === 'held' && s.by !== i) {
         if (!takeWins(t, i, s.t, s.by)) return;
-        if (s.by === myIdx && hero.current.carry === k) dropMine(`ไข่ของคุณถูก ${i === myIdx ? 'คุณ' : nameOf(i)} ขโมยไปได้ก่อน`);
+        const c = hero.current.carry;
+        if (s.by === myIdx && c && c.k === k && c.ep === e) dropMine(`ไข่ของคุณถูก ${nameOf(i)} ขโมยไปได้ก่อน`);
       }
       Object.assign(s, { st: 'held', by: i, t, until: t + HOLD_MAX_MS });
       if (i !== myIdx && hero.current.answering === k) cancelAnswer.current(`ไข่ของคุณถูก ${nameOf(i)} ขโมยไปได้ก่อน`);
@@ -175,29 +226,40 @@ export function EggGame({ engine, deadline, sync, me, preview, onLeave, world: i
     if (!Number.isInteger(i) || i < 0 || i === myIdx) return;
     const t = Number(p.t) || now();
     tickSlots();
+    const e = Number(p.ep);
     if (m.e === 'pos') {
-      const clamp = (v: unknown) => Math.max(-R_OUT, Math.min(R_OUT, Number(v) || 0));
+      const cx = (v: unknown) => Math.max(-HALF_W, Math.min(HALF_W, Number(v) || 0));
+      const cz = (v: unknown) => Math.max(END_Z, Math.min(SAFE_Z, Number(v) || 0));
       const g = ghosts.current.get(i);
-      const bs = Array.isArray(p.b) && p.b.length === 3 ? ([Number(p.b[0]), clamp(p.b[1]), clamp(p.b[2])] as [number, number, number]) : null;
-      const patch = { tx: clamp(p.x), tz: clamp(p.z), yaw: Number(p.y) || 0, carry: typeof p.c === 'string' ? p.c.slice(0, 8) : '', q: p.q === 1, score: Math.max(0, Number(p.g) || 0), boss: bs && bs[0] >= 0 && bs[0] < BIOMES.length ? bs : null, seen: Date.now() };
+      const bs = Array.isArray(p.b) && p.b.length === 3 ? ([Number(p.b[0]), cx(p.b[1]), cz(p.b[2])] as [number, number, number]) : null;
+      const patch = {
+        tx: cx(p.x),
+        tz: cz(p.z),
+        carry: typeof p.c === 'string' ? p.c.slice(0, 20) : '',
+        pet: typeof p.p === 'string' ? p.p.slice(0, 20) : '',
+        q: p.q === 1,
+        score: Math.max(0, Number(p.g) || 0),
+        boss: bs && bs[0] >= 0 && bs[0] < EGG_BIOMES ? bs : null,
+        seen: Date.now(),
+      };
       if (g) Object.assign(g, patch);
-      else ghosts.current.set(i, { idx: i, x: patch.tx, z: patch.tz, moving: false, rig: null, ...patch });
+      else ghosts.current.set(i, { idx: i, x: patch.tx, z: patch.tz, dx: 0, moving: false, rig: null, ...patch });
     } else if (m.e === 'take') {
-      applyTake(Number(p.k), Number(p.gen), i, t);
+      applyTake(Number(p.k), e, Number(p.gen), i, t);
     } else if (m.e === 'back') {
       const s = slots.current[Number(p.k)];
-      if (s && s.gen === Number(p.gen) && s.st === 'held' && s.by === i) Object.assign(s, { st: 'idle', by: -1 });
+      if (s && e === ep.current && s.gen === Number(p.gen) && s.st === 'held' && s.by === i) Object.assign(s, { st: 'idle', by: -1 });
     } else if (m.e === 'dep') {
       const k = Number(p.k);
       const s = slots.current[k];
-      if (!s || s.gen !== Number(p.gen)) return;
-      Object.assign(s, { st: 'gone', by: i, t, until: t + RESPAWN_MS });
-      worldRef.current?.addToNest(Math.floor(k / SLOTS), typeOf(k, s.gen));
+      if (s && e === ep.current && s.gen === Number(p.gen)) Object.assign(s, { st: 'gone', by: i, t, until: 0 });
+      const eg = eggOf(k, e, Number(p.gen));
+      if (Number.isInteger(k) && k >= 0 && k < N_SLOTS) worldRef.current?.addToNest(eg.b, eg.type, eg.kg);
     } else if (m.e === 'hello') {
       const alive = [myIdx, ...Array.from(ghosts.current.keys())].filter((x) => x !== i);
       if (Math.min(...alive) !== myIdx) return;
-      setTimeout(() => net.send('snap', { i: myIdx, s: slots.current.map((s) => [s.gen, s.st, s.by, s.t, s.until]) }), 150 + Math.random() * 300);
-    } else if (m.e === 'snap' && !snapDone.current) {
+      setTimeout(() => net.send('snap', { i: myIdx, ep: ep.current, s: slots.current.map((s) => [s.gen, s.st, s.by, s.t, s.until]) }), 150 + Math.random() * 300);
+    } else if (m.e === 'snap' && !snapDone.current && e === ep.current) {
       snapDone.current = true;
       const rows = Array.isArray(p.s) ? p.s : [];
       rows.slice(0, N_SLOTS).forEach((row, k) => {
@@ -218,22 +280,22 @@ export function EggGame({ engine, deadline, sync, me, preview, onLeave, world: i
   /* ---------- ทดลองเล่น: เพื่อนจำลอง 2 คน ---------- */
   useEffect(() => {
     if (info) return;
-    bots.current = [1, 2].map((idx) => ({ idx, name: `เพื่อนจำลอง ${idx}`, x: idx * 3, z: -3, yaw: 0, tx: 0, tz: 0, carry: -1, score: 0, next: Date.now() + 6000 + idx * 5000, rig: null }));
+    bots.current = [1, 2].map((idx) => ({ idx, name: `เพื่อนจำลอง ${idx}`, avatar: idx === 1 ? 3 : 7, x: idx * 4 - 6, z: SAFE_Z * 0.5, tx: 0, tz: 5, dx: 0, carry: null, score: 0, next: Date.now() + 5000 + idx * 6000, rig: null }));
   }, [info]);
 
   /* ---------- ขโมยไข่ ---------- */
   const nearSlot = () => {
     const h = hero.current;
+    const tier = tierAt(h.z);
+    if (tier < 0 || layout.current.ep !== ep.current) return -1;
     let best = -1;
     let bd = REACH;
-    const b = biomeAt(h.x, h.z);
-    if (b < 0) return -1;
-    for (let kk = 0; kk < SLOTS; kk++) {
-      const p = slotPos(b, kk);
+    for (let k = tier * SLOTS; k < (tier + 1) * SLOTS; k++) {
+      const p = layout.current.pos[k];
       const d = Math.hypot(p.x - h.x, p.z - h.z);
       if (d < bd) {
         bd = d;
-        best = b * SLOTS + kk;
+        best = k;
       }
     }
     return best;
@@ -241,12 +303,12 @@ export function EggGame({ engine, deadline, sync, me, preview, onLeave, world: i
 
   const steal = useCallback(() => {
     const h = hero.current;
-    if (over || h.answering >= 0 || h.carry >= 0 || h.stun > Date.now()) return;
+    if (over || h.answering >= 0 || h.carry || h.stun > Date.now()) return;
     tickSlots();
     const k = nearSlot();
     if (k < 0) return;
     const s = slots.current[k];
-    if (s.st !== 'idle') return say(s.st === 'held' ? 'มีคนถือไข่ใบนี้ไปแล้ว' : 'ไข่ใบนี้ถูกขโมยไปแล้ว รอไข่ใหม่นะ', 'bad');
+    if (s.st !== 'idle') return say(s.st === 'held' ? 'มีคนถือไข่ใบนี้ไปแล้ว' : 'ไข่ใบนี้ถูกขโมยไปแล้ว รอรอบไข่ใหม่นะ', 'bad');
     h.answering = k;
     setAnswering(k);
     gsfx.door();
@@ -254,18 +316,19 @@ export function EggGame({ engine, deadline, sync, me, preview, onLeave, world: i
     // ทดลองเล่น: บางทีเพื่อนจำลองแย่งตอบถูกก่อน (ให้เห็นว่ามีคนแข่ง)
     if (!info && Math.random() < 0.3) {
       const gen = s.gen;
+      const e = ep.current;
       setTimeout(() => {
-        if (hero.current.answering !== k || slots.current[k].gen !== gen || slots.current[k].st !== 'idle') return;
+        if (hero.current.answering !== k || ep.current !== e || slots.current[k].gen !== gen || slots.current[k].st !== 'idle') return;
         const bot = bots.current[0];
-        applyTake(k, gen, bot.idx, now());
-        bot.carry = k;
-        const p = slotPos(Math.floor(k / SLOTS), k % SLOTS);
+        applyTake(k, e, gen, bot.idx, now());
+        bot.carry = { k, ep: e, gen, ...eggOf(k, e, gen) };
+        const p = layout.current.pos[k];
         bot.x = p.x + 1.2;
         bot.z = p.z;
       }, 5000);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [over, tickSlots, coach, info, applyTake, now]);
+  }, [over, tickSlots, coach, info, applyTake, now, eggOf]);
 
   const stopAnswer = useCallback(() => {
     hero.current.answering = -1;
@@ -278,12 +341,11 @@ export function EggGame({ engine, deadline, sync, me, preview, onLeave, world: i
     say(why, 'bad');
   };
 
-  const wakeBoss = (k: number, type: number) => {
-    const b = Math.floor(k / SLOTS);
-    const home = bossHome(b);
+  const wakeBoss = (c: Carry) => {
+    const home = bossHome(c.tier);
     const prev = chase.current;
-    const start = prev && prev.b === b ? { x: prev.x, z: prev.z } : home;
-    chase.current = { b, x: start.x, z: start.z, yaw: 0, st: 'wake', at: Date.now(), speed: BOSS_SPEED * RARITY[EGG_SLOTS_RARITY[type]].bossBoost };
+    const start = prev && prev.tier === c.tier ? { x: prev.x, z: prev.z } : home;
+    chase.current = { tier: c.tier, x: start.x, z: start.z, st: 'wake', at: Date.now(), speed: BOSS_SPEED[c.tier] * RARITY[EGG_SLOTS_RARITY[c.type]].bossBoost };
     gsfx.siren();
     setRunAlert(Date.now());
   };
@@ -300,39 +362,39 @@ export function EggGame({ engine, deadline, sync, me, preview, onLeave, world: i
       }
       tickSlots();
       const s = slots.current[k];
+      if (h.answering !== k) return;
       if (s.st !== 'idle') {
         stopAnswer();
         return say(s.by >= 0 && s.by !== myIdx ? `ไข่ของคุณถูก ${nameOf(s.by)} ขโมยไปได้ก่อน` : 'ไข่ใบนี้หายไปแล้ว', 'bad');
       }
       const t = now();
+      const e = ep.current;
       Object.assign(s, { st: 'held', by: myIdx, t, until: t + HOLD_MAX_MS });
-      net.send('take', { k, gen: s.gen, i: myIdx, t });
-      h.carry = k;
-      h.carryType = typeOf(k, s.gen);
+      net.send('take', { k, ep: e, gen: s.gen, i: myIdx, t });
+      const c: Carry = { k, ep: e, gen: s.gen, ...eggOf(k, e, s.gen) };
+      h.carry = c;
       h.holdAt = Date.now();
       gsfx.cash();
-      const rar = EGG_SLOTS_RARITY[h.carryType];
-      say(`ได้${BIOMES[Math.floor(k / SLOTS)].eggs[h.carryType].name} (${RARITY[rar].name})!`, 'ok');
+      say(`ได้${BIOMES[themes[c.tier]].eggs[c.type].name} (${RARITY[EGG_SLOTS_RARITY[c.type]].name})!`, 'ok');
       setTimeout(() => {
         stopAnswer();
-        if (hero.current.carry === k) wakeBoss(k, h.carryType);
+        if (hero.current.carry === c) wakeBoss(c);
       }, 700);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [now, myIdx, net, stopAnswer, tickSlots, typeOf]
+    [now, myIdx, net, stopAnswer, tickSlots, eggOf, themes]
   );
 
   const buySpeed = useCallback(() => {
     const h = hero.current;
     const cost = SPEED_COST[h.speedLv];
     if (cost === undefined || coins.current < cost) return;
-    if (Math.hypot(h.x, h.z) > SAFE_R) return say('อัปความเร็วได้ในฐานปลอดภัยเท่านั้น', 'bad');
+    if (!inSafe(h.z)) return say('อัปความเร็วได้ในฐานปลอดภัยเท่านั้น', 'bad');
     coins.current -= cost;
     h.speedLv++;
     gsfx.levelUp();
     say(`ความเร็ววิ่ง Lv ${h.speedLv}!`, 'ok');
-    coach.hit('speed');
-  }, [coach]);
+  }, []);
 
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
@@ -343,10 +405,28 @@ export function EggGame({ engine, deadline, sync, me, preview, onLeave, world: i
         steal();
       }
       if (e.key === 'q' || e.key === 'Q') buySpeed();
+      if (e.key === 'b' || e.key === 'B') setBagOpen((v) => !v);
     };
     window.addEventListener('keydown', k);
     return () => window.removeEventListener('keydown', k);
   }, [steal, buySpeed]);
+
+  /* ---------- ฟักไข่ ---------- */
+  const startHatch = useCallback((p: PetInfo) => {
+    setHatch({ ...p, at: Date.now() });
+    setHatchPhase(0);
+  }, []);
+  useEffect(() => {
+    if (!hatch) return;
+    const a = setTimeout(() => (setHatchPhase(1), gsfx.tap()), 700);
+    const b = setTimeout(() => (setHatchPhase(2), gsfx.fanfare()), 1300);
+    const c = setTimeout(() => setHatch(null), 4600);
+    return () => {
+      clearTimeout(a);
+      clearTimeout(b);
+      clearTimeout(c);
+    };
+  }, [hatch]);
 
   /* ---------- ส่งคะแนน ---------- */
   const synced = useRef(-1);
@@ -365,13 +445,13 @@ export function EggGame({ engine, deadline, sync, me, preview, onLeave, world: i
     if (over || !host.current) return;
     let w: EggWorld;
     try {
-      w = new EggWorld(host.current, seed);
+      w = new EggWorld(host.current, seed, themes);
     } catch {
       setFailed3d(true);
       return;
     }
     worldRef.current = w;
-    const meRig = makeChar(colorOf(myIdx), me.nickname, true);
+    const meRig = makeChar(me.nickname, true);
     w.scene.add(meRig.root);
     let raf = 0;
     let last = performance.now();
@@ -379,10 +459,10 @@ export function EggGame({ engine, deadline, sync, me, preview, onLeave, world: i
     let sendAt = 0;
     let beatAt = 0;
     let lastKey = '';
-    let camAng = -Math.PI / 2;
+    const noop = () => undefined;
 
-    // ชนต้นไม้/หิน: ดันออกตามแนวรัศมี จะได้ไถลผ่านไม่ติดค้าง
-    const moveTo = (o: { x: number; z: number }, nx: number, nz: number) => {
+    const clampPos = (o: { x: number; z: number }, nx: number, nz: number) => {
+      // ชนต้นไม้/หิน: ดันออกตามแนวรัศมี จะได้ไถลผ่านไม่ติดค้าง
       for (const ob of w.obstacles) {
         const dx = nx - ob.x;
         const dz = nz - ob.z;
@@ -393,25 +473,52 @@ export function EggGame({ engine, deadline, sync, me, preview, onLeave, world: i
           nz = ob.z + (dz / d) * min;
         }
       }
-      const r = Math.hypot(nx, nz);
-      const max = R_OUT - 1.5;
-      o.x = r > max ? (nx / r) * max : nx;
-      o.z = r > max ? (nz / r) * max : nz;
+      o.x = Math.max(-HALF_W + 0.8, Math.min(HALF_W - 0.8, nx));
+      o.z = Math.max(END_Z + 1, Math.min(SAFE_Z - 1, nz));
     };
 
     const syncEggs = () => {
+      if (layout.current.ep !== ep.current) {
+        layout.current = { ep: ep.current, pos: slotLayout(seed, ep.current, w.obstacles) };
+        shown.current.clear();
+        for (let k = 0; k < N_SLOTS; k++) w.setEgg(k, { x: 0, z: 0 }, 0, null);
+      }
       slots.current.forEach((s, k) => {
-        const want = s.st === 'idle' ? `${s.gen}:${typeOf(k, s.gen)}` : '';
+        const want = s.st === 'idle' ? `${ep.current}:${s.gen}` : '';
         if (shown.current.get(k) === want) return;
         shown.current.set(k, want);
-        w.setEgg(k, Math.floor(k / SLOTS), want ? typeOf(k, s.gen) : null);
+        const eg = eggOf(k, ep.current, s.gen);
+        w.setEgg(k, layout.current.pos[k], eg.tier, want ? eg.type : null, eg.size);
       });
     };
 
     const ghostRig = (idx: number) => {
-      const r = makeChar(colorOf(idx), nameOf(idx), false);
+      const r = makeChar(nameOf(idx), false);
       w.scene.add(r.root);
       return r;
+    };
+    const parse = (str: string) => (str ? str.split(':').map(Number) : []);
+
+    const deposit = (c: Carry, who: 'me' | Bot) => {
+      const s = slots.current[c.k];
+      const tt = now();
+      if (c.ep === ep.current && s.gen === c.gen && s.st === 'held') Object.assign(s, { st: 'gone', t: tt, until: 0 });
+      w.addToNest(themes[c.tier], c.type, c.kg);
+      if (who !== 'me') {
+        who.score += c.kg;
+        return;
+      }
+      if (c.ep === ep.current) net.send('dep', { k: c.k, ep: c.ep, gen: c.gen, i: myIdx, t: tt });
+      score.current += c.kg;
+      coins.current += c.kg;
+      stats.current.eggs++;
+      if (EGG_SLOTS_RARITY[c.type] !== 'common') stats.current.rare++;
+      const pet = { b: themes[c.tier], t: c.type, kg: c.kg };
+      setBag((b) => [pet, ...b].slice(0, 300));
+      setHeld((x) => (x >= 0 ? x + 1 : x));
+      startHatch(pet);
+      coach.hit('run');
+      doSync();
     };
 
     const step = (dt: number, t: number) => {
@@ -421,87 +528,55 @@ export function EggGame({ engine, deadline, sync, me, preview, onLeave, world: i
       const stunned = h.stun > tnow;
       const d = h.answering >= 0 || stunned ? { x: 0, y: 0 } : dir();
       h.moving = Math.abs(d.x) + Math.abs(d.y) > 0.05;
-      const sp = (BASE_SPEED + h.speedLv * SPEED_STEP) * (h.carry >= 0 ? CARRY_MUL : 1);
-      // กล้องหันตามไบโอม: ขึ้นจอ = ออกไปทางบอส
-      const bNow = biomeAt(h.x, h.z);
-      if (bNow >= 0) {
-        const want = bNow * WEDGE + WEDGE / 2;
-        let da = want - camAng;
-        da = Math.atan2(Math.sin(da), Math.cos(da));
-        camAng += da * Math.min(1, dt * 2.5);
-      }
-      if (h.moving) {
-        const fx = Math.cos(camAng);
-        const fz = Math.sin(camAng);
-        const mx = -fz * d.x - fx * d.y;
-        const mz = fx * d.x - fz * d.y;
-        moveTo(h, h.x + mx * sp * dt, h.z + mz * sp * dt);
-        h.yaw = Math.atan2(mx, mz);
-      }
-      const inSafe = Math.hypot(h.x, h.z) < SAFE_R;
+      h.dx = d.x;
+      const sp = (BASE_SPEED + h.speedLv * SPEED_STEP) * (h.carry ? CARRY_MUL : 1);
+      if (h.moving) clampPos(h, h.x + d.x * sp * dt, h.z + d.y * sp * dt);
+      const safe = inSafe(h.z);
 
-      // พาไข่ถึงฐาน
-      if (h.carry >= 0 && inSafe) {
-        const k = h.carry;
-        const s = slots.current[k];
-        const rar = EGG_SLOTS_RARITY[h.carryType];
-        const v = RARITY[rar].value;
-        score.current += v;
-        coins.current += v;
-        stats.current.eggs++;
-        if (rar !== 'common') stats.current.rare++;
-        const tt = now();
-        if (s.st === 'held' && s.by === myIdx) {
-          Object.assign(s, { st: 'gone', by: myIdx, t: tt, until: tt + RESPAWN_MS });
-          net.send('dep', { k, gen: s.gen, i: myIdx, t: tt });
-        }
-        w.addToNest(Math.floor(k / SLOTS), h.carryType);
-        h.carry = -1;
+      // พาไข่ถึงฐาน = ฟักไข่
+      if (h.carry && safe) {
+        const c = h.carry;
+        h.carry = null;
         if (chase.current) chase.current.st = 'return';
-        gsfx.fanfare();
-        say(`ถึงฐานแล้ว! +${v} คะแนน`, 'ok');
-        coach.hit('run');
-        doSync();
+        deposit(c, 'me');
       }
-      // ถือนานเกิน: ไข่กลับรังเอง
-      if (h.carry >= 0 && tnow - h.holdAt > HOLD_MAX_MS - 1000) {
-        const s = slots.current[h.carry];
-        net.send('back', { k: h.carry, gen: s.gen, i: myIdx });
-        if (s.st === 'held' && s.by === myIdx) Object.assign(s, { st: 'idle', by: -1 });
-        dropMine('ไข่กลับรังบอสไปแล้ว ลองใหม่นะ', 'wave');
+      // ถือนานเกิน: ไข่กลับที่เดิม
+      if (h.carry && tnow - h.holdAt > HOLD_MAX_MS - 1000) {
+        const c = h.carry;
+        if (c.ep === ep.current) {
+          net.send('back', { k: c.k, ep: c.ep, gen: c.gen, i: myIdx });
+          const s = slots.current[c.k];
+          if (s.st === 'held' && s.by === myIdx) Object.assign(s, { st: 'idle', by: -1 });
+        }
+        dropMine('ไข่กลับที่เดิมแล้ว ลองใหม่นะ', 'wave');
       }
 
-      // บอสไล่ตาม (คิดในเครื่องของคนที่ถือไข่)
+      // บอสไล่ตาม (คิดในเครื่องของคนที่ถือไข่) เข้าฐานไม่ได้
       const c = chase.current;
       if (c) {
-        const home = bossHome(c.b);
+        const home = bossHome(c.tier);
         if (c.st === 'wake' && tnow - c.at > BOSS_WAKE_MS) c.st = 'chase';
         if (c.st === 'chase') {
-          if (h.carry < 0 || inSafe) c.st = 'return';
+          if (!h.carry || safe) c.st = 'return';
           else {
             const dx = h.x - c.x;
             const dz = h.z - c.z;
             const dd = Math.hypot(dx, dz) || 1;
             const v = Math.min(dd, c.speed * dt);
             c.x += (dx / dd) * v;
-            c.z += (dz / dd) * v;
-            // บอสเข้าฐานไม่ได้
-            const r = Math.hypot(c.x, c.z);
-            if (r < SAFE_R + 1) {
-              c.x *= (SAFE_R + 1) / r;
-              c.z *= (SAFE_R + 1) / r;
-            }
-            c.yaw = Math.atan2(dx, dz);
-            if (dd < CATCH_R) {
-              const s = slots.current[h.carry];
-              net.send('back', { k: h.carry, gen: s.gen, i: myIdx });
-              if (s.st === 'held' && s.by === myIdx) Object.assign(s, { st: 'idle', by: -1 });
+            c.z = Math.min(-0.8, c.z + (dz / dd) * v);
+            if (dd < CATCH_R && h.carry) {
+              const cc = h.carry;
+              if (cc.ep === ep.current) {
+                net.send('back', { k: cc.k, ep: cc.ep, gen: cc.gen, i: myIdx });
+                const s = slots.current[cc.k];
+                if (s.st === 'held' && s.by === myIdx) Object.assign(s, { st: 'idle', by: -1 });
+              }
               stats.current.caught++;
-              dropMine('โดนบอสจับ! ไข่หลุดกลับรังแล้ว');
+              dropMine('โดนบอสจับ! ไข่กลับไปที่เดิมแล้ว');
               h.stun = tnow + STUN_MS;
-              // กระเด็นไปทางฐาน
-              const hr = Math.hypot(h.x, h.z) || 1;
-              moveTo(h, h.x - (h.x / hr) * 5, h.z - (h.z / hr) * 5);
+              // กระเด็นออกจากบอสนิดหนึ่ง
+              clampPos(h, h.x + (dx / dd) * 3.5, h.z + (dz / dd) * 3.5);
               gsfx.hurt();
             }
           }
@@ -515,7 +590,6 @@ export function EggGame({ engine, deadline, sync, me, preview, onLeave, world: i
             const v = Math.min(dd, 6 * dt);
             c.x += (dx / dd) * v;
             c.z += (dz / dd) * v;
-            c.yaw = Math.atan2(dx, dz);
           }
         }
       }
@@ -533,50 +607,51 @@ export function EggGame({ engine, deadline, sync, me, preview, onLeave, world: i
         g.x += (g.tx - g.x) * k;
         g.z += (g.tz - g.z) * k;
         g.moving = Math.hypot(g.x - ox, g.z - oz) > 0.01;
+        g.dx = g.x - ox;
         if (!g.rig) g.rig = ghostRig(idx);
+        const pl = info?.players[idx];
+        if (pl && !g.rig.img) setCharImage(g.rig, avatarSprite(pl.avatar, pl.gear, noop));
         g.rig.root.position.set(g.x, 0, g.z);
-        g.rig.root.rotation.y = g.yaw;
-        const [cb, ct] = g.carry ? g.carry.split(':').map(Number) : [-1, 0];
-        setCarry(g.rig, cb >= 0 && cb < BIOMES.length && ct >= 0 && ct < 11 ? cb : -1, ct || 0);
+        const [cb, ct, cs] = parse(g.carry);
+        const okEgg = cb >= 0 && cb < BIOMES.length && ct >= 0 && ct < 11;
+        setCarry(g.rig, okEgg ? cb : -1, ct || 0, Math.min(2, cs || 1));
+        const [pb, pt, pk] = parse(g.pet);
+        setPet(g.rig, pb >= 0 && pb < BIOMES.length && pt >= 0 && pt < 11 ? pb : -1, pt || 0, Math.min(1000, pk || 1));
         g.rig.quiz.visible = g.q;
-        poseChar(g.rig, g.moving, t, false);
+        poseChar(g.rig, g.moving, t, false, g.dx * 30);
       });
 
-      // เพื่อนจำลอง
+      // เพื่อนจำลอง: วิ่งไปขโมยไข่ไบโอม 1-2 แล้วกลับฐาน
       for (const b of bots.current) {
         if (!b.rig) {
-          b.rig = makeChar(colorOf(b.idx), b.name, false);
+          b.rig = makeChar(b.name, false);
           w.scene.add(b.rig.root);
         }
-        if (b.carry >= 0) {
-          b.tx = 0;
-          b.tz = 0;
-          if (Math.hypot(b.x, b.z) < SAFE_R - 2) {
-            const s = slots.current[b.carry];
-            const tt = now();
-            b.score += RARITY[EGG_SLOTS_RARITY[typeOf(b.carry, s.gen)]].value;
-            w.addToNest(Math.floor(b.carry / SLOTS), typeOf(b.carry, s.gen));
-            Object.assign(s, { st: 'gone', by: b.idx, t: tt, until: tt + RESPAWN_MS });
-            b.carry = -1;
-            b.next = tnow + 9000 + Math.random() * 8000;
+        if (!b.rig.img) setCharImage(b.rig, avatarSprite(b.avatar, undefined, noop));
+        if (b.carry) {
+          b.tx = b.x * 0.5;
+          b.tz = SAFE_Z * 0.4;
+          if (inSafe(b.z)) {
+            deposit(b.carry, b);
+            b.carry = null;
+            b.next = tnow + 8000 + Math.random() * 8000;
           }
-        } else if (tnow > b.next) {
-          // ขโมยไข่ใบที่ว่างแบบสุ่ม (ไม่แตะใบที่เรากำลังตอบ)
-          const free = slots.current.map((s, k) => (s.st === 'idle' && k !== hero.current.answering && k % SLOTS < 2 ? k : -1)).filter((k) => k >= 0);
+        } else if (tnow > b.next && layout.current.ep === ep.current) {
+          const free = slots.current.map((s, k) => (s.st === 'idle' && k !== hero.current.answering && k < SLOTS * 2 ? k : -1)).filter((k) => k >= 0);
           if (free.length) {
-            const k = free[Math.floor(Math.random() * free.length)];
-            const p = slotPos(Math.floor(k / SLOTS), k % SLOTS);
+            const k = free[(b.idx * 7 + Math.floor(tnow / 20000)) % free.length];
+            const p = layout.current.pos[k];
             b.tx = p.x;
             b.tz = p.z;
             if (Math.hypot(b.x - p.x, b.z - p.z) < 1.5) {
-              applyTake(k, slots.current[k].gen, b.idx, now());
-              b.carry = k;
+              const s = slots.current[k];
+              applyTake(k, ep.current, s.gen, b.idx, now());
+              b.carry = { k, ep: ep.current, gen: s.gen, ...eggOf(k, ep.current, s.gen) };
             }
           }
         } else if (Math.hypot(b.tx - b.x, b.tz - b.z) < 1) {
-          const a = Math.random() * Math.PI * 2;
-          b.tx = Math.cos(a) * (SAFE_R - 3);
-          b.tz = Math.sin(a) * (SAFE_R - 3);
+          b.tx = (Math.random() * 2 - 1) * 12;
+          b.tz = 3 + Math.random() * (SAFE_Z - 6);
         }
         const dx = b.tx - b.x;
         const dz = b.tz - b.z;
@@ -586,37 +661,42 @@ export function EggGame({ engine, deadline, sync, me, preview, onLeave, world: i
           const v = Math.min(dd, 6 * dt);
           b.x += (dx / dd) * v;
           b.z += (dz / dd) * v;
-          b.yaw = Math.atan2(dx, dz);
         }
         b.rig.root.position.set(b.x, 0, b.z);
-        b.rig.root.rotation.y = b.yaw;
-        setCarry(b.rig, b.carry >= 0 ? Math.floor(b.carry / SLOTS) : -1, b.carry >= 0 ? typeOf(b.carry, slots.current[b.carry].gen) : 0);
-        poseChar(b.rig, moving, t, false);
+        setCarry(b.rig, b.carry ? themes[b.carry.tier] : -1, b.carry?.type || 0, b.carry ? eggVisual(b.carry.tier, b.carry.type, b.carry.size) : 1);
+        poseChar(b.rig, moving, t, false, dx);
       }
 
-      // วาดตัวเรา + บอส
+      // ตัวเรา
+      if (!meRig.img) setCharImage(meRig, avatarSprite(me.avatar, me.gear, noop));
       meRig.root.position.set(h.x, 0, h.z);
-      meRig.root.rotation.y = h.yaw;
-      setCarry(meRig, h.carry >= 0 ? Math.floor(h.carry / SLOTS) : -1, h.carryType);
+      setCarry(meRig, h.carry ? themes[h.carry.tier] : -1, h.carry?.type || 0, h.carry ? eggVisual(h.carry.tier, h.carry.type, h.carry.size) : 1);
+      const hp = heldRef.current;
+      setPet(meRig, hp ? hp.b : -1, hp?.t || 0, hp?.kg || 1);
       meRig.quiz.visible = h.answering >= 0;
-      poseChar(meRig, h.moving, t, stunned);
+      poseChar(meRig, h.moving, t, stunned, h.dx);
 
-      w.bosses.forEach((rig, b) => {
-        let pos: { x: number; z: number; yaw: number; awake: boolean; run: boolean } | null = null;
-        if (c && c.b === b) pos = { x: c.x, z: c.z, yaw: c.yaw, awake: true, run: c.st !== 'wake' };
+      // บอส: ของเรา > ที่เพื่อนส่งมา > นอนที่เดิม
+      w.bosses.forEach((rig, tier) => {
+        let pos: { x: number; z: number; run: boolean } | null = null;
+        if (c && c.tier === tier) pos = { x: c.x, z: c.z, run: c.st !== 'wake' };
         else
           for (const g of ghosts.current.values())
-            if (g.boss && g.boss[0] === b) {
-              pos = { x: g.boss[1], z: g.boss[2], yaw: Math.atan2(g.x - g.boss[1], g.z - g.boss[2]), awake: true, run: true };
+            if (g.boss && g.boss[0] === tier) {
+              pos = { x: g.boss[1], z: g.boss[2], run: true };
               break;
             }
         if (pos) {
-          rig.root.position.x += (pos.x - rig.root.position.x) * Math.min(1, dt * 14);
-          rig.root.position.z += (pos.z - rig.root.position.z) * Math.min(1, dt * 14);
-          rig.root.rotation.y = pos.yaw;
+          const ox = rig.root.position.x;
+          const oz = rig.root.position.z;
+          rig.root.position.x += (pos.x - ox) * Math.min(1, dt * 14);
+          rig.root.position.z += (pos.z - oz) * Math.min(1, dt * 14);
+          const mx = rig.root.position.x - ox;
+          const mz = rig.root.position.z - oz;
+          if (Math.hypot(mx, mz) > 0.001) rig.root.rotation.y = Math.atan2(mx, mz);
         } else {
           rig.root.position.set(rig.home.x, 0, rig.home.z);
-          rig.root.rotation.y = Math.atan2(-rig.home.x, -rig.home.z);
+          rig.root.rotation.y = 0;
         }
         setBossAwake(rig, !!pos);
         poseBoss(rig, t, !!pos?.run);
@@ -639,11 +719,14 @@ export function EggGame({ engine, deadline, sync, me, preview, onLeave, world: i
       const t = nowMs / 1000;
       step(dt, t);
       const h = hero.current;
-      w.render(h.x, h.z, camAng);
+      w.render(h.x, h.z);
 
       const c = chase.current;
-      const carryStr = h.carry >= 0 ? `${Math.floor(h.carry / SLOTS)}:${h.carryType}` : '';
-      const key = `${Math.round(h.x * 4)}:${Math.round(h.z * 4)}:${carryStr}:${h.answering >= 0 ? 1 : 0}:${score.current}:${c && c.st !== 'return' ? 1 : 0}`;
+      const cr = h.carry;
+      const carryStr = cr ? `${themes[cr.tier]}:${cr.type}:${eggVisual(cr.tier, cr.type, cr.size).toFixed(2)}` : '';
+      const hp = heldRef.current;
+      const petStr = hp ? `${hp.b}:${hp.t}:${hp.kg}` : '';
+      const key = `${Math.round(h.x * 4)}:${Math.round(h.z * 4)}:${carryStr}:${petStr}:${h.answering >= 0 ? 1 : 0}:${score.current}:${c ? 1 : 0}`;
       if (info && ((nowMs - sendAt > 120 && (key !== lastKey || c)) || nowMs - beatAt > 2000)) {
         sendAt = nowMs;
         beatAt = nowMs;
@@ -652,35 +735,37 @@ export function EggGame({ engine, deadline, sync, me, preview, onLeave, world: i
           i: myIdx,
           x: Math.round(h.x * 10) / 10,
           z: Math.round(h.z * 10) / 10,
-          y: Math.round(h.yaw * 100) / 100,
           c: carryStr,
+          p: petStr,
           q: h.answering >= 0 ? 1 : 0,
           g: score.current,
-          b: c ? [c.b, Math.round(c.x * 10) / 10, Math.round(c.z * 10) / 10] : null,
+          b: c ? [c.tier, Math.round(c.x * 10) / 10, Math.round(c.z * 10) / 10] : null,
         });
       }
 
       if (nowMs - hudAt > 150) {
         hudAt = nowMs;
         const tnow = Date.now();
-        const k = h.answering < 0 && h.carry < 0 ? nearSlot() : -1;
+        const k = h.answering < 0 && !h.carry ? nearSlot() : -1;
         let nearSt: typeof hud.nearSt = 'none';
         if (k >= 0) {
           const s = slots.current[k];
           nearSt = s.st === 'idle' ? 'ok' : s.st === 'held' ? 'held' : 'busy';
         }
+        const nextReset = t0 + (ep.current + 1) * reset * 1000;
         setHud({
           score: score.current,
           coins: coins.current,
           left: deadline ? deadline - tnow : 0,
+          resetLeft: nextReset - now(),
           near: k,
           nearSt,
-          inSafe: Math.hypot(h.x, h.z) < SAFE_R,
-          carry: h.carry,
-          chased: h.carry >= 0 && !!c && c.st !== 'return',
+          safe: inSafe(h.z),
+          carry: !!h.carry,
+          chased: !!h.carry && !!c && c.st !== 'return',
           stun: Math.max(0, h.stun - tnow),
           lv: h.speedLv,
-          biome: biomeAt(h.x, h.z),
+          tier: tierAt(h.z),
         });
         // Top 3 (ทีม = รวมคะแนนทั้งทีม)
         const rows = [
@@ -708,6 +793,7 @@ export function EggGame({ engine, deadline, sync, me, preview, onLeave, world: i
       cancelAnimationFrame(raf);
       clearInterval(sv);
       shown.current.clear();
+      layout.current = { ep: -1, pos: [] };
       ghosts.current.forEach((g) => (g.rig = null));
       bots.current.forEach((b) => (b.rig = null));
       worldRef.current = null;
@@ -738,13 +824,10 @@ export function EggGame({ engine, deadline, sync, me, preview, onLeave, world: i
     return () => clearInterval(iv);
   }, [coach]);
 
-  const nearEgg = hud.near >= 0 && slots.current[hud.near] ? (() => {
-    const s = slots.current[hud.near];
-    const type = typeOf(hud.near, s.gen);
-    return { name: BIOMES[Math.floor(hud.near / SLOTS)].eggs[type].name, rar: EGG_SLOTS_RARITY[type] };
-  })() : null;
+  const nearEgg = hud.near >= 0 && slots.current[hud.near] ? eggOf(hud.near, ep.current, slots.current[hud.near].gen) : null;
   const cost = SPEED_COST[hud.lv];
   const [top1, top2, top3] = board;
+  const totalKg = bag.reduce((a, p) => a + p.kg, 0);
   const TopPill = ({ r, rank }: { r?: { name: string; v: number; me: boolean; color: string }; rank: number }) =>
     r ? (
       <div className="eg-top" data-rank={rank} data-me={r.me} style={{ ['--tc' as string]: r.color }}>
@@ -756,6 +839,7 @@ export function EggGame({ engine, deadline, sync, me, preview, onLeave, world: i
     ) : (
       <div className="eg-top" data-rank={rank} data-empty="true" />
     );
+  const hatchLook = hatch ? petLook(hatch.b, hatch.t) : null;
 
   return (
     <div className="mb gm-root eg" ref={rootRef} data-over={over} data-dock={answering >= 0} data-chased={hud.chased}>
@@ -763,10 +847,13 @@ export function EggGame({ engine, deadline, sync, me, preview, onLeave, world: i
       <div className="gm-main">
         <div className="mb-hud">
           <span className="cf-chip eg-score">
-            <Egg size={18} /> <b>{hud.score.toLocaleString('th-TH')}</b> คะแนน
+            <Weight size={17} /> <b>{hud.score.toLocaleString('th-TH')}</b> คะแนน
           </span>
           <span className="cf-chip eg-coins" title="ใช้อัปความเร็ว">
-            <Zap size={16} /> {hud.coins.toLocaleString('th-TH')} เหรียญ
+            <Zap size={16} /> {hud.coins.toLocaleString('th-TH')}
+          </span>
+          <span className="cf-chip eg-reset" title="ไข่ทุกไบโอมเกิดใหม่">
+            <RefreshCw size={15} /> ไข่ใหม่ {fmtLeft(hud.resetLeft)}
           </span>
           <span className="flex-1" />
           {deadline && (
@@ -787,7 +874,11 @@ export function EggGame({ engine, deadline, sync, me, preview, onLeave, world: i
             <TopPill r={top3} rank={3} />
           </div>
 
-          {hud.biome >= 0 && !hud.chased && <div className="eg-biome" style={{ ['--bc' as string]: BIOMES[hud.biome].ground }}>{BIOMES[hud.biome].name}</div>}
+          {hud.tier >= 0 && !hud.chased && (
+            <div className="eg-biome" style={{ ['--bc' as string]: BIOMES[themes[hud.tier]].ground }}>
+              ไบโอม {hud.tier + 1} · {BIOMES[themes[hud.tier]].name}
+            </div>
+          )}
 
           {joy && (
             <div className="mb-joy" style={{ left: joy.ox, top: joy.oy }} aria-hidden="true">
@@ -796,26 +887,26 @@ export function EggGame({ engine, deadline, sync, me, preview, onLeave, world: i
           )}
 
           {nearEgg && answering < 0 && (
-            <button type="button" className="eg-steal" data-ui disabled={hud.nearSt !== 'ok' || hud.stun > 0} onClick={steal} style={{ ['--rc' as string]: RARITY[nearEgg.rar].color }}>
+            <button type="button" className="eg-steal" data-ui disabled={hud.nearSt !== 'ok' || hud.stun > 0} onClick={steal} style={{ ['--rc' as string]: RARITY[EGG_SLOTS_RARITY[nearEgg.type]].color }}>
               <Hand className="w-5 h-5" />
               <span>
-                <b>{hud.nearSt === 'ok' ? 'ขโมยไข่!' : hud.nearSt === 'held' ? 'มีคนถือไปแล้ว' : 'รอไข่ใหม่'}</b>
+                <b>{hud.nearSt === 'ok' ? 'ขโมยไข่!' : hud.nearSt === 'held' ? 'มีคนถือไปแล้ว' : 'รอรอบไข่ใหม่'}</b>
                 <small>
-                  {nearEgg.name} · {RARITY[nearEgg.rar].name}
+                  {BIOMES[nearEgg.b].eggs[nearEgg.type].name} · {RARITY[EGG_SLOTS_RARITY[nearEgg.type]].name} · ~{nearEgg.kg} kg
                 </small>
               </span>
             </button>
           )}
 
-          {carrying && (
+          {hud.carry && (
             <div className="eg-home" data-ui>
-              <Siren className="w-5 h-5" /> วิ่งกลับฐานสีเขียว!
+              <Siren className="w-5 h-5" /> วิ่งลงกลับฐานสีเขียว!
             </div>
           )}
 
           {hud.stun > 0 && (
             <div className="ti-status" data-kind="dizzy">
-              โดนบอสจับ!<small>ลุกได้ใน {Math.ceil(hud.stun / 1000)}</small>
+              โดนบอสจับ!
             </div>
           )}
 
@@ -831,16 +922,88 @@ export function EggGame({ engine, deadline, sync, me, preview, onLeave, world: i
               {banner.text}
             </div>
           )}
+
+          {hatch && hatchLook && (
+            <button type="button" className="eg-hatch" data-ui data-phase={hatchPhase} onClick={() => setHatch(null)} style={{ ['--rc' as string]: RARITY[hatchLook.rarity].color }} key={hatch.at}>
+              <span className="eg-hatch-card">
+                <em>ฟักไข่!</em>
+                <span className="eg-hatch-stage">
+                  {hatchPhase < 2 ? (
+                    <span className="eg-hatch-egg">
+                      <EggArt b={hatch.b} t={hatch.t} size={96} crack={hatchPhase} />
+                    </span>
+                  ) : (
+                    <span className="eg-hatch-pet">
+                      <PetArt b={hatch.b} t={hatch.t} size={130} />
+                    </span>
+                  )}
+                </span>
+                {hatchPhase >= 2 && (
+                  <span className="eg-hatch-info">
+                    <b>{hatchLook.name}</b>
+                    <span className="eg-rar" style={{ ['--rc' as string]: RARITY[hatchLook.rarity].color }}>
+                      {RARITY[hatchLook.rarity].name}
+                    </span>
+                    <span className="eg-hatch-kg">
+                      {hatch.kg.toLocaleString('th-TH')} kg · +{hatch.kg.toLocaleString('th-TH')} คะแนน
+                    </span>
+                  </span>
+                )}
+              </span>
+            </button>
+          )}
+
+          {bagOpen && (
+            <div className="eg-bag" data-ui>
+              <div className="eg-bag-head">
+                <Backpack className="w-5 h-5" />
+                <b>กระเป๋าสัตว์ ({bag.length})</b>
+                <span className="flex-1" />
+                <span className="eg-bag-total">
+                  แต้มรวม <b>{totalKg.toLocaleString('th-TH')}</b>
+                </span>
+                <button type="button" className="eg-bag-x" onClick={() => setBagOpen(false)} aria-label="ปิดกระเป๋า">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              {bag.length ? (
+                <div className="eg-bag-grid">
+                  {bag.map((p, i) => {
+                    const l = petLook(p.b, p.t);
+                    return (
+                      <button key={i} type="button" className="eg-pet" data-on={held === i} style={{ ['--rc' as string]: RARITY[l.rarity].color }} onClick={() => (gsfx.pick(), setHeld((x) => (x === i ? -1 : i)))}>
+                        <PetArt b={p.b} t={p.t} size={56} />
+                        <b>{l.name}</b>
+                        <small>{p.kg.toLocaleString('th-TH')} kg</small>
+                        <i>{held === i ? 'กำลังถือ' : 'ถือโชว์'}</i>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="eg-bag-empty">ยังไม่มีสัตว์ ขโมยไข่แล้วพากลับฐานเพื่อฟัก</p>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="mb-bar eg-bar">
-          <button type="button" className="ti-item eg-speed" data-has={hud.inSafe && cost !== undefined && hud.coins >= cost} disabled={over || cost === undefined || hud.coins < cost || !hud.inSafe} onClick={buySpeed} style={{ ['--ic' as string]: '#ff9a3d' }} title="อัปความเร็ว (กด Q)">
+          <button type="button" className="ti-item eg-bagbtn" data-has={bag.length > 0} disabled={over} onClick={() => (gsfx.tap(), setBagOpen((v) => !v))} style={{ ['--ic' as string]: '#7c5cff' }} title="กระเป๋าสัตว์ (กด B)">
+            <span className="tw-item-ic">
+              <Backpack className="w-6 h-6" />
+            </span>
+            <span>
+              <b>กระเป๋า</b>
+              <small>{bag.length} ตัว</small>
+            </span>
+          </button>
+          <button type="button" className="ti-item eg-speed" data-has={hud.safe && cost !== undefined && hud.coins >= cost} disabled={over || cost === undefined || hud.coins < cost || !hud.safe} onClick={buySpeed} style={{ ['--ic' as string]: '#ff9a3d' }} title="อัปความเร็ว (กด Q)">
             <span className="tw-item-ic">
               <Gauge className="w-6 h-6" />
             </span>
             <span>
-              <b>{cost === undefined ? 'ความเร็วสูงสุดแล้ว' : `อัปความเร็ว Lv ${hud.lv + 1}`}</b>
-              <small>{cost === undefined ? `Lv ${hud.lv}` : `${cost} เหรียญ · ${hud.inSafe ? 'ซื้อได้ในฐาน' : 'กลับฐานก่อนนะ'}`}</small>
+              <b>{cost === undefined ? 'ความเร็วสูงสุด' : `ความเร็ว Lv ${hud.lv + 1}`}</b>
+              <small>{cost === undefined ? `Lv ${hud.lv}` : `${cost} เหรียญ${hud.safe ? '' : ' · ซื้อในฐาน'}`}</small>
             </span>
             <em>{hud.lv}</em>
           </button>
@@ -848,7 +1011,7 @@ export function EggGame({ engine, deadline, sync, me, preview, onLeave, world: i
             {(['common', 'rare', 'legend', 'secret'] as const).map((r) => (
               <span key={r} style={{ ['--rc' as string]: RARITY[r].color }}>
                 <i />
-                {RARITY[r].name} {RARITY[r].value}
+                {RARITY[r].name}
               </span>
             ))}
           </div>
@@ -874,13 +1037,13 @@ export function EggGame({ engine, deadline, sync, me, preview, onLeave, world: i
           <div className="gm-over-card">
             <p className="gm-over-tag">หมดเวลา!</p>
             <div className="gm-over-big">{hud.score.toLocaleString('th-TH')}</div>
-            <p className="font-bold">คะแนนไข่</p>
+            <p className="font-bold">คะแนน (น้ำหนักสัตว์รวม kg)</p>
             <div className="gm-over-stats">
               <span>
-                <b>{stats.current.eggs}</b>ไข่ที่ขโมยได้
+                <b>{stats.current.eggs}</b>ไข่ที่ฟักได้
               </span>
               <span>
-                <b>{stats.current.rare}</b>ไข่หายากขึ้นไป
+                <b>{stats.current.rare}</b>หายากขึ้นไป
               </span>
             </div>
             <p className="gm-over-wait">{preview ? 'นี่คือการทดลองเล่น' : 'กำลังรวมคะแนน รอประกาศผลนะ'}</p>
