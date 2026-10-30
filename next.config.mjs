@@ -2,7 +2,12 @@ import path from 'path';
 import { createRequire } from 'module';
 
 // ไฟล์ WASM ของ MediaPipe (เกม AR) คัดลอกจาก node_modules ไป public ทุกครั้งที่ next dev/build (ไม่ขึ้นกับคำสั่ง build ของ Vercel)
-createRequire(import.meta.url)('./scripts/copy-mediapipe.cjs');
+// คัดลอกไม่ได้ (ไม่มี node_modules/ดิสก์อ่านอย่างเดียว) = แค่เกม AR โหลดไม่ได้ ห้ามทำให้ทั้งเว็บล่ม
+try {
+  createRequire(import.meta.url)('./scripts/copy-mediapipe.cjs');
+} catch (e) {
+  console.warn('[mediapipe] copy wasm failed:', e instanceof Error ? e.message : e);
+}
 
 const isDev = process.env.NODE_ENV !== 'production';
 const supabase = process.env.NEXT_PUBLIC_SUPABASE_URL || '';

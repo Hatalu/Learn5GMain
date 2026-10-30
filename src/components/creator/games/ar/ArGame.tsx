@@ -622,6 +622,8 @@ export function ArGame({ questions, settings, title, onExit }: { questions: Quiz
                 } else sc?.flyAway(aid(s, cid));
               }
               d.alive = keep;
+              // หมดเวลาโดยไม่ได้ตอบถูก = คอมโบขาด
+              if (!d.got && scoreRef.current[s].streak) addScore(s, (o) => ({ ...o, streak: 0 }));
             });
             setMarks((m) => ({ ...m, ...mk }));
           }
