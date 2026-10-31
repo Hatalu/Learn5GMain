@@ -154,6 +154,49 @@ export function ModeArt({ mode }: { mode: GameMode }) {
       </div>
     );
   }
+  if (mode === 'magic') {
+    return (
+      <div className="ma ma-mk">
+        <svg viewBox="0 0 200 96" width="100%" height="100%" aria-hidden="true">
+          <defs>
+            <linearGradient id="maMkSky" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="#5b3fd0" />
+              <stop offset="1" stopColor="#ff9ad5" />
+            </linearGradient>
+          </defs>
+          <rect width="200" height="96" fill="url(#maMkSky)" />
+          {[18, 52, 90, 140, 176, 120].map((x, i) => (
+            <circle key={i} className="ma-ar-star" cx={x} cy={(i * 17) % 34 + 6} r={i % 2 ? 1.2 : 1.8} fill="#fff" style={{ animationDelay: `${i * 0.3}s` }} />
+          ))}
+          {/* ปราสาท */}
+          <g stroke="#2a1d50" strokeWidth="2.5" strokeLinejoin="round">
+            <rect x="86" y="44" width="34" height="34" fill="#fff" />
+            <rect x="78" y="34" width="12" height="44" fill="#e8e0ff" />
+            <rect x="116" y="34" width="12" height="44" fill="#e8e0ff" />
+            <path d="M77 34 l7 -12 7 12z M115 34 l7 -12 7 12z" fill="#ff6b9a" />
+            <path d="M97 78 v-12 a6 6 0 0 1 12 0 v12" fill="#6d5bff" />
+          </g>
+          <rect y="78" width="200" height="18" fill="#7be36b" />
+          {/* สไลม์มอนสเตอร์ */}
+          <g className="ma-mk-mob" stroke="#2a1d50" strokeWidth="2.5">
+            <path d="M152 70 q0 -22 16 -22 q16 0 16 22z" fill="#ff8fc7" />
+            <circle cx="162" cy="60" r="2.4" fill="#2a1d50" stroke="none" />
+            <circle cx="174" cy="60" r="2.4" fill="#2a1d50" stroke="none" />
+          </g>
+          {/* ลูกไฟ */}
+          <circle className="ma-mk-bolt" cx="60" cy="50" r="6" fill="#ffb347" stroke="#fff" strokeWidth="2" />
+          {/* นักเวท */}
+          <g stroke="#2a1d50" strokeWidth="2.5" strokeLinejoin="round">
+            <path d="M34 54 L20 84 q14 4 28 0z" fill="#6d5bff" />
+            <circle cx="34" cy="48" r="9" fill="#ffe0c2" />
+            <path d="M22 42 q12 -5 24 0 q-3 3 -12 3 q-9 0 -12 -3z M27 41 l8 -20 9 20z" fill="#6d5bff" />
+            <line x1="48" y1="80" x2="50" y2="50" stroke="#8a5a3a" strokeWidth="3.5" />
+            <path d="M50 42 l2 5 5 .5 -4 3.5 1 5 -4 -2.5 -4 2.5 1 -5 -4 -3.5 5 -.5z" fill="#ffd23f" strokeWidth="1.5" />
+          </g>
+        </svg>
+      </div>
+    );
+  }
   if (mode === 'ar') {
     return (
       <div className="ma ma-ar">

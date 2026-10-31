@@ -20,9 +20,12 @@ export interface ArSettings {
   /** ความไวการตรวจท่า 0-2 */
   sens: number;
   music: string;
+  /** แบบการเล่น (Magic Kingdom): 0 ผจญภัย / 1 แข่งเวลา / 2 บอสรัว */
+  style: number;
 }
 
-export const AR_DEFAULTS: ArSettings = { teams: 0, members: 1, count: 10, time: 0, level: 3, boss: 'auto', motions: DEFAULT_MOTIONS, sens: 1, music: 'auto' };
+export const AR_DEFAULTS: ArSettings = { teams: 0, members: 1, count: 10, time: 0, level: 3, boss: 'auto', motions: DEFAULT_MOTIONS, sens: 1, music: 'auto', style: 0 };
+export const AR_STYLES = ['ผจญภัย (คำถาม + บอส)', 'แข่งเวลา 2 นาที', 'บอสรัว (Boss Rush)'];
 export const AR_TEAMS = [0, 2, 3, 4];
 export const AR_MEMBERS = [1, 2, 3, 4, 5, 6];
 export const AR_COUNTS = [5, 10, 15, 20, 0];
@@ -35,7 +38,7 @@ const pick = (v: unknown, ok: number[], d: number) => {
 };
 
 /** อ่านค่าจาก URL (ค่าแปลกปลอม = ค่าเริ่มต้น) */
-export function parseArSettings(get: (k: string) => string | null): ArSettings {
+export function parseArSettings(get: (k: string) => string | null, bossIds: string[] = BOSSES.map((x) => x.id)): ArSettings {
   const music = get('music') || 'auto';
   const boss = get('b') || 'auto';
   const mo = Number(get('mo'));
@@ -45,10 +48,11 @@ export function parseArSettings(get: (k: string) => string | null): ArSettings {
     count: pick(get('n'), AR_COUNTS, AR_DEFAULTS.count),
     time: pick(get('t'), AR_TIMES, AR_DEFAULTS.time),
     level: pick(get('lv'), [0, 1, 2, 3], AR_DEFAULTS.level),
-    boss: boss === 'auto' || BOSSES.some((x) => x.id === boss) ? boss : 'auto',
+    boss: boss === 'auto' || bossIds.includes(boss) ? boss : 'auto',
     motions: get('mo') !== null && Number.isInteger(mo) && mo >= 0 && mo <= ALL_MOTIONS ? mo : AR_DEFAULTS.motions,
     sens: pick(get('sn'), [0, 1, 2], AR_DEFAULTS.sens),
     music: /^[a-z0-9_-]{1,24}$/.test(music) ? music : 'auto',
+    style: pick(get('st'), [0, 1, 2], AR_DEFAULTS.style),
   };
 }
 
@@ -64,5 +68,6 @@ export function arQuery(gameId: string, s: ArSettings): string {
     mo: String(s.motions),
     sn: String(s.sens),
     music: s.music,
+    st: String(s.style),
   }).toString();
 }

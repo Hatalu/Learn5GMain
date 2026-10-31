@@ -7,7 +7,7 @@ import type { QuizContent } from './types';
 import { playableQuiz } from './quiz';
 import { EGG_MAX_VALUE } from './eggValues';
 
-export type GameMode = 'quiz' | 'cafe' | 'tower' | 'racing' | 'brawl' | 'fishing' | 'turf' | 'treasure' | 'egg' | 'ar';
+export type GameMode = 'quiz' | 'cafe' | 'tower' | 'racing' | 'brawl' | 'fishing' | 'turf' | 'treasure' | 'egg' | 'ar' | 'magic';
 
 /** โหมดโลกเดียวกัน: ทุกคนเดินในแผนที่เดียว เห็นกันสดๆ (ส่งตำแหน่งผ่าน Realtime) */
 export const isWorldMode = (g: GameMode) => g === 'turf' || g === 'treasure' || g === 'egg';
@@ -206,6 +206,23 @@ export const MODES: ModeInfo[] = [
     color: '#2fb8ff',
     dark: '#1a5fd0',
     soft: '#dff3ff',
+    minQuestions: 3,
+    noVideo: true,
+    endless: false,
+    teams: [0, 2, 3, 4],
+    scoreLabel: 'คะแนน',
+    playType: 'local',
+    choiceOnly: true,
+  },
+  {
+    id: 'magic',
+    name: 'Magic Kingdom AR',
+    genre: 'ผจญภัยเวทมนตร์ ขยับร่างกายผ่านกล้อง (AR)',
+    tagline: 'นักเวทฝึกหัดร่ายเวทด้วยท่าทาง ตอบถูกเพื่อชาร์จพลัง ปราบบอส กู้อาณาจักร!',
+    steps: ['แต่งตัวนักเวท เลือกสัตว์เลี้ยง แล้วเลือกดินแดน', 'ยื่นมือเล็งมอนสเตอร์ที่ถือคำตอบถูก ค้างไว้ = ร่ายลูกไฟ', 'ตอบถูกได้เก็บคริสตัล ช่วยชาวเมือง และได้ลูกเวทไว้สู้บอส', 'สู้บอส: ยื่นมือยิงเวท ประกบมือ = โล่ เอียงตัว = หลบ กางแขน = พายุหมุน'],
+    color: '#9b6cf0',
+    dark: '#5b2fc0',
+    soft: '#f1e8ff',
     minQuestions: 3,
     noVideo: true,
     endless: false,

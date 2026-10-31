@@ -46,6 +46,7 @@ export const MODE_MUSIC: Record<GameMode, string> = {
   treasure: 'quest',
   egg: 'race',
   ar: 'boss',
+  magic: 'quest',
 };
 
 /** ค่าที่ตั้งในห้อง: 'auto' = ตามรูปแบบการเล่น, 'off' = ไม่มีเพลง, หรือ id เพลง */

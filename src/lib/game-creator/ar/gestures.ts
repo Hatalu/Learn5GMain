@@ -70,6 +70,52 @@ export function victoryPose(b: Body, k = 1): boolean {
 /** ชาร์จพลัง = ยกสองมือเหนือหัว (ใช้ของเดิม) แต่ไม่นับถ้ากางเป็นตัว V */
 export const chargePose = (b: Body, k = 1) => bothUp(b) && !victoryPose(b, k);
 
+/** กางแขนออกข้างเป็นตัว T: สองมืออยู่ราวระดับไหล่ และห่างกันเกิน 2.4 ไหล่ */
+export function spreadPose(b: Body, k = 1): boolean {
+  const L = tip(b, 'l');
+  const R = tip(b, 'r');
+  if (!L || !R) return false;
+  const band = b.sw * 0.75 * (2 - k);
+  return Math.abs(L.y - b.cy) < band && Math.abs(R.y - b.cy) < band && Math.abs(L.x - R.x) > b.sw * 2.4 * k;
+}
+
+/** สองมือห่างกัน (ใช้ร่วมกับ Clap: ต้องแยกมือก่อนถึงปรบได้อีก) */
+export function handsApart(b: Body): boolean {
+  const L = tip(b, 'l');
+  const R = tip(b, 'r');
+  return !!L && !!R && Math.hypot(L.x - R.x, L.y - R.y) > b.sw * 1.1;
+}
+
+/** สองมือแตะกันระดับอก-หน้า */
+export function handsTouch(b: Body): boolean {
+  const L = tip(b, 'l');
+  const R = tip(b, 'r');
+  if (!L || !R) return false;
+  const my = (L.y + R.y) / 2;
+  return Math.hypot(L.x - R.x, L.y - R.y) < b.sw * 0.4 && my < b.cy + b.sw * 0.8 && my > b.cy - b.sw * 1.4;
+}
+
+/**
+ * ปรบมือ = มือที่ห่างกันอยู่ เข้ามาแตะกันเร็ว (ภายใน 450ms) ต่างจากโล่ที่ประกบค้างไว้
+ * ปรบแล้วต้องแยกมือออกก่อนถึงนับครั้งใหม่
+ */
+export class Clap {
+  private apartAt = -1e9;
+  private armed = false;
+  update(b: Body, now: number): boolean {
+    if (handsApart(b)) {
+      this.apartAt = now;
+      this.armed = true;
+      return false;
+    }
+    if (this.armed && handsTouch(b) && now - this.apartAt < 450) {
+      this.armed = false;
+      return true;
+    }
+    return false;
+  }
+}
+
 export type GestureEvent = 'dodgeL' | 'dodgeR' | 'jump' | 'shield' | 'charge' | 'victory';
 
 /**

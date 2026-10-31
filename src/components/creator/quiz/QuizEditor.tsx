@@ -70,6 +70,7 @@ import { TurfGame } from '../games/TurfGame';
 import { TreasureGame } from '../games/TreasureGame';
 import { EggGame } from '../games/egg/LazyEggGame';
 import { ArGame } from '../games/ar/LazyArGame';
+import { MagicGame } from '../games/magic/LazyMagicGame';
 import { AR_DEFAULTS } from '@/lib/game-creator/arSettings';
 import { ModePicker, ModeSteps } from '../OpenGameModal';
 import { modeById, modeQuiz, type GameMode } from '@/lib/game-creator/modes';
@@ -1067,6 +1068,8 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
               <TreasureGame key={preview.key} engine={preview.engine} deadline={preview.deadline} goal={0} me={{ nickname: 'ทดลอง', avatar: 9 }} preview />
             ) : preview.mode === 'ar' ? (
               <ArGame key={preview.key} questions={preview.content.questions} settings={AR_DEFAULTS} title="ทดลองเล่น (ไม่บันทึกคะแนน)" onExit={() => setPreview(null)} persist={false} />
+            ) : preview.mode === 'magic' ? (
+              <MagicGame key={preview.key} questions={preview.content.questions} settings={AR_DEFAULTS} title="ทดลองเล่น (ไม่บันทึกคะแนน)" onExit={() => setPreview(null)} persist={false} />
             ) : preview.mode === 'egg' ? (
               <EggGame key={preview.key} engine={preview.engine} deadline={preview.deadline} goal={0} me={{ nickname: 'ทดลอง', avatar: 4 }} preview />
             ) : preview.mode === 'fishing' ? (

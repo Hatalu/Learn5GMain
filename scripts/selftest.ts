@@ -54,7 +54,9 @@ import { BOSS_SPEED, EGG_BIOMES, EGG_MAX_VALUE, EGG_SLOTS_RARITY, RARITY, SIZE_M
 import { GEAR_BASE } from '../src/lib/game-creator/gear';
 import { BodySmoother, Dwell, Follow, Hold, OneEuro, aimFromHand, arAnswerPoints, arStars, assignSides, bothUp, raised, tip, toBody, toScreen, type Body, type Lm } from '../src/lib/game-creator/arPose';
 import { AR_DEFAULTS, arQuery, parseArSettings } from '../src/lib/game-creator/arSettings';
-import { DEFAULT_MOTIONS, Gestures, chargePose, jumping, leanOf, motionOn, shieldPose, victoryPose } from '../src/lib/game-creator/ar/gestures';
+import { Clap, DEFAULT_MOTIONS, Gestures, chargePose, jumping, leanOf, motionOn, shieldPose, spreadPose, victoryPose } from '../src/lib/game-creator/ar/gestures';
+import { LANDS, MAGIC_BOSSES, PETS, SPELLS, answerPoints as mkPoints, bossHpFor, bossStart, cleanLook as mkCleanLook, effects as mkEffects, landOpen, landStars, nextLand, nextSpell, openSpells, pickAtk as mkPickAtk, spellDamage } from '../src/lib/game-creator/magic/data';
+import { EMPTY_MAGIC, cleanMagic } from '../src/lib/game-creator/magic/save';
 import { BOSSES, bossById, bossHp, bossQuestions, defended, pickAttack, shotDamage } from '../src/lib/game-creator/ar/boss';
 import { Combo } from '../src/lib/game-creator/ar/combo';
 import { POWERS, Powers, earnedPowers } from '../src/lib/game-creator/ar/powerups';
@@ -1625,7 +1627,7 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
     assert.deepEqual(modeQuiz(content as never, 'ar').questions.map((q) => q.id), ['1', '2']);
     assert.equal(modeFit(content as never, 'ar').ok, false);
     assert.equal(MODES.find((m) => m.id === 'ar')?.playType, 'local');
-    assert.deepEqual(parseArSettings((k) => ({ teams: '2', n: '15', t: '30', lv: '2', music: 'boss', m: '3', b: 'golem', mo: '9', sn: '2' })[k] ?? null), { teams: 2, members: 3, count: 15, time: 30, level: 2, boss: 'golem', motions: 9, sens: 2, music: 'boss' });
+    assert.deepEqual(parseArSettings((k) => ({ teams: '2', n: '15', t: '30', lv: '2', music: 'boss', m: '3', b: 'golem', mo: '9', sn: '2' })[k] ?? null), { teams: 2, members: 3, count: 15, time: 30, level: 2, boss: 'golem', motions: 9, sens: 2, music: 'boss', style: 0 });
     assert.deepEqual(parseArSettings((k) => ({ teams: '5', n: '7', t: '-1', lv: 'x', music: '<b>', m: '9', b: '<x>', mo: '99', sn: '' })[k] ?? null), AR_DEFAULTS);
     assert.equal(parseArSettings((k) => ({ teams: '4' })[k] ?? null).teams, 4);
     // URL เดิมก่อนมีค่าใหม่ยังอ่านได้ ค่าใหม่เป็นค่าเริ่มต้น
@@ -1796,6 +1798,75 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
     assert.equal(quickCheck({ kind: undefined }, ['a']), null);
     passed++;
     console.log('  ok  AR คุณภาพการตรวจ + ล็อกผู้เล่น / ตรวจคำตอบทันทีด้วยลายนิ้วมือ');
+  }
+  {
+    // Magic Kingdom AR: ท่ากางแขน/ปรบมือ (แกน AR กลาง) ข้อมูลดินแดน เวท คะแนน บอส ข้อมูลในเครื่อง โหมด/URL
+    const bd = (L: [number, number], R: [number, number]): Body => {
+      const pts = Array.from({ length: 33 }, () => ({ x: 500, y: 300, v: 1 }));
+      pts[15] = { x: L[0], y: L[1], v: 1 };
+      pts[16] = { x: R[0], y: R[1], v: 1 };
+      pts[19] = { x: L[0], y: L[1], v: 1 };
+      pts[20] = { x: R[0], y: R[1], v: 1 };
+      return { pts, cx: 500, cy: 300, sw: 100 };
+    };
+    assert.ok(spreadPose(bd([350, 300], [650, 310])));
+    assert.ok(!spreadPose(bd([440, 300], [560, 300])), 'มือชิดตัว ไม่ใช่ตัว T');
+    assert.ok(!spreadPose(bd([350, 150], [650, 150])), 'มือสูงเหนือหัว ไม่ใช่ตัว T');
+    const cl = new Clap();
+    assert.equal(cl.update(bd([400, 320], [600, 320]), 0), false);
+    assert.equal(cl.update(bd([495, 320], [505, 320]), 200), true);
+    assert.equal(cl.update(bd([495, 320], [505, 320]), 260), false, 'ประกบค้าง = ไม่นับซ้ำ');
+    const cl2 = new Clap();
+    cl2.update(bd([400, 320], [600, 320]), 0);
+    assert.equal(cl2.update(bd([495, 320], [505, 320]), 900), false, 'ประกบช้า = โล่ ไม่ใช่ปรบมือ');
+    assert.equal(LANDS.length, 6);
+    assert.ok(LANDS.every((l) => MAGIC_BOSSES.some((b) => b.id === l.boss)));
+    assert.equal(SPELLS.length, 7);
+    assert.ok(landOpen({}, 'castle') && !landOpen({}, 'forest') && landOpen({ castle: 1 }, 'forest') && landOpen({}, 'dark', true));
+    assert.equal(nextLand({ castle: 2 }).id, 'forest');
+    assert.deepEqual(openSpells(0), ['fire', 'earth']);
+    assert.equal(nextSpell(0)?.id, 'ice');
+    assert.equal(nextSpell(1000), null);
+    // คะแนนความรู้มากกว่าคะแนนการเล่นเสมอ: ข้อถูก 100+ / โจมตี 10 คริสตัล 20
+    assert.equal(mkPoints(true, 0, 20000, 1), 120);
+    assert.equal(mkPoints(true, 20000, 20000, 1), 100);
+    assert.equal(mkPoints(true, 20000, 20000, 9), 150);
+    assert.equal(mkPoints(false, 0, 20000, 5), 50);
+    assert.deepEqual([landStars(9, 10), landStars(6, 10), landStars(1, 10), landStars(0, 10)], [3, 2, 1, 0]);
+    assert.deepEqual([bossStart(10), bossStart(3), bossStart(2)], [6, 1, 1]);
+    // ไม่มีอัปเกรด (ลูกเวท 3 ลูก x ลูกไฟ 10): 3 ดินแดนแรกตอบถูก 80% ก็ล้มบอส, ทุกบอสล้มได้ถ้าถูกครบ
+    const fx0 = mkEffects({ power: 0, defense: 0, energy: 0, speed: 0, knowledge: 0 }, 'cat');
+    MAGIC_BOSSES.slice(0, 3).forEach((b) => assert.ok(bossHpFor(b, 4, 1) <= 4 * 0.8 * fx0.bolts * spellDamage('fire', fx0) * 1.05, b.id));
+    for (const b of MAGIC_BOSSES) assert.ok(bossHpFor(b, 4, 1) <= 4 * fx0.bolts * spellDamage('fire', fx0), b.id);
+    assert.equal(spellDamage('earth', fx0), 0);
+    assert.ok(spellDamage('rainbow', fx0) > spellDamage('fire', fx0) * 2);
+    assert.equal(mkEffects({ power: 0, defense: 0, energy: 0, speed: 0, knowledge: 0 }, 'phoenix').hearts, 4);
+    let seq: string[] = [];
+    for (let i = 0; i < 20; i++) seq = [...seq.slice(-2), mkPickAtk(MAGIC_BOSSES[0], seq as never, () => 0)];
+    assert.ok(seq.includes('shield'));
+    const sv = cleanMagic({ coins: -5, knowledge: 12.7, pets: ['dragon', 'x'], pet: 'unicorn', bolt: 'rainbow', stars: { castle: 9, nope: 1 }, sets: { castle: 'bad', forest: '11111111-1111-1111-1111-111111111111' }, look: { g: 1, robe: 99 } });
+    assert.equal(sv.coins, 0);
+    assert.equal(sv.knowledge, 12);
+    assert.deepEqual(sv.pets, ['cat', 'dragon']);
+    assert.equal(sv.pet, 'cat');
+    assert.equal(sv.bolt, 'fire');
+    assert.deepEqual(sv.stars, { castle: 3 });
+    assert.deepEqual(Object.keys(sv.sets), ['forest']);
+    assert.equal(sv.look.g, 1);
+    assert.equal(sv.look.robe, 0);
+    assert.deepEqual(cleanMagic(null), EMPTY_MAGIC());
+    assert.deepEqual(mkCleanLook({ g: 3 }).g, 0);
+    assert.ok(PETS.some((p) => p.cost === 0));
+    // URL ตั้งค่า: บอสต้องอยู่ในรายการของเกมนั้น, แบบการเล่น 0-2
+    const q = new URLSearchParams(arQuery('11111111-1111-1111-1111-111111111111', { ...AR_DEFAULTS, boss: 'dragon', style: 2 }));
+    const ids = MAGIC_BOSSES.map((b) => b.id);
+    assert.equal(parseArSettings((k) => q.get(k), ids).boss, 'dragon');
+    assert.equal(parseArSettings((k) => q.get(k), ids).style, 2);
+    assert.equal(parseArSettings((k) => q.get(k)).boss, 'auto', 'บอสของอีกเกม = ตามด่าน');
+    assert.equal(parseArSettings((k) => (k === 'st' ? '9' : null)).style, 0);
+    assert.equal(MODES.find((m) => m.id === 'magic')?.playType, 'local');
+    passed++;
+    console.log('  ok  Magic Kingdom AR: ท่ากางแขน/ปรบมือ ดินแดน เวท คะแนน บอส ข้อมูลในเครื่อง URL');
   }
   console.log(`\n${passed} tests passed`);
 })().catch((e) => {
