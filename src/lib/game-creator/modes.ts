@@ -7,7 +7,7 @@ import type { QuizContent } from './types';
 import { playableQuiz } from './quiz';
 import { EGG_MAX_VALUE } from './eggValues';
 
-export type GameMode = 'quiz' | 'cafe' | 'tower' | 'racing' | 'brawl' | 'fishing' | 'turf' | 'treasure' | 'egg' | 'ar' | 'magic' | 'ocean';
+export type GameMode = 'quiz' | 'cafe' | 'tower' | 'racing' | 'brawl' | 'fishing' | 'turf' | 'treasure' | 'egg' | 'ar' | 'magic' | 'ocean' | 'ghost';
 
 /** โหมดโลกเดียวกัน: ทุกคนเดินในแผนที่เดียว เห็นกันสดๆ (ส่งตำแหน่งผ่าน Realtime) */
 export const isWorldMode = (g: GameMode) => g === 'turf' || g === 'treasure' || g === 'egg';
@@ -240,6 +240,23 @@ export const MODES: ModeInfo[] = [
     color: '#1f9fe0',
     dark: '#0f5fa8',
     soft: '#e0f5ff',
+    minQuestions: 3,
+    noVideo: true,
+    endless: false,
+    teams: [0, 2, 3, 4],
+    scoreLabel: 'คะแนน',
+    playType: 'local',
+    choiceOnly: true,
+  },
+  {
+    id: 'ghost',
+    name: 'Ghost Hunter AR',
+    genre: 'ล่าผีไขปริศนา ขยับร่างกายผ่านกล้อง (AR)',
+    tagline: 'นักล่าผีฝึกหัดส่องไฟฉายหาผีน่ารักที่ซ่อนอยู่ ตอบถูกเพื่อจับผี ไขปริศนา และสะสมการ์ดผี!',
+    steps: ['แต่งตัวนักล่า แล้วเลือกสถานที่ลึกลับ 8 แห่ง', 'ยื่นมือส่องไฟฉายในความมืด หาผีที่ถือคำตอบ', 'ส่องผีที่ถือคำตอบถูกค้างไว้ = ยิงลำแสงจับ ได้การ์ดผีสะสม', 'สู้บอส: รอจุดอ่อน ยิงลำแสง กางแขน = โล่ เอียงตัว = หลบ'],
+    color: '#2fc890',
+    dark: '#5b2fc0',
+    soft: '#e8fff4',
     minQuestions: 3,
     noVideo: true,
     endless: false,

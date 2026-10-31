@@ -59,6 +59,8 @@ import { LANDS, MAGIC_BOSSES, PETS, SPELLS, answerPoints as mkPoints, bossHpFor,
 import { EMPTY_MAGIC, cleanMagic } from '../src/lib/game-creator/magic/save';
 import * as OG from '../src/lib/game-creator/ocean/data';
 import { EMPTY_OCEAN, cleanOcean } from '../src/lib/game-creator/ocean/save';
+import * as GH from '../src/lib/game-creator/ghost/data';
+import { EMPTY_GHOST, cleanGhost } from '../src/lib/game-creator/ghost/save';
 import { BOSSES, bossById, bossHp, bossQuestions, defended, pickAttack, shotDamage } from '../src/lib/game-creator/ar/boss';
 import { Combo } from '../src/lib/game-creator/ar/combo';
 import { POWERS, Powers, earnedPowers } from '../src/lib/game-creator/ar/powerups';
@@ -1910,6 +1912,42 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
     assert.equal(MODES.find((m) => m.id === 'ocean')?.playType, 'local');
     passed++;
     console.log('  ok  Ocean Guardian AR: พื้นที่ บอส การ์ดสัตว์ พลัง คะแนนการเล่นต่อข้อ < ความรู้ ข้อมูลในเครื่อง');
+  }
+  {
+    // Ghost Hunter AR: สถานที่ ผีสะสม อุปกรณ์ เลเวล ไฟฉาย จุดอ่อนบอส คะแนน
+    assert.equal(GH.PLACES.length, 8);
+    assert.equal(GH.GHOST_BOSSES.length, 5);
+    assert.equal(GH.GHOSTS.length, 9);
+    assert.equal(GH.GEARS.length, 8);
+    assert.ok(GH.PLACES.every((p) => GH.GHOST_BOSSES.some((b) => b.id === p.boss) && p.ghosts.every((x) => GH.GHOSTS.some((y) => y.id === x))));
+    assert.ok(GH.placeOpen({}, 'school') && !GH.placeOpen({}, 'mansion') && GH.placeOpen({ school: 1 }, 'mansion'));
+    assert.equal(GH.nextPlace({ school: 3 }).id, 'mansion');
+    assert.deepEqual(GH.openGears(0), ['flashlight', 'beam', 'shield']);
+    assert.deepEqual([0, 9, 10, 70, 999].map(GH.hunterLevel), [0, 0, 1, 4, 4]);
+    // ราชาผี (ตำนาน) ได้เฉพาะข้อที่ 7, 14...
+    const dim = GH.placeById('dimension');
+    assert.ok([0, 1, 2, 3, 4, 5].every((n) => GH.ghostFor(dim, n) !== 'king'));
+    assert.equal(GH.ghostFor(dim, 6), [...dim.ghosts][6 % 3]);
+    for (let n = 0; n < 24; n++) assert.ok(GH.maxPlayFor(n) < GH.GH_POINTS.correct, `ข้อ ${n}: ${GH.maxPlayFor(n)}`);
+    const maxFx = GH.effects({ power: 5, range: 5, speed: 5, trap: 5, slots: 5 }, GH.GEARS.map((g) => g.id));
+    assert.ok(GH.maxBattlePlay(maxFx, 9, 2.2 * 0.8) < GH.GH_POINTS.correct);
+    assert.equal(maxFx.hearts, 5);
+    assert.ok(maxFx.light > GH.effects({ power: 0, range: 0, speed: 0, trap: 0, slots: 0 }, []).light);
+    assert.equal(GH.beamDamage('beam', 1, 0, true), 2 * GH.beamDamage('beam', 1, 0, false));
+    assert.equal(GH.beamDamage('shield', 1), 0);
+    const fx0 = GH.effects({ power: 0, range: 0, speed: 0, trap: 0, slots: 0 }, ['beam']);
+    for (const b of GH.GHOST_BOSSES) assert.ok(GH.bossHpFor(b, 4, 1) <= 4 * fx0.bolts * GH.beamDamage('beam', fx0.power), b.id);
+    assert.ok(GH.lit(100, 100, 50, 140, 100, 30) && !GH.lit(100, 100, 50, 200, 100, 30));
+    const sv = cleanGhost({ caught: { baby: 3, nope: 2, king: 0 }, stars: { school: 7 }, look: { hat: 2, coat: 40 }, sets: { mansion: '11111111-1111-1111-1111-111111111111' } });
+    assert.deepEqual(sv.caught, { baby: 3 });
+    assert.deepEqual(sv.stars, { school: 3 });
+    assert.equal(sv.look.hat, 2);
+    assert.equal(sv.look.coat, 0);
+    assert.deepEqual(Object.keys(sv.sets), ['mansion']);
+    assert.deepEqual(cleanGhost(undefined), EMPTY_GHOST());
+    assert.equal(MODES.find((m) => m.id === 'ghost')?.playType, 'local');
+    passed++;
+    console.log('  ok  Ghost Hunter AR: สถานที่ ผีสะสม อุปกรณ์ เลเวล ไฟฉาย จุดอ่อน คะแนนการเล่นต่อข้อ < ความรู้');
   }
   {
     // นำเข้า/ส่งออกคำถามเป็น CSV/XLSX

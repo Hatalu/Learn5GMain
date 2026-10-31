@@ -17,12 +17,14 @@ import { AR_COUNTS, AR_DEFAULTS, AR_LEVELS, AR_MEMBERS, AR_STYLES, AR_TIMES, arQ
 import { BOSSES } from '@/lib/game-creator/ar/boss';
 import { MAGIC_BOSSES } from '@/lib/game-creator/magic/data';
 import { OCEAN_BOSSES } from '@/lib/game-creator/ocean/data';
+import { GHOST_BOSSES } from '@/lib/game-creator/ghost/data';
 
 /** ข้อความ/บอสของเกม AR เล่นในเครื่องเดียวแต่ละเกม (quest = เกมผจญภัยแบบมีแผนที่: ทีมผลัดกันอย่างเดียว มีแบบการเล่น ความยาก 3 ระดับ) */
 const LOCAL_INFO: Partial<Record<GameMode, { bosses: { id: string; name: string }[]; swap: string; diff: string; auto: string; quest: boolean }>> = {
   ar: { bosses: BOSSES, swap: 'สลับคนคุมยานทุกข้อ', diff: 'ยานลอยไปมา / อุกกาบาตเร็ว / บอสดุ', auto: 'ตามด่านในแผนที่', quest: false },
   magic: { bosses: MAGIC_BOSSES, swap: 'สลับคนร่ายเวทเมื่อถึงตาทีม', diff: 'มอนสเตอร์ลอยไปมา / บอสดุ', auto: 'ตามดินแดนที่เลือก', quest: true },
   ocean: { bosses: OCEAN_BOSSES, swap: 'สลับผู้พิทักษ์เมื่อถึงตาทีม', diff: 'ฟองคำตอบลอยไปมา / บอสดุ', auto: 'ตามพื้นที่ที่เลือก', quest: true },
+  ghost: { bosses: GHOST_BOSSES, swap: 'สลับนักล่าเมื่อถึงตาทีม', diff: 'ผีลอยไปมา / บอสดุ', auto: 'ตามสถานที่ที่เลือก', quest: true },
 };
 
 const LAST_BG = 'l5g_room_bg';

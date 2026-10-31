@@ -154,6 +154,41 @@ export function ModeArt({ mode }: { mode: GameMode }) {
       </div>
     );
   }
+  if (mode === 'ghost') {
+    return (
+      <div className="ma ma-mk ma-gh">
+        <svg viewBox="0 0 200 96" width="100%" height="100%" aria-hidden="true">
+          <rect width="200" height="96" fill="#1a1240" />
+          <circle cx="168" cy="20" r="11" fill="#fff3c4" />
+          {[20, 60, 100, 140].map((x, i) => (
+            <circle key={i} className="ma-ar-star" cx={x} cy={(i * 13) % 30 + 8} r="1.5" fill="#b8ffe0" style={{ animationDelay: `${i * 0.3}s` }} />
+          ))}
+          <path d="M0 96 v-22 h20 v-12 l10 -8 10 8 v12 h30 v-18 h16 v18 h40 l8 -14 8 14 h58 v22z" fill="#2a2050" />
+          {/* ลำแสงไฟฉาย */}
+          <path d="M58 52 L150 26 L158 70z" fill="#ffe38a" opacity="0.35" />
+          {/* ผีน่ารักในวงไฟ */}
+          <g className="ma-mk-mob" stroke="#22163f" strokeWidth="2.5" strokeLinejoin="round">
+            <path d="M138 66 v-18 a12 12 0 0 1 24 0 v18 l-4 -3 -4 3 -4 -3 -4 3 -4 -3z" fill="#eef2ff" />
+            <circle cx="146" cy="47" r="2" fill="#22163f" stroke="none" />
+            <circle cx="154" cy="47" r="2" fill="#22163f" stroke="none" />
+            <ellipse cx="142" cy="53" rx="2.4" ry="1.4" fill="#ff8fb5" stroke="none" />
+            <ellipse cx="158" cy="53" rx="2.4" ry="1.4" fill="#ff8fb5" stroke="none" />
+          </g>
+          <circle className="ma-mk-bolt" cx="60" cy="50" r="5" fill="#3fe0a0" stroke="#fff" strokeWidth="2" />
+          {/* นักล่าผีถือไฟฉาย */}
+          <g stroke="#22163f" strokeWidth="2.5" strokeLinejoin="round">
+            <rect x="20" y="54" width="9" height="20" rx="3" fill="#8a96a8" />
+            <path d="M26 56 h18 l2 24 h-22z" fill="#6d5bff" />
+            <circle cx="35" cy="47" r="10" fill="#ffe0c2" />
+            <circle cx="31" cy="47" r="3.5" fill="#e8fff6" />
+            <circle cx="39" cy="47" r="3.5" fill="#e8fff6" />
+            <path d="M44 60 q8 -2 12 -8" fill="none" stroke="#6d5bff" strokeWidth="5" strokeLinecap="round" />
+            <rect x="52" y="46" width="8" height="8" rx="1.5" fill="#c0c8d0" />
+          </g>
+        </svg>
+      </div>
+    );
+  }
   if (mode === 'ocean') {
     return (
       <div className="ma ma-mk ma-og">
