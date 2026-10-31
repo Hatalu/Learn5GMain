@@ -63,6 +63,7 @@ import { ALL_STAGES, nextStage, unlocked } from '../src/lib/game-creator/ar/map'
 import { ZERO_STATS, addStats, allCorrectRounds, cleanMission, dailyFor, stageQuests } from '../src/lib/game-creator/ar/missions';
 import { memberOf, ranks, teamMode, teamOf } from '../src/lib/game-creator/ar/teams';
 import { EMPTY_SAVE, cleanSave, rollDay } from '../src/lib/game-creator/ar/save';
+import { Quality, faceScore, pickBody, toLock } from '../src/lib/game-creator/ar/quality';
 import { HATS2, ITEMS2, MASKS2, OUTFITS2 } from '../src/components/creator/gearExtra';
 import { endlessIndex } from '../src/lib/game-creator/quiz';
 import {
@@ -70,6 +71,7 @@ import {
   isTimeout,
   playableQuiz,
   publicQuestion,
+  quickCheck,
   questionOrder,
   quizIssues,
   sanitizeQuiz,
@@ -1744,6 +1746,56 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
     assert.ok(rolled.day === '2026-10-31' && rolled.today.correct === 0 && rolled.claimed.length === 0);
     passed++;
     console.log('  ok  AR ระบบเสริม: ท่าทาง บอส คอมโบ ไอเทม อัปเกรด แผนที่ ภารกิจ ทีม ข้อมูลในเครื่อง');
+  }
+  {
+    // AR คุณภาพการตรวจ: หน้าถูกบัง/ตัวสั่น เตือนเมื่อเป็นติดกัน, ล็อกผู้เล่นคนเดิม ไม่ให้คนข้างหลังแย่ง
+    const mk = (cx: number, cy: number, sw: number, face = 1): Body => {
+      const pts = Array.from({ length: 33 }, () => ({ x: cx, y: cy, v: 1 }));
+      for (const i of [0, 2, 5, 9, 10]) pts[i] = { x: cx, y: cy - sw, v: face };
+      return { pts, cx, cy, sw };
+    };
+    assert.equal(faceScore(mk(0, 0, 100)), 1);
+    assert.equal(faceScore(mk(0, 0, 100, 0.2)), 0.2);
+    const qa = new Quality(600, 400);
+    for (let t2 = 0; t2 < 500; t2 += 50) assert.equal(qa.update(mk(500, 300, 100, 0.1), 1000 + t2), null);
+    assert.equal(qa.update(mk(500, 300, 100, 0.1), 1700), 'face');
+    qa.update(mk(500, 300, 100), 1750);
+    assert.equal(qa.update(mk(500, 300, 100), 2000), 'face');
+    assert.equal(qa.update(mk(500, 300, 100), 2200), null);
+    const qs = new Quality(300, 300);
+    let got: string | null = null;
+    for (let i = 0; i < 20; i++) got = qs.update(mk(i % 2 ? 300 : 700, 300, 100), 5000 + i * 50) || got;
+    assert.equal(got, 'shaky');
+    const qn = new Quality(300, 300);
+    for (let i = 0; i < 20; i++) assert.equal(qn.update(mk(500 + i * 2, 300, 100), 9000 + i * 50), null);
+    // เอียงหลบเร็ว (0.6 ไหล่ใน 300ms ไปกลับ) และกระโดด (0.4 ไหล่ขึ้นลงใน 500ms) ต้องไม่ถูกเตือนว่าสั่น
+    const ql = new Quality(600, 400);
+    for (let i = 0; i <= 24; i++) {
+      const ph = (i % 12) / 6;
+      assert.equal(ql.update(mk(500 - 60 * (ph <= 1 ? ph : 2 - ph), 300, 100), 20000 + i * 50), null);
+    }
+    const qj = new Quality(600, 400);
+    for (let i = 0; i <= 20; i++) assert.equal(qj.update(mk(500, 300 - 40 * Math.sin(((i % 10) / 10) * Math.PI), 100), 30000 + i * 50), null);
+    const me = mk(500, 300, 100);
+    const big = mk(150, 320, 140);
+    assert.equal(pickBody([me, big], null, 0), big);
+    assert.equal(pickBody([big, mk(520, 305, 104)], toLock(me, 0), 100)?.cx, 520);
+    assert.equal(pickBody([big], toLock(me, 0), 100), null);
+    assert.equal(pickBody([big], toLock(me, 0), 900), big);
+
+    // ลายนิ้วมือคำตอบ: รู้ถูก/ผิดในเครื่องได้ ไม่มีรหัสคำตอบตรงๆ ในข้อมูลที่ส่ง
+    const ch2 = (id: string, ok: boolean) => ({ id, text: [{ t: 'x' as const, v: id }], media: null, correct: ok });
+    const base = { id: 'q1', text: [{ t: 'x' as const, v: 'q' }], media: null, time: 20, points: 1 as const };
+    const pq = publicQuestion({ ...base, choices: [ch2('a', false), ch2('b', true), ch2('c', false)], multi: false }, 0, 1, { shuffleChoices: false, seed: 's', elapsedMs: 0 });
+    assert.ok(quickCheck(pq, ['b']) === true && quickCheck(pq, ['a']) === false && quickCheck(pq, []) === false);
+    assert.ok(!JSON.stringify(pq.chk).includes('"b"'));
+    const pm = publicQuestion({ ...base, choices: [ch2('a', true), ch2('b', true), ch2('c', false)], multi: true }, 0, 1, { shuffleChoices: false, seed: 's', elapsedMs: 0 });
+    assert.ok(quickCheck(pm, ['b', 'a']) === true && quickCheck(pm, ['a']) === false && quickCheck(pm, ['a', 'b', 'c']) === false);
+    const pt = publicQuestion({ ...base, choices: [], multi: false, kind: 'text', answers: ['Cat'] }, 0, 1, { shuffleChoices: false, seed: 's', elapsedMs: 0 });
+    assert.ok(quickCheck(pt, ['  cat ']) === true && quickCheck(pt, ['dog']) === false && quickCheck(pt, ['']) === false);
+    assert.equal(quickCheck({ kind: undefined }, ['a']), null);
+    passed++;
+    console.log('  ok  AR คุณภาพการตรวจ + ล็อกผู้เล่น / ตรวจคำตอบทันทีด้วยลายนิ้วมือ');
   }
   console.log(`\n${passed} tests passed`);
 })().catch((e) => {

@@ -16,6 +16,8 @@ export class PoseTracker {
   private lm: PoseLandmarker | null = null;
   private lastVideoTime = -1;
   private lastTs = 0;
+  /** เว้นระยะการตรวจขั้นต่ำ (ms): ลื่น 15 ภาพ/วิ อื่นๆ 20 ภาพ/วิ ตรวจถี่กว่านี้ไม่แม่นขึ้นแต่ร้อนขึ้นมาก */
+  private gap = getGfx() === 'lite' ? 66 : 50;
   /** ผลล่าสุด: ร่างกายที่ตรวจเจอ (สูงสุดตาม numPoses) */
   poses: Lm[][] = [];
   /** เวลา (performance.now) ที่ได้ผลล่าสุด */
@@ -35,8 +37,8 @@ export class PoseTracker {
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({
         audio: false,
-        // 960x540 พอสำหรับตรวจท่า (โมเดลย่อภาพเหลือ 256 อยู่แล้ว) เครื่องส่งภาพน้อยลง ตรวจได้ถี่ขึ้น
-        video: { facingMode: 'user', width: { ideal: 960 }, height: { ideal: 540 }, frameRate: { ideal: 30 } },
+        // 960x540 คงความแม่นตอนเด็กยืนไกล (ขั้นจับจุดตัดภาพเฉพาะตัวคนจากภาพเต็ม) ลดร้อนด้วยกล้อง 24 ภาพ/วิ + ตรวจไม่เกิน 20 ภาพ/วิ แทน
+        video: { facingMode: 'user', width: { ideal: 960 }, height: { ideal: 540 }, frameRate: { ideal: 24, max: 30 } },
       });
     } catch (e) {
       const n = (e as { name?: string })?.name;
@@ -99,7 +101,7 @@ export class PoseTracker {
   /** เรียกทุกเฟรม: ตรวจเฉพาะเมื่อวิดีโอมีเฟรมใหม่ คืน true เมื่อได้ผลใหม่ */
   tick(now: number): boolean {
     const v = this.video;
-    if (!this.lm || this.stopped || v.readyState < 2 || v.currentTime === this.lastVideoTime) return false;
+    if (!this.lm || this.stopped || v.readyState < 2 || v.currentTime === this.lastVideoTime || now - this.lastTs < this.gap) return false;
     this.lastVideoTime = v.currentTime;
     // MediaPipe ต้องการเวลาที่เพิ่มขึ้นเสมอ
     const ts = Math.max(now, this.lastTs + 1);

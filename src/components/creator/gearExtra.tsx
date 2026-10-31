@@ -394,7 +394,7 @@ export const OUTFITS2: { back?: () => React.ReactNode; front?: () => React.React
     front: () => (
       <>
         <path d="M36 66 Q50 72 64 66" fill="none" stroke="#fff" strokeWidth="2.6" />
-        <path d="M34 72 L66 72 L68 96 L32 96 Z" fill="#fff" {...s} />
+        <path d="M30 71 L70 71 L80 84 Q74 92 50 94 Q26 92 20 84 Z" fill="#fff" {...s} />
         <rect x="44" y="80" width="12" height="8" rx="2" fill="#ff8fbf" {...thin} />
       </>
     ),
@@ -421,7 +421,7 @@ export const OUTFITS2: { back?: () => React.ReactNode; front?: () => React.React
   {
     front: () => (
       <>
-        <path d="M34 68 Q50 64 66 68 Q68 86 50 90 Q32 86 34 68 Z" fill="#fff" {...s} />
+        <path d="M27 68 Q50 63 73 68 Q78 88 50 93 Q22 88 27 68 Z" fill="#fff" {...s} />
         <path d={heartPath(50, 77, 5)} fill="#ff7fae" />
       </>
     ),

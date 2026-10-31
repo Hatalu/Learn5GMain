@@ -86,7 +86,9 @@ export function LookPicker({ avatar, gear, onChange, size = 124 }: { avatar: num
                   set(avatar, { ...gear, [slot.key]: i });
                 }}
               >
-                {i === 0 ? <Ban className="w-7 h-7 opacity-50" /> : <Avatar id={avatar} gear={{ h: 0, o: 0, m: 0, i: 0, [slot.key]: i }} crop={slot.key} size={50} />}
+                {/* เห็นตัวละครทั้งตัวสวมชิ้นนี้ (พร้อมชิ้นอื่นที่ใส่อยู่) ไม่ซูมเฉพาะส่วน */}
+                <Avatar id={avatar} gear={{ ...gear, [slot.key]: i }} size={50} />
+                {i === 0 && <Ban className="l5g-look-none" aria-hidden="true" />}
               </button>
             ))
           : CRITTERS.map((c, i) => (

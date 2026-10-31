@@ -11,7 +11,7 @@ import { MediaView } from '../MediaView';
 import { ChoiceShape, choiceStyle } from '../ChoiceShape';
 import type { QuizEngine } from '../quiz/QuizRunner';
 import { gsfx } from '@/lib/game-creator/gsound';
-import { richLength } from '@/lib/game-creator/quiz';
+import { quickCheck, richLength } from '@/lib/game-creator/quiz';
 
 type Phase = 'loading' | 'question' | 'sending' | 'feedback' | 'idle' | 'error';
 
@@ -154,7 +154,15 @@ export function QuestionPad({
     if (!q || busy.current) return;
     busy.current = true;
     setPicks(chosen);
-    setPhase('sending');
+    // รู้ถูก/ผิดทันทีในเครื่อง รางวัลในเกม (onAnswered) ให้ตามผลจากเซิร์ฟเวอร์
+    const quick = quickCheck(q, chosen);
+    if (quick === null) setPhase('sending');
+    else {
+      setRes({ correct: quick, timeout: false, points: 0, correctIds: quick ? chosen : [], score: 0, streak: 0, finished: false, pending: true } as unknown as LiveOutcome);
+      setPhase('feedback');
+      if (quick) gsfx.correct();
+      else gsfx.wrong();
+    }
     try {
       const r = (await engine.answer(q, chosen)) as LiveOutcome | null;
       if (!alive.current) return;
@@ -164,8 +172,10 @@ export function QuestionPad({
       }
       setRes(r);
       setPhase('feedback');
-      if (r.correct) gsfx.correct();
-      else gsfx.wrong();
+      if (quick === null || quick !== r.correct) {
+        if (r.correct) gsfx.correct();
+        else gsfx.wrong();
+      }
       cb.current.onAnswered(r, q);
       const wait = r.correct ? 650 : Math.max(1400, lockMs);
       if (!r.correct && lockMs > 0) {
@@ -283,7 +293,7 @@ export function QuestionPad({
       )}
       {show && (
         <div className="l5g-qp-flash" data-kind={res!.correct ? 'ok' : 'no'}>
-          {res!.correct ? (rewardText ? rewardText(res!) : 'ถูกต้อง!') : lockMs && lockLeft > 0 ? `สะดุด! รอ ${lockLeft}` : res!.correctIds.length || res!.answer ? 'ดูคำตอบที่ถูกนะ' : 'ยังไม่ถูก ลองข้อต่อไปนะ'}
+          {res!.correct ? (rewardText && !(res as { pending?: boolean }).pending ? rewardText(res!) : 'ถูกต้อง!') : lockMs && lockLeft > 0 ? `สะดุด! รอ ${lockLeft}` : res!.correctIds.length || res!.answer ? 'ดูคำตอบที่ถูกนะ' : 'ยังไม่ถูก ลองข้อต่อไปนะ'}
         </div>
       )}
       {err && phase === 'question' && <p className="l5g-err text-center">{err}</p>}

@@ -911,3 +911,174 @@
     align-items: stretch;
   }
 }
+
+/* ---------------- ภารกิจฝึกก่อนเริ่ม (กลางจอบน) ---------------- */
+.ar-mission {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(620px, calc(100vw - 24px));
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 18px;
+  border-radius: 24px;
+  background: rgb(18 12 58 / 0.86);
+  border: 4px solid var(--mc);
+  box-shadow: 0 6px 0 #070420, 0 0 36px var(--mc);
+  z-index: 2;
+  pointer-events: none;
+  animation: arQIn2 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.ar-mission-ic {
+  flex: none;
+  width: 64px;
+  height: 64px;
+  border-radius: 20px;
+  display: grid;
+  place-items: center;
+  color: #1d1640;
+  background: var(--mc);
+  border: 3px solid #fff;
+  animation: arReady 1.1s ease-in-out infinite;
+}
+.ar-mission > div {
+  display: grid;
+  min-width: 0;
+}
+.ar-mission small {
+  font-weight: 700;
+  color: var(--mc);
+}
+.ar-mission b {
+  font-size: clamp(24px, 4.4vw, 38px);
+  line-height: 1.15;
+  text-shadow: 0 3px 0 #120c3a;
+}
+.ar-mission span {
+  font-weight: 600;
+  font-size: 15px;
+  opacity: 0.9;
+}
+.ar-mlist-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  width: 100%;
+}
+.ar-mlist-head span {
+  font-weight: 800;
+  color: #1a5fd0;
+}
+.ar-mbar {
+  width: 100%;
+  height: 12px;
+  border-radius: 8px;
+  background: #e6e0fb;
+  overflow: hidden;
+  margin: 4px 0 8px;
+}
+.ar-mbar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #2fb8ff, #3fd68a);
+  transition: width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.ar-mlist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  margin-bottom: 6px;
+}
+.ar-mlist li {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 14px;
+  color: #6a5ca8;
+  background: #f3efff;
+  border: 2px solid transparent;
+}
+.ar-mlist li[data-cur='true'] {
+  color: #2a1d78;
+  border-color: #ffb400;
+  background: #fff6d6;
+  animation: arReady 1.1s ease-in-out infinite;
+}
+.ar-mlist li[data-ok='true'] {
+  color: #137a45;
+  background: #dcfbe9;
+  animation: arPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.ar-calib .ar-btn-go:disabled {
+  background: #c9c0f0;
+  animation: none;
+}
+
+/* ---------------- เตือนหน้าถูกบัง / ตัวสั่น (กลางจอ) ---------------- */
+.ar-issue {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(460px, calc(100vw - 32px));
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  text-align: center;
+  padding: 16px 20px;
+  border-radius: 24px;
+  background: rgb(194 24 63 / 0.92);
+  border: 4px solid #fff;
+  box-shadow: 0 6px 0 #4a0a1c, 0 0 40px rgb(255 77 109 / 0.6);
+  z-index: 3;
+  pointer-events: none;
+  animation: arQIn2 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.ar-issue b {
+  font-size: clamp(22px, 4vw, 32px);
+}
+.ar-issue span {
+  font-weight: 600;
+  font-size: 15px;
+}
+@media (max-width: 640px) {
+  .ar-mission-ic {
+    width: 48px;
+    height: 48px;
+  }
+  .ar-mission span {
+    font-size: 13px;
+  }
+}
+
+/* จอเตี้ย (มือถือแนวนอน): ป้ายภารกิจ/การ์ดเล็กลง ไม่บังยานซ้อม */
+@media (max-height: 520px) {
+  .ar-mission {
+    top: 6px;
+    padding: 6px 12px;
+    gap: 10px;
+  }
+  .ar-mission-ic {
+    width: 40px;
+    height: 40px;
+  }
+  .ar-mission b {
+    font-size: 22px;
+  }
+  .ar-mission span {
+    display: none;
+  }
+  .ar-calib-card .ar-calib-row {
+    display: none;
+  }
+  .ar-mlist li {
+    padding: 2px 8px;
+    font-size: 12px;
+  }
+}

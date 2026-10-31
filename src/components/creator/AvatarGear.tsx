@@ -190,12 +190,14 @@ export function OutfitFront({ id, robot }: { id: number; robot?: boolean }) {
           <path d="M50 74 L52.6 79.4 L58.4 80 L54 84 L55.4 89.6 L50 86.6 L44.6 89.6 L46 84 L41.6 80 L47.4 79.4 Z" fill="#ffd84a" {...thin} />
         </>
       );
-    case 5: // ชุดเอี๊ยม
+    case 5: // ชุดเอี๊ยม (กางเกงคลุมลำตัวท่อนล่างเต็มความกว้าง + สายเอี๊ยมขึ้นไหล่)
       return (
         <>
-          <path d="M38 74 L31 58 M62 74 L69 58" stroke="#2a4fb8" strokeWidth="4.5" strokeLinecap="round" />
-          <path d="M35 73 L65 73 L67 92 Q50 95 33 92 Z" fill="#4a7bf0" {...s} />
-          <rect x="43" y="78" width="14" height="8" rx="2" fill="#2a4fb8" {...thin} />
+          <path d="M37 78 L22 58 M63 78 L78 58" stroke="#2a4fb8" strokeWidth="5" strokeLinecap="round" />
+          <path d={robot ? 'M16 77 Q50 72 84 77 L84 90 Q50 95 16 90 Z' : 'M17 77 Q50 72 83 77 Q85 86 74 91 Q50 95 26 91 Q15 86 17 77 Z'} fill="#4a7bf0" {...s} />
+          <rect x="36" y="73" width="28" height="11" rx="3" fill="#4a7bf0" {...s} />
+          <rect x="44" y="76" width="12" height="6" rx="1.5" fill="#2a4fb8" {...thin} />
+          <path d="M50 85 L50 93" stroke="#2a4fb8" strokeWidth="1.6" />
           <circle cx="38.5" cy="76" r="2.2" fill="#ffcf3f" {...thin} />
           <circle cx="61.5" cy="76" r="2.2" fill="#ffcf3f" {...thin} />
         </>
@@ -223,7 +225,8 @@ export function OutfitFront({ id, robot }: { id: number; robot?: boolean }) {
       return (
         <>
           <path d="M22 70 Q50 80 78 70 L80 75 Q50 86 20 75 Z" fill="#c9d3e6" {...s} />
-          <rect x="34" y="77" width="32" height="14" rx="4" fill="#f4f6fb" {...s} />
+          <path d="M20 76 Q50 84 80 76 Q83 86 72 91 Q50 95 28 91 Q17 86 20 76 Z" fill="#f4f6fb" {...s} />
+          <rect x="34" y="79" width="32" height="11" rx="4" fill="#e3e9f5" {...thin} />
           <circle cx="41" cy="84" r="2.6" fill="#ff6b7a" {...thin} />
           <circle cx="50" cy="84" r="2.6" fill="#5ccbff" {...thin} />
           <rect x="56" y="81.5" width="6" height="5" rx="1.2" fill="#ffcf3f" {...thin} />

@@ -7,11 +7,12 @@ import { MathText } from '../math/MathText';
 import { MediaView } from '../MediaView';
 import { ChoiceShape, choiceStyle } from '../ChoiceShape';
 import { gsfx } from '@/lib/game-creator/gsound';
-import { richLength } from '@/lib/game-creator/quiz';
+import { quickCheck, richLength } from '@/lib/game-creator/quiz';
 import { MineTag, TextAnswer, choiceState } from '../games/QuestionPad';
 import { CoachArrow, useCoach } from '../games/Coach';
 
-export type AnswerOutcome = AnswerResult & { rank?: number; players?: number; finished: boolean };
+/** pending = ผลจากการตรวจในเครื่อง รอคะแนน/อันดับจากเซิร์ฟเวอร์ */
+export type AnswerOutcome = AnswerResult & { rank?: number; players?: number; finished: boolean; pending?: boolean };
 
 export interface QuizEngine {
   /** คำถามข้อปัจจุบัน หรือ null เมื่อเล่นครบแล้ว */
@@ -84,6 +85,10 @@ export function QuizRunner({
   const qRef = useRef<PublicQuestion | null>(null);
   const picksRef = useRef<string[]>([]);
   picksRef.current = picks;
+  const scoreRef = useRef(score);
+  scoreRef.current = score;
+  const streakRef = useRef(streak);
+  streakRef.current = streak;
   const runRef = useRef<HTMLDivElement>(null);
   // สอนเล่น: แตะคำตอบ (ข้อแรกข้อเดียว)
   const coach = useCoach([{ id: 'answer', target: '.l5g-choices', text: 'เลือกตัวเลือก ยิ่งตอบไวยิ่งได้คะแนนเยอะ' }], { loops: 1 });
@@ -147,7 +152,25 @@ export function QuizRunner({
       if (!cur || busy.current) return;
       busy.current = true;
       setPicks(chosen);
-      setPhase('sending');
+      // รู้ถูก/ผิดทันทีจากลายนิ้วมือคำตอบ (หมดเวลาให้เซิร์ฟเวอร์ตัดสิน) คะแนน/อันดับตามมาเมื่อเซิร์ฟเวอร์ตอบ
+      const timedOut = !!deadline.current && performance.now() >= deadline.current;
+      const quick = timedOut ? null : quickCheck(cur, chosen);
+      const t0 = performance.now();
+      const cheer = (ok: boolean, timeout: boolean, st: number) => {
+        if (ok) {
+          gsfx.correct();
+          if (st >= 3) setTimeout(() => gsfx.streak(), 380);
+        } else if (timeout) gsfx.timeout();
+        else gsfx.wrong();
+      };
+      if (quick === null) setPhase('sending');
+      else {
+        const st = quick ? streakRef.current + 1 : 0;
+        setRes({ correct: quick, timeout: false, points: 0, correctIds: quick ? chosen : [], score: scoreRef.current, streak: st, finished: false, pending: true });
+        setStreak(st);
+        setPhase('feedback');
+        cheer(quick, false, st);
+      }
       try {
         coachHit.current('answer');
         const r = await engine.answer(cur, chosen);
@@ -160,17 +183,15 @@ export function QuizRunner({
         setScore(r.score);
         setStreak(r.streak);
         setPhase('feedback');
-        if (r.correct) {
-          gsfx.correct();
-          if (r.streak >= 3) setTimeout(() => gsfx.streak(), 380);
-        } else if (r.timeout) gsfx.timeout();
-        else gsfx.wrong();
+        if (quick === null || quick !== r.correct) cheer(r.correct, r.timeout, r.streak);
+        const wait = FEEDBACK_MS + (r.correct ? 0 : 900) - (performance.now() - t0);
         advTimer.current = setTimeout(() => {
           if (r.finished) onFinished({ score: r.score });
           else load();
-        }, FEEDBACK_MS + (r.correct ? 0 : 900));
+        }, Math.max(700, wait));
       } catch (e) {
         busy.current = false;
+        setRes(null);
         setErr(e instanceof Error ? e.message : 'ส่งคำตอบไม่สำเร็จ');
         setPhase('question');
       }
@@ -213,7 +234,7 @@ export function QuizRunner({
   };
 
   const skipFeedback = () => {
-    if (phase !== 'feedback' || !res) return;
+    if (phase !== 'feedback' || !res || res.pending) return;
     if (advTimer.current) clearTimeout(advTimer.current);
     gsfx.tap();
     if (res.finished) onFinished({ score: res.score });
@@ -380,7 +401,8 @@ export function QuizRunner({
               </span>
             )}
             {!res!.correct && <span className="l5g-feedback-sub">{res!.answer ? `คำตอบที่ถูก: ${res!.answer}` : res!.correctIds.length ? 'ดูคำตอบที่ถูกได้ด้านล่าง ข้อหน้าเอาใหม่' : 'ไม่เป็นไร ข้อหน้าเอาใหม่นะ'}</span>}
-            {res!.rank ? (
+            {/* ข้อสุดท้ายไม่บอกอันดับ (กันสปอยก่อนแท่นประกาศผล) */}
+            {res!.rank && !res!.finished && q && q.index + 1 < q.total ? (
               <span className="l5g-feedback-rank">
                 อันดับ {res!.rank} จาก {res!.players}
               </span>

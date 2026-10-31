@@ -240,10 +240,15 @@ export class SpaceScene {
   private unGfx: () => void;
   private ro: ResizeObserver;
 
-  constructor(el: HTMLElement, camOn: boolean) {
+  /** เปิดกล้องอยู่ = ความคมไม่เกิน 1.25 (GPU ต้องแบ่งให้ระบบจับท่า ลดความร้อน) */
+  private dpr() {
+    return this.camOn ? Math.min(1.25, gfxDpr()) : gfxDpr();
+  }
+
+  constructor(el: HTMLElement, private camOn: boolean) {
     this.el = el;
     this.renderer = new THREE.WebGLRenderer({ alpha: true, antialias: getGfx() !== 'lite', powerPreference: 'high-performance' });
-    this.renderer.setPixelRatio(gfxDpr());
+    this.renderer.setPixelRatio(this.dpr());
     this.renderer.setClearColor(0x000000, 0);
     this.renderer.domElement.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none';
     el.appendChild(this.renderer.domElement);
@@ -272,7 +277,7 @@ export class SpaceScene {
     this.ro = new ResizeObserver(() => this.resize());
     this.ro.observe(el);
     this.unGfx = subscribeGfx(() => {
-      this.renderer.setPixelRatio(gfxDpr());
+      this.renderer.setPixelRatio(this.dpr());
       this.resize();
     });
   }

@@ -98,6 +98,8 @@ export function PlayerSession({
   const [running, setRunning] = useState(false);
   const [final, setFinal] = useState<number | null>(null);
   const [show, setShow] = useState(false);
+  /** รอบที่โชว์คัตซีนประกาศผลไปแล้ว: ยังไม่โชว์ = ห้ามบอกอันดับของตัวเอง (กันสปอย) */
+  const seenRound = useRef<number | null>(null);
   const [dress, setDress] = useState<{ avatar: number; gear: Gear } | null>(null);
   const [dressBusy, setDressBusy] = useState(false);
   // callback จากผู้เรียกเก็บไว้ใน ref: ผู้เรียกส่งฟังก์ชันใหม่ทุกครั้งที่ render ก็ไม่ทำให้ขอสถานะ/ต่อ Realtime ใหม่ซ้ำๆ
@@ -125,10 +127,12 @@ export function PlayerSession({
       if (prev && prev.room.status !== s.room.status) {
         if (s.room.status === 'playing') gsfx.start();
         // จบเกม: คัตซีนประกาศผล (เจ้าของห้องดูบนจอหลักแทน)
-        if (s.room.status === 'ended') {
-          if (!hostMode && s.podium?.length) setShow(true);
-          else gsfx.fanfare();
-        }
+        if (s.room.status === 'ended' && (hostMode || !s.podium?.length)) gsfx.fanfare();
+      }
+      // จบเกม: คัตซีนประกาศผลก่อนเสมอ (รวมกรณีอันดับมาถึงทีหลัง/เข้ามาตอนจบแล้ว) เจ้าของห้องดูบนจอหลักแทน
+      if (s.room.status === 'ended' && !hostMode && s.podium?.length && seenRound.current !== s.room.round) {
+        seenRound.current = s.room.round;
+        setShow(true);
       }
       if (s.room.status !== 'ended') setShow(false);
       if (s.room.status === 'closed') cbs.current.onExit('closed');
@@ -438,6 +442,14 @@ export function PlayerSession({
 
   if (st.room.status === 'ended') {
     const top = me.rank > 0 && me.rank <= 3;
+    // ยังไม่ได้ดูแท่นประกาศผล = ยังไม่บอกอันดับของตัวเอง
+    if (!hostMode && (st.podium || []).length > 0 && seenRound.current !== st.room.round)
+      return (
+        <div className="l5g-run-center l5g-result">
+          <Loader2 className="w-10 h-10 animate-spin text-white" />
+          <p className="l5g-result-label">กำลังประกาศผล...</p>
+        </div>
+      );
     return (
       <>
         {show && (
@@ -450,7 +462,7 @@ export function PlayerSession({
             onDone={() => setShow(false)}
           />
         )}
-        <div className="l5g-run-center l5g-result">
+        <div className="l5g-run-center l5g-result" hidden={show}>
           {top && !show && <Confetti />}
           <p className="l5g-result-label">{top ? 'สุดยอดมาก!' : 'เก่งมาก!'}</p>
           <div className="l5g-result-medal">
@@ -513,14 +525,6 @@ export function PlayerSession({
             </b>
             ข้อที่ถูก
           </span>
-          {me.rank > 0 && (
-            <span>
-              <b>
-                <Trophy className="w-5 h-5 inline -mt-1" /> {me.rank}
-              </b>
-              อันดับตอนนี้
-            </span>
-          )}
         </div>
         <p className="text-center font-semibold opacity-70 mt-3">รอเพื่อนๆ ทำให้เสร็จ แล้วจะประกาศผล</p>
       </div>

@@ -345,6 +345,7 @@ export function publicQuestion(
   opts: { shuffleChoices: boolean; seed: string; elapsedMs: number }
 ): PublicQuestion {
   const choices = q.choices.map((c) => ({ id: c.id, text: c.text, media: c.media }));
+  const salt = hashSeed(`${opts.seed}:${q.id}:chk`).toString(36);
   return {
     id: q.id,
     index,
@@ -357,7 +358,26 @@ export function publicQuestion(
     points: q.points,
     ...(isTextQ(q) ? { kind: 'text' as const } : {}),
     elapsedMs: Math.max(0, Math.round(opts.elapsedMs)),
+    chk: { salt, keys: isTextQ(q) ? (q.answers || []).map((a) => answerKey(salt, [a], true)) : [answerKey(salt, correctIds(q), false)] },
   };
+}
+
+/**
+ * ลายนิ้วมือคำตอบ: จอผู้เล่นรู้ถูก/ผิดทันทีโดยไม่ต้องรอเซิร์ฟเวอร์ (คะแนนยังคิดที่เซิร์ฟเวอร์เสมอ)
+ * shortcut: คนที่เปิด devtools ไล่คำนวณทีละตัวเลือกหาเฉลยได้ ถ้าต้องกันจริงให้กลับไปรอผลจากเซิร์ฟเวอร์อย่างเดียว
+ */
+export function answerKey(salt: string, picks: string[], text: boolean): string {
+  const body = text ? normAnswer(String(picks[0] || '').slice(0, ANSWER_CHARS * 2)) : Array.from(new Set(picks)).sort().join(',');
+  return hashSeed(`${salt}|${body}`).toString(36);
+}
+
+/** ตรวจในเครื่องจากลายนิ้วมือ (null = ข้อนี้ไม่มีข้อมูลให้ตรวจ ต้องรอเซิร์ฟเวอร์) */
+export function quickCheck(q: Pick<PublicQuestion, 'chk' | 'kind'>, picks: string[]): boolean | null {
+  if (!q.chk) return null;
+  const text = q.kind === 'text';
+  if (text && !normAnswer(String(picks[0] || ''))) return false;
+  if (!text && !picks.length) return false;
+  return q.chk.keys.includes(answerKey(q.chk.salt, picks, text));
 }
 
 export function correctIds(q: QuizQuestion): string[] {

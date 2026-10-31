@@ -2815,7 +2815,7 @@
 }
 .l5g-look-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(68px, 1fr));
   gap: 6px;
   margin-top: 8px;
   padding: 8px;
@@ -2836,6 +2836,17 @@
   overflow: hidden;
   animation: l5gPop 0.3s var(--l5g-jelly) both;
   transition: transform 0.18s var(--l5g-jelly), border-color 0.15s;
+}
+.l5g-look-grid button {
+  position: relative;
+}
+.l5g-look-none {
+  position: absolute;
+  right: 4px;
+  top: 4px;
+  width: 18px;
+  height: 18px;
+  color: #e0465a;
 }
 .l5g-look-grid button:hover {
   transform: scale(1.08);

@@ -10,7 +10,7 @@
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowBigLeft, ArrowBigRight, BatteryCharging, Camera, Check, ChevronsUp, Gauge, Hand, HeartHandshake, LogOut, Pause, Play, Settings2, Shield, ShieldCheck, Sparkles, Timer, Users, X, Zap } from 'lucide-react';
+import { Crosshair, ScanFace, ArrowBigLeft, ArrowBigRight, BatteryCharging, Camera, Check, ChevronsUp, Gauge, Hand, HeartHandshake, LogOut, Pause, Play, Settings2, Shield, ShieldCheck, Sparkles, Timer, Users, X, Zap } from 'lucide-react';
 import type { QuizQuestion } from '@/lib/game-creator/types';
 import { MathText } from '../../math/MathText';
 import { Confetti } from '../../live/PlayerSession';
@@ -21,7 +21,7 @@ import { createClient } from '@/lib/supabase/client';
 import { sanitizeQuiz } from '@/lib/game-creator/quiz';
 import { mediaPrefix } from '@/lib/game-creator/prefix';
 import { modeFit, modeQuiz } from '@/lib/game-creator/modes';
-import { BONES, BodySmoother, Dwell, Follow, HANDS, Hold, aimFromHand, arAnswerPoints, arStars, assignSides, toBody, AR_POINTS, type Body, type DwellTarget, type Hand as HandSide, type Rect } from '@/lib/game-creator/arPose';
+import { BONES, BodySmoother, Dwell, Follow, HANDS, Hold, aimFromHand, arAnswerPoints, arStars, toBody, AR_POINTS, type Body, type DwellTarget, type Hand as HandSide, type Rect } from '@/lib/game-creator/arPose';
 import type { ArSettings } from '@/lib/game-creator/arSettings';
 import { GESTURE_TEXT, Gestures, MOTIONS, SENS, motionOn, sensK, type GestureEvent, type MotionId } from '@/lib/game-creator/ar/gestures';
 import { ATTACK_TEXT, bossById, bossHp, bossQuestions, defended, pickAttack, shotDamage, type AttackKind, type BossDef } from '@/lib/game-creator/ar/boss';
@@ -32,6 +32,7 @@ import { ALL_STAGES, nextStage, stageById, unlocked, type Stage } from '@/lib/ga
 import { addStats, allCorrectRounds, dailyFor, done, stageQuests, ZERO_STATS, type Quest, type Stats } from '@/lib/game-creator/ar/missions';
 import { TEAM_HEX, TEAM_NAMES, memberOf, sidesOf, teamCount, teamMode, teamOf, type TeamMode } from '@/lib/game-creator/ar/teams';
 import { EMPTY_SAVE, loadSave, writeSave, type ArSave } from '@/lib/game-creator/ar/save';
+import { MIN_SW, Quality, pickBody, toLock, type Lock, type QualityIssue } from '@/lib/game-creator/ar/quality';
 import { PoseTracker, type CamError } from './tracker';
 import { ALIEN_COLORS, SpaceScene } from './scene';
 import { ArMap } from './ArMap';
@@ -82,6 +83,10 @@ interface SideRT {
   gest: Gestures;
   /** จับท่ายืนปกติใหม่จนถึงเวลานี้ (เปลี่ยนคนคุมยาน) */
   recalUntil: number;
+  /** ผู้เล่นที่ล็อกไว้ (คนข้างหลัง/เดินผ่านไม่แย่ง) */
+  lock: Lock | null;
+  qual: Quality;
+  issue: QualityIssue;
   /** ปุ่มแตะจอแทนท่าทาง */
   tLean: -1 | 0 | 1;
   tLeanUntil: number;
@@ -103,6 +108,9 @@ const newRT = (): SideRT => ({
   chargeT: 0,
   gest: new Gestures(),
   recalUntil: 0,
+  lock: null,
+  qual: new Quality(),
+  issue: null,
   tLean: 0,
   tLeanUntil: 0,
   tShieldUntil: 0,
@@ -257,8 +265,11 @@ export function ArGame({ questions, settings, title, onExit, persist = true }: {
     { seen: false, hand: false, ok: false },
     { seen: false, hand: false, ok: false },
   ]);
-  const [calibGest, setCalibGest] = useState<Partial<Record<MotionId, boolean>>>({});
+  const [calibGest, setCalibGest] = useState<Partial<Record<GestureEvent, boolean>>>({});
   const [fps, setFps] = useState(0);
+  const [issue, setIssue] = useState<QualityIssue>(null);
+  const [skipArm, setSkipArm] = useState(false);
+  const issueRef = useRef<QualityIssue>(null);
   const [save, setSave] = useState<ArSave>(EMPTY_SAVE);
   const [stageId, setStageId] = useState(ALL_STAGES[0].id);
   const [stageSet, setStageSet] = useState<{ title: string; questions: QuizQuestion[] } | null>(null);
@@ -345,7 +356,7 @@ export function ArGame({ questions, settings, title, onExit, persist = true }: {
     if (running) return;
     const n = sidesOf(cfg.teams);
     setSidesN(n);
-    void tracker.current?.setPoses(n === 2 ? 4 : 2);
+    void tracker.current?.setPoses(n === 2 ? 3 : 2);
   }, [cfg.teams, running]);
 
   const float = useCallback((x: number, y: number, text: string, color: string, big = false, kind?: Floater['kind']) => {
@@ -396,7 +407,7 @@ export function ArGame({ questions, settings, title, onExit, persist = true }: {
     if (!v) return;
     const t = new PoseTracker(v);
     tracker.current = t;
-    const err = await t.start(sidesOf(cfgRef.current.teams) === 2 ? 4 : 2);
+    const err = await t.start(sidesOf(cfgRef.current.teams) === 2 ? 3 : 2);
     if (tracker.current !== t) return;
     if (err) {
       t.stop();
@@ -632,6 +643,10 @@ export function ArGame({ questions, settings, title, onExit, persist = true }: {
         if (swapped && (r.mode === 'relay' || r.members > 1) && idx > 0) {
           // คนใหม่มาคุมยาน: จับท่ายืนปกติใหม่ระหว่างช่วงเปลี่ยนคน
           rt.gest.reset();
+          // ปล่อยคนเดิม (มักยังเดินอยู่ในภาพ) ให้คนใหม่ที่ใกล้กล้องสุดคุมแทน
+          rt.lock = null;
+          rt.qual.reset();
+          rt.smooth.reset();
           rt.recalUntil = performance.now() + SWAP_S * 1000;
           enterS = Math.max(enterS, SWAP_S);
           const who = r.members > 1 ? `คนที่ ${member + 1}` : 'ตัวแทนทีม';
@@ -999,8 +1014,7 @@ export function ArGame({ questions, settings, title, onExit, persist = true }: {
       const qr = Q.current;
       const { x, y } = shipXY(s);
       if (fromCam && phaseRef.current === 'calib') {
-        const map: Record<GestureEvent, MotionId> = { dodgeL: 'dodge', dodgeR: 'dodge', jump: 'jump', shield: 'shield', charge: 'charge', victory: 'victory' };
-        setCalibGest((g) => (g[map[e]] ? g : { ...g, [map[e]]: true }));
+        setCalibGest((g) => (g[e] ? g : { ...g, [e]: true }));
       }
       // ป้ายท่าทางขึ้นเฉพาะเมื่อกล้องตรวจเจอจริง (ปุ่ม/คีย์บอร์ดไม่ขึ้น)
       if (fromCam) float(x, y - 120, GESTURE_TEXT[e], '#ffffff', false, 'gest');
@@ -1067,6 +1081,10 @@ export function ArGame({ questions, settings, title, onExit, persist = true }: {
     let camCheck = 0;
     const loop = (now: number) => {
       raf = requestAnimationFrame(loop);
+      // ลดความร้อน: วนเกมไม่เกิน ~30 ภาพ/วิ (จอ 60/120Hz ไม่ต้องวาดทุกรอบ จุดเล็งไหลตามด้วย Follow อยู่แล้ว)
+      // หน้าแผนที่/พักเกม (มีแผงทึบบัง) วาดแค่ ~10 ภาพ/วิ และไม่ตรวจท่า
+      const idle = phaseRef.current === 'map' || pausedRef.current;
+      if (now - last < (idle ? 100 : 30)) return;
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
       T += dt;
@@ -1099,7 +1117,7 @@ export function ArGame({ questions, settings, title, onExit, persist = true }: {
       }
 
       /* ---- ตรวจท่าทาง: ผลใหม่มาเมื่อกล้องมีเฟรมใหม่ ---- */
-      if (tr?.ready && tr.tick(now)) {
+      if (tr?.ready && !idle && tr.tick(now)) {
         const v = video.current!;
         const view = { vw: v.videoWidth || 1280, vh: v.videoHeight || 720, cw, ch, mirror: true };
         const bodies: Body[] = [];
@@ -1107,22 +1125,33 @@ export function ArGame({ questions, settings, title, onExit, persist = true }: {
           const bd = toBody(l, view);
           if (bd) bodies.push(bd);
         }
-        const as = assignSides(bodies, cw / 2, sidesN === 2 ? 2 : 1);
+        // คนไกล/คนข้างหลัง (ไหล่แคบ) ไม่นับ แล้วแต่ละฝั่งยึดผู้เล่นคนเดิมไว้
+        const near = bodies.filter((b) => b.sw >= cw * MIN_SW);
         for (let s = 0; s < sidesN; s++) {
           const rt = rts.current[s];
-          const raw = as[s];
+          const cands = sidesN === 2 ? near.filter((b) => (b.cx < cw / 2) === (s === 0)) : near;
+          const raw = pickBody(cands, rt.lock, now);
           if (!raw) {
             rt.charge.update(false);
             continue;
           }
+          rt.lock = toLock(raw, now);
           if (now - rt.seenAt > 400) {
             rt.seenSince = now;
             rt.smooth.reset();
+            rt.qual.reset();
             rt.draw = [];
           }
           rt.seenAt = now;
+          rt.issue = rt.qual.update(raw, now);
           const bd = rt.smooth.smooth(raw, now);
           rt.body = bd;
+          // ตัวสั่น/สลับคน = จุดเพี้ยน ไม่นับการเล็งช่วงนั้น / หน้าถูกบังแค่เตือน (เด็กใส่หน้ากากอนามัยยังเล่นได้)
+          if (rt.issue === 'shaky') {
+            rt.charge.update(false);
+            for (const h of HANDS) rt.hands[h].aim = null;
+            continue;
+          }
           rt.charge.update(motionOn(c.motions, 'charge') && rt.gest.charge);
           for (const h of HANDS) rt.hands[h].aim = aimFromHand(bd, h, reachRef.current, attackOn ? fullArea : area(s));
           // ท่ายืนปกติ: ช่วงแรกที่เห็นตัว / ช่วงเปลี่ยนคนคุมยาน = จับใหม่ ไม่นับท่า
@@ -1134,6 +1163,7 @@ export function ArGame({ questions, settings, title, onExit, persist = true }: {
         const rt = rts.current[s];
         if (now - rt.seenAt > 400) {
           rt.body = null;
+          rt.issue = null;
           rt.draw = [];
           rt.gest.lean = 0;
           rt.gest.shield = false;
@@ -1193,6 +1223,13 @@ export function ArGame({ questions, settings, title, onExit, persist = true }: {
           }
         }
         g2.globalAlpha = 1;
+      }
+
+      /* ---- เตือนกลางจอเมื่อหน้าถูกบัง/ตัวสั่น (ฝั่งไหนก็ได้) ---- */
+      const iss = tr ? rts.current.slice(0, sidesN).find((x) => x.issue)?.issue ?? null : null;
+      if (iss !== issueRef.current) {
+        issueRef.current = iss;
+        setIssue(iss);
       }
 
       /* ---- พักอัตโนมัติเมื่อไม่มีใครอยู่หน้ากล้อง ---- */
@@ -1654,7 +1691,29 @@ export function ArGame({ questions, settings, title, onExit, persist = true }: {
     [stats, teamsN]
   );
 
-  const calibReady = calib.slice(0, sidesN).every((x) => x.ok);
+  // ภารกิจฝึก: ท่าพื้นฐานทุกฝั่งต้องผ่าน ท่าพิเศษเฉพาะที่ครูเปิดไว้ (ฝั่งไหนทำก็ได้)
+  const allSides = (k: 'seen' | 'hand' | 'ok') => calib.slice(0, sidesN).every((x) => x[k]);
+  const mo = (m: MotionId) => motionOn(cfg.motions, m);
+  const missions = [
+    { k: 'seen', short: 'เห็นตัว', title: 'ยืนให้กล้องเห็นตัว', hint: sidesN === 2 ? 'ฝั่งละคน ถอยให้เห็นตั้งแต่หัวถึงเอว' : 'ถอยให้เห็นตั้งแต่หัวถึงเอว หน้าตรง', icon: Users, done: allSides('seen'), on: true },
+    { k: 'hand', short: 'ยกมือ', title: 'ยกมือขึ้น!', hint: 'ยกมือข้างไหนก็ได้ จะมีวงเล็งตามมือ', icon: Hand, done: allSides('hand'), on: true },
+    { k: 'shoot', short: 'ยิงเป้าซ้อม', title: 'เล็งยิงยานซ้อม', hint: 'เลื่อนวงเล็งไปที่ยาน ค้างไว้จนวงเต็ม', icon: Crosshair, done: allSides('ok'), on: true },
+    { k: 'dodgeL', short: 'เอียงซ้าย', title: 'เอียงตัวไปทางซ้าย', hint: 'เอียงทั้งตัว ไม่ต้องก้าวเท้า', icon: ArrowBigLeft, done: !!calibGest.dodgeL, on: mo('dodge') },
+    { k: 'dodgeR', short: 'เอียงขวา', title: 'เอียงตัวไปทางขวา', hint: 'เอียงทั้งตัว ไม่ต้องก้าวเท้า', icon: ArrowBigRight, done: !!calibGest.dodgeR, on: mo('dodge') },
+    { k: 'shield', short: 'โล่สองมือ', title: 'ประกบสองมือไว้หน้าอก', hint: 'นี่คือท่าตั้งโล่กันการโจมตี', icon: Shield, done: !!calibGest.shield, on: mo('shield') },
+    { k: 'charge', short: 'ชาร์จพลัง', title: 'ยกสองมือเหนือหัว', hint: 'ค้างไว้ = ชาร์จพลัง', icon: Zap, done: !!calibGest.charge, on: mo('charge') },
+    { k: 'jump', short: 'กระโดด', title: 'กระโดดเบาๆ หนึ่งที', hint: 'ระวังพื้นลื่น เว้นที่รอบตัว', icon: ChevronsUp, done: !!calibGest.jump, on: mo('jump') },
+    { k: 'victory', short: 'ท่าชัยชนะ', title: 'กางแขนเป็นตัว V', hint: 'ท่าชัยชนะตอนล้มบอส', icon: Sparkles, done: !!calibGest.victory, on: mo('victory') },
+  ].filter((m) => m.on);
+  const curMission = missions.find((m) => !m.done);
+  const missionsDone = missions.filter((m) => m.done).length;
+  const allMissions = !curMission;
+  const missionsPrev = useRef(0);
+  useEffect(() => {
+    // ผ่านภารกิจเพิ่ม = เสียงฉลอง
+    if (phase === 'calib' && missionsDone > missionsPrev.current) gsfx.levelUp();
+    missionsPrev.current = missionsDone;
+  }, [missionsDone, phase]);
   const nextAfter = result && R.current ? ALL_STAGES[ALL_STAGES.findIndex((x) => x.id === R.current!.stage.id) + 1] : undefined;
   const canNext = !!nextAfter && unlocked(save.stars, nextAfter.id, save.openAll);
   const titleOf = (sid: string) => (save.sets[sid] ? (sid === stageId && stageSet ? stageSet.title : setErr && sid === stageId ? `${title} (ชุดของด่านเปิดไม่ได้)` : 'ชุดที่ครูเลือก') : title);
@@ -1738,6 +1797,14 @@ export function ArGame({ questions, settings, title, onExit, persist = true }: {
             </b>
           </div>
         ))}
+
+      {camOn && issue && (phase === 'calib' || phase === 'play') && !paused && !teacher && (
+        <div className="ar-issue" role="alert">
+          <ScanFace className="w-10 h-10" />
+          <b>{issue === 'face' ? 'ห้ามมีอะไรบังใบหน้า' : 'ยืนนิ่งๆ ให้กล้องเห็นชัดๆ'}</b>
+          <span>{issue === 'face' ? 'เอามือ/ของออกจากหน้า หันหน้าเข้าหากล้อง' : 'ถอยให้เห็นหัวถึงเอว อย่าให้คนอื่นยืนซ้อนข้างหลัง'}</span>
+        </div>
+      )}
 
       {floaters.map((f) => (
         <span key={f.id} className="ar-float" data-big={!!f.big} data-kind={f.kind || ''} style={{ left: f.x, top: f.y, color: f.color }}>
@@ -1974,57 +2041,65 @@ export function ArGame({ questions, settings, title, onExit, persist = true }: {
         </div>
       )}
 
-      {/* ---------------- ตั้งค่ากล้อง + เป้าซ้อม + ทดลองท่า ---------------- */}
+      {/* ---------------- ภารกิจฝึกก่อนเริ่ม: บอกกลางจอทีละข้อ + เช็กลิสต์ ครบแล้วถึงเริ่มได้ ---------------- */}
       {phase === 'calib' && (
-        <div className="ar-calib">
-          <div className="ar-calib-card">
-            <b>ฝึกเล็งก่อนเริ่ม</b>
-            <div className="ar-calib-sides">
-              {[...Array(sidesN).keys()].map((s) => (
-                <div key={s} className="ar-calib-side" style={{ ['--tc' as string]: TEAM_HEX[s] }}>
-                  {sidesN === 2 && <em>{TEAM_NAMES[s]}</em>}
-                  <span data-ok={calib[s].seen}>{calib[s].seen ? <Check className="w-4 h-4" strokeWidth={4} /> : <i />} เห็นตัว</span>
-                  <span data-ok={calib[s].hand}>{calib[s].hand ? <Check className="w-4 h-4" strokeWidth={4} /> : <i />} ยกมือ</span>
-                  <span data-ok={calib[s].ok}>{calib[s].ok ? <Check className="w-4 h-4" strokeWidth={4} /> : <i />} ยิงเป้าซ้อม</span>
-                </div>
-              ))}
-            </div>
-            <div className="ar-calib-row">
-              <span>ลองท่า</span>
-              {MOTIONS.filter((m) => motionOn(cfg.motions, m.id)).map((m) => (
-                <span key={m.id} className="ar-chip ar-gchip" data-on={!!calibGest[m.id]} title={m.how}>
-                  {calibGest[m.id] && <Check className="w-3.5 h-3.5 inline" strokeWidth={4} />} {m.name}
-                </span>
-              ))}
-            </div>
-            <div className="ar-calib-row">
-              <span>จุดเล็ง</span>
-              {REACH.map((rr, i) => (
-                <button key={i} type="button" className="ar-chip" data-on={reach === i} onClick={() => (gsfx.tap(), setReach(i))}>
-                  {rr.name}
-                </button>
-              ))}
-            </div>
-            <div className="ar-calib-row">
-              <span>ความไวท่า</span>
-              {SENS.map((sn, i) => (
-                <button key={i} type="button" className="ar-chip" data-on={cfg.sens === i} onClick={() => (gsfx.tap(), setCfg({ ...cfg, sens: i }))}>
-                  {sn.name}
-                </button>
-              ))}
-              {fps > 0 && <small>จับท่า {fps} ภาพ/วิ</small>}
-            </div>
-            <div className="ar-panel-btns">
-              <button type="button" className="ar-btn ar-btn-go" data-ready={calibReady} onClick={() => (gsfx.start(), toMap())}>
-                <Play className="w-5 h-5" /> {calibReady ? 'พร้อมแล้ว ไปแผนที่!' : 'ไปแผนที่เลย'}
-              </button>
-              <button type="button" className="ar-btn ar-btn-ghost" onClick={exit}>
-                <LogOut className="w-5 h-5" /> ออก
-              </button>
+        <>
+          <div className="ar-mission" key={curMission?.k || 'done'} style={{ ['--mc' as string]: curMission ? '#ffe14a' : '#3fe0a0' }}>
+            <span className="ar-mission-ic">{curMission ? <curMission.icon className="w-9 h-9" /> : <Check className="w-9 h-9" strokeWidth={4} />}</span>
+            <div>
+              <small>{curMission ? `ภารกิจที่ ${missions.indexOf(curMission) + 1} จาก ${missions.length}` : 'ผ่านครบทุกภารกิจ'}</small>
+              <b>{curMission ? curMission.title : 'เก่งมาก! พร้อมรบแล้ว'}</b>
+              <span>{curMission ? curMission.hint : 'กดปุ่มเริ่มด้านล่างได้เลย'}</span>
             </div>
           </div>
-          <p className="ar-calib-hint">{calibReady ? 'เก่งมาก! ลองเอียงตัว ประกบมือ ดูป้ายท่าที่ขึ้น' : calib[0].seen ? 'ยกมือขึ้น เลื่อนวงเล็งไปที่ยาน ค้างไว้จนวงเต็ม' : 'ถอยให้กล้องเห็นตั้งแต่หัวถึงเอว'}</p>
-        </div>
+          <div className="ar-calib">
+            <div className="ar-calib-card">
+              <div className="ar-mlist-head">
+                <b>ภารกิจฝึก</b>
+                <span>
+                  ผ่านแล้ว {missionsDone}/{missions.length}
+                </span>
+              </div>
+              <div className="ar-mbar">
+                <i style={{ width: `${(missionsDone / Math.max(1, missions.length)) * 100}%` }} />
+              </div>
+              <ul className="ar-mlist">
+                {missions.map((m) => (
+                  <li key={m.k} data-ok={m.done} data-cur={m === curMission}>
+                    {m.done ? <Check className="w-4 h-4" strokeWidth={4} /> : <m.icon className="w-4 h-4" />} {m.short}
+                  </li>
+                ))}
+              </ul>
+              <div className="ar-calib-row">
+                <span>จุดเล็ง</span>
+                {REACH.map((rr, i) => (
+                  <button key={i} type="button" className="ar-chip" data-on={reach === i} onClick={() => (gsfx.tap(), setReach(i))}>
+                    {rr.name}
+                  </button>
+                ))}
+                <span>ความไวท่า</span>
+                {SENS.map((sn, i) => (
+                  <button key={i} type="button" className="ar-chip" data-on={cfg.sens === i} onClick={() => (gsfx.tap(), setCfg({ ...cfg, sens: i }))}>
+                    {sn.name}
+                  </button>
+                ))}
+                {fps > 0 && <small>จับท่า {fps} ภาพ/วิ</small>}
+              </div>
+              <div className="ar-panel-btns">
+                <button type="button" className="ar-btn ar-btn-go" data-ready={allMissions} disabled={!allMissions} onClick={() => (gsfx.start(), toMap())}>
+                  <Play className="w-5 h-5" /> {allMissions ? 'ผ่านครบแล้ว เริ่มเลย!' : `ทำภารกิจให้ครบก่อน (${missionsDone}/${missions.length})`}
+                </button>
+                {/* ครูข้ามได้แต่ต้องกดยืนยันซ้ำ เด็กกดพลาดครั้งเดียวไม่หลุดการฝึก */}
+                <button type="button" className="ar-btn ar-btn-ghost" onClick={() => (gsfx.tap(), skipArm ? toMap() : (setSkipArm(true), setTimeout(() => setSkipArm(false), 3000)))} title="สำหรับครู: ข้ามการฝึก">
+                  {skipArm ? 'กดอีกครั้งเพื่อข้าม' : 'ข้าม (ครู)'}
+                </button>
+                <button type="button" className="ar-btn ar-btn-ghost" onClick={exit}>
+                  <LogOut className="w-5 h-5" /> ออก
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
       )}
 
       {/* ---------------- แผนที่ / อัปเกรด / ภารกิจ ---------------- */}

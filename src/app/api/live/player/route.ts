@@ -93,12 +93,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, avatar, gear });
   }
 
-  /* ---------- Café / Tower / Brawl / Fishing: ส่งคะแนนจากเกม ---------- */
+  /* ---------- โหมดที่คิดคะแนนในเครื่อง (ทุกโหมดยกเว้น quiz/racing): ส่งคะแนนจากเกม เพดานตาม scoreCap ---------- */
   if (op === 'sync') {
-    if (room.game !== 'cafe' && room.game !== 'tower' && room.game !== 'brawl' && room.game !== 'fishing') return NextResponse.json({ error: 'โหมดนี้ไม่ใช้' }, { status: 400 });
+    // เดิมลืม turf/treasure/egg = คะแนนไม่ถูกบันทึก จบเกมแล้วขึ้น 0 ทุกคน
+    if (room.game === 'quiz' || room.game === 'racing') return NextResponse.json({ error: 'โหมดนี้ไม่ใช้' }, { status: 400 });
     if (room.status !== 'playing' || isTimeUp(room, 15)) return NextResponse.json({ ok: true, status: room.status, score: p.score });
     const want = Math.max(0, Math.round(Number(body.score) || 0));
-    const score = Math.max(p.score, Math.min(want, scoreCap(room.game, p.correct)));
+    const capped = Math.min(want, scoreCap(room.game, p.correct));
+    // Turf (พื้นที่โดนแย่งคืน) / Treasure (ใช้เพชรซื้อสัตว์) คะแนนลดได้ = เก็บค่าล่าสุดให้ตรงกับในเกม โหมดอื่นคะแนนไม่ลด
+    const score = room.game === 'turf' || room.game === 'treasure' ? capped : Math.max(p.score, capped);
     await db.from('room_players').update({ score, stats: cleanStats(body.stats), last_seen_at: new Date().toISOString() }).eq('id', p.id);
     return NextResponse.json({ ok: true, status: room.status, score });
   }

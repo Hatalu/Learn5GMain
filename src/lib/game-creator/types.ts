@@ -121,6 +121,8 @@ export interface PublicQuestion {
   kind?: QuestionKind;
   /** เวลาที่ผ่านไปแล้วของข้อนี้ (มิลลิวินาที) นับจากฝั่งเซิร์ฟเวอร์ กันรีเฟรชเพื่อรีเซ็ตเวลา */
   elapsedMs: number;
+  /** ลายนิ้วมือคำตอบ (quickCheck) ให้รู้ถูก/ผิดทันที ไม่ใช่เฉลยตรงๆ */
+  chk?: { salt: string; keys: string[] };
 }
 
 export interface AnswerResult {
