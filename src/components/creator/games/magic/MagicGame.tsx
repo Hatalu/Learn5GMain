@@ -594,12 +594,12 @@ export function MagicGame({ questions, settings, title, onExit, persist = true }
     if (x !== undefined && y !== undefined) float(x, y, text || `+${pts}`, color);
   };
 
-  /** ภารกิจทีม (หลายทีม): ตอบถูกรวมกันครบเป้า = ทุกทีม +100 */
+  /** ภารกิจทีม (หลายทีม): ตอบถูกรวมกันครบ (ทีมละ 3 ข้อ) = ทุกทีม +100 */
   const coopTick = () => {
     const g = G.current;
     if (!g || g.teams < 2) return;
     g.coop++;
-    const goal = g.teams * 2;
+    const goal = g.teams * 3;
     if (g.coop >= goal) {
       g.coop = 0;
       g.coopDone++;
@@ -1634,7 +1634,7 @@ export function MagicGame({ questions, settings, title, onExit, persist = true }
               <div className="mk-coop" title="ภารกิจทีม">
                 <Users className="w-4 h-4" />
                 <span>
-                  <i style={{ width: `${(g.coop / (g.teams * 2)) * 100}%` }} />
+                  <i style={{ width: `${(g.coop / (g.teams * 3)) * 100}%` }} />
                 </span>
               </div>
             )}

@@ -164,7 +164,7 @@ export function LocalSetup({ mode, usable, value, onChange }: { mode: GameMode; 
           <div className="l5g-chips">
             {(info.teams || [0]).map((t) => (
               <button key={t} type="button" className="l5g-chipbtn" data-on={value.teams === t} onClick={() => set({ teams: t })}>
-                {t === 2 ? '2 ทีม (จอแบ่งซ้าย-ขวา)' : t ? `${t} ทีม (ผลัดกันเล่น)` : 'เล่นเดี่ยว'}
+                {t === 2 && !magic ? '2 ทีม (จอแบ่งซ้าย-ขวา)' : t ? `${t} ทีม (ผลัดกันเล่น)` : 'เล่นเดี่ยว'}
               </button>
             ))}
           </div>
@@ -212,8 +212,8 @@ export function LocalSetup({ mode, usable, value, onChange }: { mode: GameMode; 
             <Gauge className="w-4 h-4" /> ความยาก ({magic ? 'มอนสเตอร์ลอยไปมา / บอสดุ' : 'ยานลอยไปมา / อุกกาบาตเร็ว / บอสดุ'})
           </p>
           <div className="l5g-chips">
-            {AR_LEVELS.map((l, i) => (
-              <button key={i} type="button" className="l5g-chipbtn" data-on={value.level === i} onClick={() => set({ level: i })}>
+            {(magic ? AR_LEVELS.slice(0, 3) : AR_LEVELS).map((l, i) => (
+              <button key={i} type="button" className="l5g-chipbtn" data-on={value.level === i || (magic && value.level === 3 && i === 1)} onClick={() => set({ level: i })}>
                 {l}
               </button>
             ))}
