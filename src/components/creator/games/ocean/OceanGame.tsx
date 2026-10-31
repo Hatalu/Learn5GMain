@@ -866,6 +866,13 @@ export function OceanGame({ questions, settings, title, onExit, persist = true }
     return () => clearTimeout(t);
   }, [phase, count, loadQuestion]);
 
+  /* การ์ดใหม่ปิดเองใน 5 วิ (เล่นด้วยกล้อง เด็กยืนห่างจอ ไม่ต้องเดินมากด) */
+  useEffect(() => {
+    if (!card) return;
+    const t = setTimeout(() => setCard(null), 5000);
+    return () => clearTimeout(t);
+  }, [card]);
+
   /** หลังรอบเก็บขยะ/ว่ายหลบ: ช่วยสัตว์ / ฟื้นปะการัง แล้วไปข้อถัดไป */
   const afterRound = useCallback(() => {
     const g = G.current;

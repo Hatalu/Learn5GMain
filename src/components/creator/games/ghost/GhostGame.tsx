@@ -202,6 +202,7 @@ interface Game {
   prevAtk: AtkKind[];
   chargeT: number;
   chargeUsed: boolean;
+  sonicUsed: boolean;
   weakT: number;
   lastCast: number;
   bothT: number;
@@ -465,7 +466,7 @@ export function GhostGame({ questions, settings, title, onExit, persist = true }
         scores: [...Array(tm)].map(emptyScore), log: [], coop: 0, timeLeft: TIME_ATTACK_S, knowGain: 0, caught: {}, newGhosts: [], chests: 0,
         q: null, order: [], kinds: [], mobs: [], sub: 'enter', subT: 0, subS: ENTER_S, usedMs: 0, limitMs: 20000, lastSec: -1, firstTry: true, got: false, found: false, sonicUntil: 0, team: 0, member: 0, special: null, bossQ: false, wrongPicks: [],
         items: [], spawnT: 0, spawned: 0, obs: [],
-        bolts: 0, atkT: 0, atks: [], prevAtk: [], chargeT: 0, chargeUsed: false, weakT: 0, lastCast: 0, bothT: 0, finalStrike: false,
+        bolts: 0, atkT: 0, atks: [], prevAtk: [], chargeT: 0, chargeUsed: false, sonicUsed: false, weakT: 0, lastCast: 0, bothT: 0, finalStrike: false,
       };
       if (g.boss) scene.current?.boss('boss', g.boss.def.id);
       for (const h of HANDS) hands.current[h] = newHand(fx.dwell);
@@ -791,7 +792,11 @@ export function GhostGame({ questions, settings, title, onExit, persist = true }
       const { cw, ch } = size();
       float(cw / 2, ch * 0.3, 'คลื่นเสียง! ผีทุกตัวปรากฏ', '#ffb347', true);
       gsfx.whoosh();
-    } else if (g.sub === 'battle' && !g.chargeUsed) hitBoss('sonic');
+    } else if (g.sub === 'battle' && !g.sonicUsed) {
+      // คลื่นเสียงใส่บอสได้ 1 ครั้งต่อรอบบอส
+      g.sonicUsed = true;
+      hitBoss('sonic');
+    }
   }, [float, hitBoss]);
 
   const currentLean = () => {
@@ -1183,7 +1188,7 @@ export function GhostGame({ questions, settings, title, onExit, persist = true }
             g.subT = 0;
             g.bolts = g.fx.bolts + (g.scores[g.team].streak >= 3 ? 1 : 0);
             g.atkT = 1.4;
-            g.chargeUsed = false;
+            g.chargeUsed = g.sonicUsed = false;
             g.lastCast = 0;
             g.bothT = 0;
             g.weakT = WEAK_EVERY - WEAK_S - 0.8;

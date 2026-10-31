@@ -232,7 +232,8 @@ export function maxPlayFor(n: number): number {
   return GH_POINTS.found + round + (sp === 'puzzle' ? GH_POINTS.puzzle : sp === 'rescue' ? GH_POINTS.rescue : 0);
 }
 export function maxBattlePlay(fx: Effects, battleS: number, minEvery: number): number {
-  const shots = fx.bolts + 1 + 1;
+  /* ลำแสง + คอมโบ 3 + ชาร์จ + คลื่นเสียง 1 ครั้ง */
+  const shots = fx.bolts + 1 + 1 + 1;
   return shots * GH_POINTS.hit + Math.ceil(battleS / minEvery) * GH_POINTS.block;
 }
 
