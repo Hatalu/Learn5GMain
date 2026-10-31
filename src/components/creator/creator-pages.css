@@ -740,6 +740,97 @@
   font-size: 0.8rem;
   opacity: 0.6;
 }
+/* นำเข้า/ส่งออก Excel */
+.l5g-sheet-btn {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  margin-right: 8px;
+  order: 0;
+  padding: 3px 10px;
+  border: 2px solid var(--l5g-ink);
+  border-radius: 999px;
+  background: #d9fbe9;
+  color: #127a52;
+  font-weight: 800;
+  font-size: 0.8rem;
+  box-shadow: 0 2px 0 var(--l5g-ink);
+  transition: transform 0.12s;
+}
+.l5g-sheet-btn:hover {
+  transform: translateY(-1px);
+}
+.l5g-sheet-btn:active {
+  transform: translateY(2px) scale(0.96, 0.92);
+  box-shadow: 0 0 0 var(--l5g-ink);
+}
+.l5g-qlist-head > span {
+  order: 1;
+}
+.l5g-sheet-acts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+}
+.l5g-sheet-acts .l5g-btn {
+  justify-content: center;
+}
+.l5g-sheet-tips {
+  margin: 14px 0 0;
+  padding-left: 1.2em;
+  list-style: disc;
+  font-weight: 600;
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+.l5g-sheet-list {
+  max-height: min(46vh, 360px);
+  overflow-y: auto;
+  border: 2px solid var(--l5g-ink);
+  border-radius: 14px;
+  background: #fff;
+}
+.l5g-sheet-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-bottom: 1px dashed #d8cfe8;
+  color: #127a52;
+  font-size: 0.9rem;
+}
+.l5g-sheet-row:last-child {
+  border-bottom: 0;
+}
+.l5g-sheet-row[data-bad='true'] {
+  background: #fff1ec;
+  color: #c2410c;
+}
+.l5g-sheet-num {
+  flex: none;
+  width: 52px;
+  font-weight: 800;
+  font-size: 0.78rem;
+  opacity: 0.75;
+}
+.l5g-sheet-text {
+  min-width: 0;
+  font-weight: 600;
+  color: var(--l5g-ink);
+}
+.l5g-sheet-row[data-bad='true'] .l5g-sheet-text {
+  color: #c2410c;
+}
+.l5g-sheet-bad {
+  color: #c2410c;
+}
+@media (prefers-reduced-motion: reduce) {
+  .l5g-sheet-btn {
+    transition: none;
+  }
+}
 .l5g-qlist {
   display: flex;
   gap: 8px;

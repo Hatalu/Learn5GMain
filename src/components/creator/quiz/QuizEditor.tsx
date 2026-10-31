@@ -12,6 +12,8 @@ import {
   CheckCircle2,
   Clapperboard,
   Copy,
+  Download,
+  FileSpreadsheet,
   Globe,
   Lock,
   FolderHeart,
@@ -25,6 +27,7 @@ import {
   Rocket,
   Save,
   Trash2,
+  Upload,
   X,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
@@ -44,11 +47,13 @@ import {
   playableQuiz,
   quizCover,
   quizIssues,
+  richIsEmpty,
   richToPlain,
   sanitizeQuiz,
   timeLabel,
   uid,
 } from '@/lib/game-creator/quiz';
+import { TEMPLATE_ROWS, buildCsv, quizToRows, readSheet, rowsToQuestions, type SheetRow } from '@/lib/game-creator/quizSheet';
 import { mediaPrefix, probeVideo, uploadAudio, uploadImage, type VideoProbe } from '@/lib/game-creator/media';
 import { gsfx } from '@/lib/game-creator/gsound';
 import { UsageMeter } from '../UsageMeter';
@@ -157,6 +162,9 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
   const [draftOffer, setDraftOffer] = useState<{ title: string; content: QuizContent } | null>(null);
   const [dragFrom, setDragFrom] = useState<number | null>(null);
   const [previewDone, setPreviewDone] = useState<number | null>(null);
+  // นำเข้า/ส่งออก Excel: null = ปิด, rows = ผลตรวจไฟล์ที่เลือก
+  const [sheet, setSheet] = useState<{ name: string; rows: SheetRow[] | null; err: string } | null>(null);
+  const sheetInput = useRef<HTMLInputElement>(null);
   // ทดลองเล่น: เปิดเพลงของรูปแบบนั้น
   const previewMode = preview?.mode;
   useEffect(() => {
@@ -358,6 +366,43 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
     update((c) => ({ ...c, questions: c.questions.map((q) => ({ ...q, time: cur.time })) }));
   };
 
+  /* ---------------- นำเข้า/ส่งออก Excel ---------------- */
+  const downloadCsv = (rows: string[][], name: string) => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([buildCsv(rows)], { type: 'text/csv;charset=utf-8' }));
+    a.download = `${name.replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'ชุดคำถาม'}.csv`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    gsfx.pick();
+  };
+  const onSheet = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (!f) return;
+    try {
+      if (f.size > 5 * 1024 * 1024) throw new Error('ไฟล์ใหญ่เกิน 5 MB');
+      const rows = rowsToQuestions(await readSheet(f.name, await f.arrayBuffer()), prefix);
+      if (!rows.length) throw new Error('ไม่พบคำถามในไฟล์นี้ ลองดูแม่แบบก่อนนะ');
+      setSheet({ name: f.name, rows, err: '' });
+      gsfx.join();
+    } catch (err) {
+      setSheet({ name: f.name, rows: null, err: err instanceof Error && /[฀-๿]/.test(err.message) ? err.message : 'อ่านไฟล์ไม่ได้ ลองบันทึกเป็น .xlsx หรือ CSV ใหม่' });
+    }
+  };
+  // ชุดที่มีแต่ข้อว่าง (ชุดใหม่) = แทนที่ ไม่งั้นต่อท้าย
+  const blankQ = (q: QuizQuestion) => richIsEmpty(q.text) && !q.media && !q.choices.some(choiceFilled) && !q.answers?.some((a) => a.trim());
+  const sheetBase = qs.every(blankQ) ? [] : qs;
+  const sheetGood = sheet?.rows?.flatMap((r) => (r.q ? [r.q] : [])) || [];
+  const sheetRoom = LIMITS.questions - sheetBase.length;
+  const importSheet = () => {
+    const add = sheetGood.slice(0, sheetRoom);
+    if (!add.length) return;
+    gsfx.streak();
+    update((c) => ({ ...c, questions: [...(c.questions.every(blankQ) ? [] : c.questions), ...add] }));
+    setSel(sheetBase.length);
+    setSheet(null);
+  };
+
   /* ---------------- รูป/คลิป ---------------- */
   const setMedia = (t: Target, m: MediaRef | null) => {
     if (t.c) patchC(t.q, t.c, { media: m });
@@ -544,6 +589,7 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
       <input ref={imgInput} type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden onChange={onImage} />
       <input ref={vidInput} type="file" accept="video/mp4,video/webm,video/quicktime,video/*" hidden onChange={onVideo} />
       <input ref={audInput} type="file" accept="audio/mpeg,audio/mp4,audio/x-m4a,audio/aac,audio/ogg,audio/wav,audio/webm,.mp3,.m4a,.wav,.ogg" hidden onChange={onAudio} />
+      <input ref={sheetInput} type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden onChange={onSheet} />
 
       {/* ---------- แถบบน ---------- */}
       <header className="l5g-ebar">
@@ -645,6 +691,9 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
             <span>
               {qs.length}/{LIMITS.questions}
             </span>
+            <button type="button" className="l5g-sheet-btn" onClick={() => (gsfx.tap(), setSheet({ name: '', rows: null, err: '' }))} title="นำเข้า/ส่งออกคำถามด้วยไฟล์ Excel หรือ CSV">
+              <FileSpreadsheet className="w-4 h-4" /> Excel
+            </button>
           </div>
           <div className="l5g-qlist" ref={listRef}>
             {qs.map((q, i) => (
@@ -971,8 +1020,70 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
         />
       )}
 
+      {sheet && (
+        <PaperModal title="นำเข้า / ส่งออก Excel" icon={<FileSpreadsheet className="w-5 h-5" />} iconBg="#3fd6a8" onClose={() => setSheet(null)} width={620}>
+          {!sheet.rows ? (
+            <>
+              <div className="l5g-sheet-acts">
+                <button type="button" className="l5g-btn l5g-btn-ghost" onClick={() => downloadCsv(TEMPLATE_ROWS, 'แม่แบบชุดคำถาม')}>
+                  <Download className="w-5 h-5" /> ดาวน์โหลดแม่แบบ
+                </button>
+                <button type="button" className="l5g-btn l5g-btn-go" onClick={() => sheetInput.current?.click()} disabled={sheetRoom <= 0}>
+                  <Upload className="w-5 h-5" /> นำเข้าไฟล์
+                </button>
+                <button type="button" className="l5g-btn l5g-btn-mint" onClick={() => downloadCsv(quizToRows(qs), title || 'ชุดคำถาม')} disabled={qs.every(blankQ)}>
+                  <Download className="w-5 h-5" /> ส่งออกชุดนี้
+                </button>
+              </div>
+              <ul className="l5g-sheet-tips">
+                <li>ใช้ไฟล์ .xlsx หรือ .csv ตามแม่แบบ</li>
+                <li>สูตรคณิตใส่ใน $...$ เช่น {'$\\frac{1}{2}$'}</li>
+                <li>ข้อพิมพ์ตอบ: ชนิด text ใส่คำตอบในช่องตัวเลือก</li>
+                <li>รูป คลิป และเสียง ไม่ติดไปกับไฟล์</li>
+              </ul>
+              {sheetRoom <= 0 && <p className="l5g-err mt-2">ชุดนี้มีครบ {LIMITS.questions} ข้อแล้ว</p>}
+              {sheet.err && (
+                <p className="l5g-err mt-2 flex items-center gap-1">
+                  <AlertTriangle className="w-4 h-4 shrink-0" /> {sheet.err}
+                </p>
+              )}
+            </>
+          ) : (
+            <>
+              <p className="font-bold mb-2">
+                {sheet.name}: พร้อมเพิ่ม {sheetGood.length} ข้อ
+                {sheet.rows.length > sheetGood.length && <span className="l5g-sheet-bad"> · มีปัญหา {sheet.rows.length - sheetGood.length} แถว</span>}
+              </p>
+              <div className="l5g-sheet-list">
+                {sheet.rows.map((r) => (
+                  <div key={r.row} className="l5g-sheet-row" data-bad={!r.q}>
+                    <span className="l5g-sheet-num">แถว {r.row}</span>
+                    {r.q ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertTriangle className="w-4 h-4 shrink-0" />}
+                    <span className="l5g-sheet-text">{r.q ? richToPlain(r.q.text, 70) : r.errs.join(' · ')}</span>
+                  </div>
+                ))}
+              </div>
+              {sheetGood.length > sheetRoom && (
+                <p className="l5g-err mt-2">
+                  เพิ่มได้อีก {sheetRoom} ข้อ (สูงสุด {LIMITS.questions} ข้อต่อชุด) ข้อที่เกินจะไม่ถูกเพิ่ม
+                </p>
+              )}
+              <div className="l5g-math-foot">
+                <span className="flex-1" />
+                <button type="button" className="l5g-btn l5g-btn-ghost" onClick={() => setSheet({ name: '', rows: null, err: '' })}>
+                  เลือกไฟล์ใหม่
+                </button>
+                <button type="button" className="l5g-btn l5g-btn-go" onClick={importSheet} disabled={!sheetGood.length || sheetRoom <= 0}>
+                  <Plus className="w-5 h-5" strokeWidth={3} /> เพิ่ม {Math.min(sheetGood.length, Math.max(0, sheetRoom))} ข้อ
+                </button>
+              </div>
+            </>
+          )}
+        </PaperModal>
+      )}
+
       {askTitle && (
-        <PaperModal title="ตั้งชื่อชุดคำถาม" icon={<Save className="w-5 h-5" />} iconBg="#ffcf3f" onClose={() => setAskTitle(false)} busy={saving}>
+        <PaperModal title="ตั้งชื่อชุดคำถาม"icon={<Save className="w-5 h-5" />} iconBg="#ffcf3f" onClose={() => setAskTitle(false)} busy={saving}>
           <p className="font-semibold opacity-80 mb-2">ชื่อนี้จะขึ้นในคลังและหน้าห้องเล่น</p>
           <input
             className="l5g-input"

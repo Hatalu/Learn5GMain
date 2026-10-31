@@ -68,6 +68,7 @@ import { EMPTY_SAVE, cleanSave, rollDay } from '../src/lib/game-creator/ar/save'
 import { Quality, faceScore, pickBody, toLock } from '../src/lib/game-creator/ar/quality';
 import { HATS2, ITEMS2, MASKS2, OUTFITS2 } from '../src/components/creator/gearExtra';
 import { endlessIndex } from '../src/lib/game-creator/quiz';
+import { SHEET_HEAD, TEMPLATE_ROWS, buildCsv, decodeText, parseCsv, quizToRows, richToCell, rowsToQuestions, xlsxRows } from '../src/lib/game-creator/quizSheet';
 import {
   checkAnswer,
   isTimeout,
@@ -1867,6 +1868,79 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
     assert.equal(MODES.find((m) => m.id === 'magic')?.playType, 'local');
     passed++;
     console.log('  ok  Magic Kingdom AR: ท่ากางแขน/ปรบมือ ดินแดน เวท คะแนน บอส ข้อมูลในเครื่อง URL');
+  }
+  {
+    // นำเข้า/ส่งออกคำถามเป็น CSV/XLSX
+    const qs = rowsToQuestions(
+      parseCsv(buildCsv(TEMPLATE_ROWS)).map((r, i) => [i + 1, r]),
+      ''
+    );
+    assert.equal(qs.length, 4, 'หัวตารางถูกข้าม');
+    assert.ok(qs.every((r) => r.q && !r.errs.length));
+    assert.deepEqual(qs[0].q!.text[1], { t: 'm', v: '\\frac{1}{2}' });
+    assert.equal(qs[1].q!.multi, true);
+    assert.deepEqual(qs[1].q!.choices.filter((c) => c.correct).map((c) => richToCell(c.text)), ['2', '8']);
+    assert.equal(qs[3].q!.kind, 'text');
+    assert.deepEqual(qs[3].q!.answers, ['12', 'สิบสอง']);
+    // ส่งออกแล้วนำเข้ากลับได้เหมือนเดิม (คอมมา เครื่องหมายคำพูด ขึ้นบรรทัดใหม่ เศษส่วน สูตร Excel)
+    const src = sanitizeQuiz(
+      {
+        v: 1,
+        questions: [
+          { id: 'aaaa1', text: [{ t: 'x', v: 'ก, "ข"\nค ' }, { t: 'm', v: 'x^2' }], media: null, multi: false, time: 45, points: 1, choices: [{ id: 'c1', text: [{ t: 'x', v: '3/4' }], media: null, correct: true }, { id: 'c2', text: [{ t: 'x', v: '=1+1' }], media: null, correct: false }, { id: 'c3', text: [{ t: 'x', v: '-5' }], media: null, correct: false }] },
+          { id: 'aaaa2', text: [{ t: 'x', v: 'พิมพ์ 007' }], media: null, multi: false, time: 0, points: 1, choices: [], kind: 'text', answers: ['007', '1-2'] },
+        ],
+      },
+      ''
+    );
+    const csv = buildCsv(quizToRows(src.questions));
+    assert.ok(csv.startsWith('﻿'), 'มี BOM');
+    assert.ok(csv.includes(`,'=1+1,`) && csv.includes('"=""3/4"""') && csv.includes(',-5,'));
+    const back = rowsToQuestions(parseCsv(csv).map((r, i) => [i + 1, r]), '');
+    assert.equal(back.length, 2);
+    assert.deepEqual(back[0].q!.text, src.questions[0].text);
+    assert.deepEqual(back[0].q!.choices.map((c) => richToCell(c.text)), ['3/4', '=1+1', '-5']);
+    assert.equal(back[0].q!.time, 45);
+    assert.deepEqual(back[1].q!.answers, ['007', '1-2']);
+    assert.equal(back[1].q!.time, 0);
+    const odd = ['9:15', '1.50', '1 1/2', '50%', '1,000', '1e5', '12', '-5', '0.5'];
+    const oddCsv = buildCsv([odd]);
+    assert.ok(oddCsv.includes(',12,-5,0.5\r\n') && oddCsv.includes('"=""9:15"""'), 'เลขธรรมดาไม่ห่อ ค่าที่ Excel แปลงได้ห่อ');
+    assert.deepEqual(parseCsv(oddCsv)[0], odd);
+    // หัวตารางหลังแถวว่าง
+    assert.equal(rowsToQuestions([[1, ['']], [2, SHEET_HEAD], [3, ['1+1', '2', '3', '', '', '', '', '1']]], '').length, 1);
+    // ตัวคั่น ; และ Windows-874 (Excel ไทยบันทึก CSV ธรรมดา)
+    assert.deepEqual(parseCsv('a;"b;c"\r\n'), [['a', 'b;c']]);
+    const tis = Uint8Array.from([0xa1, 0x2c, 0xa2]); // ก,ข
+    assert.equal(decodeText(tis), 'ก,ข');
+    // แถวมีปัญหา: บอกเหตุ ไม่ล้ม
+    const bad = rowsToQuestions(
+      [
+        [1, ['', 'a', 'b', '', '', '', '', '1', '20', '']],
+        [2, ['โจทย์', 'a', '', '', '', '', '', '3', '7', 'xx']],
+        [3, ['โจทย์', 'a', 'b', '', '', '', '', '', '', '']],
+        [4, ['', '', '', '']],
+      ],
+      ''
+    );
+    assert.equal(bad.length, 3, 'แถวว่างข้าม');
+    assert.ok(bad.every((r) => !r.q && r.errs.length));
+    assert.ok(bad[0].errs.includes('ยังไม่ได้ใส่โจทย์'));
+    assert.ok(bad[1].errs.some((e) => e.includes('ชนิด')) && bad[1].errs.some((e) => e.startsWith('เวลา')));
+    assert.ok(bad[2].errs.includes('ยังไม่ได้เลือกคำตอบที่ถูก'));
+    // xlsx: ช่องว่างข้ามคอลัมน์ + shared string แบบหลายช่วง + inlineStr
+    const zip = new JSZip();
+    zip.file('xl/workbook.xml', '<workbook><sheets><sheet name="A" sheetId="1" r:id="rId1"/></sheets></workbook>');
+    zip.file('xl/_rels/workbook.xml.rels', '<Relationships><Relationship Id="rId1" Target="/xl/worksheets/s.xml"/></Relationships>');
+    zip.file('xl/sharedStrings.xml', '<sst><si><r><t>2 + </t></r><r><t>2 = ?</t></r></si><si><t>4</t></si></sst>');
+    zip.file('xl/worksheets/s.xml', '<worksheet><sheetData><row r="3"><c r="A3" t="s"><v>0</v></c><c r="B3" t="s"><v>1</v></c><c r="C3" t="inlineStr"><is><t>5</t></is></c><c r="H3"><v>1</v></c></row></sheetData></worksheet>');
+    const xr = await xlsxRows(await zip.generateAsync({ type: 'uint8array' }));
+    assert.equal(xr[0][0], 3);
+    const xq = rowsToQuestions(xr, '');
+    assert.equal(richToCell(xq[0].q!.text), '2 + 2 = ?');
+    assert.deepEqual(xq[0].q!.choices.map((c) => [richToCell(c.text), c.correct]), [['4', true], ['5', false]]);
+    passed++;
+    console.log('  ok  นำเข้า/ส่งออกคำถาม CSV/XLSX: แม่แบบ ส่งออก-นำเข้ากลับ กัน Excel แปลงค่า Windows-874 แถวผิด');
   }
   console.log(`\n${passed} tests passed`);
 })().catch((e) => {
