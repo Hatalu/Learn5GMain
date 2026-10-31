@@ -52,8 +52,17 @@ import { MEMBER_PLAY_SECONDS, TRIAL_GRACE_SECONDS, TRIAL_SECONDS, signTrialToken
 import { TURF_CELLS, cleanModeSettings, isWorldMode, modeFit, modeQuiz, scoreCap } from '../src/lib/game-creator/modes';
 import { BOSS_SPEED, EGG_BIOMES, EGG_MAX_VALUE, EGG_SLOTS_RARITY, RARITY, SIZE_MAX, SIZE_MIN, eggEpoch, eggKg, pickEggType, takeWins } from '../src/lib/game-creator/eggValues';
 import { GEAR_BASE } from '../src/lib/game-creator/gear';
-import { BodySmoother, Dwell, Follow, Hold, OneEuro, aimFromHand, arAnswerPoints, arStars, assignSides, bothUp, raised, tip, toBody, toScreen, type Lm } from '../src/lib/game-creator/arPose';
-import { parseArSettings } from '../src/lib/game-creator/arSettings';
+import { BodySmoother, Dwell, Follow, Hold, OneEuro, aimFromHand, arAnswerPoints, arStars, assignSides, bothUp, raised, tip, toBody, toScreen, type Body, type Lm } from '../src/lib/game-creator/arPose';
+import { AR_DEFAULTS, arQuery, parseArSettings } from '../src/lib/game-creator/arSettings';
+import { DEFAULT_MOTIONS, Gestures, chargePose, jumping, leanOf, motionOn, shieldPose, victoryPose } from '../src/lib/game-creator/ar/gestures';
+import { BOSSES, bossById, bossHp, bossQuestions, defended, pickAttack, shotDamage } from '../src/lib/game-creator/ar/boss';
+import { Combo } from '../src/lib/game-creator/ar/combo';
+import { POWERS, Powers, earnedPowers } from '../src/lib/game-creator/ar/powerups';
+import { cleanUps, upCost, upEffects } from '../src/lib/game-creator/ar/upgrades';
+import { ALL_STAGES, nextStage, unlocked } from '../src/lib/game-creator/ar/map';
+import { ZERO_STATS, addStats, allCorrectRounds, cleanMission, dailyFor, stageQuests } from '../src/lib/game-creator/ar/missions';
+import { memberOf, ranks, teamMode, teamOf } from '../src/lib/game-creator/ar/teams';
+import { EMPTY_SAVE, cleanSave, rollDay } from '../src/lib/game-creator/ar/save';
 import { HATS2, ITEMS2, MASKS2, OUTFITS2 } from '../src/components/creator/gearExtra';
 import { endlessIndex } from '../src/lib/game-creator/quiz';
 import {
@@ -1614,10 +1623,127 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
     assert.deepEqual(modeQuiz(content as never, 'ar').questions.map((q) => q.id), ['1', '2']);
     assert.equal(modeFit(content as never, 'ar').ok, false);
     assert.equal(MODES.find((m) => m.id === 'ar')?.playType, 'local');
-    assert.deepEqual(parseArSettings((k) => ({ teams: '2', n: '15', t: '30', lv: '2', music: 'boss' })[k] ?? null), { teams: 2, count: 15, time: 30, level: 2, music: 'boss' });
-    assert.deepEqual(parseArSettings((k) => ({ teams: '3', n: '7', t: '-1', lv: 'x', music: '<b>' })[k] ?? null), { teams: 0, count: 10, time: 0, level: 1, music: 'auto' });
+    assert.deepEqual(parseArSettings((k) => ({ teams: '2', n: '15', t: '30', lv: '2', music: 'boss', m: '3', b: 'golem', mo: '9', sn: '2' })[k] ?? null), { teams: 2, members: 3, count: 15, time: 30, level: 2, boss: 'golem', motions: 9, sens: 2, music: 'boss' });
+    assert.deepEqual(parseArSettings((k) => ({ teams: '5', n: '7', t: '-1', lv: 'x', music: '<b>', m: '9', b: '<x>', mo: '99', sn: '' })[k] ?? null), AR_DEFAULTS);
+    assert.equal(parseArSettings((k) => ({ teams: '4' })[k] ?? null).teams, 4);
+    // URL เดิมก่อนมีค่าใหม่ยังอ่านได้ ค่าใหม่เป็นค่าเริ่มต้น
+    assert.deepEqual(parseArSettings(new URLSearchParams(arQuery('x', AR_DEFAULTS)).get.bind(new URLSearchParams(arQuery('x', AR_DEFAULTS)))), AR_DEFAULTS);
     passed++;
     console.log('  ok  สงครามอวกาศ AR: พิกัดกล้อง cover+กระจก เล็งสองมือ กรองร่างกายกันสั่น ค้างเป้า แบ่งทีม คะแนน คัดข้อ');
+  }
+  {
+    // AR ระบบเสริม: ท่าทาง บอส คอมโบ ไอเทม อัปเกรด แผนที่ ภารกิจ ทีม ที่เก็บในเครื่อง
+    const body = (cx: number, cy: number, sw: number, L: [number, number], R: [number, number]): Body => {
+      const pts = Array.from({ length: 33 }, () => ({ x: cx, y: cy + sw * 2, v: 1 }));
+      pts[0] = { x: cx, y: cy - sw * 0.8, v: 1 };
+      pts[11] = { x: cx - sw / 2, y: cy, v: 1 };
+      pts[12] = { x: cx + sw / 2, y: cy, v: 1 };
+      pts[15] = pts[19] = { x: L[0], y: L[1], v: 1 };
+      pts[16] = pts[20] = { x: R[0], y: R[1], v: 1 };
+      return { pts, cx, cy, sw };
+    };
+    const base = { cx: 500, cy: 300, sw: 100 };
+    const rest = body(500, 300, 100, [450, 500], [550, 500]);
+    assert.equal(leanOf(rest, base), 0);
+    assert.equal(leanOf(body(430, 300, 100, [400, 500], [480, 500]), base), -1);
+    assert.equal(leanOf(body(570, 300, 100, [520, 500], [600, 500]), base), 1);
+    assert.equal(leanOf(body(530, 300, 100, [480, 500], [560, 500]), base, 0.5), 1);
+    assert.ok(jumping(body(500, 260, 100, [450, 460], [550, 460]), base) && !jumping(rest, base));
+    assert.ok(shieldPose(body(500, 300, 100, [490, 380], [520, 380])) && !shieldPose(rest));
+    assert.ok(victoryPose(body(500, 300, 100, [350, 150], [650, 150])) && !victoryPose(body(500, 300, 100, [480, 150], [520, 150])));
+    assert.ok(!chargePose(body(500, 300, 100, [350, 150], [650, 150])) && chargePose(body(500, 300, 100, [470, 150], [530, 150])));
+    const g = new Gestures();
+    for (let i = 0; i < 10; i++) g.calibrate(rest);
+    const ev: string[] = [];
+    for (let i = 0; i < 5; i++) ev.push(...g.update(body(420, 300, 100, [380, 500], [470, 500]), 1000 + i * 33));
+    assert.deepEqual(ev, ['dodgeL']);
+    assert.equal(g.lean, -1);
+    assert.equal(motionOn(DEFAULT_MOTIONS, 'jump'), false);
+    assert.equal(motionOn(DEFAULT_MOTIONS, 'shield'), true);
+
+    assert.ok(BOSSES.length >= 3 && new Set(BOSSES.map((b) => b.id)).size === BOSSES.length);
+    assert.deepEqual([bossQuestions(10), bossQuestions(3), bossQuestions(2), bossQuestions(30)], [3, 2, 2, 10]);
+    assert.equal(bossHp(bossById('jelly'), 3, 2), 132);
+    assert.equal(pickAttack(bossById('mecha'), (m) => m === 'dodge'), 'lane');
+    assert.equal(pickAttack(bossById('jelly'), (m) => m === 'shield'), 'wide');
+    assert.equal(pickAttack(bossById('jelly'), () => false), null);
+    const st = { lean: 0 as -1 | 0 | 1, shield: false, jumpAt: -1e9, now: 5000 };
+    assert.ok(defended('lane', -1, { ...st, lean: 1 }) && !defended('lane', -1, { ...st, lean: -1 }) && !defended('lane', 1, st));
+    assert.ok(defended('wide', 1, { ...st, shield: true }) && !defended('wide', 1, st));
+    assert.ok(defended('ground', 1, { ...st, jumpAt: 4600 }) && !defended('ground', 1, { ...st, jumpAt: 4000 }));
+    assert.deepEqual([shotDamage(0, false), shotDamage(4, false), shotDamage(0, true)], [10, 20, 20]);
+
+    const cb = new Combo();
+    for (let i = 0; i < 5; i++) cb.onAnswer(true);
+    assert.equal(cb.answerMult, 1.4);
+    let fresh = false;
+    for (let i = 0; i < 10; i++) fresh = cb.onShot() || fresh;
+    assert.ok(fresh && cb.superOn && cb.supers === 1);
+    assert.equal(cb.shootMult, 3);
+    cb.onMiss();
+    assert.ok(!cb.superOn && cb.shoot === 0 && cb.answerMult === 1.4);
+    assert.ok(cb.onRoundEnd(true) && cb.perfect === 1);
+    assert.ok(!cb.onRoundEnd(false));
+    assert.deepEqual([cb.perfect as number, cb.perfects], [0, 1]);
+    cb.onAnswer(false);
+    assert.equal(cb.answer, 0);
+
+    assert.equal(POWERS.length, 5);
+    assert.deepEqual(earnedPowers({ correct: true, firstTry: true, fast: true, answerCombo: 3, energyRatio: 0.3 }), ['double', 'speed', 'restore']);
+    assert.deepEqual(earnedPowers({ correct: true, firstTry: false, fast: true, answerCombo: 5, energyRatio: 1 }), ['laser']);
+    assert.deepEqual(earnedPowers({ correct: false, firstTry: true, fast: true, answerCombo: 3, energyRatio: 0 }), []);
+    const pw = new Powers();
+    pw.add('double');
+    pw.add('shield');
+    pw.add('shield');
+    pw.add('restore');
+    assert.ok(pw.has('double') && !pw.has('restore') && pw.got === 4);
+    pw.endQuestion();
+    pw.endQuestion();
+    pw.endQuestion();
+    assert.ok(!pw.has('double') && pw.useShield() && pw.useShield() && !pw.useShield());
+
+    assert.deepEqual([upCost(0), upCost(4)], [30, 150]);
+    assert.deepEqual(cleanUps({ laser: 9, shield: -1, engine: '2', energy: 'x' }), { laser: 5, shield: 0, engine: 2, energy: 0 });
+    const ue = upEffects({ laser: 5, shield: 3, engine: 5, energy: 5 });
+    assert.ok(ue.dwellMs >= 600 && ue.hitMs >= 150 && ue.chargeS > 0.3 && ue.startShield === 2 && ue.shots === 5);
+
+    assert.equal(ALL_STAGES.length, 15);
+    assert.equal(new Set(ALL_STAGES.map((s) => s.id)).size, 15);
+    assert.ok(ALL_STAGES.every((s) => BOSSES.some((b) => b.id === s.boss) && s.level >= 0 && s.level <= 2));
+    assert.ok(unlocked({}, 'p1s1') && !unlocked({}, 'p1s2') && unlocked({ p1s1: 1 }, 'p1s2') && unlocked({}, 'p5s3', true));
+    assert.equal(nextStage({ p1s1: 2 }).id, 'p1s2');
+
+    const d1 = dailyFor('2026-10-31');
+    assert.equal(d1.length, 3);
+    assert.deepEqual(dailyFor('2026-10-31'), d1);
+    assert.equal(new Set(d1.map((m) => m.type)).size, 3);
+    assert.deepEqual(dailyFor('2026-10-31', [{ type: 'boss', target: 2, reward: 50 }]), [{ type: 'boss', target: 2, reward: 50 }]);
+    assert.deepEqual(addStats({ ...ZERO_STATS, combo: 4, correct: 2 }, { combo: 3, correct: 5 }), { ...ZERO_STATS, combo: 4, correct: 7 });
+    assert.deepEqual(cleanMission({ type: 'x', target: 1, reward: 1 }), null);
+    assert.deepEqual(cleanMission({ type: 'meteor', target: 9999, reward: 1 }), { type: 'meteor', target: 500, reward: 5 });
+    assert.equal(allCorrectRounds([[true, true], [true, false], [true, true]], 2, false), 2);
+    assert.equal(allCorrectRounds([[true], [true], [true], [false], [true], [true]], 3, true), 1);
+    assert.ok(stageQuests(2, true).every((q) => q.coop) && !stageQuests(1, false).some((q) => q.coop));
+
+    assert.deepEqual([teamMode(0), teamMode(2), teamMode(3), teamMode(4)], ['solo', 'split', 'relay', 'relay']);
+    assert.deepEqual([0, 1, 2, 3, 4].map((q) => teamOf(3, 0, q)), [0, 1, 2, 0, 1]);
+    assert.deepEqual([0, 1].map((s) => teamOf(2, s, 7)), [0, 1]);
+    assert.deepEqual([0, 3, 6, 9].map((q) => memberOf(3, q, 2)), [0, 1, 0, 1]);
+    assert.deepEqual([0, 1, 2].map((q) => memberOf(2, q, 3)), [0, 1, 2]);
+    assert.deepEqual(ranks([50, 80, 50]).map((r) => [r.team, r.rank]), [[1, 1], [0, 2], [2, 2]]);
+
+    const sv = cleanSave({ coins: -5, ups: { laser: 2 }, stars: { p1s1: 9, bad: 3 }, sets: { p1s1: '11111111-1111-1111-1111-111111111111', p1s2: 'x' }, custom: [{ type: 'boss', target: 1, reward: 10 }, 'junk'], ach: ['b1', 'nope'], openAll: 'yes', day: '2026-10-30', today: { correct: 5 }, claimed: [0, 9] });
+    assert.equal(sv.coins, 0);
+    assert.deepEqual(sv.stars, { p1s1: 3 });
+    assert.deepEqual(Object.keys(sv.sets), ['p1s1']);
+    assert.deepEqual(sv.custom, [{ type: 'boss', target: 1, reward: 10 }]);
+    assert.deepEqual(sv.ach, ['b1']);
+    assert.equal(sv.openAll, false);
+    const rolled = rollDay({ ...EMPTY_SAVE(), day: '2026-10-30', today: { ...ZERO_STATS, correct: 5 }, claimed: [0] }, new Date(2026, 9, 31));
+    assert.ok(rolled.day === '2026-10-31' && rolled.today.correct === 0 && rolled.claimed.length === 0);
+    passed++;
+    console.log('  ok  AR ระบบเสริม: ท่าทาง บอส คอมโบ ไอเทม อัปเกรด แผนที่ ภารกิจ ทีม ข้อมูลในเครื่อง');
   }
   console.log(`\n${passed} tests passed`);
 })().catch((e) => {

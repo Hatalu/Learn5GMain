@@ -8,7 +8,7 @@ import { getGfx, gfxDpr, subscribeGfx } from '@/lib/gfx';
 
 const INK = 0x1d1640;
 export const ALIEN_COLORS = ['#ff6b9a', '#ffc53a', '#3fd6a8', '#9b7bff', '#4fb3ff', '#ff9a3d'];
-export const TEAM_COLORS = ['#2fb8ff', '#ff8a2f'];
+export { TEAM_HEX as TEAM_COLORS } from '@/lib/game-creator/ar/teams';
 
 const grad = new THREE.DataTexture(new Uint8Array([110, 190, 255]), 3, 1, THREE.RedFormat);
 grad.minFilter = grad.magFilter = THREE.NearestFilter;
@@ -119,6 +119,106 @@ function makeMeteor(seed: number): THREE.Group {
   g.userData = { rock };
   return g;
 }
+
+/* ------------------------------ บอส 3 แบบ (รัศมีราว 1 หน่วย) ------------------------------ */
+
+function eyes(g: THREE.Object3D, y: number, z: number, gap: number, s: number, pupil = '#1d1640') {
+  for (const x of [-gap, gap]) {
+    part(g, SPHERE, toon('#ffffff'), [x, y, z], [s, s * 1.1, s * 0.6], 0.02);
+    part(g, SPHERE, toon(pupil), [x, y - s * 0.1, z + s * 0.45], [s * 0.5, s * 0.55, s * 0.3], 0);
+    part(g, SPHERE, toon('#ffffff', 0.6), [x + s * 0.2, y + s * 0.2, z + s * 0.62], [s * 0.15, s * 0.15, s * 0.1], 0);
+  }
+}
+
+/** แมงกะพรุนยักษ์: หัวโดมใส หนวดพลิ้ว */
+function makeJelly(): THREE.Group {
+  const g = new THREE.Group();
+  const body = new THREE.Group();
+  g.add(body);
+  part(body, SPHERE, toon('#ff7ac8'), [0, 0.2, 0], [1, 0.78, 0.9], 0.07);
+  part(body, SPHERE, toon('#ffb3e0'), [0, 0.55, 0.15], [0.55, 0.3, 0.5], 0);
+  eyes(body, 0.2, 0.72, 0.32, 0.2);
+  for (const x of [-0.55, 0.55]) part(body, SPHERE, toon('#ff4fa0'), [x, -0.05, 0.7], [0.14, 0.08, 0.05], 0);
+  const tent: THREE.Group[] = [];
+  for (let i = 0; i < 6; i++) {
+    const t = new THREE.Group();
+    t.position.set(-0.75 + i * 0.3, -0.4, 0.1);
+    for (let k = 0; k < 4; k++) part(t, SPHERE, toon(k % 2 ? '#ffd1ec' : '#ff8fd0'), [0, -k * 0.22, 0], [0.12 - k * 0.015, 0.14, 0.12], 0.03);
+    body.add(t);
+    tent.push(t);
+  }
+  g.userData = { body, tent };
+  return g;
+}
+
+/** ยักษ์หินดวงจันทร์: หินม่วง แขนหิน คริสตัลบนหัว */
+function makeGolem(): THREE.Group {
+  const g = new THREE.Group();
+  const body = new THREE.Group();
+  g.add(body);
+  const rock = new THREE.Mesh(ROCK, new THREE.MeshLambertMaterial({ color: '#9b86e0', flatShading: true }));
+  rock.scale.set(0.95, 0.85, 0.8);
+  body.add(rock);
+  const o = new THREE.Mesh(ROCK, INK_MAT);
+  o.scale.set(1.0, 0.9, 0.85);
+  body.add(o);
+  eyes(body, 0.12, 0.68, 0.3, 0.17, '#3a1d6b');
+  part(body, SPHERE, toon('#5b3f9a'), [0, -0.25, 0.7], [0.3, 0.07, 0.05], 0);
+  const arms: THREE.Object3D[] = [];
+  for (const x of [-1, 1]) {
+    const a = new THREE.Group();
+    a.position.set(x * 1.05, -0.1, 0);
+    const r = new THREE.Mesh(ROCK, new THREE.MeshLambertMaterial({ color: '#8a74d0', flatShading: true }));
+    r.scale.setScalar(0.38);
+    a.add(r);
+    body.add(a);
+    arms.push(a);
+  }
+  for (const [x, s] of [[-0.25, 0.22], [0.05, 0.3], [0.3, 0.18]] as const) {
+    const c = new THREE.Mesh(OCTA, toon('#7ff0ff', 0.5));
+    c.position.set(x, 0.85, 0);
+    c.scale.set(s * 0.6, s * 1.3, s * 0.6);
+    body.add(c);
+  }
+  g.userData = { body, arms };
+  return g;
+}
+
+/** ยานแม่หุ่นยนต์: จานโลหะ หน้าจอยิ้ม แขนกล เสาอากาศ */
+function makeMecha(): THREE.Group {
+  const g = new THREE.Group();
+  const body = new THREE.Group();
+  g.add(body);
+  part(body, SPHERE, toon('#5aa8ff'), [0, -0.1, 0], [1.25, 0.32, 1.0], 0.06);
+  part(body, CYL, toon('#d8e6ff'), [0, -0.2, 0], [1.4, 0.08, 1.1], 0.04);
+  part(body, SPHERE, toon('#2a3a7a'), [0, 0.35, 0.1], [0.62, 0.52, 0.55], 0.05);
+  for (const x of [-0.22, 0.22]) part(body, SPHERE, toon('#7ff0ff', 0.9), [x, 0.42, 0.6], [0.12, 0.08, 0.04], 0);
+  part(body, SPHERE, toon('#7ff0ff', 0.9), [0, 0.2, 0.62], [0.2, 0.04, 0.03], 0);
+  part(body, CYL, toon('#d8e6ff'), [0, 0.95, 0], [0.04, 0.4, 0.04], 0.02);
+  part(body, SPHERE, toon('#ff5a7a', 0.8), [0, 1.18, 0], [0.1, 0.1, 0.1], 0.02);
+  const arms: THREE.Object3D[] = [];
+  for (const x of [-1, 1]) {
+    const a = new THREE.Group();
+    a.position.set(x * 1.3, -0.15, 0);
+    part(a, CYL, toon('#d8e6ff'), [0, -0.25, 0], [0.07, 0.5, 0.07], 0.02);
+    part(a, SPHERE, toon('#ffd23a'), [0, -0.55, 0], [0.18, 0.18, 0.18], 0.03);
+    body.add(a);
+    arms.push(a);
+  }
+  const lights = new THREE.Group();
+  for (let i = 0; i < 10; i++) {
+    const ang = (i / 10) * Math.PI * 2;
+    const l = new THREE.Mesh(SPHERE, toon(i % 2 ? '#fff38a' : '#7ff0ff', 0.8));
+    l.position.set(Math.cos(ang) * 1.3, -0.2, Math.sin(ang) * 1.05);
+    l.scale.setScalar(0.07);
+    lights.add(l);
+  }
+  body.add(lights);
+  g.userData = { body, arms, lights };
+  return g;
+}
+
+const BOSS_MAKERS: Record<string, () => THREE.Group> = { jelly: makeJelly, golem: makeGolem, mecha: makeMecha };
 
 interface Fx {
   obj: THREE.Object3D;
@@ -241,8 +341,9 @@ export class SpaceScene {
     if (!g) return;
     g.position.copy(this.world(px, py));
     const target = rPx * this.unit;
-    // โผล่มาแบบเด้ง
+    // โผล่มาแบบเด้ง (+ เด้งตอนโดน pulse)
     g.scale.setScalar(g.scale.x + (target - g.scale.x) * 0.25);
+    if (g.userData.pf) g.scale.multiplyScalar(1 + g.userData.pf * 0.25);
     const ud = g.userData as { body?: THREE.Object3D; lights?: THREE.Object3D; flame?: THREE.Object3D; rock?: THREE.Object3D };
     if (ud.body) ud.body.rotation.y = Math.sin(t * 1.3 + px) * 0.35;
     if (ud.lights) ud.lights.rotation.y = t * 2.2;
@@ -251,6 +352,82 @@ export class SpaceScene {
       ud.rock.rotation.x = t * 1.7 + px * 0.01;
       ud.rock.rotation.y = t * 1.1;
     }
+    const bu = g.userData as { tent?: THREE.Object3D[]; arms?: THREE.Object3D[]; orb?: boolean };
+    bu.tent?.forEach((o, i) => (o.rotation.z = Math.sin(t * 3 + i) * 0.35));
+    bu.arms?.forEach((o, i) => (o.rotation.z = Math.sin(t * 2.2 + i * Math.PI) * 0.4));
+    if (bu.orb) g.rotation.z = t * 6;
+  }
+
+  /** บอส (kind = id ใน BOSSES) */
+  boss(id: string, kind: string) {
+    const g = (BOSS_MAKERS[kind] || makeJelly)();
+    g.scale.setScalar(0.01);
+    this.scene.add(g);
+    this.objs.set(id, g);
+  }
+
+  /** กระสุนบอส: ลูกพลังงานกลมเรืองแสง */
+  orb(id: string, color: string) {
+    const g = new THREE.Group();
+    const m = new THREE.Mesh(SPHERE, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9 }));
+    g.add(m);
+    const c = new THREE.Mesh(SPHERE, new THREE.MeshBasicMaterial({ color: '#ffffff' }));
+    c.scale.setScalar(0.5);
+    g.add(c);
+    const r = new THREE.Mesh(RING, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.7 }));
+    r.scale.setScalar(1.4);
+    g.add(r);
+    g.userData = { orb: true };
+    g.scale.setScalar(0.01);
+    this.scene.add(g);
+    this.objs.set(id, g);
+  }
+
+  /** โล่ฟองรอบยาน (เปิด/ปิด) */
+  bubble(shipId: string, on: boolean, color = '#7fe8ff') {
+    const ship = this.objs.get(shipId);
+    if (!ship) return;
+    let b = ship.getObjectByName('bubble') as THREE.Mesh | undefined;
+    if (on && !b) {
+      b = new THREE.Mesh(SPHERE, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.28, depthWrite: false }));
+      b.name = 'bubble';
+      b.scale.setScalar(1.6);
+      ship.add(b);
+    } else if (!on && b) {
+      ship.remove(b);
+      (b.material as THREE.Material).dispose();
+    }
+  }
+
+  /** ยานกระพริบเด้งเมื่อโดนโจมตี / บอสโดนยิง */
+  pulse(id: string, amt = 0.25) {
+    const g = this.objs.get(id);
+    if (!g) return;
+    this.fx.push({ obj: new THREE.Object3D(), t: 0, life: 0.35, step: (k) => (g.userData.pf = Math.sin(k * Math.PI) * amt) });
+  }
+
+  /** แคปซูลไอเทมลอยจากจุดหนึ่งเข้ายาน */
+  pickup(px: number, py: number, toId: string, color: string) {
+    const ship = this.objs.get(toId);
+    if (!ship) return;
+    const a = this.world(px, py);
+    const u = this.unit;
+    const g = new THREE.Group();
+    part(g, SPHERE, toon(color, 0.4), [0, 0, 0], [0.55, 1, 0.55], 0.08);
+    part(g, SPHERE, toon('#ffffff', 0.4), [0, 0.35, 0.3], [0.2, 0.25, 0.1], 0);
+    g.scale.setScalar(26 * u);
+    g.position.copy(a);
+    this.scene.add(g);
+    this.fx.push({ obj: g, t: 0, life: 0.9, step: (k) => {
+      g.position.copy(a).lerp(ship.position, k * k);
+      g.position.y += Math.sin(k * Math.PI) * 60 * u;
+      g.rotation.z = k * 8;
+    } });
+  }
+
+  /** คลื่นกระแทกพื้น (การโจมตีที่ต้องกระโดด) */
+  shock(px: number, py: number, color: string) {
+    this.ringAt(this.world(px, py), color, 120 * this.unit);
   }
 
   /** ยานผู้เล่นเอียงหาเป้า */

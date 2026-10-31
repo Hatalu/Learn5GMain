@@ -1066,7 +1066,7 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
             ) : preview.mode === 'treasure' ? (
               <TreasureGame key={preview.key} engine={preview.engine} deadline={preview.deadline} goal={0} me={{ nickname: 'ทดลอง', avatar: 9 }} preview />
             ) : preview.mode === 'ar' ? (
-              <ArGame key={preview.key} questions={preview.content.questions} settings={AR_DEFAULTS} title="ทดลองเล่น (ไม่บันทึกคะแนน)" onExit={() => setPreview(null)} />
+              <ArGame key={preview.key} questions={preview.content.questions} settings={AR_DEFAULTS} title="ทดลองเล่น (ไม่บันทึกคะแนน)" onExit={() => setPreview(null)} persist={false} />
             ) : preview.mode === 'egg' ? (
               <EggGame key={preview.key} engine={preview.engine} deadline={preview.deadline} goal={0} me={{ nickname: 'ทดลอง', avatar: 4 }} preview />
             ) : preview.mode === 'fishing' ? (

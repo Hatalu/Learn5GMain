@@ -1,0 +1,913 @@
+/* ระบบเสริมของสงครามอวกาศ AR: บอส ไอเทม คอมโบ แผงฝั่ง แผนที่ แผงครู ผลลัพธ์ */
+.ar-panel-wrap {
+  touch-action: pan-y;
+  /* แผงสูงกว่าจอ: เลื่อนดูได้ ไม่โดนตัดหัว (margin auto ยังจัดกลางเมื่อพอดีจอ) */
+  place-items: start center;
+}
+.ar-panel-wrap > .ar-panel,
+.ar-panel-wrap > .arm {
+  margin-block: auto;
+}
+
+/* ปุ่มมุมซ้ายบน (แผงครู + พัก) */
+.ar-topbtns {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  display: flex;
+  gap: 8px;
+  z-index: 2;
+}
+.ar-topbtns .ar-pausebtn {
+  position: static;
+}
+
+/* คะแนนทีม: ผลัดกันเล่น = ทีมที่ถึงตาเด่น */
+.ar-scores[data-n='3'] .ar-score b,
+.ar-scores[data-n='4'] .ar-score b {
+  font-size: clamp(22px, 3.6vw, 38px);
+}
+.ar-score[data-on='false'] {
+  opacity: 0.55;
+  transform: scale(0.9);
+}
+.ar-score {
+  transition: opacity 0.3s, transform 0.3s;
+}
+.ar-combos {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: center;
+  min-height: 18px;
+}
+.ar-combos em {
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #ff8af0;
+  color: #2a0d3a;
+  border: 2px solid #fff;
+  animation: arPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.ar-combos em[data-k='shoot'] {
+  background: #8af5ff;
+}
+.ar-combos em[data-k='super'] {
+  background: linear-gradient(90deg, #ffe14a, #ff8a2f, #ff5ad1);
+  animation: arPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), arSuper 0.8s ease-in-out infinite;
+}
+@keyframes arSuper {
+  50% { transform: scale(1.12); filter: brightness(1.2); }
+}
+
+/* หลอดพลังบอส */
+.ar-bosshp {
+  position: absolute;
+  top: 74px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(460px, 70vw);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 8px;
+  align-items: center;
+  pointer-events: none;
+  z-index: 1;
+}
+.ar-bosshp span {
+  font-weight: 800;
+  font-size: 14px;
+  text-shadow: 0 2px 0 #120c3a;
+}
+.ar-bosshp b {
+  font-size: 13px;
+  grid-row: 1;
+  grid-column: 2;
+}
+.ar-bosshp div {
+  grid-column: 1 / -1;
+  height: 16px;
+  border-radius: 10px;
+  background: rgb(18 12 58 / 0.7);
+  border: 3px solid #fff;
+  overflow: hidden;
+}
+.ar-bosshp i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--bc), #ffe14a);
+  transform-origin: left;
+  transition: transform 0.25s;
+}
+.ar-root[data-teams='true'] .ar-bosshp {
+  top: 108px;
+}
+
+/* ป้ายประกาศกลางจอ (บอสมา / สลับคน / ชนะบอส) */
+.ar-banner {
+  position: absolute;
+  top: 46%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(560px, 90vw);
+  text-align: center;
+  padding: 14px 18px;
+  border-radius: 24px;
+  background: rgb(18 12 58 / 0.82);
+  border: 4px solid var(--bc);
+  box-shadow: 0 6px 0 #070420, 0 0 40px var(--bc);
+  pointer-events: none;
+  z-index: 2;
+  animation: arQIn2 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.ar-banner b {
+  display: block;
+  font-size: clamp(24px, 4.5vw, 40px);
+  color: #fff;
+  text-shadow: 0 3px 0 #120c3a, 0 0 18px var(--bc);
+}
+.ar-banner span {
+  font-weight: 700;
+  font-size: 15px;
+}
+.ar-bonus[data-k='boss'] {
+  top: 124px;
+}
+.ar-root[data-teams='true'] .ar-bonus[data-k='boss'] {
+  top: 156px;
+}
+.ar-bonus[data-k='boss'] b {
+  font-size: clamp(18px, 2.6vw, 26px);
+  color: #ff8aa8;
+  text-shadow: 0 3px 0 #120c3a, 0 0 18px #ff4d6d;
+}
+
+/* ป้ายเตือนการโจมตี: วงขยายตามเวลาที่เหลือ (--wk 0..1) */
+.ar-warn {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  display: grid;
+  place-items: center;
+  z-index: 1;
+}
+.ar-warn i {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  border: 5px dashed #ff4d6d;
+  background: rgb(255 77 109 / calc(0.1 + var(--wk, 0) * 0.3));
+  transform: scale(calc(1.4 - var(--wk, 0) * 0.5));
+  animation: arWarn 0.4s ease-in-out infinite alternate;
+}
+.ar-warn[data-kind='wide'] i {
+  width: 46vw;
+  max-width: 420px;
+  height: 90px;
+  border-radius: 40px;
+  border-color: #ff5ad1;
+  background: rgb(255 90 209 / calc(0.1 + var(--wk, 0) * 0.3));
+}
+.ar-warn[data-kind='ground'] i {
+  height: 50px;
+  width: 200px;
+  border-radius: 30px;
+  border-color: #ffb02e;
+  background: rgb(255 176 46 / calc(0.1 + var(--wk, 0) * 0.3));
+}
+/* ป้ายอยู่กลางวง ไม่ทับปุ่ม/แผงเหนือยาน */
+.ar-warn b {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  font-size: 22px;
+  font-weight: 800;
+  padding: 4px 14px;
+  border-radius: 999px;
+  background: #ff4d6d;
+  border: 3px solid #fff;
+  box-shadow: 0 4px 0 #120c3a;
+  animation: arPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.ar-warn[data-kind='wide'] b {
+  background: #d43bb0;
+}
+.ar-warn[data-kind='ground'] b {
+  background: #e08a00;
+}
+@keyframes arWarn {
+  to { opacity: 0.6; }
+}
+
+/* ป้ายท่าที่ตรวจเจอจริง + คอมโบ */
+.ar-float[data-kind='gest'] {
+  font-size: 16px;
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: rgb(47 184 255 / 0.85);
+  border: 2px solid #fff;
+  text-shadow: none;
+  animation-duration: 0.9s;
+}
+.ar-float[data-kind='combo'] {
+  font-size: clamp(26px, 4vw, 44px);
+  letter-spacing: 0.02em;
+}
+
+/* แผงของแต่ละฝั่ง (เหนือยาน) */
+.ar-side {
+  position: absolute;
+  bottom: calc(8% + 46px);
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+  max-width: 48vw;
+}
+.ar-side > * {
+  pointer-events: auto;
+}
+.ar-side .ar-side-note {
+  position: static;
+  transform: none;
+}
+.ar-side-hud {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+  pointer-events: none !important;
+}
+.ar-who {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--tc);
+  border: 2px solid #fff;
+}
+.ar-energy {
+  width: 96px;
+  height: 12px;
+  border-radius: 8px;
+  background: rgb(18 12 58 / 0.7);
+  border: 2px solid #fff;
+  overflow: hidden;
+}
+.ar-energy i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #3fe0a0, #ffe14a);
+  transition: width 0.3s;
+}
+.ar-energy[data-stun='true'] {
+  animation: arWarn 0.25s ease-in-out infinite alternate;
+}
+.ar-energy[data-stun='true'] i {
+  background: #ff7a90;
+}
+.ar-shots {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-weight: 800;
+  font-size: 13px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #2a1d78;
+  border: 2px solid #8af5ff;
+  color: #8af5ff;
+}
+.ar-powers {
+  display: inline-flex;
+  gap: 4px;
+}
+.ar-powers i {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--pc);
+  color: #1d1640;
+  border: 2px solid #fff;
+  animation: arPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.ar-help {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 16px;
+  font-weight: 800;
+  font-size: 14px;
+  color: #2a1d78;
+  background: #fff;
+  border: 3px solid var(--tc);
+  box-shadow: 0 4px 0 rgb(0 0 0 / 0.35);
+}
+.ar-help:active {
+  transform: translateY(3px) scale(0.96);
+}
+.ar-moves {
+  display: flex;
+  gap: 8px;
+}
+.ar-moves button {
+  width: 58px;
+  height: 58px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: var(--tc);
+  border: 3px solid #fff;
+  box-shadow: 0 5px 0 rgb(0 0 0 / 0.35);
+  transition: transform 0.1s;
+}
+.ar-moves button:active {
+  transform: translateY(3px) scale(0.92);
+  box-shadow: 0 2px 0 rgb(0 0 0 / 0.35);
+}
+.ar-gchip {
+  cursor: default;
+}
+.ar-toast {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 14px;
+  border-radius: 14px;
+  background: #ffe6ea;
+  color: #c2183f;
+  font-weight: 700;
+  z-index: 4;
+  max-width: 92vw;
+}
+
+/* ---------------- แผนที่ / อัปเกรด / ภารกิจ ---------------- */
+.arm-wrap {
+  align-items: start;
+}
+.arm {
+  width: min(860px, 100%);
+  padding: 14px;
+  border-radius: 26px;
+  background: rgb(18 12 58 / 0.88);
+  border: 4px solid #7c5cff;
+  box-shadow: 0 8px 0 #070420, 0 0 60px rgb(124 92 255 / 0.35);
+  animation: arQIn2 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.arm-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.arm-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.arm-tabs button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 14px;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 15px;
+  color: #c9c0f0;
+  background: rgb(255 255 255 / 0.08);
+  border: 3px solid transparent;
+}
+.arm-tabs button[data-on='true'] {
+  color: #2a1d78;
+  background: #fff;
+  border-color: #2a1d78;
+  box-shadow: 0 4px 0 #070420;
+}
+.arm-dot {
+  font-style: normal;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  color: #fff;
+  background: #ff4d6d;
+}
+.arm-coins {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 800;
+  font-size: 18px;
+  padding: 4px 14px;
+  border-radius: 999px;
+  color: #3a2a00;
+  background: #ffd23a;
+  border: 3px solid #fff;
+  box-shadow: 0 4px 0 #070420;
+}
+.arm-planets {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+.arm-planet {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+  font-size: 14px;
+}
+.arm-ball {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 30%, #fff 0 8%, var(--pc) 30%, color-mix(in srgb, var(--pc) 55%, #120c3a) 100%);
+  border: 3px solid #fff;
+  box-shadow: 0 0 24px var(--pc);
+  animation: armSpin 6s ease-in-out infinite;
+}
+.arm-ball[data-ring='true'] i {
+  position: absolute;
+  left: -16px;
+  right: -16px;
+  top: 40%;
+  height: 14px;
+  border-radius: 50%;
+  border: 3px solid #ffe08a;
+  transform: rotate(-14deg);
+}
+@keyframes armSpin {
+  50% { transform: translateY(-5px) rotate(6deg); }
+}
+.arm-stages {
+  display: flex;
+  gap: 4px;
+}
+.arm-stage {
+  width: 46px;
+  padding: 4px 0 2px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-weight: 800;
+  color: #2a1d78;
+  background: #fff;
+  border: 3px solid #c9c0f0;
+  box-shadow: 0 3px 0 #070420;
+  transition: transform 0.12s;
+}
+.arm-stage[data-on='true'] {
+  border-color: var(--pc);
+  transform: scale(1.1);
+  box-shadow: 0 3px 0 #070420, 0 0 14px var(--pc);
+}
+.arm-stage:disabled {
+  opacity: 0.45;
+}
+.arm-stars {
+  display: inline-flex;
+}
+.arm-stars svg {
+  color: #c9c0f0;
+}
+.arm-stars svg[data-on='true'] {
+  color: #ffb400;
+  fill: #ffd23a;
+}
+.arm-detail {
+  margin-top: 14px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 20px;
+  background: #fff;
+  color: #1d1640;
+  border: 4px solid var(--pc, #7c5cff);
+}
+.arm-detail > div {
+  flex: 1;
+  display: grid;
+  gap: 2px;
+  font-size: 14px;
+}
+.arm-detail > div b {
+  font-size: 20px;
+}
+.arm-detail ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 4px;
+  font-weight: 600;
+}
+.arm-detail li {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.arm-detail li em {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #dff3ff;
+  color: #1a5fd0;
+}
+.arm-detail .ar-btn-go {
+  flex: 0 0 auto;
+}
+.arm-ups,
+.arm-missions {
+  display: grid;
+  gap: 10px;
+}
+.arm-up,
+.arm-m {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 18px;
+  background: #fff;
+  color: #1d1640;
+  border: 3px solid #2a1d78;
+  box-shadow: 0 4px 0 #070420;
+}
+.arm-up-ic {
+  width: 48px;
+  height: 48px;
+  flex: none;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: var(--uc);
+  border: 3px solid #2a1d78;
+}
+.arm-up-txt,
+.arm-m > div {
+  flex: 1;
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.arm-up-txt small {
+  color: #6a5ca8;
+  font-weight: 600;
+}
+.arm-pips {
+  display: flex;
+  gap: 4px;
+}
+.arm-pips i {
+  width: 22px;
+  height: 8px;
+  border-radius: 4px;
+  background: #e6e0fb;
+}
+.arm-pips i[data-on='true'] {
+  background: var(--uc);
+}
+.arm-buy {
+  flex: none;
+  padding: 8px 14px;
+  font-size: 15px;
+}
+.arm-note {
+  font-size: 13px;
+  color: #c9c0f0;
+  text-align: center;
+}
+.arm-missions h3 {
+  font-weight: 800;
+  font-size: 17px;
+  margin-top: 4px;
+}
+.arm-m[data-done='true'] {
+  border-color: #3fd68a;
+}
+.arm-bar {
+  display: block;
+  height: 10px;
+  border-radius: 6px;
+  background: #e6e0fb;
+  overflow: hidden;
+}
+.arm-bar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #2fb8ff, #3fd68a);
+}
+.arm-m small {
+  font-weight: 700;
+  color: #6a5ca8;
+}
+.arm .ar-panel-btns {
+  margin-top: 12px;
+}
+
+/* ---------------- แผงครู ---------------- */
+.art-wrap {
+  z-index: 5;
+  align-items: start;
+}
+.art {
+  width: min(720px, 100%);
+}
+.art-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.art-head b {
+  font-size: 22px;
+  font-weight: 800;
+}
+.art-x {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  color: #2a1d78;
+  background: #f3efff;
+  border: 2px solid #c9c0f0;
+}
+.art-tabs button {
+  color: #6a5ca8;
+  background: #f3efff;
+}
+.art-body {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+.art-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 800;
+  font-size: 14px;
+  margin-top: 6px;
+}
+.art-note {
+  font-size: 13px;
+  color: #6a5ca8;
+  font-weight: 600;
+}
+.art-warn {
+  font-size: 13px;
+  font-weight: 700;
+  color: #b25a00;
+  background: #fff1d6;
+  padding: 6px 10px;
+  border-radius: 10px;
+}
+.art-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.art .ar-chip {
+  color: #2a1d78;
+  border-color: #c9c0f0;
+  background: #fff;
+}
+.art .ar-chip[data-on='true'] {
+  color: #fff;
+  background: #7c5cff;
+  border-color: #2a1d78;
+}
+.art-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.art-board {
+  display: grid;
+  gap: 6px;
+}
+.art-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: #f6f3ff;
+  border-left: 6px solid var(--tc);
+  font-size: 13px;
+  font-weight: 600;
+}
+.art-row b {
+  font-size: 15px;
+}
+.art-row em {
+  margin-left: auto;
+  font-style: normal;
+  font-weight: 800;
+  font-size: 18px;
+}
+.art-rank {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  color: #fff;
+  background: var(--tc);
+}
+.art-toggle {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: #f6f3ff;
+}
+.art-toggle input {
+  width: 22px;
+  height: 22px;
+  accent-color: #7c5cff;
+}
+.art-toggle span {
+  display: grid;
+}
+.art-toggle small {
+  color: #6a5ca8;
+  font-weight: 600;
+}
+.art-planet {
+  display: grid;
+  gap: 4px;
+  margin-top: 6px;
+}
+.art-set {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 14px;
+}
+.art-set span {
+  flex: 0 0 38%;
+}
+.art-set select,
+.art-mrow select,
+.art-mrow input {
+  min-width: 0;
+  flex: 1;
+  padding: 6px 8px;
+  border-radius: 10px;
+  border: 2px solid #c9c0f0;
+  background: #fff;
+  color: #1d1640;
+}
+.art-mrow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.art-mrow label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.art-mrow input {
+  width: 72px;
+  flex: none;
+}
+
+/* ---------------- ผลลัพธ์ ---------------- */
+.arr {
+  width: min(900px, 100%);
+}
+.arr-boss {
+  font-weight: 800;
+  color: #c2183f;
+  margin-bottom: 6px;
+}
+.arr-teams {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 380px));
+  justify-content: center;
+  gap: 10px;
+}
+.arr-members {
+  margin-top: 10px;
+  overflow-x: auto;
+}
+.arr-members table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.arr-members th,
+.arr-members td {
+  padding: 4px 6px;
+  text-align: center;
+  border-bottom: 1px solid #e6e0fb;
+}
+.arr-members td:first-child,
+.arr-members th:first-child {
+  text-align: left;
+}
+.arr-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--tc);
+}
+.arr-quests {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.arr-quests .art-label {
+  flex-basis: 100%;
+}
+.arr-quests span {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #f3efff;
+  color: #9a90c8;
+}
+.arr-quests span[data-ok='true'] {
+  background: #dcfbe9;
+  color: #137a45;
+}
+
+@media (max-width: 760px) {
+  .arm-planets {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .arm-planet:last-child {
+    grid-column: 1 / -1;
+  }
+  .arm-detail {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+@media (max-width: 640px) {
+  .ar-moves button {
+    width: 46px;
+    height: 46px;
+  }
+  /* จอแบ่งบนมือถือ: ครึ่งจอแคบ (~187px) ปุ่ม 4 อันเรียงเป็น 2x2 */
+  .ar-root[data-teams='true'] .ar-moves {
+    display: grid;
+    grid-template-columns: repeat(2, 46px);
+    gap: 6px;
+  }
+  .ar-root[data-teams='true'] .ar-side {
+    max-width: 50vw;
+  }
+  .ar-energy {
+    width: 70px;
+  }
+  .ar-warn b {
+    font-size: 16px;
+  }
+  .art-set {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

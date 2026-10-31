@@ -78,6 +78,20 @@ export class PoseTracker {
     return null;
   }
 
+  /** เปลี่ยนจำนวนคนที่ตรวจ (ครูเปลี่ยนจำนวนทีมระหว่างเปิดกล้อง) */
+  async setPoses(n: number) {
+    try {
+      await this.lm?.setOptions({ numPoses: n });
+    } catch {
+      /* ใช้ค่าเดิมต่อ */
+    }
+  }
+
+  /** กล้องยังส่งภาพอยู่ (ถอดสาย/ปิดกล้อง/แอปอื่นแย่ง = false) */
+  get live() {
+    return !!this.stream && this.stream.getVideoTracks().some((t) => t.readyState === 'live');
+  }
+
   get ready() {
     return !!this.lm && !this.stopped;
   }
