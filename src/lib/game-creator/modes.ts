@@ -7,7 +7,7 @@ import type { QuizContent } from './types';
 import { playableQuiz } from './quiz';
 import { EGG_MAX_VALUE } from './eggValues';
 
-export type GameMode = 'quiz' | 'cafe' | 'tower' | 'racing' | 'brawl' | 'fishing' | 'turf' | 'treasure' | 'egg' | 'ar' | 'magic';
+export type GameMode = 'quiz' | 'cafe' | 'tower' | 'racing' | 'brawl' | 'fishing' | 'turf' | 'treasure' | 'egg' | 'ar' | 'magic' | 'ocean';
 
 /** โหมดโลกเดียวกัน: ทุกคนเดินในแผนที่เดียว เห็นกันสดๆ (ส่งตำแหน่งผ่าน Realtime) */
 export const isWorldMode = (g: GameMode) => g === 'turf' || g === 'treasure' || g === 'egg';
@@ -223,6 +223,23 @@ export const MODES: ModeInfo[] = [
     color: '#9b6cf0',
     dark: '#5b2fc0',
     soft: '#f1e8ff',
+    minQuestions: 3,
+    noVideo: true,
+    endless: false,
+    teams: [0, 2, 3, 4],
+    scoreLabel: 'คะแนน',
+    playType: 'local',
+    choiceOnly: true,
+  },
+  {
+    id: 'ocean',
+    name: 'Ocean Guardian AR',
+    genre: 'ผจญภัยใต้ทะเล ขยับร่างกายผ่านกล้อง (AR)',
+    tagline: 'ผู้พิทักษ์มหาสมุทรยิงคลื่นน้ำ เก็บขยะ ช่วยสัตว์ทะเล ฟื้นฟูปะการังด้วยความรู้!',
+    steps: ['แต่งตัวผู้พิทักษ์ แล้วเลือกพื้นที่ใต้ทะเล 8 แห่ง', 'ยื่นมือเล็งฟองอากาศที่มีคำตอบถูก ค้างไว้ = ยิงคลื่นน้ำ', 'ตอบถูกได้เก็บขยะ หีบสมบัติ ว่ายเอียงตัวหลบฉลาม และช่วยสัตว์ติดอวน', 'สู้บอส: ยื่นมือยิงคลื่น ประกบมือ = โล่ฟอง เอียงตัว = หลบ กางแขน = กระแสน้ำ'],
+    color: '#1f9fe0',
+    dark: '#0f5fa8',
+    soft: '#e0f5ff',
     minQuestions: 3,
     noVideo: true,
     endless: false,

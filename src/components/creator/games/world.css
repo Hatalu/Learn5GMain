@@ -525,6 +525,9 @@
   position: absolute;
   inset: 0;
 }
+.ma-og {
+  background: #1f8ad0;
+}
 .ma-mk-mob {
   animation: maMkHop 1.4s ease-in-out infinite;
 }

@@ -57,6 +57,8 @@ import { AR_DEFAULTS, arQuery, parseArSettings } from '../src/lib/game-creator/a
 import { Clap, DEFAULT_MOTIONS, Gestures, chargePose, jumping, leanOf, motionOn, shieldPose, spreadPose, victoryPose } from '../src/lib/game-creator/ar/gestures';
 import { LANDS, MAGIC_BOSSES, PETS, SPELLS, answerPoints as mkPoints, bossHpFor, bossStart, cleanLook as mkCleanLook, effects as mkEffects, landOpen, landStars, nextLand, nextSpell, openSpells, pickAtk as mkPickAtk, spellDamage } from '../src/lib/game-creator/magic/data';
 import { EMPTY_MAGIC, cleanMagic } from '../src/lib/game-creator/magic/save';
+import * as OG from '../src/lib/game-creator/ocean/data';
+import { EMPTY_OCEAN, cleanOcean } from '../src/lib/game-creator/ocean/save';
 import { BOSSES, bossById, bossHp, bossQuestions, defended, pickAttack, shotDamage } from '../src/lib/game-creator/ar/boss';
 import { Combo } from '../src/lib/game-creator/ar/combo';
 import { POWERS, Powers, earnedPowers } from '../src/lib/game-creator/ar/powerups';
@@ -1868,6 +1870,46 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
     assert.equal(MODES.find((m) => m.id === 'magic')?.playType, 'local');
     passed++;
     console.log('  ok  Magic Kingdom AR: ท่ากางแขน/ปรบมือ ดินแดน เวท คะแนน บอส ข้อมูลในเครื่อง URL');
+  }
+  {
+    // Ocean Guardian AR: พื้นที่ บอส การ์ดสัตว์ พลัง และคะแนนความรู้หนักกว่าการเล่นเสมอ
+    assert.equal(OG.ZONES.length, 8);
+    assert.equal(OG.OCEAN_BOSSES.length, 5);
+    assert.equal(OG.ANIMALS.length, 8);
+    assert.ok(OG.ZONES.every((z) => OG.OCEAN_BOSSES.some((b) => b.id === z.boss)));
+    assert.ok(OG.zoneOpen({}, 'reef') && !OG.zoneOpen({}, 'deep') && OG.zoneOpen({ reef: 1 }, 'deep') && OG.zoneOpen({}, 'palace', true));
+    assert.equal(OG.nextZone({ reef: 2 }).id, 'deep');
+    assert.deepEqual(OG.openPowers(0), ['wave', 'shield']);
+    assert.equal(OG.nextPower(1000), null);
+    // ข้อไหนก็ได้: เก็บขยะ/หีบ/ว่ายหลบ + ช่วยสัตว์/ปะการัง รวมแล้วน้อยกว่าคะแนนตอบถูกครั้งแรก (100)
+    for (let n = 0; n < 24; n++) assert.ok(OG.maxPlayFor(n) < OG.OG_POINTS.correct, `ข้อ ${n}: ${OG.maxPlayFor(n)}`);
+    assert.ok([0, 1, 2].every((n) => OG.answerPoints(true, 20000, 20000, 1) > OG.maxPlayFor(n)));
+    const maxFx = OG.effects({ power: 5, defense: 5, energy: 5, speed: 5, knowledge: 5 }, OG.POWERS.map((p) => p.id));
+    assert.ok(OG.maxBattlePlay(maxFx, 9, 2.2 * 0.8) < OG.OG_POINTS.correct, 'รอบสู้บอสอัปเกรดเต็ม ยังน้อยกว่าตอบถูก 1 ข้อ');
+    assert.deepEqual([0, 1, 2, 3].map(OG.specialOf), [null, 'coral', 'rescue', null]);
+    assert.deepEqual([0, 1].map(OG.roundOf), ['trash', 'swim']);
+    assert.equal(OG.hasChest(0), true);
+    assert.equal(OG.hasChest(2), false);
+    // การ์ดสัตว์: ได้ตัวที่ยังไม่มีก่อน
+    assert.notEqual(OG.rescueAnimal(0, 0, ['turtle']).id, 'turtle');
+    assert.equal(OG.rescueAnimal(0, 5, OG.ANIMALS.map((a) => a.id)).id, OG.ANIMALS[5].id);
+    const fx0 = OG.effects({ power: 0, defense: 0, energy: 0, speed: 0, knowledge: 0 }, ['wave']);
+    for (const b of OG.OCEAN_BOSSES) assert.ok(OG.bossHpFor(b, 4, 1) <= 4 * fx0.bolts * OG.waveDamage('wave', fx0.power), b.id);
+    assert.equal(OG.waveDamage('shield', 1), 0);
+    assert.equal(OG.effects({ power: 0, defense: 0, energy: 0, speed: 0, knowledge: 0 }, ['double']).coin, 2);
+    assert.deepEqual([OG.reefPct(3, 4), OG.reefPct(9, 4), OG.reefPct(0, 0)], [75, 100, 0]);
+    const sv = cleanOcean({ coins: -1, cards: ['dolphin', 'x', 'dolphin'], items: { pearl: 3, bad: 9 }, reef: { reef: 140, nope: 5 }, stars: { deep: 2 }, sets: { reef: '11111111-1111-1111-1111-111111111111', deep: 'bad' }, look: { suit: 99, gear: 2 } });
+    assert.equal(sv.coins, 0);
+    assert.deepEqual(sv.cards, ['dolphin']);
+    assert.deepEqual(sv.items, { pearl: 3, shell: 0, coral: 0, crystal: 0 });
+    assert.deepEqual(sv.reef, { reef: 100 });
+    assert.deepEqual(Object.keys(sv.sets), ['reef']);
+    assert.equal(sv.look.suit, 0);
+    assert.equal(sv.look.gear, 2);
+    assert.deepEqual(cleanOcean(null), EMPTY_OCEAN());
+    assert.equal(MODES.find((m) => m.id === 'ocean')?.playType, 'local');
+    passed++;
+    console.log('  ok  Ocean Guardian AR: พื้นที่ บอส การ์ดสัตว์ พลัง คะแนนการเล่นต่อข้อ < ความรู้ ข้อมูลในเครื่อง');
   }
   {
     // นำเข้า/ส่งออกคำถามเป็น CSV/XLSX

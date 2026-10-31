@@ -1,0 +1,190 @@
+/* Ocean Guardian AR: ใช้ชั้น/ปุ่ม/แผงของ magic.css (mk-*) แล้วเปลี่ยนเป็นธีมใต้ทะเล ฟ้า น้ำเงิน เขียว ปะการัง */
+.og-root {
+  --ink: #123a52;
+}
+.og-root .mk-btn-go {
+  background: linear-gradient(180deg, #4fd0ff, #1f7fd8);
+}
+.og-root .mk-kicker,
+.og-root .mk-title small,
+.og-root .mk-tips svg {
+  color: #1f7fd8;
+}
+.og-root .mk-panel {
+  background: #f2fbff;
+  box-shadow: 0 8px 0 var(--ink), 0 0 0 8px rgb(127 232 255 / 0.6);
+}
+.og-root .mk-panel-wrap {
+  background: rgb(8 40 70 / 0.55);
+}
+.og-root .mk-hub {
+  background: linear-gradient(180deg, rgb(10 50 90 / 0.6), rgb(10 50 90 / 0.25));
+}
+.og-root .mk-tab[data-on='true'] {
+  background: #7fe8ff;
+}
+
+/* แสงลอดผิวน้ำทับภาพกล้อง */
+.og-tint {
+  background:
+    repeating-linear-gradient(100deg, rgb(255 255 255 / 0.07) 0 30px, transparent 30px 90px),
+    radial-gradient(130% 95% at 50% 55%, transparent 42%, color-mix(in srgb, var(--sky2, #0f6fb0) 70%, transparent) 100%),
+    linear-gradient(180deg, color-mix(in srgb, var(--sky1, #2fc4e8) 45%, transparent), transparent 30%, transparent 80%, rgb(18 58 82 / 0.55));
+}
+
+/* ไม่มีกล้อง: ลำแสงใต้น้ำ + สาหร่าย + พื้นทราย */
+.og-sea {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.og-sea i {
+  position: absolute;
+}
+.og-sea i:nth-child(1),
+.og-sea i:nth-child(2) {
+  top: -10%;
+  width: 18%;
+  height: 90%;
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.28), transparent);
+  transform: skewX(-14deg);
+  animation: ogRay 6s ease-in-out infinite;
+}
+.og-sea i:nth-child(1) {
+  left: 18%;
+}
+.og-sea i:nth-child(2) {
+  left: 58%;
+  width: 12%;
+  animation-delay: -3s;
+}
+.og-sea i:nth-child(3) {
+  left: -5%;
+  right: -5%;
+  bottom: -6%;
+  height: 16%;
+  border-radius: 50% 50% 0 0;
+  background: #e8d29a;
+}
+.og-sea i:nth-child(4) {
+  bottom: 6%;
+  left: 6%;
+  width: 26px;
+  height: 120px;
+  border-radius: 20px;
+  background: #2fae6a;
+  box-shadow: 70vw -10px 0 -2px #2fae6a, 82vw 10px 0 0 #3fcf7a;
+  transform-origin: bottom;
+  animation: ogSway 3s ease-in-out infinite;
+}
+@keyframes ogRay {
+  50% { opacity: 0.45; transform: skewX(-8deg); }
+}
+@keyframes ogSway {
+  50% { transform: rotate(6deg); }
+}
+
+/* แนวปะการังด้านล่าง: สีเทา = ยังไม่ฟื้น, มีสี = ฟื้นแล้ว */
+.og-reef {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: clamp(44px, 9vh, 80px);
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-end;
+  padding: 0 18% 0 22%;
+  pointer-events: none;
+}
+.og-reef svg {
+  height: 100%;
+  stroke: #9aa6b0;
+  transition: stroke 0.6s, transform 0.6s;
+  transition-delay: var(--d);
+}
+.og-reef svg[data-on='true'] {
+  stroke: #ff6b9a;
+  transform: scale(1.12);
+  filter: drop-shadow(0 0 6px rgb(255 143 199 / 0.8));
+}
+.og-reef svg[data-on='true']:nth-child(3n + 1) {
+  stroke: #ffb347;
+}
+.og-reef svg[data-on='true']:nth-child(3n + 2) {
+  stroke: #b85cff;
+}
+
+/* นักพิทักษ์เอียงตามตัว (รอบว่ายหลบ/สู้บอส) */
+.og-hero > svg {
+  transform: translateX(calc(var(--lean, 0) * 18px)) rotate(calc(var(--lean, 0) * 10deg));
+  transition: transform 0.25s;
+}
+
+/* การ์ดสัตว์ทะเล */
+.og-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+.og-card {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 2px;
+  padding: 10px;
+  border-radius: 18px;
+  background: #fff;
+  border: 3px solid var(--ink);
+  box-shadow: 0 4px 0 var(--ink);
+}
+.og-card[data-own='true'] {
+  background: color-mix(in srgb, var(--cc) 18%, #fff);
+}
+.og-card b {
+  font-weight: 900;
+}
+.og-card small {
+  opacity: 0.6;
+  font-weight: 700;
+}
+.og-card span {
+  font-size: 13px;
+  line-height: 1.35;
+  font-weight: 600;
+}
+.og-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.og-items span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px 4px 4px;
+  border-radius: 999px;
+  background: #fff;
+  border: 3px solid var(--ink);
+  font-weight: 800;
+}
+.og-card-pop {
+  display: grid;
+  justify-items: center;
+  background: color-mix(in srgb, var(--cc) 14%, #f2fbff) !important;
+}
+.og-card-pop > svg {
+  animation: mkBob 1.6s ease-in-out infinite;
+}
+.og-card-pop h2 small {
+  font-size: 14px;
+  opacity: 0.6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .og-sea i,
+  .og-card-pop > svg {
+    animation: none;
+  }
+}

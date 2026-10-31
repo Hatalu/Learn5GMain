@@ -12,7 +12,7 @@ const grad = new THREE.DataTexture(new Uint8Array([110, 190, 255]), 3, 1, THREE.
 grad.minFilter = grad.magFilter = THREE.NearestFilter;
 grad.needsUpdate = true;
 const mats = new Map<string, THREE.Material>();
-const toon = (color: string, emissive = 0) => {
+export const toon = (color: string, emissive = 0) => {
   const key = `${color}|${emissive}`;
   let m = mats.get(key) as THREE.MeshToonMaterial | undefined;
   if (!m) {
@@ -25,16 +25,16 @@ const toon = (color: string, emissive = 0) => {
   }
   return m;
 };
-const INK_MAT = new THREE.MeshBasicMaterial({ color: INK, side: THREE.BackSide });
-const SPHERE = new THREE.SphereGeometry(1, 22, 16);
-const CYL = new THREE.CylinderGeometry(1, 1, 1, 18);
-const CONE = new THREE.ConeGeometry(1, 1, 18);
-const OCTA = new THREE.OctahedronGeometry(1, 0);
-const RING = new THREE.TorusGeometry(1, 0.08, 8, 40);
-const BOX = new THREE.BoxGeometry(1, 1, 1);
+export const INK_MAT = new THREE.MeshBasicMaterial({ color: INK, side: THREE.BackSide });
+export const SPHERE = new THREE.SphereGeometry(1, 22, 16);
+export const CYL = new THREE.CylinderGeometry(1, 1, 1, 18);
+export const CONE = new THREE.ConeGeometry(1, 1, 18);
+export const OCTA = new THREE.OctahedronGeometry(1, 0);
+export const RING = new THREE.TorusGeometry(1, 0.08, 8, 40);
+export const BOX = new THREE.BoxGeometry(1, 1, 1);
 
-type V3 = [number, number, number];
-function part(parent: THREE.Object3D, geo: THREE.BufferGeometry, mat: THREE.Material, pos: V3, s: V3, ink = 0.06, rot?: V3) {
+export type V3 = [number, number, number];
+export function part(parent: THREE.Object3D, geo: THREE.BufferGeometry, mat: THREE.Material, pos: V3, s: V3, ink = 0.06, rot?: V3) {
   const m = new THREE.Mesh(geo, mat);
   m.position.set(...pos);
   m.scale.set(...s);
@@ -50,14 +50,14 @@ function part(parent: THREE.Object3D, geo: THREE.BufferGeometry, mat: THREE.Mate
   return m;
 }
 
-function eyes(g: THREE.Object3D, x: number, y: number, z: number, r: number, pupil = '#2a1d50') {
+export function eyes(g: THREE.Object3D, x: number, y: number, z: number, r: number, pupil = '#2a1d50') {
   for (const sx of [-1, 1]) {
     part(g, SPHERE, toon('#ffffff'), [sx * x, y, z], [r, r * 1.15, r * 0.6], 0.02);
     part(g, SPHERE, toon(pupil), [sx * x, y - r * 0.1, z + r * 0.45], [r * 0.5, r * 0.6, r * 0.3], 0);
     part(g, SPHERE, toon('#ffffff', 1), [sx * x + r * 0.2, y + r * 0.25, z + r * 0.6], [r * 0.18, r * 0.18, r * 0.1], 0);
   }
 }
-function blush(g: THREE.Object3D, x: number, y: number, z: number, r: number) {
+export function blush(g: THREE.Object3D, x: number, y: number, z: number, r: number) {
   for (const sx of [-1, 1]) part(g, SPHERE, toon('#ff8fb5'), [sx * x, y, z], [r, r * 0.55, r * 0.2], 0);
 }
 
@@ -262,6 +262,17 @@ function makeKing(): THREE.Group {
 }
 const BOSS_MAKERS: Record<BossId, () => THREE.Group> = { golem: makeGolem, shadow: makeShadow, giant: makeGiant, dragon: makeDragon, wizard: makeWizard, king: makeKing };
 
+/** ชุดโมเดลของแต่ละเกม AR ที่ใช้ฉากนี้ร่วมกัน (Magic Kingdom = ค่าเริ่มต้น, Ocean/Ghost ส่งชุดของตัวเอง) */
+export interface SceneKit {
+  mob: (color: string, kind: number) => THREE.Group;
+  boss: (kind: string) => THREE.Group;
+  /** สีละอองที่ลอยทั้งฉาก */
+  mote: number;
+  /** สีแสงสะท้อนจากพื้น */
+  ground: number;
+}
+const MAGIC_KIT: SceneKit = { mob: makeMob, boss: (k) => (BOSS_MAKERS[k as BossId] || makeGolem)(), mote: 0xfff3a8, ground: 0x8a6bd0 };
+
 /* ------------------------------ ฉาก ------------------------------ */
 
 interface Fx {
@@ -289,7 +300,7 @@ export class MagicScene {
     return this.camOn ? Math.min(1.25, gfxDpr()) : gfxDpr();
   }
 
-  constructor(el: HTMLElement, private camOn: boolean) {
+  constructor(el: HTMLElement, private camOn: boolean, private kit: SceneKit = MAGIC_KIT) {
     this.el = el;
     this.renderer = new THREE.WebGLRenderer({ alpha: true, antialias: getGfx() !== 'lite', powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(this.dpr());
@@ -298,7 +309,7 @@ export class MagicScene {
     el.appendChild(this.renderer.domElement);
     this.camera.position.set(0, 0, 20);
     this.camera.lookAt(0, 0, 0);
-    this.scene.add(new THREE.HemisphereLight(0xffffff, 0x8a6bd0, 1.7));
+    this.scene.add(new THREE.HemisphereLight(0xffffff, kit.ground, 1.7));
     const sun = new THREE.DirectionalLight(0xfff4e0, 1.5);
     sun.position.set(6, 10, 14);
     this.scene.add(sun);
@@ -313,7 +324,7 @@ export class MagicScene {
     }
     const sg = new THREE.BufferGeometry();
     sg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    this.motes = new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xfff3a8, size: 0.16, transparent: true, opacity: camOn ? 0.6 : 0.9, depthWrite: false }));
+    this.motes = new THREE.Points(sg, new THREE.PointsMaterial({ color: kit.mote, size: 0.16, transparent: true, opacity: camOn ? 0.6 : 0.9, depthWrite: false }));
     this.scene.add(this.motes);
 
     this.resize();
@@ -347,23 +358,24 @@ export class MagicScene {
     return this.objs.has(id);
   }
 
-  private add(id: string, g: THREE.Group) {
+  /** ใส่โมเดลใดๆ ที่ id (เกมอื่นสร้างโมเดลของตัวเองแล้วส่งมา) */
+  item(id: string, g: THREE.Group) {
     this.remove(id);
     g.scale.setScalar(0.01);
     this.scene.add(g);
     this.objs.set(id, g);
   }
   mob(id: string, color: string, kind: number) {
-    this.add(id, makeMob(color, kind));
+    this.item(id, this.kit.mob(color, kind));
   }
   crystal(id: string, color: string) {
-    this.add(id, makeCrystal(color));
+    this.item(id, makeCrystal(color));
   }
   cage(id: string) {
-    this.add(id, makeCage());
+    this.item(id, makeCage());
   }
-  boss(id: string, kind: BossId) {
-    this.add(id, (BOSS_MAKERS[kind] || makeGolem)());
+  boss(id: string, kind: string) {
+    this.item(id, this.kit.boss(kind));
   }
   /** ลูกพลังของบอสที่พุ่งเข้าหาผู้เล่น */
   orb(id: string, color: string) {
@@ -376,7 +388,7 @@ export class MagicScene {
     r.scale.setScalar(1.4);
     g.add(r);
     g.userData = { orb: true };
-    this.add(id, g);
+    this.item(id, g);
   }
 
   /** วางชิ้นที่ตำแหน่งพิกเซล ขนาด rPx = รัศมีบนจอ */
@@ -497,10 +509,10 @@ export class MagicScene {
   }
 
   /** ลำแสงสายรุ้ง: ลำแสงหลายสีซ้อนกัน */
-  beam(fx: number, fy: number, tx: number, ty: number) {
+  beam(fx: number, fy: number, tx: number, ty: number, cols = ['#ff6b9a', '#ffc53a', '#7be36b', '#59c8ff', '#b85cff']) {
     const a = this.world(fx, fy);
     const b = this.world(tx, ty);
-    ['#ff6b9a', '#ffc53a', '#7be36b', '#59c8ff', '#b85cff'].forEach((c, i) => this.seg(a, b, c, 0.55 - i * 0.08, 0.6));
+    cols.forEach((c, i) => this.seg(a, b, c, 0.55 - i * 0.08, 0.6));
     this.seg(a, b, '#ffffff', 0.12, 0.6);
     this.sparkle(b, '#ffffff', 60 * this.unit);
   }

@@ -16,6 +16,14 @@ import type { QuizContent, RoomMode } from '@/lib/game-creator/types';
 import { AR_COUNTS, AR_DEFAULTS, AR_LEVELS, AR_MEMBERS, AR_STYLES, AR_TIMES, arQuery, type ArSettings } from '@/lib/game-creator/arSettings';
 import { BOSSES } from '@/lib/game-creator/ar/boss';
 import { MAGIC_BOSSES } from '@/lib/game-creator/magic/data';
+import { OCEAN_BOSSES } from '@/lib/game-creator/ocean/data';
+
+/** ข้อความ/บอสของเกม AR เล่นในเครื่องเดียวแต่ละเกม (quest = เกมผจญภัยแบบมีแผนที่: ทีมผลัดกันอย่างเดียว มีแบบการเล่น ความยาก 3 ระดับ) */
+const LOCAL_INFO: Partial<Record<GameMode, { bosses: { id: string; name: string }[]; swap: string; diff: string; auto: string; quest: boolean }>> = {
+  ar: { bosses: BOSSES, swap: 'สลับคนคุมยานทุกข้อ', diff: 'ยานลอยไปมา / อุกกาบาตเร็ว / บอสดุ', auto: 'ตามด่านในแผนที่', quest: false },
+  magic: { bosses: MAGIC_BOSSES, swap: 'สลับคนร่ายเวทเมื่อถึงตาทีม', diff: 'มอนสเตอร์ลอยไปมา / บอสดุ', auto: 'ตามดินแดนที่เลือก', quest: true },
+  ocean: { bosses: OCEAN_BOSSES, swap: 'สลับผู้พิทักษ์เมื่อถึงตาทีม', diff: 'ฟองคำตอบลอยไปมา / บอสดุ', auto: 'ตามพื้นที่ที่เลือก', quest: true },
+};
 
 const LAST_BG = 'l5g_room_bg';
 
@@ -149,8 +157,9 @@ export function LocalSetup({ mode, usable, value, onChange }: { mode: GameMode; 
   const info = modeById(mode);
   const set = (p: Partial<ArSettings>) => (gsfx.tap(), onChange({ ...value, ...p }));
   const counts = AR_COUNTS.filter((n) => n === 0 || n < usable);
-  const magic = mode === 'magic';
-  const bosses: { id: string; name: string }[] = magic ? MAGIC_BOSSES : BOSSES;
+  const li = LOCAL_INFO[mode] || LOCAL_INFO.ar!;
+  const quest = li.quest;
+  const bosses = li.bosses;
   return (
     <>
       <div className="l5g-modechip mb-3" style={{ ['--mc' as string]: info.color }}>
@@ -164,7 +173,7 @@ export function LocalSetup({ mode, usable, value, onChange }: { mode: GameMode; 
           <div className="l5g-chips">
             {(info.teams || [0]).map((t) => (
               <button key={t} type="button" className="l5g-chipbtn" data-on={value.teams === t} onClick={() => set({ teams: t })}>
-                {t === 2 && !magic ? '2 ทีม (จอแบ่งซ้าย-ขวา)' : t ? `${t} ทีม (ผลัดกันเล่น)` : 'เล่นเดี่ยว'}
+                {t === 2 && !quest ? '2 ทีม (จอแบ่งซ้าย-ขวา)' : t ? `${t} ทีม (ผลัดกันเล่น)` : 'เล่นเดี่ยว'}
               </button>
             ))}
           </div>
@@ -172,7 +181,7 @@ export function LocalSetup({ mode, usable, value, onChange }: { mode: GameMode; 
         {value.teams > 0 && (
           <div>
             <p className="l5g-qset-label flex items-center gap-1">
-              <Users className="w-4 h-4" /> สมาชิกต่อทีม ({magic ? 'สลับคนร่ายเวทเมื่อถึงตาทีม' : 'สลับคนคุมยานทุกข้อ'})
+              <Users className="w-4 h-4" /> สมาชิกต่อทีม ({li.swap})
             </p>
             <div className="l5g-chips">
               {AR_MEMBERS.map((n) => (
@@ -209,11 +218,11 @@ export function LocalSetup({ mode, usable, value, onChange }: { mode: GameMode; 
         </div>
         <div>
           <p className="l5g-qset-label flex items-center gap-1">
-            <Gauge className="w-4 h-4" /> ความยาก ({magic ? 'มอนสเตอร์ลอยไปมา / บอสดุ' : 'ยานลอยไปมา / อุกกาบาตเร็ว / บอสดุ'})
+            <Gauge className="w-4 h-4" /> ความยาก ({li.diff})
           </p>
           <div className="l5g-chips">
-            {(magic ? AR_LEVELS.slice(0, 3) : AR_LEVELS).map((l, i) => (
-              <button key={i} type="button" className="l5g-chipbtn" data-on={value.level === i || (magic && value.level === 3 && i === 1)} onClick={() => set({ level: i })}>
+            {(quest ? AR_LEVELS.slice(0, 3) : AR_LEVELS).map((l, i) => (
+              <button key={i} type="button" className="l5g-chipbtn" data-on={value.level === i || (quest && value.level === 3 && i === 1)} onClick={() => set({ level: i })}>
                 {l}
               </button>
             ))}
@@ -224,14 +233,14 @@ export function LocalSetup({ mode, usable, value, onChange }: { mode: GameMode; 
             <Flag className="w-4 h-4" /> บอส
           </p>
           <div className="l5g-chips">
-            {[{ id: 'auto', name: magic ? 'ตามดินแดนที่เลือก' : 'ตามด่านในแผนที่' }, ...bosses].map((b) => (
+            {[{ id: 'auto', name: li.auto }, ...bosses].map((b) => (
               <button key={b.id} type="button" className="l5g-chipbtn" data-on={value.boss === b.id} onClick={() => set({ boss: b.id })}>
                 {b.name}
               </button>
             ))}
           </div>
         </div>
-        {magic && (
+        {quest && (
           <div>
             <p className="l5g-qset-label flex items-center gap-1">
               <Sparkles className="w-4 h-4" /> แบบการเล่น

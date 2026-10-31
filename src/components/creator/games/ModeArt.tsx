@@ -154,6 +154,52 @@ export function ModeArt({ mode }: { mode: GameMode }) {
       </div>
     );
   }
+  if (mode === 'ocean') {
+    return (
+      <div className="ma ma-mk ma-og">
+        <svg viewBox="0 0 200 96" width="100%" height="100%" aria-hidden="true">
+          <defs>
+            <linearGradient id="maOgSea" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="#2fc4e8" />
+              <stop offset="1" stopColor="#0f5fa8" />
+            </linearGradient>
+          </defs>
+          <rect width="200" height="96" fill="url(#maOgSea)" />
+          <path d="M30 0 l20 0 -30 96 -14 0z M120 0 l14 0 -24 96 -10 0z" fill="#fff" opacity="0.14" />
+          {[30, 70, 110, 150, 182].map((x, i) => (
+            <circle key={i} className="ma-ar-star" cx={x} cy={(i * 19) % 40 + 10} r={i % 2 ? 2 : 3} fill="none" stroke="#dff8ff" strokeWidth="1.2" style={{ animationDelay: `${i * 0.3}s` }} />
+          ))}
+          <rect y="84" width="200" height="12" fill="#e8d29a" />
+          <g stroke="#123a52" strokeWidth="2.5" strokeLinecap="round" fill="none">
+            <path d="M14 86 v-14 l-6 -6 m6 6 l6 -8" stroke="#ff6b9a" strokeWidth="4" />
+            <path d="M190 86 v-18 l-5 -6 m5 6 l6 -9" stroke="#ffb347" strokeWidth="4" />
+          </g>
+          {/* ฟองคำตอบมีปลา */}
+          <g className="ma-mk-mob" stroke="#123a52" strokeWidth="2.5">
+            <circle cx="160" cy="46" r="20" fill="#dff8ff" fillOpacity="0.45" />
+            <ellipse cx="160" cy="47" rx="11" ry="8" fill="#ffb347" />
+            <path d="M149 47 l-7 -6 v12z" fill="#ffb347" />
+            <circle cx="165" cy="45" r="2" fill="#123a52" stroke="none" />
+          </g>
+          {/* ขวดพลาสติก */}
+          <g stroke="#123a52" strokeWidth="2" transform="rotate(20 112 30)">
+            <rect x="106" y="22" width="11" height="20" rx="3" fill="#9ff0d0" />
+            <rect x="108.5" y="17" width="6" height="6" fill="#2f8ae8" />
+          </g>
+          {/* คลื่นน้ำ */}
+          <circle className="ma-mk-bolt" cx="60" cy="50" r="6" fill="#59c8ff" stroke="#fff" strokeWidth="2" />
+          {/* นักดำน้ำ */}
+          <g stroke="#123a52" strokeWidth="2.5" strokeLinejoin="round">
+            <rect x="20" y="52" width="8" height="22" rx="4" fill="#ffc53a" />
+            <path d="M26 54 h18 l2 26 h-22z" fill="#2f8ae8" />
+            <circle cx="35" cy="46" r="10" fill="#ffe0c2" />
+            <rect x="26" y="41" width="18" height="8" rx="4" fill="#bff3ff" />
+            <path d="M44 58 q8 -2 12 -8" fill="none" stroke="#2f8ae8" strokeWidth="5" strokeLinecap="round" />
+          </g>
+        </svg>
+      </div>
+    );
+  }
   if (mode === 'magic') {
     return (
       <div className="ma ma-mk">

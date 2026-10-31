@@ -2,6 +2,8 @@
 .mk-root {
   --ink: #2a1d50;
   --gold: #ffd23f;
+  /* hidden ยังเลื่อนได้ด้วยโฟกัส/วงเล็งที่ล้นจอ ทำให้ทั้งจอเลื่อนขึ้น: clip ห้ามเลื่อนเลย */
+  overflow: clip;
   background: linear-gradient(180deg, var(--sky1, #6d5bff), var(--sky2, #ffb3e6));
 }
 .mk-shake {
