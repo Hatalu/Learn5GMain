@@ -10,6 +10,7 @@ import { NightSky } from '@/components/fx/NightSky';
 import { ChoiceShape, choiceStyle } from '@/components/creator/ChoiceShape';
 import { FiveG3D, type ShowPose } from '@/components/mascot/FiveG3D';
 import { sfx } from '@/lib/sound';
+import { RedeemBox } from './RedeemBox';
 import s from './home-hero.module.css';
 
 const SAY: Record<ShowPose, string> = {
@@ -119,6 +120,8 @@ export function HomeHero({
               </Link>
             )}
           </div>
+
+          <RedeemBox />
 
           <div className={s.subjects} aria-label="เลือกวิชา">
             {ALL_SUBJECTS.map((sub) => (

@@ -7,6 +7,7 @@ import { AlertTriangle, Check, ChevronDown, Crown, Eye, EyeOff, FolderHeart, Loa
 import { useAuth } from '@/context/AuthContext';
 import { getTurnstileToken } from '@/lib/turnstile';
 import { RESERVED_NAMES, normalizeGmail, signupSchema } from '@/lib/validations/signup';
+import { CODE_DONE_KEY, PENDING_CODE_KEY, readStore, redeemCode, writeStore } from '@/lib/redeem';
 import { TierCompare } from '@/components/creator/TierCompare';
 import { FREE_SET_LIMIT, FREE_UPLOAD_MB } from '@/lib/game-creator/quota';
 import { AuthShell, authStyles as s, type Mood } from '@/components/auth/AuthShell';
@@ -120,6 +121,13 @@ function SignupInner() {
         return;
       }
       setDone(true);
+      // กรอกโค้ดรับสมาชิกฟรีไว้ที่หน้าหลักก่อนสมัคร: ใช้ให้เลย หน้าหลักจะฉลองให้ตอนกลับไป
+      const pending = readStore(PENDING_CODE_KEY);
+      if (pending) {
+        const r = await redeemCode(pending);
+        writeStore(PENDING_CODE_KEY, null);
+        if (r.days) writeStore(CODE_DONE_KEY, String(r.days));
+      }
       // บัญชีใหม่: พาเที่ยวรอบเว็บก่อน (ทัวร์พาไปหน้าหลักเอง กดข้ามได้)
       setTimeout(() => tour.start(), 1100);
     } catch {

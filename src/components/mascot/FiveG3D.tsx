@@ -303,20 +303,28 @@ export function FiveG3D({ mood, onPose, className = '', label = 'น้องไ
       const squash = new THREE.Group();
       root.add(squash);
 
-      // ขา + รองเท้า
+      // ขาสั้นป้อม + รองเท้า (โผล่ใต้ก้อนเมฆ)
       const legs: InstanceType<typeof THREE.Group>[] = [];
       for (const sx of [1, -1]) {
         const leg = new THREE.Group();
-        leg.position.set(0.3 * sx, 0.5, 0);
+        leg.position.set(0.44 * sx, 0.42, 0);
         squash.add(leg);
-        part(leg, G(new THREE.CapsuleGeometry(0.17, 0.2, 6, 16)), M.body, [0, -0.17, 0], { size: 0.17 });
-        part(leg, sphere(0.27), M.orange, [0.02 * sx, -0.4, 0.1], { s: [1.05, 0.6, 1.45], size: 0.27, t: 0.05 });
-        part(leg, sphere(0.27), M.white, [0.02 * sx, -0.47, 0.12], { s: [1.08, 0.3, 1.48] });
+        part(leg, G(new THREE.CapsuleGeometry(0.2, 0.08, 6, 16)), M.body, [0, -0.12, 0], { size: 0.2 });
+        part(leg, sphere(0.29), M.orange, [0.02 * sx, -0.32, 0.1], { s: [1.08, 0.62, 1.4], size: 0.29, t: 0.05 });
+        part(leg, sphere(0.29), M.white, [0.02 * sx, -0.39, 0.12], { s: [1.1, 0.3, 1.42] });
         legs.push(leg);
       }
 
-      // ลำตัว
-      part(squash, sphere(0.8, 40), M.body, [0, 1.1, 0], { s: [1, 0.9, 0.85], size: 0.8 });
+      // ลำตัวกลมอ้วนเป็นก้อนเมฆ: ลูกกลมใหญ่ + ปุยรอบเอวและสะโพก
+      part(squash, sphere(1, 44), M.body, [0, 1.12, 0], { s: [1.14, 0.98, 0.98], size: 1 });
+      for (let i = 0; i < 9; i++) {
+        const a = (i / 9) * TAU + Math.PI / 9;
+        // ด้านหน้าเว้นไว้ให้เห็นจอที่พุง ปุยหน้าวางต่ำลงและเล็กลง
+        const front = Math.cos(a) > 0.75;
+        const r = front ? 0.34 : 0.46;
+        part(squash, sphere(r, 28), M.body, [Math.sin(a) * 1.02, front ? 0.36 : 0.62, Math.cos(a) * 0.86], { size: r, t: 0.04 });
+      }
+      for (const sx of [1, -1]) part(squash, sphere(0.42, 28), M.body, [1.02 * sx, 1.32, -0.12], { size: 0.42, t: 0.04 });
       // จอที่พุง (กรอบฟ้า + สีรุ้ง "5G")
       const rr = (w: number, h: number, r: number) => {
         const sh = new THREE.Shape();
@@ -331,8 +339,8 @@ export function FiveG3D({ mood, onPose, className = '', label = 'น้องไ
         sh.quadraticCurveTo(-w / 2, -h / 2, -w / 2 + r, -h / 2);
         return sh;
       };
-      const frame = part(squash, G(new THREE.ExtrudeGeometry(rr(1.02, 0.74, 0.14), { depth: 0.16, bevelEnabled: true, bevelSize: 0.03, bevelThickness: 0.03, bevelSegments: 2 })), M.blue, [0, 1.12, 0.5], { size: 0.5, t: 0.03 });
-      frame.rotation.x = -0.08;
+      const frame = part(squash, G(new THREE.ExtrudeGeometry(rr(1.02, 0.74, 0.14), { depth: 0.16, bevelEnabled: true, bevelSize: 0.03, bevelThickness: 0.03, bevelSegments: 2 })), M.blue, [0, 1.08, 0.78], { size: 0.5, t: 0.03 });
+      frame.rotation.x = -0.12;
       const bellyTex = textTex(512, 360, (c) => {
         const g = c.createLinearGradient(0, 0, 512, 360);
         ['#ff7ab6', '#ffd166', '#7ee6ad', '#6cc7ff', '#b28dff'].forEach((col, i) => g.addColorStop(i / 4, col));
@@ -353,63 +361,61 @@ export function FiveG3D({ mood, onPose, className = '', label = 'น้องไ
       for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) / 0.88 + 0.5, uv.getY(i) / 0.6 + 0.5);
       frame.add(screen);
 
-      // เข็มขัดกระเป๋าสีส้ม
-      part(squash, G(new THREE.TorusGeometry(0.62, 0.065, 10, 48)), M.orange, [0, 0.66, 0], { r: [Math.PI / 2, 0, 0], s: [1, 0.87, 1], size: 0.62, t: 0.03 });
-      const pouch = part(squash, G(new THREE.CapsuleGeometry(0.15, 0.42, 6, 16)), M.orange2, [0, 0.6, 0.56], { r: [0, 0, Math.PI / 2], s: [1, 1, 0.75], size: 0.2, t: 0.035 });
-      part(pouch, sphere(0.045, 12), M.navy, [0.02, 0.12, 0.12]);
-      part(pouch, sphere(0.045, 12), M.navy, [-0.03, -0.1, 0.12]);
-
-      // แขน (จุดหมุนที่ไหล่)
+      // แขนปุยสั้นๆ (จุดหมุนที่ไหล่)
       const arm = (sx: number) => {
         const a = new THREE.Group();
-        a.position.set(0.7 * sx, 1.42, 0.05);
+        a.position.set(1.0 * sx, 1.36, 0.08);
         a.rotation.order = 'ZXY';
         squash.add(a);
-        part(a, G(new THREE.CapsuleGeometry(0.15, 0.3, 6, 16)), M.body, [0, -0.28, 0], { size: 0.15 });
-        part(a, sphere(0.22), M.body, [0, -0.6, 0.02], { s: [1, 0.95, 0.9], size: 0.22 });
+        part(a, G(new THREE.CapsuleGeometry(0.2, 0.18, 6, 16)), M.body, [0, -0.24, 0], { size: 0.2 });
+        part(a, sphere(0.27), M.body, [0, -0.5, 0.02], { s: [1, 0.95, 0.95], size: 0.27 });
         return a;
       };
       const armA = arm(1);
       const armB = arm(-1);
       // แท็บเล็ตในมือซ้ายของจอ
       const tablet = new THREE.Group();
-      tablet.position.set(-0.08, -0.72, 0.26);
+      tablet.position.set(-0.08, -0.64, 0.3);
       armB.add(tablet);
       part(tablet, G(new THREE.BoxGeometry(0.5, 0.7, 0.07)), M.blue, [0, 0, 0], { size: 0.35, t: 0.03 });
       part(tablet, G(new THREE.PlaneGeometry(0.4, 0.56)), M.screen, [0, 0.01, 0.04]);
 
       // หัว (จุดหมุนที่คอ)
       const neck = new THREE.Group();
-      neck.position.set(0, 1.86, 0);
+      neck.position.set(0, 1.92, 0);
       squash.add(neck);
       const head = new THREE.Group();
-      head.position.y = 0.84;
+      head.position.y = 0.8;
       neck.add(head);
-      part(head, sphere(1, 48), M.body, [0, 0, 0], { s: [1.15, 0.95, 0.9], size: 1 });
-      // ปุยเมฆ
+      part(head, sphere(1, 48), M.body, [0, 0, 0], { s: [1.18, 0.98, 0.9], size: 1 });
+      // ปุยเมฆรอบหัว (ใหญ่และแน่นขึ้น ให้กลมฟูเหมือนก้อนเมฆ)
       for (const [x, y, z, r] of [
-        [-0.92, 0.28, -0.05, 0.5],
-        [0.92, 0.28, -0.05, 0.5],
-        [-0.55, 0.72, -0.08, 0.52],
-        [0.55, 0.72, -0.08, 0.52],
-        [0, 0.86, -0.12, 0.5],
-        [-0.28, 0.7, -0.45, 0.48],
-        [0.28, 0.7, -0.45, 0.48],
-        [0, 0.35, -0.6, 0.6],
+        [-1.0, 0.22, -0.36, 0.56],
+        [1.0, 0.22, -0.36, 0.56],
+        [-0.96, -0.3, -0.3, 0.44],
+        [0.96, -0.3, -0.3, 0.44],
+        [-0.62, 0.74, -0.06, 0.58],
+        [0.62, 0.74, -0.06, 0.58],
+        [0, 0.92, -0.1, 0.58],
+        [-0.3, 0.76, -0.48, 0.54],
+        [0.3, 0.76, -0.48, 0.54],
+        [-0.62, 0.2, -0.62, 0.56],
+        [0.62, 0.2, -0.62, 0.56],
+        [0, 0.36, -0.7, 0.64],
       ] as const)
         part(head, sphere(r, 28), M.body, [x, y, z], { size: r, t: 0.04 });
 
       // หูฟัง
-      const band = part(head, G(new THREE.TorusGeometry(1.24, 0.085, 10, 48, Math.PI)), M.blue, [0, 0.04, -0.12], { s: [1, 1.12, 1], size: 1.24, t: 0.03 });
+      const band = part(head, G(new THREE.TorusGeometry(1.3, 0.085, 10, 48, Math.PI)), M.blue, [0, 0.04, -0.12], { s: [1, 1.12, 1], size: 1.3, t: 0.03 });
       band.rotation.x = -0.12;
       for (const sx of [1, -1]) {
-        const cup = part(head, G(new THREE.CylinderGeometry(0.34, 0.34, 0.26, 28)), M.blue, [1.2 * sx, 0.02, 0], { r: [0, 0, Math.PI / 2], size: 0.34, t: 0.04 });
+        const cup = part(head, G(new THREE.CylinderGeometry(0.34, 0.34, 0.26, 28)), M.blue, [1.26 * sx, 0.02, 0.02], { r: [0, 0, Math.PI / 2], size: 0.34, t: 0.04 });
         part(cup, G(new THREE.CylinderGeometry(0.22, 0.22, 0.04, 24)), M.navy, [0, 0.14 * sx, 0]);
       }
 
       // เสาอากาศ + ป้าย 5G
       const ant = new THREE.Group();
-      ant.position.set(0, 1.25, -0.12);
+      ant.position.set(0, 1.42, -0.12);
       head.add(ant);
       part(ant, G(new THREE.CylinderGeometry(0.035, 0.045, 0.5, 10)), M.navy, [0, 0.25, 0], { size: 0.05, t: 0.02 });
       part(ant, sphere(0.09, 16), M.blue, [0, 0.52, 0], { size: 0.09, t: 0.03 });
@@ -473,7 +479,7 @@ export function FiveG3D({ mood, onPose, className = '', label = 'น้องไ
         renderer.setSize(w, h, false);
         camera.aspect = w / h;
         // จอแคบ: ถอยกล้องให้ตัวไม่ล้นด้านข้าง
-        camera.position.z = 13.2 * Math.max(1, 0.78 / camera.aspect);
+        camera.position.z = 13.2 * Math.max(1, 0.88 / camera.aspect);
         camera.updateProjectionMatrix();
       };
       fit();
