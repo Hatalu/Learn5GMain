@@ -3,11 +3,11 @@
 /**
  * Ghost Hunter AR (เล่นในเครื่องเดียว): นักล่าผีฝึกหัดส่องไฟฉายหาผีน่ารัก ไขปริศนา และจับผีด้วยความรู้ + ท่าทางผ่านกล้อง
  * - ใช้แกน AR กลาง (tracker/arPose/quality/gestures) + ฉาก toon ของ magic/scene.ts ผ่าน GHOST_KIT (ghost/scene.ts)
- * - ห้องมืด: ผีที่ถือคำตอบซ่อนอยู่ ไฟฉายตามมือ (เมาส์/แตะจอแทนได้) ส่องโดนผี = ผีปรากฏ แล้วส่องค้างไว้ = ยิงลำแสงจับ
+ * - ห้องมืด: ผีที่ถือคำตอบซ่อนอยู่ ไฟฉายตามมือ (เมาส์/แตะจอแทนได้) ส่องโดนผี = ผีปรากฏ แล้วปัดมือเร็วๆ ผ่านผี = จับ (เอกลักษณ์ของเกมนี้: ปัด ไม่ใช่เล็งค้าง)
  *   วาดความมืดด้วย canvas 2 มิติ เจาะรูตามไฟฉายและผีที่เจอแล้ว ทุกเฟรม (ไม่ผ่าน React)
  * - ตอบถูกแล้วสลับรอบ: เก็บเบาะแส (กุญแจ หนังสือ รูปภาพ รหัสลับ + หีบสมบัติ) / หนีผีเอียงหลบ
  * - ทุกข้อที่ 3 ไขปริศนาประตู ข้อที่ 2, 5, 8... ช่วยผีใจดีออกจากโถ ผีที่จับได้เก็บเป็นการ์ดสะสม
- * - บอส: มีจุดอ่อนเปิดเป็นช่วง (ยิงตอนนั้น x2) ส่องค้าง = ลำแสง, สองมือเล็ง = เครื่องดูดยักษ์, กางแขน = โล่กันผี,
+ * - บอส: มีจุดอ่อนเปิดเป็นช่วง (ยิงตอนนั้น x2) ปัดมือผ่านบอส = ลำแสง, สองมือเล็ง = เครื่องดูดยักษ์, กางแขน = โล่กันผี,
  *   เอียงตัว = หลบ, ยกมือเหนือหัว = ชาร์จกับดัก, ปรบมือ (ครูเปิด) = คลื่นเสียงทำให้ผีทุกตัวปรากฏ
  * - คะแนนการเล่นต่อข้อสูงสุดน้อยกว่าคะแนนตอบถูกเสมอ (maxPlayFor ทดสอบใน selftest) ภาพกล้องไม่บันทึก/ไม่ส่งออก
  */
@@ -25,6 +25,7 @@ import { richToPlain, sanitizeQuiz } from '@/lib/game-creator/quiz';
 import { mediaPrefix } from '@/lib/game-creator/prefix';
 import { modeFit, modeQuiz } from '@/lib/game-creator/modes';
 import type { ArSettings } from '@/lib/game-creator/arSettings';
+import { Swipe } from '@/lib/game-creator/ar/inputs';
 import { BONES, BodySmoother, Dwell, Follow, HANDS, Hold, aimFromHand, toBody, type Body, type DwellTarget, type Hand as HandSide, type Rect } from '@/lib/game-creator/arPose';
 import { Clap, Gestures, SENS, sensK, spreadPose } from '@/lib/game-creator/ar/gestures';
 import { MIN_SW, Quality, pickBody, toLock, type Lock, type QualityIssue } from '@/lib/game-creator/ar/quality';
@@ -81,7 +82,9 @@ interface HandRT {
   dwell: Dwell;
   hit: Dwell;
 }
-const newHand = (ms = 850): HandRT => ({ aim: null, disp: new Follow(), dwell: new Dwell(ms), hit: new Dwell(420) });
+/** ความเร็วปัดขั้นต่ำ (พิกเซล/วินาที) อัปเดตทุกเฟรมจากความกว้างไหล่ ให้ยืนใกล้/ไกลกล้องก็ปัดแรงเท่ากัน */
+const swipeSpeed = { v: 900 };
+const newHand = (ms = 850): HandRT => ({ aim: null, disp: new Follow(), dwell: new Swipe(() => swipeSpeed.v), hit: new Swipe(() => swipeSpeed.v * 0.8) });
 const aimOf = (h: HandRT) => (h.aim && h.disp.on ? { x: h.disp.x, y: h.disp.y } : null);
 
 interface TeamScore {
@@ -912,6 +915,8 @@ export function GhostGame({ questions, settings, title, onExit, persist = true }
       const M = moRef.current;
       const bd = body.current;
       const hs = hands.current;
+      // ช้ากว่านี้ = แค่ส่องหา ไม่นับเป็นการปัดจับ (กันจับผีผิดตัวตอนกวาดไฟหา)
+      swipeSpeed.v = Math.max(500, (bd.b?.sw ?? 180) * 4.5 * k);
 
       const tr = tracker.current;
       if (tr && now - camCheck > 1000) {
@@ -1162,7 +1167,7 @@ export function GhostGame({ questions, settings, title, onExit, persist = true }
             }
           }
           if (newly) setSeen(Object.fromEntries(g.mobs.map((m) => [m.cid, m.seen])));
-          // ส่องค้างที่ผีที่เจอแล้ว = ยิงลำแสงจับ
+          // ปัดมือเร็วๆ ผ่านผีที่เจอแล้ว = ยิงลำแสงจับ
           const targets: DwellTarget[] = g.mobs.filter((m) => m.alive && m.seen).map((m) => ({ id: m.cid, x: m.x, y: m.y, r: m.r * 1.15 }));
           for (const h of HANDS) {
             const f = hs[h].dwell.update(aimOf(hs[h]), targets, dt * 1000);
@@ -1194,7 +1199,7 @@ export function GhostGame({ questions, settings, title, onExit, persist = true }
             g.weakT = WEAK_EVERY - WEAK_S - 0.8;
             for (const h of HANDS) hs[h].hit.reset();
             setSub('battle');
-            setBanner({ text: 'ยิงลำแสงจับบอส!', sub: camRef.current ? 'รอจุดอ่อนเรืองแสง แล้วยื่นมือเล็งค้างไว้' : 'แตะบอสหรือปุ่มลำแสง ตอนจุดอ่อนเปิด = แรงสองเท่า', color: b.def.color });
+            setBanner({ text: 'ยิงลำแสงจับบอส!', sub: camRef.current ? 'รอจุดอ่อนเรืองแสง แล้วปัดมือผ่านบอสเร็วๆ' : 'แตะบอสหรือปุ่มลำแสง ตอนจุดอ่อนเปิด = แรงสองเท่า', color: b.def.color });
             setTimeout(() => setBanner((x) => (x?.text === 'ยิงลำแสงจับบอส!' ? null : x)), 1600);
             gsfx.levelUp();
           } else if (g.got) {
@@ -1631,7 +1636,7 @@ export function GhostGame({ questions, settings, title, onExit, persist = true }
   const missions = [
     { k: 'seen', title: 'ยืนให้กล้องเห็นตัว', hint: 'ถอยให้เห็นตั้งแต่หัวถึงเอว หน้าตรง', icon: Users, done: calib.seen, on: true },
     { k: 'hand', title: 'ยื่นมือออกไป!', hint: 'ไฟฉายจะส่องตามมือ', icon: Flashlight, done: calib.hand, on: true },
-    { k: 'cast', title: 'ส่องผีซ้อมค้างไว้', hint: 'ค้างจนวงเต็ม = ยิงลำแสงจับ', icon: Sparkles, done: calib.cast, on: true },
+    { k: 'cast', title: 'ปัดมือผ่านผีซ้อม', hint: 'ส่องให้เจอ แล้วปัดมือเร็วๆ ผ่านตัวผี = จับ', icon: Sparkles, done: calib.cast, on: true },
     { k: 'shield', title: 'กางแขนออกข้างเป็นตัว T', hint: 'นี่คือโล่กันผี', icon: Shield, done: calib.shield, on: mo.shield },
     { k: 'dodgeL', title: 'เอียงตัวไปทางซ้าย', hint: 'เอียงทั้งตัว ไม่ต้องก้าวเท้า', icon: ArrowBigLeft, done: calib.dodgeL, on: mo.dodge },
     { k: 'dodgeR', title: 'เอียงตัวไปทางขวา', hint: 'เอียงทั้งตัว ไม่ต้องก้าวเท้า', icon: ArrowBigRight, done: calib.dodgeR, on: mo.dodge },
@@ -1939,7 +1944,7 @@ export function GhostGame({ questions, settings, title, onExit, persist = true }
                 </>
               ) : (
                 <ul className="mk-legend">
-                  <li><Sparkles className="w-4 h-4" /> ยื่นมือเล็งบอส</li>
+                  <li><Sparkles className="w-4 h-4" /> ปัดมือผ่านบอส</li>
                   {mo.shield && <li><Shield className="w-4 h-4" /> กางแขน = โล่</li>}
                   {mo.dodge && <li><ArrowBigLeft className="w-4 h-4" /> เอียงตัว = หลบ</li>}
                   {g.open.includes('vacuum') && <li><Sparkles className="w-4 h-4" /> สองมือเล็ง = เครื่องดูด</li>}
@@ -1977,7 +1982,7 @@ export function GhostGame({ questions, settings, title, onExit, persist = true }
             <p className="mk-lead">ผีซุกซนออกมาป่วนเมือง! ส่องไฟฉายด้วยมือของหนู หาผีที่ซ่อนอยู่ ตอบคำถามให้ถูกเพื่อจับผีและไขปริศนา</p>
             <ul className="mk-tips">
               <li><Camera className="w-5 h-5" /> ตั้งเครื่องให้กล้องเห็นตัวตั้งแต่หัวถึงเอว ยืนห่างราว 1.5-2 เมตร</li>
-              <li><Hand className="w-5 h-5" /> ไม่ต้องกระโดด ยื่นมือส่องไฟ กางแขน และเอียงตัวเบาๆ ก็พอ</li>
+              <li><Hand className="w-5 h-5" /> ส่องไฟหาผีช้าๆ เจอแล้วปัดมือเร็วๆ ผ่านผีเพื่อจับ</li>
               <li><ScanFace className="w-5 h-5" /> ภาพกล้องประมวลผลในเครื่องนี้เท่านั้น ไม่บันทึก ไม่ส่งออก</li>
             </ul>
             {camErr && (

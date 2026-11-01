@@ -44,6 +44,8 @@ import {
   setHat,
 } from '../src/lib/companion-store';
 import { hasMembership } from '../src/lib/membership';
+import { CircleDraw, Swipe } from '../src/lib/game-creator/ar/inputs';
+import { CODE_ABC, isCode, makeCode, normCode } from '../src/lib/redeem';
 import { crc16, promptPayKind, promptPayPayload, maskPromptPay } from '../src/lib/promptpay';
 import { extendUntil, maskedMatch, nameMatch, receiverMatches } from '../src/lib/server/payments';
 import { NO_OFFER, PLANS, comparePrice, perDay, quote, saveBaht, welcomePrice } from '../src/lib/plans';
@@ -2021,6 +2023,37 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
     assert.deepEqual(xq[0].q!.choices.map((c) => [richToCell(c.text), c.correct]), [['4', true], ['5', false]]);
     passed++;
     console.log('  ok  นำเข้า/ส่งออกคำถาม CSV/XLSX: แม่แบบ ส่งออก-นำเข้ากลับ กัน Excel แปลงค่า Windows-874 แถวผิด');
+  }
+  {
+    // วาดวงรอบเป้า: ครบ ~1.6PI = เลือก / วาดนอกวงแหวน = ไม่นับ / ค้างนิ่งเฉยๆ = ไม่เลือก
+    const T = [{ id: 'a', x: 0, y: 0, r: 50 }, { id: 'b', x: 400, y: 0, r: 50 }];
+    const cd = new CircleDraw();
+    let got: string | null = null;
+    for (let i = 0; i <= 40 && !got; i++) got = cd.update({ x: Math.cos(i * 0.16) * 70, y: Math.sin(i * 0.16) * 70 }, T, 33);
+    assert.equal(got, 'a');
+    const still = new CircleDraw();
+    for (let i = 0; i < 90; i++) assert.equal(still.update({ x: 60, y: 0 }, T, 33), null);
+    const far = new CircleDraw();
+    for (let i = 0; i < 60; i++) assert.equal(far.update({ x: Math.cos(i * 0.16) * 200, y: Math.sin(i * 0.16) * 200 }, T, 33), null);
+    // ปัด: เร็วพอ + เริ่มนอกเป้า = เลือก / ช้า = ไม่เลือก / โบกกลับทันที = ติดพัก
+    const sw = new Swipe(() => 600);
+    let hit: string | null = null;
+    for (let x = -200; x <= 200 && !hit; x += 40) hit = sw.update({ x, y: 0 }, T, 33);
+    assert.equal(hit, 'a');
+    let again: string | null = null;
+    for (let x = 200; x >= -200; x -= 40) again = again || sw.update({ x, y: 0 }, T, 33);
+    assert.equal(again, null);
+    const slow = new Swipe(() => 600);
+    for (let x = -200; x <= 200; x += 5) assert.equal(slow.update({ x, y: 0 }, T, 33), null);
+    // โค้ดสมาชิก 10 หลัก: ไม่มีตัวอ่านสับสน
+    const code = makeCode(new Uint8Array(Array.from({ length: 24 }, (_, i) => (i * 37) % 248)));
+    assert.ok(isCode(code));
+    assert.ok(!/[01OIL]/.test(CODE_ABC));
+    assert.equal(normCode(' abcde-fghjk '), 'ABCDEFGHJK');
+    assert.ok(!isCode('ABCDEFGHJ0'));
+    assert.equal(makeCode(new Uint8Array([250, 251, 252])), '');
+    passed++;
+    console.log('  ok  ท่าเลือกเป้าแต่ละเกม AR (วาดวง/ปัด) + โค้ดสมาชิก 10 หลัก');
   }
   console.log(`\n${passed} tests passed`);
 })().catch((e) => {

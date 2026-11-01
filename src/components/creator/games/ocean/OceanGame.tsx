@@ -4,10 +4,10 @@
  * Ocean Guardian AR (เล่นในเครื่องเดียว): ผู้พิทักษ์มหาสมุทรฟื้นฟูท้องทะเลด้วยความรู้ + ท่าทางผ่านกล้อง
  * - ใช้แกน AR กลางร่วมกับสงครามอวกาศ/Magic Kingdom: tracker.ts + arPose.ts + ar/quality.ts + ar/gestures.ts
  *   และฉาก toon ของ magic/scene.ts ผ่านชุดโมเดล OCEAN_KIT (ocean/scene.ts)
- * - ยื่นมือเล็งฟองอากาศที่มีคำตอบถูก ค้างไว้ = ยิงคลื่นน้ำปล่อยปลา
+ * - ว่ายทั้งตัว (เดินซ้าย-ขวาหน้ากล้อง) ไปอยู่ใต้ฟองที่มีคำตอบถูก รอครู่หนึ่ง = ยิงคลื่นน้ำปล่อยปลา (เอกลักษณ์ของเกมนี้: ใช้ทั้งตัว ไม่ใช่เล็งมือ)
  * - ตอบถูกแล้วสลับรอบ: เก็บขยะ (+หีบสมบัติ) / ว่ายเอียงตัวหลบฉลาม แมงกะพรุน หิน น้ำวน
  * - ทุกข้อที่ 3 ช่วยสัตว์ทะเลติดอวน (ได้การ์ดความรู้) ข้อที่ 2, 5, 8... ฟื้นปะการัง แนวปะการังมีสีขึ้นตามข้อที่ตอบถูก
- * - บอส: ยื่นมือยิงคลื่น, สองมือเล็งจุดเดียว = คลื่นยักษ์, ประกบมือ = โล่ฟอง, เอียงตัว = หลบ, กางแขน = กระแสน้ำเร่ง, ยกมือเหนือหัว = ชาร์จ/ไข่มุกฟื้นพลัง
+ * - บอส: บอสว่ายไปมา ว่ายตามไปอยู่ใต้บอส = ยิงคลื่น, สองมือเล็งจุดเดียว = คลื่นยักษ์, ประกบมือ = โล่ฟอง, เอียงตัว = หลบ, กางแขน = กระแสน้ำเร่ง, ยกมือเหนือหัว = ชาร์จ/ไข่มุกฟื้นพลัง
  * - คะแนนความรู้แยกจากคะแนนการเล่น และการเล่นต่อข้อสูงสุดน้อยกว่าคะแนนตอบถูกเสมอ (maxPlayFor ทดสอบใน selftest)
  * - ไม่มีกล้อง = แตะจอ/คีย์บอร์ดแทนทุกท่า ภาพกล้องไม่ถูกบันทึกหรือส่งออกจากเครื่อง
  */
@@ -286,6 +286,8 @@ export function OceanGame({ questions, settings, title, onExit, persist = true }
   const itemEls = useRef(new Map<string, HTMLButtonElement>());
   const rings = useRef<(SVGSVGElement | null)[]>([null, null]);
   const reticles = useRef<(HTMLDivElement | null)[]>([null, null]);
+  /** แถบเลนที่ตัวผู้เล่นยืนอยู่ (เลือกคำตอบด้วยการว่ายทั้งตัว) */
+  const laneEl = useRef<HTMLDivElement>(null);
   const timeBar = useRef<HTMLDivElement>(null);
   const bossBar = useRef<HTMLDivElement>(null);
   const chargeBar = useRef<HTMLDivElement>(null);
@@ -1037,6 +1039,10 @@ export function OceanGame({ questions, settings, title, onExit, persist = true }
       /* ---- นักพิทักษ์เอียงตามตัวผู้เล่น ---- */
       if (heroEl.current) heroEl.current.style.setProperty('--lean', String(currentLean()));
 
+      // ตำแหน่งตัวผู้เล่นบนจอ (กึ่งกลางไหล่) ใช้เลือกเลนแทนการเล็งมือ
+      const swim = camRef.current && bd.b && now - bd.seenAt < 500 ? { x: bd.b.cx, y: 0 } : null;
+      let laneShow: { x: number; w: number } | null = null;
+
       /* ---- ภารกิจฝึก ---- */
       if (ph === 'calib') {
         const c = calibRef.current;
@@ -1046,9 +1052,10 @@ export function OceanGame({ questions, settings, title, onExit, persist = true }
         if (!c.cast && sc) {
           if (!sc.has('cal')) sc.mob('cal', '#ffb347', 0);
           const r = Math.max(42, Math.min(cw, ch) * 0.1);
-          const p = { x: cw / 2, y: ch * 0.36, r };
+          const p = { x: cw * 0.7, y: ch * 0.36, r };
           sc.place('cal', p.x, p.y, r, t);
-          if (HANDS.map((h) => hs[h].dwell.update(aimOf(hs[h]), [{ id: 'cal', ...p }], dt * 1000)).some(Boolean)) {
+          laneShow = swim && { x: swim.x, w: cw * 0.24 };
+          if (hs.l.dwell.update(swim, [{ id: 'cal', x: p.x, y: 0, r: cw * 0.12 }], dt * 1000)) {
             nx.cast = true;
             const h = hero();
             sc.bolt(h.x, h.y, p.x, p.y, WAVE, 'ice');
@@ -1142,11 +1149,14 @@ export function OceanGame({ questions, settings, title, onExit, persist = true }
               setSub('reveal');
             }
           }
-          const targets: DwellTarget[] = g.mobs.filter((m) => m.alive).map((m) => ({ id: m.cid, x: m.x, y: m.y, r: m.r * 1.15 }));
-          for (const h of HANDS) {
-            const f = hs[h].dwell.update(aimOf(hs[h]), targets, dt * 1000);
-            if (f) choose(f);
-          }
+          // กล้อง: เลือกด้วยการว่ายทั้งตัวไปอยู่เลนของฟอง (วัดแกน x อย่างเดียว) / แตะจอ: แตะฟองเหมือนเดิม
+          const alive = g.mobs.filter((m) => m.alive).sort((a, c) => a.x - c.x);
+          const gap = alive.slice(1).reduce((mn, m, i) => Math.min(mn, m.x - alive[i].x), Infinity);
+          const half = Number.isFinite(gap) ? gap / 2 : cw * 0.2;
+          const targets: DwellTarget[] = alive.map((m) => ({ id: m.cid, x: m.x, y: 0, r: half }));
+          laneShow = swim && { x: swim.x, w: half * 2 };
+          const f = hs.l.dwell.update(swim, targets, dt * 1000);
+          if (f) choose(f);
         } else if (g.sub === 'reveal' && g.subT >= REVEAL_S) {
           const ans = g.q?.choices.find((c) => c.correct)?.id;
           if (ans) sc?.flyAway(mobId(ans));
@@ -1171,7 +1181,7 @@ export function OceanGame({ questions, settings, title, onExit, persist = true }
             g.bothT = 0;
             for (const h of HANDS) hs[h].hit.reset();
             setSub('battle');
-            setBanner({ text: 'ยิงคลื่นน้ำใส่บอส!', sub: camRef.current ? 'ยื่นมือเล็งบอส ค้างไว้ = ยิงคลื่น' : 'แตะที่บอสหรือปุ่มยิงคลื่น', color: b.def.color });
+            setBanner({ text: 'ยิงคลื่นน้ำใส่บอส!', sub: camRef.current ? 'บอสว่ายไปมา ว่ายตามไปอยู่ใต้บอส = ยิงคลื่น' : 'แตะที่บอสหรือปุ่มยิงคลื่น', color: b.def.color });
             setTimeout(() => setBanner((x) => (x?.text === 'ยิงคลื่นน้ำใส่บอส!' ? null : x)), 1600);
             gsfx.levelUp();
           } else if (g.got) {
@@ -1277,10 +1287,14 @@ export function OceanGame({ questions, settings, title, onExit, persist = true }
               }
             } else {
               g.bothT = 0;
-              for (const h of HANDS) {
-                const a = aimOf(hs[h]);
-                if (g.bolts > 0 && hs[h].hit.update(a, target, dt * 1000)) castBolt();
-              }
+              laneShow = swim && { x: swim.x, w: b.r * 2 };
+              if (camRef.current) {
+                if (g.bolts > 0 && hs.l.hit.update(swim, [{ id: 'boss', x: b.x, y: 0, r: b.r }], dt * 1000)) castBolt();
+              } else
+                for (const h of HANDS) {
+                  const a = aimOf(hs[h]);
+                  if (g.bolts > 0 && hs[h].hit.update(a, target, dt * 1000)) castBolt();
+                }
             }
             g.atkT -= dt;
             if (g.atkT <= 0 && g.subT < BATTLE_S - 2.2) {
@@ -1333,7 +1347,8 @@ export function OceanGame({ questions, settings, title, onExit, persist = true }
 
         /* ---- วางฟองคำตอบตามขนาดจอ (ลอยไปมาตามความยาก) ---- */
         const n = g.mobs.length;
-        const cols = n <= 3 ? n : n === 4 ? 2 : 3;
+        // กล้อง: เรียงฟองเป็นแถวเดียว 1 ฟอง = 1 เลน ให้ว่ายไปหาได้
+        const cols = camRef.current ? Math.max(1, n) : n <= 3 ? n : n === 4 ? 2 : 3;
         const rows = Math.ceil(n / cols);
         const top = ch * (g.bossQ ? 0.4 : 0.34);
         const bottom = ch * 0.74;
@@ -1357,7 +1372,8 @@ export function OceanGame({ questions, settings, title, onExit, persist = true }
         if (b && (b.alive || g.sub === 'victory')) {
           const big = battle || g.sub === 'victory' || g.sub === 'bossIn';
           const m = Math.min(cw, ch);
-          const tx = big ? cw / 2 : cw - m * 0.13;
+          // ตอนสู้ (กล้อง) บอสว่ายซ้าย-ขวา ผู้เล่นต้องว่ายตาม
+          const tx = big ? cw / 2 + (battle && camRef.current ? Math.sin(t * 0.55) * cw * 0.27 : 0) : cw - m * 0.13;
           const ty = big ? ch * 0.38 : ch * 0.3;
           const trr = big ? m * 0.17 : m * 0.075;
           const kk = Math.min(1, dt * 4);
@@ -1366,6 +1382,15 @@ export function OceanGame({ questions, settings, title, onExit, persist = true }
           b.r += (trr - b.r) * kk;
           sc?.place('boss', b.x, b.y, b.r, t);
           if (bossBar.current) bossBar.current.style.transform = `scaleX(${Math.max(0, b.hp) / Math.max(1, b.max)})`;
+        }
+      }
+
+      if (laneEl.current) {
+        const on = !!laneShow && (ph === 'calib' || (ph === 'play' && (g?.sub === 'ask' || g?.sub === 'battle')));
+        laneEl.current.style.opacity = on ? '1' : '0';
+        if (on && laneShow) {
+          laneEl.current.style.width = `${laneShow.w}px`;
+          laneEl.current.style.transform = `translateX(${laneShow.x - laneShow.w / 2}px)`;
         }
       }
 
@@ -1552,7 +1577,7 @@ export function OceanGame({ questions, settings, title, onExit, persist = true }
   const missions = [
     { k: 'seen', title: 'ยืนให้กล้องเห็นตัว', hint: 'ถอยให้เห็นตั้งแต่หัวถึงเอว หน้าตรง', icon: Users, done: calib.seen, on: true },
     { k: 'hand', title: 'ยื่นมือออกไป!', hint: 'จะมีวงฟองตามมือ', icon: Hand, done: calib.hand, on: true },
-    { k: 'cast', title: 'ยิงคลื่นใส่ฟองซ้อม', hint: 'เลื่อนวงไปที่ฟอง ค้างไว้จนวงเต็ม', icon: Waves, done: calib.cast, on: true },
+    { k: 'cast', title: 'ว่ายไปใต้ฟองซ้อม', hint: 'เดินทั้งตัวไปยืนใต้ฟอง รอจนวงเต็ม', icon: Waves, done: calib.cast, on: true },
     { k: 'shield', title: 'ประกบสองมือหน้าอก', hint: 'นี่คือโล่ฟองอากาศ กันพลังบอส', icon: Shield, done: calib.shield, on: mo.shield },
     { k: 'dodgeL', title: 'เอียงตัวไปทางซ้าย', hint: 'เอียงทั้งตัว ไม่ต้องก้าวเท้า', icon: ArrowBigLeft, done: calib.dodgeL, on: mo.dodge },
     { k: 'dodgeR', title: 'เอียงตัวไปทางขวา', hint: 'เอียงทั้งตัว ไม่ต้องก้าวเท้า', icon: ArrowBigRight, done: calib.dodgeR, on: mo.dodge },
@@ -1639,6 +1664,8 @@ export function OceanGame({ questions, settings, title, onExit, persist = true }
       <div ref={stage} className="ar-stage" aria-hidden="true" />
 
       {mobLabels}
+
+      <div ref={laneEl} className="og-lane" aria-hidden="true" />
 
       {[0, 1].map((kx) => (
         <React.Fragment key={kx}>
@@ -1849,7 +1876,7 @@ export function OceanGame({ questions, settings, title, onExit, persist = true }
                 </>
               ) : (
                 <ul className="mk-legend">
-                  <li><Waves className="w-4 h-4" /> ยื่นมือเล็งบอส</li>
+                  <li><Waves className="w-4 h-4" /> ว่ายไปอยู่ใต้บอส</li>
                   {mo.shield && <li><Shield className="w-4 h-4" /> ประกบมือ = โล่ฟอง</li>}
                   {mo.dodge && <li><ArrowBigLeft className="w-4 h-4" /> เอียงตัว = หลบ</li>}
                   {mo.spread && g.open.includes('boost') && <li><Wind className="w-4 h-4" /> กางแขน = กระแสน้ำ</li>}
@@ -1911,7 +1938,7 @@ export function OceanGame({ questions, settings, title, onExit, persist = true }
             <p className="mk-lead">มหาสมุทรกำลังมีมลพิษ! ใช้ร่างกายของหนูยิงคลื่นน้ำ เก็บขยะ ช่วยสัตว์ทะเล และตอบคำถามเพื่อฟื้นฟูปะการัง</p>
             <ul className="mk-tips">
               <li><Camera className="w-5 h-5" /> ตั้งเครื่องให้กล้องเห็นตัวตั้งแต่หัวถึงเอว ยืนห่างราว 1.5-2 เมตร</li>
-              <li><Hand className="w-5 h-5" /> ไม่ต้องกระโดด ยื่นมือ ประกบมือ และเอียงตัวเบาๆ ก็พอ</li>
+              <li><Hand className="w-5 h-5" /> เดินทั้งตัวไปซ้าย-ขวาเพื่อเลือกฟองคำตอบ ต้องมีที่ว่างข้างตัว</li>
               <li><ScanFace className="w-5 h-5" /> ภาพกล้องประมวลผลในเครื่องนี้เท่านั้น ไม่บันทึก ไม่ส่งออก</li>
             </ul>
             {camErr && (

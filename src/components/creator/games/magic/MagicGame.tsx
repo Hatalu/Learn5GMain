@@ -3,8 +3,8 @@
 /**
  * Magic Kingdom AR (เล่นในเครื่องเดียว): นักเวทฝึกหัดกู้อาณาจักรเวทมนตร์ด้วยความรู้ + ท่าทางผ่านกล้อง
  * - ใช้แกน AR กลางร่วมกับสงครามอวกาศ: tracker.ts + arPose.ts + ar/quality.ts + ar/gestures.ts (ไม่แยกสำเนา)
- * - ยื่นมือเล็งมอนสเตอร์ที่ถือคำตอบถูก ค้างไว้ = ร่ายลูกไฟ / ตอบถูก = เก็บคริสตัล ช่วยชาวเมือง ได้ลูกเวทไว้สู้บอส
- * - บอส: ยื่นมือยิงเวท, สองมือเล็งจุดเดียว = ลำแสงสายรุ้ง, ประกบมือ = โล่, เอียงตัว = หลบ, กางแขน = พายุ, ยกมือเหนือหัว = ฟื้นพลัง
+ * - วาดวงเวทด้วยมือล้อมมอนสเตอร์ที่ถือคำตอบถูก = ร่ายลูกไฟ (เอกลักษณ์ของเกมนี้: วาด ไม่ใช่เล็งค้าง) / ตอบถูก = เก็บคริสตัล ช่วยชาวเมือง ได้ลูกเวทไว้สู้บอส
+ * - บอส: วาดวงรอบบอส = ยิงเวท, สองมือเล็งจุดเดียว = ลำแสงสายรุ้ง, ประกบมือ = โล่, เอียงตัว = หลบ, กางแขน = พายุ, ยกมือเหนือหัว = ฟื้นพลัง
  * - คะแนนความรู้ (ตอบคำถาม) แยกจากคะแนนการเล่น ตอบผิด/หัวใจหมดไม่มีแพ้ (ใบ้ + ลองใหม่)
  * - ไม่มีกล้อง = แตะจอ/คีย์บอร์ดแทนทุกท่า ภาพกล้องไม่ถูกบันทึกหรือส่งออกจากเครื่อง
  * - ข้อมูลสะสม (เหรียญ เวท สัตว์เลี้ยง ดาว) เก็บในเครื่อง magic/save.ts
@@ -23,6 +23,7 @@ import { richToPlain, sanitizeQuiz } from '@/lib/game-creator/quiz';
 import { mediaPrefix } from '@/lib/game-creator/prefix';
 import { modeFit, modeQuiz } from '@/lib/game-creator/modes';
 import type { ArSettings } from '@/lib/game-creator/arSettings';
+import { CircleDraw } from '@/lib/game-creator/ar/inputs';
 import { BONES, BodySmoother, Dwell, Follow, HANDS, Hold, aimFromHand, toBody, type Body, type DwellTarget, type Hand as HandSide, type Rect } from '@/lib/game-creator/arPose';
 import { Clap, Gestures, SENS, sensK, spreadPose } from '@/lib/game-creator/ar/gestures';
 import { MIN_SW, Quality, pickBody, toLock, type Lock, type QualityIssue } from '@/lib/game-creator/ar/quality';
@@ -76,7 +77,7 @@ interface HandRT {
   dwell: Dwell;
   hit: Dwell;
 }
-const newHand = (ms = 850): HandRT => ({ aim: null, disp: new Follow(), dwell: new Dwell(ms), hit: new Dwell(420) });
+const newHand = (ms = 850): HandRT => ({ aim: null, disp: new Follow(), dwell: new CircleDraw(), hit: new CircleDraw() });
 const aimOf = (h: HandRT) => (h.aim && h.disp.on ? { x: h.disp.x, y: h.disp.y } : null);
 
 interface TeamScore {
@@ -1104,7 +1105,7 @@ export function MagicGame({ questions, settings, title, onExit, persist = true }
               setSub('reveal');
             }
           }
-          // เลือกคำตอบด้วยการค้างเป้า (มือละวง)
+          // เลือกคำตอบด้วยการวาดวงล้อมเป้า (มือละวง)
           const targets: DwellTarget[] = g.mobs.filter((m) => m.alive).map((m) => ({ id: m.cid, x: m.x, y: m.y, r: m.r * 1.15 }));
           for (const h of HANDS) {
             const f = hs[h].dwell.update(aimOf(hs[h]), targets, dt * 1000);
@@ -1129,7 +1130,7 @@ export function MagicGame({ questions, settings, title, onExit, persist = true }
             g.bothT = 0;
             for (const h of HANDS) hs[h].hit.reset();
             setSub('battle');
-            setBanner({ text: 'ร่ายเวทใส่บอส!', sub: camRef.current ? 'ยื่นมือเล็งบอส ค้างไว้ = ยิงเวท' : 'แตะที่บอสหรือปุ่มร่ายเวท', color: b.def.color });
+            setBanner({ text: 'ร่ายเวทใส่บอส!', sub: camRef.current ? 'วาดวงรอบบอส 1 รอบ = ยิงเวท' : 'แตะที่บอสหรือปุ่มร่ายเวท', color: b.def.color });
             setTimeout(() => setBanner((x) => (x?.text === 'ร่ายเวทใส่บอส!' ? null : x)), 1600);
             gsfx.levelUp();
           } else if (g.got) {
@@ -1186,7 +1187,7 @@ export function MagicGame({ questions, settings, title, onExit, persist = true }
             setBanner(null);
             nextQuestion();
           } else if (!frozen) {
-            // เล็งบอส: มือเดียว = ลูกเวทหลัก / สองมือบนบอสพร้อมกัน = สายรุ้ง
+            // วาดวงรอบบอส = ลูกเวทหลัก / สองมือบนบอสพร้อมกัน = สายรุ้ง
             const target = [{ id: 'boss', x: b.x, y: b.y, r: b.r * 1.1 }];
             const on = HANDS.filter((h) => {
               const a = aimOf(hs[h]);
@@ -1476,7 +1477,7 @@ export function MagicGame({ questions, settings, title, onExit, persist = true }
   const missions = [
     { k: 'seen', title: 'ยืนให้กล้องเห็นตัว', hint: 'ถอยให้เห็นตั้งแต่หัวถึงเอว หน้าตรง', icon: Users, done: calib.seen, on: true },
     { k: 'hand', title: 'ยื่นมือออกไป!', hint: 'จะมีวงเวทตามมือ', icon: Hand, done: calib.hand, on: true },
-    { k: 'cast', title: 'ร่ายเวทใส่สไลม์ซ้อม', hint: 'เลื่อนวงเวทไปที่สไลม์ ค้างไว้จนวงเต็ม', icon: Wand2, done: calib.cast, on: true },
+    { k: 'cast', title: 'ร่ายเวทใส่สไลม์ซ้อม', hint: 'ใช้มือวาดวงกลมรอบสไลม์ 1 รอบ', icon: Wand2, done: calib.cast, on: true },
     { k: 'shield', title: 'ประกบสองมือหน้าอก', hint: 'นี่คือโล่ศิลา กันเวทของบอส', icon: Shield, done: calib.shield, on: mo.shield },
     { k: 'dodgeL', title: 'เอียงตัวไปทางซ้าย', hint: 'เอียงทั้งตัว ไม่ต้องก้าวเท้า', icon: ArrowBigLeft, done: calib.dodgeL, on: mo.dodge },
     { k: 'dodgeR', title: 'เอียงตัวไปทางขวา', hint: 'เอียงทั้งตัว ไม่ต้องก้าวเท้า', icon: ArrowBigRight, done: calib.dodgeR, on: mo.dodge },
@@ -1748,7 +1749,7 @@ export function MagicGame({ questions, settings, title, onExit, persist = true }
                 </>
               ) : (
                 <ul className="mk-legend">
-                  <li><Wand2 className="w-4 h-4" /> ยื่นมือเล็งบอส</li>
+                  <li><Wand2 className="w-4 h-4" /> วาดวงรอบบอส</li>
                   {mo.shield && <li><Shield className="w-4 h-4" /> ประกบมือ = โล่</li>}
                   {mo.dodge && <li><ArrowBigLeft className="w-4 h-4" /> เอียงตัว = หลบ</li>}
                   {mo.spread && g.open.includes('wind') && <li><Wind className="w-4 h-4" /> กางแขน = พายุ</li>}
@@ -1789,7 +1790,7 @@ export function MagicGame({ questions, settings, title, onExit, persist = true }
             <p className="mk-lead">อาณาจักรเวทมนตร์ถูกพลังมืดยึด! ร่ายเวทด้วยร่างกายของหนู ตอบคำถามให้ถูกเพื่อกู้คริสตัลแห่งความรู้</p>
             <ul className="mk-tips">
               <li><Camera className="w-5 h-5" /> ตั้งเครื่องให้กล้องเห็นตัวตั้งแต่หัวถึงเอว ยืนห่างราว 1.5-2 เมตร</li>
-              <li><Hand className="w-5 h-5" /> ไม่ต้องกระโดด ยื่นมือ ประกบมือ และเอียงตัวเบาๆ ก็พอ</li>
+              <li><Hand className="w-5 h-5" /> ใช้มือวาดวงเวทล้อมคำตอบ ไม่ต้องกระโดด</li>
               <li><ScanFace className="w-5 h-5" /> ภาพกล้องประมวลผลในเครื่องนี้เท่านั้น ไม่บันทึก ไม่ส่งออก</li>
             </ul>
             {camErr && (
