@@ -125,8 +125,11 @@ function SignupInner() {
       const pending = readStore(PENDING_CODE_KEY);
       if (pending) {
         const r = await redeemCode(pending);
-        writeStore(PENDING_CODE_KEY, null);
-        if (r.days) writeStore(CODE_DONE_KEY, String(r.days));
+        // ไม่สำเร็จ = เก็บโค้ดไว้ หน้าหลักจะลองใหม่และบอกสาเหตุจริง
+        if (r.days) {
+          writeStore(PENDING_CODE_KEY, null);
+          writeStore(CODE_DONE_KEY, String(r.days));
+        }
       }
       // บัญชีใหม่: พาเที่ยวรอบเว็บก่อน (ทัวร์พาไปหน้าหลักเอง กดข้ามได้)
       setTimeout(() => tour.start(), 1100);

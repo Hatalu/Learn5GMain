@@ -1057,6 +1057,8 @@ export function OceanGame({ questions, settings, title, onExit, persist = true }
           laneShow = swim && { x: swim.x, w: cw * 0.24 };
           if (hs.l.dwell.update(swim, [{ id: 'cal', x: p.x, y: 0, r: cw * 0.12 }], dt * 1000)) {
             nx.cast = true;
+            // เดินไปใต้ฟองแล้ว: ตั้งจุดยืนปกติใหม่ตรงนี้ ไม่งั้นนับเป็นเอียงตัวค้าง
+            bd.recalUntil = now + 800;
             const h = hero();
             sc.bolt(h.x, h.y, p.x, p.y, WAVE, 'ice');
             setTimeout(() => scene.current?.flyAway('cal'), 300);
@@ -1193,6 +1195,8 @@ export function OceanGame({ questions, settings, title, onExit, persist = true }
             g.spawned = 0;
             setSub(round);
             if (round === 'swim') {
+              // ตอบจากเลนข้างๆ: ตั้งจุดยืนปกติใหม่ก่อนสิ่งกีดขวางแรกมา (1.2 วิ)
+              bd.recalUntil = now + 800;
               setBanner({ text: 'ว่ายหลบสิ่งกีดขวาง!', sub: camRef.current ? 'เอียงตัวไปทางลูกศร' : 'กดลูกศรซ้าย/ขวา', color: '#9ff0d0' });
               setTimeout(() => setBanner((x) => (x?.text === 'ว่ายหลบสิ่งกีดขวาง!' ? null : x)), 1300);
             }
@@ -1301,7 +1305,8 @@ export function OceanGame({ questions, settings, title, onExit, persist = true }
               g.atkT = b.def.every * (ATK_EVERY[g.level] ?? 1);
               const usable: AtkKind[] = [];
               if (M.shield || !camRef.current) usable.push('shield');
-              if (M.dodge || !camRef.current) usable.push('dodge');
+              // กล้อง: ผู้เล่นว่ายตามบอสตลอด ท่าเอียงหลบจึงอ่านไม่ได้ ใช้โล่อย่างเดียว
+              if (!camRef.current) usable.push('dodge');
               if (usable.length) {
                 let kind = pickAtk(b.def, g.prevAtk);
                 if (!usable.includes(kind)) kind = usable[0];
@@ -1418,7 +1423,9 @@ export function OceanGame({ questions, settings, title, onExit, persist = true }
         const ret = reticles.current[kx];
         if (ret) {
           const a = aimOf(hd);
-          if (a && (ph === 'play' || ph === 'calib')) {
+          // ช่วงตอบด้วยกล้องเลือกด้วยตัว ไม่ใช่มือ: ซ่อนวงเล็งมือไม่ให้เด็กสับสน
+          const bodyPick = camRef.current && ph === 'play' && g?.sub === 'ask';
+          if (a && !bodyPick && (ph === 'play' || ph === 'calib')) {
             ret.style.opacity = '1';
             ret.style.transform = `translate(${a.x}px, ${a.y}px)`;
           } else ret.style.opacity = '0';

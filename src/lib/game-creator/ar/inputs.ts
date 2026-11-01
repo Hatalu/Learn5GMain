@@ -18,11 +18,13 @@ const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
  */
 export class CircleDraw extends Dwell {
   /** มุมที่ต้องหมุนครบ (เรเดียน) */
-  need = 1.6 * Math.PI;
+  need: number;
   private ang = new Map<string, { last: number; sum: number; out: number }>();
   private wait = 0;
-  constructor(public k = 1) {
+  /** k = ตัวคูณวงแหวนที่นับ / scale = สัดส่วนมุมที่ต้องวาด (อัปเกรดความไวทำให้วาดสั้นลง) */
+  constructor(public k = 1, scale = 1) {
     super();
+    this.need = 1.6 * Math.PI * scale;
   }
   reset() {
     super.reset();

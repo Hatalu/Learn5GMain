@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     .select('days');
   if (claimErr) {
     const missing = /relation|does not exist|schema cache/i.test(claimErr.message);
-    return NextResponse.json({ error: missing ? 'ระบบโค้ดยังไม่พร้อม (รัน migration 027)' : 'ใช้โค้ดไม่สำเร็จ ลองใหม่นะ' }, { status: 500 });
+    return NextResponse.json({ error: missing ? 'ระบบโค้ดยังไม่เปิดใช้ ลองใหม่ภายหลังนะ' : 'ใช้โค้ดไม่สำเร็จ ลองใหม่นะ' }, { status: 500 });
   }
   if (!claimed?.length) {
     const { data: row } = await admin.from('redeem_codes').select('used_at').eq('code', code).maybeSingle();

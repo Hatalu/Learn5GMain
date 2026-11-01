@@ -84,7 +84,7 @@ interface HandRT {
 }
 /** ความเร็วปัดขั้นต่ำ (พิกเซล/วินาที) อัปเดตทุกเฟรมจากความกว้างไหล่ ให้ยืนใกล้/ไกลกล้องก็ปัดแรงเท่ากัน */
 const swipeSpeed = { v: 900 };
-const newHand = (ms = 850): HandRT => ({ aim: null, disp: new Follow(), dwell: new Swipe(() => swipeSpeed.v), hit: new Swipe(() => swipeSpeed.v * 0.8) });
+const newHand = (ms = 850): HandRT => ({ aim: null, disp: new Follow(), dwell: new Swipe(() => swipeSpeed.v * Math.max(0.7, ms / 850)), hit: new Swipe(() => swipeSpeed.v * 0.8 * Math.max(0.7, ms / 850)) });
 const aimOf = (h: HandRT) => (h.aim && h.disp.on ? { x: h.disp.x, y: h.disp.y } : null);
 
 interface TeamScore {
@@ -123,6 +123,8 @@ interface Mob {
   alive: boolean;
   /** ไฟฉายส่องเจอแล้ว */
   seen: boolean;
+  /** เวลาที่เจอ (ms) ปัดจับได้หลังเห็นแล้ว 0.6 วิ กันกวาดไฟครั้งเดียวทั้งเจอทั้งจับผีผิดตัว */
+  seenAt: number;
 }
 interface Item {
   id: string;
@@ -511,7 +513,7 @@ export function GhostGame({ questions, settings, title, onExit, persist = true }
       const correctIdx = g.order.findIndex((cid) => q.choices.find((c) => c.id === cid)?.correct);
       const target = ghostFor(g.land, n + g.land.ghosts.length * Math.floor(Math.random() * 3));
       g.kinds = g.order.map((_, i) => (i === correctIdx ? target : g.land.ghosts[(i + n) % g.land.ghosts.length] === 'king' ? 'baby' : g.land.ghosts[(i + n) % g.land.ghosts.length]));
-      g.mobs = g.order.map((cid, i) => ({ cid, i, x: 0, y: 0, r: 40, alive: true, seen: false }));
+      g.mobs = g.order.map((cid, i) => ({ cid, i, x: 0, y: 0, r: 40, alive: true, seen: false, seenAt: 0 }));
       g.order.forEach((cid, i) => sc?.mob(mobId(cid), ghostById(g.kinds[i]).color, ghostKind(g.kinds[i])));
       if (g.special === 'puzzle') sc?.item('cage', makeDoor());
       if (g.special === 'rescue') sc?.item('cage', makeJar('#9ff0d0'));
@@ -790,7 +792,10 @@ export function GhostGame({ questions, settings, title, onExit, persist = true }
     if (!g || !g.open.includes('sonic')) return;
     if (g.sub === 'ask' && !g.sonicUntil) {
       g.sonicUntil = T.current + SONIC_S;
-      g.mobs.forEach((m) => (m.seen = true));
+      g.mobs.forEach((m) => {
+        if (!m.seen) m.seenAt = performance.now();
+        m.seen = true;
+      });
       setSeen(Object.fromEntries(g.mobs.map((m) => [m.cid, true])));
       const { cw, ch } = size();
       float(cw / 2, ch * 0.3, 'คลื่นเสียง! ผีทุกตัวปรากฏ', '#ffb347', true);
@@ -1157,6 +1162,7 @@ export function GhostGame({ questions, settings, title, onExit, persist = true }
             if (m.seen || !m.alive) continue;
             if (lights.some((l) => lit(l.x, l.y, lr, m.x, m.y, m.r))) {
               m.seen = true;
+              m.seenAt = now;
               newly = true;
               sc?.pulse(mobId(m.cid), 0.35);
               if (!g.found) {
@@ -1168,7 +1174,7 @@ export function GhostGame({ questions, settings, title, onExit, persist = true }
           }
           if (newly) setSeen(Object.fromEntries(g.mobs.map((m) => [m.cid, m.seen])));
           // ปัดมือเร็วๆ ผ่านผีที่เจอแล้ว = ยิงลำแสงจับ
-          const targets: DwellTarget[] = g.mobs.filter((m) => m.alive && m.seen).map((m) => ({ id: m.cid, x: m.x, y: m.y, r: m.r * 1.15 }));
+          const targets: DwellTarget[] = g.mobs.filter((m) => m.alive && m.seen && now - m.seenAt >= 600).map((m) => ({ id: m.cid, x: m.x, y: m.y, r: m.r * 1.15 }));
           for (const h of HANDS) {
             const f = hs[h].dwell.update(aimOf(hs[h]), targets, dt * 1000);
             if (f) choose(f);
@@ -2259,7 +2265,7 @@ export function GhostGame({ questions, settings, title, onExit, persist = true }
                 })}
               </div>
               <p className="mk-note">
-                ตอนนี้: ลำแสง x{fx.power.toFixed(2)} · ลำแสง {fx.bolts} ครั้ง/ข้อ · หัวใจ {fx.hearts} · ไฟฉาย {Math.round(fx.light * 100)}% · ล็อกเป้า {(fx.dwell / 1000).toFixed(2)} วิ
+                ตอนนี้: ลำแสง x{fx.power.toFixed(2)} · ลำแสง {fx.bolts} ครั้ง/ข้อ · หัวใจ {fx.hearts} · ไฟฉาย {Math.round(fx.light * 100)}% · แรงปัดที่ต้องใช้ {Math.round(Math.max(0.7, fx.dwell / 850) * 100)}%
               </p>
             </div>
           )}

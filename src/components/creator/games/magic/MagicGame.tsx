@@ -77,7 +77,7 @@ interface HandRT {
   dwell: Dwell;
   hit: Dwell;
 }
-const newHand = (ms = 850): HandRT => ({ aim: null, disp: new Follow(), dwell: new CircleDraw(), hit: new CircleDraw() });
+const newHand = (ms = 850): HandRT => ({ aim: null, disp: new Follow(), dwell: new CircleDraw(1, Math.max(0.7, ms / 850)), hit: new CircleDraw(1, Math.max(0.7, ms / 850)) });
 const aimOf = (h: HandRT) => (h.aim && h.disp.on ? { x: h.disp.x, y: h.disp.y } : null);
 
 interface TeamScore {
@@ -2074,7 +2074,7 @@ export function MagicGame({ questions, settings, title, onExit, persist = true }
                 })}
               </div>
               <p className="mk-note">
-                ตอนนี้: พลังเวท x{fx.power.toFixed(2)} · ลูกเวท {fx.bolts} ลูก/ข้อ · หัวใจ {fx.hearts} · ล็อกเป้า {(fx.dwell / 1000).toFixed(2)} วิ
+                ตอนนี้: พลังเวท x{fx.power.toFixed(2)} · ลูกเวท {fx.bolts} ลูก/ข้อ · หัวใจ {fx.hearts} · วงเวทที่ต้องวาด {Math.round(Math.max(0.7, fx.dwell / 850) * 80)}% ของวง
               </p>
             </div>
           )}
