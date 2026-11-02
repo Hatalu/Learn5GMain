@@ -122,12 +122,12 @@ const MATH: Template[] = [
     sizeId: 'a4p',
     accent: '#d97706',
     make: () => {
-      const eq: [number, number, string][] = [[12, 12, '7 + ☐ = 12'], [20, 20, '☐ - 5 = 15'], [18, 18, '3 x ☐ = 18'], [9, 9, '☐ ÷ 4 = 9']];
+      const eq: [number, number, string][] = [[12, 12, '7 + ___ = 12'], [20, 20, '___ - 5 = 15'], [18, 18, '3 x ___ = 18'], [9, 9, '___ ÷ 4 = 9']];
       const items: Item[] = [...header('คณิตศาสตร์', 'ทำให้ตาชั่งเท่ากัน', '#fef3c7', '#b45309', 'm-equal'), nameLine(170)];
       eq.forEach(([a, b, s], i) => {
         const x = 40 + (i % 2) * 370;
         const y = 230 + Math.floor(i / 2) * 420;
-        items.push(box('#fffbeb', '#f59e0b', x, y, 345, 390), edu('balance', x + 22, y + 20, 300, 186, a, b), txt(s, 32, x, y + 230, 345, { align: 'center', font: 'prompt', bold: true }), txt('☐ = ............', 28, x, y + 300, 345, { align: 'center' }));
+        items.push(box('#fffbeb', '#f59e0b', x, y, 345, 390), edu('balance', x + 22, y + 20, 300, 186, a, b), txt(s, 32, x, y + 230, 345, { align: 'center', font: 'prompt', bold: true }), txt('ตัวที่หายไป = ............', 28, x, y + 300, 345, { align: 'center' }));
       });
       return design('a4p', [page(items)]);
     },
