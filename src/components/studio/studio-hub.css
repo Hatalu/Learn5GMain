@@ -382,3 +382,50 @@
   background: #2a2357;
   color: #c4b5fd;
 }
+
+/* เลือกแบบการแก้ไขหน้าว่าง: Canva / Word */
+.sh-modes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  max-width: 640px;
+}
+.sh-mode {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 18px;
+  border: 2.5px solid #d8ccff;
+  background: #fff;
+  color: #3b2a7a;
+  text-align: left;
+  transition: transform 0.15s cubic-bezier(0.3, 1.6, 0.5, 1), border-color 0.15s;
+}
+.sh-mode:hover {
+  transform: translateY(-2px);
+}
+.sh-mode[data-on='true'] {
+  border-color: #7c4dff;
+  background: #f1ebff;
+  box-shadow: 0 4px 0 #7c4dff;
+}
+.sh-mode b {
+  display: block;
+  font-size: 16px;
+}
+.sh-mode small {
+  display: block;
+  font-size: 13px;
+  opacity: 0.75;
+}
+html.dark .sh-mode {
+  background: #241c45;
+  border-color: #4c3a8f;
+  color: #e9e2ff;
+}
+html.dark .sh-mode[data-on='true'] {
+  background: #33266a;
+  border-color: #a78bfa;
+  box-shadow: 0 4px 0 #a78bfa;
+}

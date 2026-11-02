@@ -8,6 +8,7 @@ import { ORG_TEMPLATES } from './tpl/org';
 import { TEST_TEMPLATES } from './tpl/test';
 import { CLASS_TEMPLATES } from './tpl/class';
 import { DECOR_TEMPLATES } from './tpl/decor';
+import { MORE_TEMPLATES } from './tpl/more';
 
 export { TEMPLATE_CATS, type Template, type TemplateCat } from './tpl/kit';
 
@@ -568,4 +569,4 @@ const BASE: Template[] = [
   },
 ];
 
-export const TEMPLATES: Template[] = [...BASE, ...MATH_TEMPLATES, ...THAI_TEMPLATES, ...ENG_TEMPLATES, ...SCI_TEMPLATES, ...ORG_TEMPLATES, ...TEST_TEMPLATES, ...CLASS_TEMPLATES, ...DECOR_TEMPLATES];
+export const TEMPLATES: Template[] = [...BASE, ...MATH_TEMPLATES, ...THAI_TEMPLATES, ...ENG_TEMPLATES, ...SCI_TEMPLATES, ...ORG_TEMPLATES, ...TEST_TEMPLATES, ...CLASS_TEMPLATES, ...DECOR_TEMPLATES, ...MORE_TEMPLATES];

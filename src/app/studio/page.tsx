@@ -4,7 +4,7 @@
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Check, Compass, Copy, Crown, Eye, FileUp, FolderHeart, Globe, Loader2, Lock, LogIn, MoreVertical, Palette, Pencil, Plus, Search, ShieldCheck, Sparkles, Trash2, Wand2 } from 'lucide-react';
+import { Check, Compass, Copy, Crown, Eye, FileText, FileUp, LayoutDashboard, FolderHeart, Globe, Loader2, Lock, LogIn, MoreVertical, Palette, Pencil, Plus, Search, ShieldCheck, Sparkles, Trash2, Wand2 } from 'lucide-react';
 import { Navbar } from '@/components/navbar/Navbar';
 import { NightSky } from '@/components/fx/NightSky';
 import { useAuth } from '@/context/AuthContext';
@@ -135,6 +135,8 @@ function StudioHub() {
   const [dbMissing, setDbMissing] = useState(false);
   const [gate, setGate] = useState<null | 'guest' | 'limit'>(null);
   const [creating, setCreating] = useState<string | null>(null);
+  /** หน้าว่างเริ่มแบบไหน: Canva (ออกแบบอิสระ) หรือ Word (พิมพ์เอกสารต่อเนื่อง) */
+  const [newMode, setNewMode] = useState<'canvas' | 'word'>('canvas');
   const [err, setErr] = useState('');
   const [q, setQ] = useState('');
   const [menu, setMenu] = useState<string | null>(null);
@@ -433,11 +435,25 @@ function StudioHub() {
 
             {tab === 'new' ? (
               <section className="max-w-6xl mx-auto px-4 pt-6 pb-12">
-                <h2 className="l5g-sec-title">1. เลือกขนาดกระดาษ</h2>
-                <p className="l5g-sec-note">เริ่มจากหน้าว่าง ค่าเริ่มต้นคือ A4 แนวตั้ง เปลี่ยนขนาดทีหลังได้ในตัวแก้ไข</p>
+                <h2 className="l5g-sec-title">1. เลือกแบบการแก้ไข แล้วเลือกขนาดกระดาษ</h2>
+                <p className="l5g-sec-note">เริ่มจากหน้าว่าง ค่าเริ่มต้นคือ A4 แนวตั้ง สลับ Canva/Word และเปลี่ยนขนาดทีหลังได้ในตัวแก้ไข</p>
+                <div className="sh-modes mt-4" role="radiogroup" aria-label="แบบการแก้ไข">
+                  {([
+                    ['canvas', 'แบบ Canva', 'ออกแบบอิสระ ลากวางได้ทุกอย่าง', LayoutDashboard],
+                    ['word', 'แบบ Word', 'พิมพ์เอกสารต่อเนื่อง ขึ้นหน้าใหม่เอง', FileText],
+                  ] as const).map(([m, label, note, Icon]) => (
+                    <button key={m} type="button" role="radio" aria-checked={newMode === m} data-on={newMode === m} className="sh-mode" onClick={() => (gsfx.tap(), setNewMode(m))}>
+                      <Icon className="w-6 h-6" />
+                      <span>
+                        <b>{label}</b>
+                        <small>{note}</small>
+                      </span>
+                    </button>
+                  ))}
+                </div>
                 <div className="sh-sizes mt-4" data-tour="studio-sizes">
                   {SIZES.map((s, i) => (
-                    <button key={s.id} type="button" className="sh-size" data-main={i === 0} disabled={!!creating || dbMissing} onClick={() => create(`size-${s.id}`, blankDesign(s), 'สื่อใหม่')} style={{ animationDelay: `${i * 50}ms` }}>
+                    <button key={s.id} type="button" className="sh-size" data-main={i === 0} disabled={!!creating || dbMissing} onClick={() => create(`size-${s.id}`, { ...blankDesign(s), mode: newMode }, 'สื่อใหม่')} style={{ animationDelay: `${i * 50}ms` }}>
                       <span className="sh-size-box">
                         <span className="sh-paper" style={{ aspectRatio: `${s.w} / ${s.h}`, [s.w >= s.h ? 'width' : 'height']: '100%' }}>
                           {creating === `size-${s.id}` ? <Loader2 className="w-6 h-6 animate-spin" /> : <Plus className="w-7 h-7" strokeWidth={3} />}

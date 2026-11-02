@@ -552,3 +552,10 @@
     overflow-x: auto;
   }
 }
+
+/* ส่วนหัวพ้นจอ: หยุดแอนิเมชันวนทุกชิ้น */
+.world[data-off] *,
+.world[data-off] *::before,
+.world[data-off] *::after {
+  animation-play-state: paused !important;
+}

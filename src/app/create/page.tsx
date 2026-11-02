@@ -14,6 +14,7 @@ import { UsageMeter } from '@/components/creator/UsageMeter';
 import { createClient } from '@/lib/supabase/client';
 import { MODES } from '@/lib/game-creator/modes';
 import { ModeArt } from '@/components/creator/games/ModeArt';
+import { SetTemplates } from '@/components/creator/SetTemplates';
 import { cleanTitle, mediaPaths, sanitizeQuiz } from '@/lib/game-creator/quiz';
 import { mediaPrefix, removeMedia } from '@/lib/game-creator/media';
 import type { UserGameSummary } from '@/lib/game-creator/types';
@@ -367,6 +368,18 @@ function CreateHub() {
                     <ModeArt mode="quiz" />
                   </div>
                 </div>
+
+                <h2 className="l5g-sec-title mt-8">หรือเริ่มจากแม่แบบชุดคำถาม</h2>
+                <p className="l5g-sec-note">มีคำถามพร้อมเล่น 10 ข้อ แยกวิชาและช่วงชั้น แก้คำถาม/เพิ่มข้อได้ก่อนบันทึก</p>
+                <SetTemplates
+                  disabled={dbMissing}
+                  onPick={(id) => {
+                    gsfx.pick();
+                    if (tier === 'guest') return setGate('guest');
+                    if (atLimit) return setGate('limit');
+                    router.push(`/create/edit?tpl=${id}`);
+                  }}
+                />
 
                 <h2 className="l5g-sec-title mt-8">ขั้นที่ 2 เลือกรูปแบบการเล่นตอนเปิดห้อง</h2>
                 <p className="l5g-sec-note">กด เปิดใช้งาน ที่ชุดคำถามในคลัง แล้วเลือกได้เลยว่าจะเล่นแบบไหน</p>

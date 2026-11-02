@@ -1,7 +1,7 @@
 'use client';
 
 /* eslint-disable @next/next/no-img-element */
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ChevronRight, Gamepad2, ShieldCheck, Sparkles, Star } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -65,6 +65,16 @@ export function HomeHero({
 }) {
   const { user } = useAuth();
   const [pose, setPose] = useState<ShowPose>('wave');
+  // เลื่อนพ้นส่วนหัวแล้ว: หยุดแอนิเมชันตกแต่งทั้งหมดในส่วนนี้ (ธง ดาว เมฆ แถบภาพ) ไม่ให้กิน CPU/GPU
+  const sec = useRef<HTMLElement>(null);
+  const [off, setOff] = useState(false);
+  useEffect(() => {
+    const el = sec.current;
+    if (!el) return;
+    const io = new IntersectionObserver(([en]) => setOff(!en.isIntersecting));
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   const games = useMemo(() => media.filter((m) => m.icon_url && m.media_type !== 'วิดีโอ').slice(0, 16), [media]);
   // แถบต้องยาวกว่าจอเสมอ: ของน้อยก็วนซ้ำให้พอ แล้วต่อท้ายอีกชุดให้เลื่อนวนได้ไม่สะดุด
@@ -77,7 +87,7 @@ export function HomeHero({
   const gameCount = media.filter((m) => m.media_type !== 'วิดีโอ').length;
 
   return (
-    <section className={s.world} data-tour="hero" aria-label="ยินดีต้อนรับสู่สื่อการสอน 5G">
+    <section ref={sec} className={s.world} data-off={off || undefined} data-tour="hero" aria-label="ยินดีต้อนรับสู่สื่อการสอน 5G">
       <NightSky />
       <div className={s.sky} aria-hidden="true">
         <div className={s.dots} />

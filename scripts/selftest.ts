@@ -2055,6 +2055,22 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
     passed++;
     console.log('  ok  ท่าเลือกเป้าแต่ละเกม AR (วาดวง/ปัด) + โค้ดสมาชิก 10 หลัก');
   }
+  {
+    // แม่แบบชุดคำถาม: ทุกวิชามี ผ่านตัวกรองครบ 1 ข้อถูกต่อข้อ ตำแหน่งข้อถูกไม่ซ้ำที่เดิมตลอด
+    const { SET_TEMPLATES, SET_SUBJECTS, buildSetTemplate } = await import('../src/lib/game-creator/setTemplates');
+    const { sanitizeQuiz: clean, quizIssues: issues } = await import('../src/lib/game-creator/quiz');
+    for (const s of SET_SUBJECTS) assert.ok(SET_TEMPLATES.some((t) => t.subject === s.id), `ไม่มีแม่แบบวิชา ${s.id}`);
+    assert.equal(new Set(SET_TEMPLATES.map((t) => t.id)).size, SET_TEMPLATES.length);
+    for (const t of SET_TEMPLATES) {
+      const c = clean(buildSetTemplate(t), '');
+      assert.equal(c.questions.length, t.qs.length, t.id);
+      assert.deepEqual(issues(c), [], t.id);
+      for (const q of c.questions) assert.equal(q.choices.filter((x) => x.correct).length, 1, t.id);
+      assert.ok(new Set(c.questions.map((q) => q.choices.findIndex((x) => x.correct))).size > 1, t.id);
+    }
+    passed++;
+    console.log('  ok  แม่แบบชุดคำถามแยกวิชา: ครบทุกวิชา ผ่านตัวกรอง ข้อถูก 1 ตัวเลือก');
+  }
   console.log(`\n${passed} tests passed`);
 })().catch((e) => {
   console.error(e);

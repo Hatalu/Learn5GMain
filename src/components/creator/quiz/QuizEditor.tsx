@@ -92,6 +92,8 @@ interface Props {
   gameId: string | null;
   userId: string;
   username: string;
+  /** เริ่มชุดใหม่จากแม่แบบ (ยังไม่บันทึก) */
+  initial?: { title: string; content: QuizContent };
 }
 
 /** คำตอบที่ยอมรับของข้อพิมพ์คำตอบ (ใส่ได้หลายแบบ เช่น 12 / สิบสอง) */
@@ -138,16 +140,16 @@ function FxButton({ onClick, small }: { onClick: () => void; small?: boolean }) 
   );
 }
 
-export function QuizEditor({ gameId: initialId, userId, username }: Props) {
+export function QuizEditor({ gameId: initialId, userId, username, initial }: Props) {
   const router = useRouter();
   const [gameId, setGameId] = useState<string | null>(initialId);
-  const [title, setTitle] = useState('');
+  const [title, setTitle] = useState(initial?.title ?? '');
   const [isPublic, setIsPublic] = useState(true);
-  const [content, setContent] = useState<QuizContent>(() => emptyQuiz());
+  const [content, setContent] = useState<QuizContent>(() => initial?.content ?? emptyQuiz());
   const [sel, setSel] = useState(0);
   const [loading, setLoading] = useState(!!initialId);
   const [loadErr, setLoadErr] = useState('');
-  const [dirty, setDirty] = useState(false);
+  const [dirty, setDirty] = useState(!!initial);
   const [saving, setSaving] = useState(false);
   const [saveErr, setSaveErr] = useState('');
   const [askTitle, setAskTitle] = useState(false);
@@ -195,6 +197,7 @@ export function QuizEditor({ gameId: initialId, userId, username }: Props) {
       }
     };
     if (!initialId) {
+      if (initial) return;
       const d = readDraft();
       if (d) setDraftOffer({ title: cleanTitle(d.title), content: sanitizeQuiz(d.content, prefix) });
       return;

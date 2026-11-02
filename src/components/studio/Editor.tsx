@@ -1626,6 +1626,11 @@ export function StudioEditor({ id }: { id: string }) {
           <>
             <nav className="st-rail" aria-label="เครื่องมือ">
               {exitBtn}
+              {/* สลับเป็นโหมด Word ได้ทันที (เดิมซ่อนอยู่ในเมนูไฟล์ หาไม่เจอ) */}
+              <button type="button" className="st-rail-btn" onClick={() => setMode('word')} title="เปลี่ยนเป็นโหมด Word: พิมพ์เอกสารต่อเนื่อง ขึ้นหน้าใหม่เอง" style={{ ['--c' as string]: '#2563eb' }}>
+                <span className="st-rail-ic"><FileText className="w-5 h-5" /></span>
+                <span className="st-rail-tx">โหมด Word</span>
+              </button>
               {RAIL.map((r) => (
                 <button key={r.id} type="button" className="st-rail-btn" data-on={panel === r.id} onClick={() => setPanel(panel === r.id ? null : r.id)} style={{ ['--c' as string]: r.color }}>
                   <span className="st-rail-ic">{r.icon}</span>

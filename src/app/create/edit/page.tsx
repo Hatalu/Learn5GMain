@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import { FREE_SET_LIMIT, creatorTier, setsUsed } from '@/lib/game-creator/quota';
 import { createClient } from '@/lib/supabase/client';
 import { QuizEditor } from '@/components/creator/quiz/QuizEditor';
+import { SET_TEMPLATES, buildSetTemplate } from '@/lib/game-creator/setTemplates';
 import { NightSky } from '@/components/fx/NightSky';
 import '@/components/creator/creator.css';
 import '@/components/creator/creator-pages.css';
@@ -18,6 +19,11 @@ function EditInner() {
   // ใช้ค่าตอนเปิดหน้าเท่านั้น (หลังบันทึกเกมใหม่ URL จะเปลี่ยนเป็น ?id=... โดยไม่ต้องโหลดตัวแก้ไขใหม่)
   const [id] = React.useState(() => sp.get('id'));
   const template = sp.get('template') || 'quiz';
+  // ชุดใหม่จากแม่แบบวิชา (?tpl=) สร้างครั้งเดียวตอนเปิดหน้า
+  const [initial] = React.useState(() => {
+    const t = SET_TEMPLATES.find((x) => x.id === sp.get('tpl'));
+    return t ? { title: t.title, content: buildSetTemplate(t) } : undefined;
+  });
   const tier = creatorTier(!!user, profile);
   const allowed = tier !== 'guest';
   const [checked, setChecked] = React.useState(false);
@@ -55,7 +61,7 @@ function EditInner() {
     router.replace('/create');
     return null;
   }
-  return <QuizEditor gameId={id && /^[0-9a-f-]{36}$/i.test(id) ? id : null} userId={user.id} username={profile.username} />;
+  return <QuizEditor gameId={id && /^[0-9a-f-]{36}$/i.test(id) ? id : null} userId={user.id} username={profile.username} initial={id ? undefined : initial} />;
 }
 
 export default function EditPage() {

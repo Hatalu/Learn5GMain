@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 import { createClient } from '@/lib/supabase/client';
@@ -25,8 +26,6 @@ import { DailyGameCard } from '@/components/media/DailyGameCard';
 import { JoinRoomBanner } from '@/components/media/JoinRoomBanner';
 import { BuddyLoader } from '@/components/fx/BuddyLoader';
 import { Reveal } from '@/components/ui/Reveal';
-import { AddMediaModal } from '@/components/dev/AddMediaModal';
-import { MediaDetailModal } from '@/components/media/MediaDetailModal';
 import {
   Filter,
   Sparkles,
@@ -43,6 +42,10 @@ import { PromoBanners } from '@/components/home/PromoBanners';
 import { AudiencePaths } from '@/components/home/AudiencePaths';
 import { useAudience } from '@/components/home/audience';
 import hp from '@/components/home/home-page.module.css';
+
+// หน้าต่างที่เปิดเมื่อกดเท่านั้น: แยกไฟล์ โหลดตอนใช้ ไม่ถ่วงการเปิดหน้าแรก
+const AddMediaModal = dynamic(() => import('@/components/dev/AddMediaModal').then((m) => m.AddMediaModal), { ssr: false });
+const MediaDetailModal = dynamic(() => import('@/components/media/MediaDetailModal').then((m) => m.MediaDetailModal), { ssr: false });
 
 export default function HomePage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -69,6 +72,11 @@ export default function HomePage() {
 
   // Media Detail Modal (Center Popup)
   const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null);
+  // อุ่นไฟล์หน้าต่างรายละเอียดไว้ตอนว่าง กดการ์ดแล้วเปิดทันที
+  useEffect(() => {
+    const t = setTimeout(() => void import('@/components/media/MediaDetailModal'), 4000);
+    return () => clearTimeout(t);
+  }, []);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   const handleSelectMedia = useCallback((media: MediaItem) => {
@@ -640,21 +648,23 @@ export default function HomePage() {
       />
 
       {/* Dev Add Media Modal */}
-      <AddMediaModal
-        isOpen={isAddMediaOpen}
-        onClose={() => setIsAddMediaOpen(false)}
-        onSuccess={fetchMedia}
-      />
+      {isAddMediaOpen && (
+        <AddMediaModal
+          isOpen={isAddMediaOpen}
+          onClose={() => setIsAddMediaOpen(false)}
+          onSuccess={fetchMedia}
+        />
+      )}
 
       {/* Media Detail Popup (Netflix-style center quick view & play) */}
-      <MediaDetailModal
+      {selectedMedia && <MediaDetailModal
         isOpen={isDetailModalOpen}
         onClose={() => setIsDetailModalOpen(false)}
         media={selectedMedia}
         isFavorite={selectedMedia ? favoriteIds.has(selectedMedia.id) : false}
         onToggleFavorite={handleToggleFavorite}
         onMediaOpened={handleMediaOpened}
-      />
+      />}
     </div>
   );
 }

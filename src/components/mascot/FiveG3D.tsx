@@ -192,7 +192,14 @@ export function FiveG3D({ mood, onPose, className = '', label = 'น้องไ
     let disposed = false;
     let stop = () => undefined as void;
 
-    (async () => {
+    // เครื่องสเปกต่ำ/ประหยัดเน็ต/กราฟิกลื่น: ใช้รูปนิ่ง ไม่โหลด three.js (~170KB) เลย
+    const nav = navigator as Navigator & { connection?: { saveData?: boolean }; deviceMemory?: number };
+    if (getGfx() === 'lite' || nav.connection?.saveData || (nav.deviceMemory ?? 8) <= 2) {
+      setFailed(true);
+      return;
+    }
+
+    const boot = async () => {
       const THREE = await import('three');
       if (disposed) return;
       let renderer: InstanceType<typeof THREE.WebGLRenderer>;
@@ -525,8 +532,9 @@ export function FiveG3D({ mood, onPose, className = '', label = 'น้องไ
       let visible = true;
       const loop = (now: number) => {
         raf = requestAnimationFrame(loop);
-        if (!visible) return;
-        const dt = Math.min(0.05, (now - last) / 1000);
+        // วาด ~30 ภาพ/วิ พอสำหรับมาสคอต (ครึ่งหนึ่งของจอ 60Hz ลดงาน GPU/แบตเตอรี่)
+        if (!visible || now - last < 31) return;
+        const dt = Math.min(0.07, (now - last) / 1000);
         last = now;
         const m = moodRef.current;
         if (m !== lastMood) {
@@ -588,10 +596,23 @@ export function FiveG3D({ mood, onPose, className = '', label = 'น้องไ
         renderer.dispose();
         renderer.domElement.remove();
       };
-    })().catch(() => !disposed && setFailed(true));
+    };
+
+    // โหลด/สร้างฉากเมื่อเห็นบนจอแล้วและเบราว์เซอร์ว่าง (ไม่แย่งเวลาวาดหน้าแรก, ซ่อนด้วย CSS = ไม่โหลดเลย)
+    let idle = 0;
+    const gate = new IntersectionObserver(([en]) => {
+      if (!en.isIntersecting) return;
+      gate.disconnect();
+      const go = () => !disposed && boot().catch(() => !disposed && setFailed(true));
+      idle = window.requestIdleCallback ? window.requestIdleCallback(go, { timeout: 1500 }) : window.setTimeout(go, 150);
+    });
+    gate.observe(el);
 
     return () => {
       disposed = true;
+      gate.disconnect();
+      if (window.cancelIdleCallback) window.cancelIdleCallback(idle);
+      else clearTimeout(idle);
       stop();
     };
   }, []);
