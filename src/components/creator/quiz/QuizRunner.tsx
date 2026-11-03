@@ -1,5 +1,6 @@
 'use client';
 
+import { SpeakButton, questionSpeech } from '@/components/creator/SpeakButton';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowRight, Check, Flame, Loader2, Send, Timer, X } from 'lucide-react';
 import type { AnswerResult, PublicQuestion } from '@/lib/game-creator/types';
@@ -320,6 +321,7 @@ export function QuizRunner({
           </div>
         )}
         {q.text.length > 0 && <MathText value={q.text} className="l5g-qtext" />}
+        <SpeakButton text={questionSpeech(q.text, q.kind === 'text' ? [] : q.choices)} className="l5g-speak-q" />
         {q.multi && <p className="l5g-qmulti">เลือกได้มากกว่า 1 ข้อ</p>}
       </div>
 

@@ -1,5 +1,6 @@
 'use client';
 
+import { SpeakButton, questionSpeech } from '@/components/creator/SpeakButton';
 import './games.css';
 import './games-live.css';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -240,6 +241,7 @@ export function QuestionPad({
           </div>
         )}
         {q.text.length > 0 && <MathText value={q.text} className="l5g-qp-text" />}
+        <SpeakButton text={questionSpeech(q.text, q.kind === 'text' ? [] : q.choices)} className="l5g-speak-q" />
         {q.multi && <span className="l5g-qmulti">เลือกได้มากกว่า 1 ข้อ</span>}
       </div>
       {typed && <TextAnswer key={q.index} disabled={phase !== 'question'} result={show ? res : null} onSubmit={(t) => submit([t])} />}

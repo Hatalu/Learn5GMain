@@ -4,6 +4,7 @@ import { mediaPrefix } from '@/lib/game-creator/prefix';
 import { cleanBackground } from '@/lib/game-creator/backgrounds';
 import { richToPlain } from '@/lib/game-creator/quiz';
 import { AVATAR_COUNT } from '@/lib/game-creator/templates';
+import type { ReportA, ReportQ } from '@/lib/game-creator/report';
 import {
   PLAYER_COLS,
   type PlayerRow,
@@ -57,7 +58,22 @@ export async function GET(req: NextRequest, { params }: Ctx) {
     });
   }
 
+  // รายงานผลหลังเล่น: คำถาม (มีเฉลย ส่งให้เจ้าของห้องเท่านั้น) + คำตอบทุกครั้ง ฝั่งหน้าเว็บคำนวณเอง (report.ts)
+  let report: { questions: ReportQ[]; answers: ReportA[] } | null = null;
+  if (req.nextUrl.searchParams.get('report') === '1') {
+    const { data: ans } = await db.from('room_answers').select('player_id, q_index, correct, picks, ms').eq('room_id', room.id).order('id', { ascending: true }).limit(30000);
+    report = {
+      questions: room.content.questions.map((q, i) => {
+        const choices = q.choices.map((c, k) => ({ id: c.id, label: richToPlain(c.text, 60) || (c.media ? `ตัวเลือก ${k + 1} (รูป)` : `ตัวเลือก ${k + 1}`) }));
+        const answer = q.kind === 'text' ? (q.answers || []).join(' / ') : choices.filter((c, k) => q.choices[k].correct).map((c) => c.label).join(', ');
+        return { i, label: richToPlain(q.text, 120) || (q.media ? '(โจทย์เป็นรูป/คลิป)' : `ข้อ ${i + 1}`), answer, choices };
+      }),
+      answers: (ans || []).map((a: { player_id: string; q_index: number; correct: boolean; picks: string[] | null; ms: number }) => ({ p: a.player_id, q: a.q_index, c: a.correct, picks: a.picks || [], ms: a.ms })),
+    };
+  }
+
   return NextResponse.json({
+    report,
     room: {
       id: room.id,
       code: room.code,

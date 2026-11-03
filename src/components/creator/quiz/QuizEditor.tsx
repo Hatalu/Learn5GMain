@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   AlertTriangle,
+  LogIn,
+  UserPlus,
   ArrowDown,
   ArrowLeft,
   ArrowUp,
@@ -95,6 +97,8 @@ interface Props {
   username: string;
   /** เริ่มชุดใหม่จากแม่แบบ (ยังไม่บันทึก) */
   initial?: { title: string; content: QuizContent };
+  /** ยังไม่มีบัญชี: แก้ไข/ทดลองเล่นได้ เก็บร่างในเครื่อง บันทึก/อัปโหลดต้องสมัครก่อน */
+  guest?: boolean;
 }
 
 /** คำตอบที่ยอมรับของข้อพิมพ์คำตอบ (ใส่ได้หลายแบบ เช่น 12 / สิบสอง) */
@@ -141,7 +145,7 @@ function FxButton({ onClick, small }: { onClick: () => void; small?: boolean }) 
   );
 }
 
-export function QuizEditor({ gameId: initialId, userId, username, initial }: Props) {
+export function QuizEditor({ gameId: initialId, userId, username, initial, guest }: Props) {
   const router = useRouter();
   const [gameId, setGameId] = useState<string | null>(initialId);
   const [title, setTitle] = useState(initial?.title ?? '');
@@ -155,6 +159,7 @@ export function QuizEditor({ gameId: initialId, userId, username, initial }: Pro
   const [saveErr, setSaveErr] = useState('');
   const [askTitle, setAskTitle] = useState(false);
   const [coverOpen, setCoverOpen] = useState(false);
+  const [needAccount, setNeedAccount] = useState<'' | 'save' | 'upload'>('');
   const [titleDraft, setTitleDraft] = useState('');
   const [saved, setSaved] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
@@ -417,6 +422,7 @@ export function QuizEditor({ gameId: initialId, userId, username, initial }: Pro
   };
 
   const doUploadImage = async (t: Target, f: File) => {
+    if (guest) return setNeedAccount('upload');
     setMediaErr('');
     setUploading(tKey(t));
     try {
@@ -431,10 +437,12 @@ export function QuizEditor({ gameId: initialId, userId, username, initial }: Pro
   };
 
   const pickImage = (t: Target) => {
+    if (guest) return setNeedAccount('upload');
     pickTarget.current = t;
     imgInput.current?.click();
   };
   const pickAudio = (t: Target) => {
+    if (guest) return setNeedAccount('upload');
     pickTarget.current = t;
     audInput.current?.click();
   };
@@ -455,6 +463,7 @@ export function QuizEditor({ gameId: initialId, userId, username, initial }: Pro
     }
   };
   const pickVideo = (t: Target) => {
+    if (guest) return setNeedAccount('upload');
     pickTarget.current = t;
     vidInput.current?.click();
   };
@@ -485,6 +494,7 @@ export function QuizEditor({ gameId: initialId, userId, username, initial }: Pro
 
   /* ---------------- บันทึก ---------------- */
   const save = async (withTitle?: string) => {
+    if (guest) return setNeedAccount('save');
     const t = cleanTitle(withTitle ?? title);
     if (!t) {
       setTitleDraft('');
@@ -562,9 +572,18 @@ export function QuizEditor({ gameId: initialId, userId, username, initial }: Pro
     });
   };
 
+  const keepDraft = () => {
+    try {
+      localStorage.setItem(DRAFT(gameId), JSON.stringify({ title, content, at: Date.now() }));
+    } catch {
+      /* เต็ม/ปิดไว้ */
+    }
+    setDirty(false);
+  };
+
   const back = () => {
     if (dirty) setLeave(true);
-    else router.push('/create?tab=library');
+    else router.push(guest ? '/create' : '/create?tab=library');
   };
 
   /* ---------------- แสดงผล ---------------- */
@@ -645,7 +664,13 @@ export function QuizEditor({ gameId: initialId, userId, username, initial }: Pro
       </header>
 
       <div className="l5g-ebar-usage">
-        <UsageMeter compact keepPaths={() => mediaPaths(sanitizeQuiz(content, prefix))} />
+        {guest ? (
+          <span className="l5g-guestnote">
+            <Rocket className="w-4 h-4" /> ลองสร้างและทดลองเล่นได้เลยโดยไม่ต้องสมัคร งานเก็บไว้ในเครื่องนี้ สมัครบัญชีฟรีตอนกดบันทึก
+          </span>
+        ) : (
+          <UsageMeter compact keepPaths={() => mediaPaths(sanitizeQuiz(content, prefix))} />
+        )}
       </div>
 
       {(saveErr || draftOffer) && (
@@ -1092,8 +1117,27 @@ export function QuizEditor({ gameId: initialId, userId, username, initial }: Pro
         </PaperModal>
       )}
 
+      {needAccount && (
+        <PaperModal title={needAccount === 'save' ? 'สมัครบัญชีฟรีเพื่อบันทึก' : 'สมัครบัญชีฟรีเพื่อใส่รูป/เสียง/คลิป'} icon={<UserPlus className="w-5 h-5" />} iconBg="#3fd6a8" onClose={() => setNeedAccount('')}>
+          <p className="font-semibold">
+            {needAccount === 'save'
+              ? 'ชุดคำถามนี้ยังอยู่ครบ เก็บไว้ในเครื่องนี้แล้ว สมัครบัญชีฟรี (ไม่ถึง 1 นาที) แล้วกลับมาที่หน้านี้ กดกู้คืนงานแล้วบันทึกต่อได้ทันที'
+              : 'รูป เสียง และคลิปต้องเก็บไว้ในบัญชี สมัครบัญชีฟรีก่อนแล้วกลับมาแก้ต่อได้ งานที่ทำไว้เก็บในเครื่องนี้แล้ว'}
+          </p>
+          <div className="l5g-math-foot">
+            <span className="flex-1" />
+            <Link href="/login?redirect=/create/edit" className="l5g-btn l5g-btn-ghost" onClick={keepDraft}>
+              <LogIn className="w-5 h-5" /> เข้าสู่ระบบ
+            </Link>
+            <Link href="/signup?redirect=/create/edit" className="l5g-btn l5g-btn-go" onClick={keepDraft}>
+              <UserPlus className="w-5 h-5" /> สมัครบัญชีฟรี
+            </Link>
+          </div>
+        </PaperModal>
+      )}
       {coverOpen && (
         <CoverPicker
+          onNeedAccount={guest ? () => (setCoverOpen(false), setNeedAccount('upload')) : undefined}
           userId={userId}
           value={content.cover}
           onClose={() => setCoverOpen(false)}
@@ -1161,7 +1205,7 @@ export function QuizEditor({ gameId: initialId, userId, username, initial }: Pro
               className="l5g-btn l5g-btn-ghost"
               onClick={() => {
                 setDirty(false);
-                router.push('/create?tab=library');
+                router.push(guest ? '/create' : '/create?tab=library');
               }}
             >
               ออกเลย

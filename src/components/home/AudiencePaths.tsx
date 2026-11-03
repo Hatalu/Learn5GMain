@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Check, ChevronRight, Crown, Sparkles } from 'lucide-react';
+import { ArrowRight, Check, ChevronRight, Crown, Sparkles } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { hasMembership } from '@/lib/membership';
 import { PLANS, WELCOME_HOURS, WELCOME_PCT, quote } from '@/lib/plans';
@@ -55,7 +55,7 @@ export function AudiencePaths({
       { id: 'p-sheet', title: 'ทำใบงานให้ลูกฝึกที่บ้าน', desc: 'ใช้ตัวช่วยสร้างใบงานแยกวิชาในระบบสร้างสื่อ', href: '/studio' },
     ],
     teacher: [
-      { id: 't-quiz', title: 'สร้างชุดคำถามชุดแรก', desc: 'ใส่รูปและสูตรคณิตได้ ใช้ซ้ำได้ทั้งปี', href: '/create' },
+      { id: 't-quiz', title: 'สร้างเกมแรกใน 1 นาทีจากแม่แบบ', desc: 'แม่แบบ ป.1 - ม.6 กดทดลองเล่นได้เลย ไม่ต้องสมัครก่อน', href: '/create#templates' },
       { id: 't-live', title: 'เปิดเกมเล่นสดทั้งห้อง', desc: 'นักเรียนเข้าห้องด้วยเลข 6 หลัก บนมือถือหรือแท็บเล็ต', href: '/create?tab=library' },
       { id: 't-sheet', title: 'เปลี่ยนชุดคำถามเป็นใบงาน', desc: 'กดปุ่มใบงานที่การ์ดชุดคำถาม ได้ใบงานพร้อมเฉลย', href: '/create?tab=library' },
       { id: 't-studio', title: 'ออกแบบสื่อด้วยตัวช่วยแยกวิชา', desc: 'ตัวละครคนและสัตว์ แป้นลัดแบบ Canva', href: '/studio' },
@@ -117,6 +117,12 @@ export function AudiencePaths({
           );
         })}
       </div>
+
+      <Link href="/secondary" className={`mt-3 mx-auto max-w-3xl flex items-center gap-3 rounded-2xl border-[3px] ${INK} bg-amber-100 dark:bg-gray-900 dark:text-white px-4 py-2.5 font-bold shadow-[0_3px_0_#2a2350] hover:-translate-y-0.5 transition-transform`}>
+        <span className="font-display text-base sm:text-lg">ครูมัธยม ม.1 - ม.6</span>
+        <span className="flex-1 text-sm opacity-80">แม่แบบตามหลักสูตร สูตร MathType และกราฟฟังก์ชัน</span>
+        <ArrowRight className="w-5 h-5 shrink-0" />
+      </Link>
 
       {audience && (
         <div key={audience} className="mt-5 grid gap-4 lg:grid-cols-[1.35fr_1fr] animate-fade-in">

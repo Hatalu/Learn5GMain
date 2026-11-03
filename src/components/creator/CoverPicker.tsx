@@ -24,7 +24,7 @@ export function SetCoverArt({ cover, className }: { cover: string | null | undef
 
 const PICK_CATS: StickerCat[] = ['math', 'sci', 'eng', 'thai', 'learn', 'animal', 'nature', 'award'];
 
-export function CoverPicker({ userId, value, onPick, onClose }: { userId: string; value: string | undefined; onPick: (v: string | undefined) => void; onClose: () => void }) {
+export function CoverPicker({ userId, value, onPick, onClose, onNeedAccount }: { userId: string; value: string | undefined; onPick: (v: string | undefined) => void; onClose: () => void; onNeedAccount?: () => void }) {
   const cur = parseCover(value, mediaPrefix());
   const [cat, setCat] = useState<StickerCat>(cur?.kind === 'sticker' ? (STICKERS.find((s) => s.id === cur.id)?.cat ?? 'math') : 'math');
   const [color, setColor] = useState(cur?.kind === 'sticker' ? Math.max(0, COVER_COLORS.indexOf(cur.color)) : 0);
@@ -55,7 +55,7 @@ export function CoverPicker({ userId, value, onPick, onClose }: { userId: string
             {value ? <SetCoverArt cover={value} /> : <span className="l5g-coverpick-auto">อัตโนมัติ</span>}
           </div>
           <div className="l5g-coverpick-acts">
-            <button type="button" className="l5g-btn l5g-btn-violet l5g-btn-sm" disabled={busy} onClick={() => file.current?.click()}>
+            <button type="button" className="l5g-btn l5g-btn-violet l5g-btn-sm" disabled={busy} onClick={() => (onNeedAccount ? onNeedAccount() : file.current?.click())}>
               {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />} อัปโหลดรูปเอง
             </button>
             <button

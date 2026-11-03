@@ -44,6 +44,7 @@ import { gsfx, isGameMuted, setGameMuted } from '@/lib/game-creator/gsound';
 import { releaseMusic, setMusic as playRoomMusic } from '@/lib/music';
 import { roomTrack } from '@/lib/music-tracks';
 import { MusicPicker, musicLabel } from '@/components/creator/live/MusicPicker';
+import { ReportView } from '@/components/creator/live/ReportView';
 import '@/components/creator/creator.css';
 import '@/components/creator/creator-pages.css';
 
@@ -612,12 +613,9 @@ function HostInner() {
                         type="button"
                         className="l5g-tab"
                         data-on={tab === 'stats'}
-                        onClick={() => {
-                          setTab('stats');
-                          load(true);
-                        }}
+                        onClick={() => setTab('stats')}
                       >
-                        <BarChart3 className="w-4 h-4 inline -mt-0.5" /> สรุปรายข้อ
+                        <BarChart3 className="w-4 h-4 inline -mt-0.5" /> รายงานผล
                       </button>
                     </div>
                   ) : (
@@ -627,23 +625,7 @@ function HostInner() {
                   <span className="text-sm font-bold opacity-70">{room.game === 'racing' ? `เส้นชัย ${room.settings.goal} ก้าว` : total ? `${total} ข้อ` : modeById(room.game).scoreLabel}</span>
                 </div>
                 {tab === 'stats' && room.status === 'ended' ? (
-                  <div className="l5g-qstats">
-                    {(st.stats || []).map((s) => {
-                      const pct = s.answered ? Math.round((s.correct / s.answered) * 100) : 0;
-                      return (
-                        <div key={s.i} className="l5g-qstat">
-                          <span className="l5g-qstat-num">{s.i + 1}</span>
-                          <span className="l5g-qstat-label">{s.label}</span>
-                          <span className="l5g-qstat-bar" data-level={pct >= 70 ? 'good' : pct >= 40 ? 'mid' : 'low'}>
-                            <i style={{ width: `${pct}%` }} />
-                          </span>
-                          <b className="l5g-qstat-pct">{s.answered ? `${pct}%` : '-'}</b>
-                        </div>
-                      );
-                    })}
-                    {!st.stats && <Loader2 className="w-6 h-6 animate-spin mx-auto" />}
-                    <p className="text-xs font-bold opacity-60 mt-2">เปอร์เซ็นต์ตอบถูกของแต่ละข้อ ข้อสีแดงคือเรื่องที่ควรสอนเพิ่ม</p>
-                  </div>
+                  <ReportView roomId={room.id} title={room.title} players={players} round={room.round} />
                 ) : players.length ? (
                   <div className="l5g-board-scroll">
                     {room.game === 'racing' && (

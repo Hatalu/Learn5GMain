@@ -131,6 +131,11 @@ function SignupInner() {
           writeStore(CODE_DONE_KEY, String(r.days));
         }
       }
+      // มาจากตัวแก้ไขชุดคำถาม (ลองสร้างก่อนสมัคร): กลับไปกู้งานต่อเลย ไม่เริ่มทัวร์
+      if (redirectTarget().startsWith('/create/edit')) {
+        setTimeout(() => router.replace(redirectTarget()), 900);
+        return;
+      }
       // บัญชีใหม่: พาเที่ยวรอบเว็บก่อน (ทัวร์พาไปหน้าหลักเอง กดข้ามได้)
       setTimeout(() => tour.start(), 1100);
     } catch {

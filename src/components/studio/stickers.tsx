@@ -973,6 +973,151 @@ export const STICKERS: StickerDef[] = [
       </g>
     ),
   },
+  /* อุปกรณ์ห้องทดลอง (ใช้กับใบบันทึกการทดลอง) */
+  {
+    id: 's-flask',
+    label: 'ขวดรูปชมพู่',
+    cat: 'sci',
+    el: (
+      <g {...s}>
+        <path d="M40 8 H60 M43 8 V38 L18 84 Q15 92 24 92 H76 Q85 92 82 84 L57 38 V8" fill="#fff" />
+        <path d="M30 62 H70 L82 84 Q85 92 76 92 H24 Q15 92 18 84 Z" fill="#c4b5fd" />
+        <circle cx="44" cy="76" r="4" fill="#fff" strokeWidth="2" />
+        <circle cx="58" cy="70" r="3" fill="#fff" strokeWidth="2" />
+      </g>
+    ),
+  },
+  {
+    id: 's-burner',
+    label: 'ตะเกียงแอลกอฮอล์',
+    cat: 'sci',
+    el: (
+      <g {...s}>
+        <path d="M50 10 Q62 26 56 36 Q50 42 44 36 Q38 26 50 10 Z" fill="#ffb020" />
+        <path d="M50 22 Q55 30 52 34 Q50 36 48 34 Q45 30 50 22 Z" fill="#fff3c4" strokeWidth="2" />
+        <rect x="45" y="42" width="10" height="12" fill="#e2e8f0" />
+        <path d="M30 54 H70 L80 86 Q81 92 74 92 H26 Q19 92 20 86 Z" fill="#bfdbfe" />
+        <path d="M24 74 H76" strokeWidth="3" />
+      </g>
+    ),
+  },
+  {
+    id: 's-dropper',
+    label: 'หลอดหยด',
+    cat: 'sci',
+    el: (
+      <g {...s}>
+        <rect x="38" y="6" width="24" height="26" rx="10" fill="#ff8fab" />
+        <path d="M42 32 H58 L54 78 L50 88 L46 78 Z" fill="#fff" />
+        <path d="M44 56 H56 L54 78 L50 88 L46 78 Z" fill="#7cc6ff" />
+        <path d="M50 92 Q55 98 50 99 Q45 98 50 92 Z" fill="#7cc6ff" strokeWidth="2.5" />
+      </g>
+    ),
+  },
+  {
+    id: 's-scale',
+    label: 'ตาชั่งสองแขน',
+    cat: 'sci',
+    el: (
+      <g {...s}>
+        <path d="M50 18 V84 M30 92 H70 L64 84 H36 Z" fill="#ffd166" />
+        <path d="M14 26 H86" strokeWidth="5" />
+        <circle cx="50" cy="18" r="6" fill="#fff" />
+        <path d="M18 26 L8 54 M18 26 L28 54 M82 26 L72 54 M82 26 L92 54" strokeWidth="2.5" />
+        <path d="M6 54 H30 Q28 64 18 64 Q8 64 6 54 Z" fill="#6ee7b7" />
+        <path d="M70 54 H94 Q92 64 82 64 Q72 64 70 54 Z" fill="#6ee7b7" />
+      </g>
+    ),
+  },
+  {
+    id: 's-stopwatch',
+    label: 'นาฬิกาจับเวลา',
+    cat: 'sci',
+    el: (
+      <g {...s}>
+        <rect x="42" y="6" width="16" height="10" rx="3" fill="#ff6b7a" />
+        <path d="M74 22 L82 14" strokeWidth="5" />
+        <circle cx="50" cy="56" r="36" fill="#fff" />
+        <circle cx="50" cy="56" r="28" fill="#e0f2fe" strokeWidth="2.5" />
+        <path d="M50 56 V34 M50 56 L64 64" strokeWidth="4" />
+        <circle cx="50" cy="56" r="4" fill={O} />
+      </g>
+    ),
+  },
+  {
+    id: 's-goggles',
+    label: 'แว่นตานิรภัย',
+    cat: 'sci',
+    el: (
+      <g {...s}>
+        <path d="M6 48 Q4 34 14 32 M94 48 Q96 34 86 32" fill="none" strokeWidth="5" />
+        <rect x="10" y="34" width="36" height="32" rx="14" fill="#bae6fd" />
+        <rect x="54" y="34" width="36" height="32" rx="14" fill="#bae6fd" />
+        <path d="M46 50 Q50 44 54 50" fill="none" />
+        <path d="M18 42 L26 50 M62 42 L70 50" stroke="#fff" strokeWidth="4" />
+      </g>
+    ),
+  },
+  {
+    id: 's-petri',
+    label: 'จานเพาะเชื้อ',
+    cat: 'sci',
+    el: (
+      <g {...s}>
+        <ellipse cx="50" cy="62" rx="42" ry="20" fill="#fff" />
+        <ellipse cx="50" cy="56" rx="42" ry="20" fill="#fef9c3" />
+        <circle cx="36" cy="54" r="5" fill="#86efac" strokeWidth="2" />
+        <circle cx="58" cy="60" r="6" fill="#f9a8d4" strokeWidth="2" />
+        <circle cx="64" cy="48" r="3.5" fill="#86efac" strokeWidth="2" />
+        <circle cx="46" cy="64" r="3" fill="#fde047" strokeWidth="2" />
+      </g>
+    ),
+  },
+  {
+    id: 's-circuit',
+    label: 'วงจรไฟฟ้า',
+    cat: 'sci',
+    el: (
+      <g {...s}>
+        <path d="M24 70 V86 H76 V70 M24 52 V30 H38 M62 30 H76 V52" fill="none" strokeWidth="3.5" />
+        <circle cx="50" cy="26" r="13" fill="#fde047" />
+        <path d="M44 26 Q50 18 56 26 M47 39 H53" strokeWidth="2.5" fill="none" />
+        <rect x="12" y="52" width="24" height="18" rx="3" fill="#86efac" />
+        <rect x="64" y="52" width="24" height="18" rx="3" fill="#86efac" />
+        <path d="M24 56 V66 M20 61 H28 M72 61 H80" strokeWidth="2.5" />
+      </g>
+    ),
+  },
+  {
+    id: 's-funnel',
+    label: 'กรวยกรอง',
+    cat: 'sci',
+    el: (
+      <g {...s}>
+        <path d="M12 12 H88 L56 52 V70 H44 V52 Z" fill="#fff" />
+        <path d="M22 22 H78 L54 50 H46 Z" fill="#fed7aa" />
+        <path d="M30 70 H70 V90 Q70 94 66 94 H34 Q30 94 30 90 Z" fill="#bfdbfe" />
+        <path d="M50 74 Q53 79 50 81 Q47 79 50 74 Z" fill="#7cc6ff" strokeWidth="2" />
+      </g>
+    ),
+  },
+  {
+    id: 's-prism',
+    label: 'ปริซึมแยกแสง',
+    cat: 'sci',
+    el: (
+      <g {...s}>
+        <path d="M4 56 L40 50" stroke="#fff" strokeWidth="6" />
+        <path d="M4 56 L40 50" strokeWidth="2" />
+        <path d="M50 16 L82 76 H18 Z" fill="#e0f2fe" />
+        <path d="M62 50 L98 34" stroke="#ef4444" strokeWidth="4" />
+        <path d="M62 52 L98 44" stroke="#f59e0b" strokeWidth="4" />
+        <path d="M62 54 L98 54" stroke="#22c55e" strokeWidth="4" />
+        <path d="M62 56 L98 64" stroke="#3b82f6" strokeWidth="4" />
+        <path d="M62 58 L98 74" stroke="#8b5cf6" strokeWidth="4" />
+      </g>
+    ),
+  },
 
   /* ---------------- ภาษาอังกฤษ ---------------- */
   {

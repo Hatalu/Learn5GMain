@@ -4,6 +4,7 @@ import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'reac
 import Link from 'next/link';
 import { NightSky } from '@/components/fx/NightSky';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { Timer } from 'lucide-react';
 import { Check, Compass, Copy, Crown, DoorOpen, FileText, FolderHeart, Globe, Loader2, Lock, LogIn, MoreVertical, Pencil, Play, Plus, Rocket, Search, Sparkles, Trash2, Wand2 } from 'lucide-react';
 import { Navbar } from '@/components/navbar/Navbar';
 import { useAuth } from '@/context/AuthContext';
@@ -73,6 +74,19 @@ function CreateHub() {
   /** หน้าต่างแจ้งว่าต้องสมัครสมาชิก: guest = ยังไม่ล็อกอิน / limit = บัญชีฟรีครบ 2 ชุด */
   const [gate, setGate] = useState<null | 'guest' | 'limit'>(sp.get('gate') === 'guest' ? 'guest' : sp.get('gate') === 'limit' ? 'limit' : null);
   const [q, setQ] = useState('');
+  // ลิงก์ /create#templates (หน้าหลัก/หน้าครูมัธยม): หน้าวาดหลังโหลดบัญชี เลื่อนไปเองเมื่อเจอแถบแม่แบบ
+  useEffect(() => {
+    if (window.location.hash !== '#templates') return;
+    let n = 0;
+    const t = setInterval(() => {
+      const el = document.getElementById('templates');
+      if (el || ++n > 40) {
+        clearInterval(t);
+        el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 150);
+    return () => clearInterval(t);
+  }, []);
   const [menu, setMenu] = useState<string | null>(null);
   const [openGame, setOpenGame] = useState<UserGameSummary | null>(null);
   const [rename, setRename] = useState<UserGameSummary | null>(null);
@@ -311,7 +325,7 @@ function CreateHub() {
               {tier === 'guest' ? (
                 <div className="l5g-tierbar">
                   <Lock className="w-5 h-5 shrink-0" />
-                  <span className="flex-1 min-w-[200px]">ยังไม่ได้เข้าสู่ระบบ ดูระบบได้ แต่ต้องสมัครสมาชิกก่อนจึงจะสร้างและเปิดใช้งานชุดคำถามได้</span>
+                  <span className="flex-1 min-w-[200px]">ยังไม่ได้เข้าสู่ระบบ ลองสร้างชุดคำถามและทดลองเล่นได้เลย สมัครบัญชีฟรีตอนจะบันทึกหรือเปิดห้องให้นักเรียน</span>
                   <Link href="/signup?redirect=/create" className="l5g-btn l5g-btn-mint l5g-btn-sm">
                     สมัครบัญชีฟรี
                   </Link>
@@ -356,7 +370,6 @@ function CreateHub() {
                       disabled={dbMissing}
                       onClick={() => {
                         gsfx.pick();
-                        if (tier === 'guest') return setGate('guest');
                         if (atLimit) return setGate('limit');
                         router.push('/create/edit');
                       }}
@@ -369,13 +382,29 @@ function CreateHub() {
                   </div>
                 </div>
 
-                <h2 className="l5g-sec-title mt-8">หรือเริ่มจากแม่แบบชุดคำถาม</h2>
+                <div className="l5g-quick" id="templates">
+                  <span className="l5g-quick-clock" aria-hidden="true">
+                    <Timer className="w-7 h-7" />
+                  </span>
+                  <div>
+                    <b>สร้างเกมแรกใน 1 นาทีจากแม่แบบ</b>
+                    <span>เลือกแม่แบบ ป.1 ถึง ม.6 กดทดลองเล่นได้ทันที ไม่ต้องพิมพ์คำถามเองสักข้อ</span>
+                  </div>
+                  <Link href="/secondary" className="l5g-quick-link">
+                    ครูมัธยม ดูหน้าเฉพาะ ม.1 - ม.6
+                  </Link>
+                  <ol>
+                    <li>เลือกแม่แบบ</li>
+                    <li>กดทดลองเล่น</li>
+                    <li>บันทึกแล้วเปิดห้อง</li>
+                  </ol>
+                </div>
+                <h2 className="l5g-sec-title mt-6">หรือเริ่มจากแม่แบบชุดคำถาม</h2>
                 <p className="l5g-sec-note">ชุดคำถามพร้อมเล่น ป.1 ถึง ม.6 กรองตามวิชา ชั้น หมวด และระดับความยาก แก้คำถาม/เพิ่มข้อได้ก่อนบันทึก</p>
                 <SetTemplates
                   disabled={dbMissing}
                   onPick={(id) => {
                     gsfx.pick();
-                    if (tier === 'guest') return setGate('guest');
                     if (atLimit) return setGate('limit');
                     router.push(`/create/edit?tpl=${id}`);
                   }}

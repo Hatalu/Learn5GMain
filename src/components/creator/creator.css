@@ -1470,3 +1470,50 @@
 .l5g-ans-row input:focus {
   border-color: var(--l5g-mint);
 }
+
+/* ปุ่มฟังเสียงอ่านโจทย์ (มุมขวาบนของการ์ดโจทย์) */
+.l5g-qcard,
+.l5g-qp-q {
+  position: relative;
+}
+.l5g-speak {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 3px solid var(--l5g-ink, #2a2350);
+  background: #ffd84d;
+  color: var(--l5g-ink, #2a2350);
+  box-shadow: 0 3px 0 var(--l5g-ink, #2a2350);
+  transition: transform 0.15s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+.l5g-speak:hover {
+  transform: translateY(-2px) scale(1.06);
+}
+.l5g-speak:active {
+  transform: scale(0.88);
+}
+.l5g-speak[data-on='true'] {
+  background: #4fb3ff;
+  color: #fff;
+  animation: l5gSpeak 0.9s ease-in-out infinite;
+}
+.l5g-speak-q {
+  position: absolute;
+  top: -12px;
+  right: -10px;
+  z-index: 2;
+}
+@keyframes l5gSpeak {
+  50% {
+    box-shadow: 0 3px 0 var(--l5g-ink, #2a2350), 0 0 0 7px rgba(79, 179, 255, 0.3);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .l5g-speak,
+  .l5g-speak[data-on='true'] {
+    animation: none;
+    transition: none;
+  }
+}

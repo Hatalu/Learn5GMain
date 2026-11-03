@@ -36,9 +36,10 @@ function EditInner() {
 
   useEffect(() => {
     if (isLoading) return;
-    // ยังไม่ล็อกอิน: กลับหน้าสร้างเกม (ขึ้นหน้าต่างให้สมัครสมาชิก)
+    // ยังไม่ล็อกอิน: ลองสร้าง/ทดลองเล่นชุดใหม่ได้ (บันทึกเป็นฉบับร่างในเครื่อง) ขอสมัครตอนกดบันทึก · แก้ชุดที่มีอยู่ไม่ได้
     if (!allowed || !user) {
-      router.replace('/create?gate=guest');
+      if (id) router.replace('/create?gate=guest');
+      else setChecked(true);
       return;
     }
     // บัญชีฟรีที่ชุดคำถามครบโควต้า สร้างชุดใหม่ไม่ได้ (แก้ชุดเดิมได้)
@@ -56,7 +57,8 @@ function EditInner() {
     setChecked(true);
   }, [isLoading, allowed, tier, id, user, router]);
 
-  if (isLoading || !allowed || !checked || !user || !profile || initial === undefined) {
+  const guest = !allowed || !user || !profile;
+  if (isLoading || !checked || (guest && id) || initial === undefined) {
     return (
       <div className="l5g-edit-loading">
         <Loader2 className="w-10 h-10 animate-spin" />
@@ -67,6 +69,7 @@ function EditInner() {
     router.replace('/create');
     return null;
   }
+  if (guest) return <QuizEditor gameId={null} userId="" username="" guest initial={initial || undefined} />;
   return <QuizEditor gameId={id && /^[0-9a-f-]{36}$/i.test(id) ? id : null} userId={user.id} username={profile.username} initial={id ? undefined : initial || undefined} />;
 }
 

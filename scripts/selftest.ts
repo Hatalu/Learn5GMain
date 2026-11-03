@@ -2115,6 +2115,50 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
     passed++;
     console.log(`  ok  คลังแม่แบบ ป.1–ม.6 ${sets.length} ชุด ครบทุกชั้น/วิชา + ไอคอนปกชุดคำถาม`);
   }
+  {
+    // รายงานผลหลังเล่น: ข้อยาก/ง่าย รายบุคคล ตอบหลายครั้ง (โหมดวนซ้ำ) + ไฟล์ Excel + แบ่งภาษาเสียงอ่าน
+    const { buildReport, reportSheets } = await import('../src/lib/game-creator/report');
+    const qs = [0, 1, 2].map((i) => ({ i, label: `โจทย์ ${i + 1}`, answer: 'ก', choices: [{ id: 'a', label: 'ก' }, { id: 'b', label: 'ข' }] }));
+    const ps = [
+      { id: 'p1', nickname: 'มด', score: 300 },
+      { id: 'p2', nickname: 'ปู', score: 100 },
+      { id: 'p3', nickname: 'ไม่ได้ตอบ', score: 0 },
+    ];
+    const A = (p: string, q: number, c: boolean, picks: string[] = [c ? 'a' : 'b']) => ({ p, q, c, picks, ms: 2000 });
+    const r = buildReport(qs, ps, [A('p1', 0, true), A('p1', 1, true), A('p1', 2, true), A('p2', 0, true), A('p2', 1, false), A('p2', 1, false), A('p2', 2, false, []), A('kicked', 0, false)]);
+    assert.equal(r.questions[0].pct, 100);
+    assert.equal(r.questions[1].pct, 33);
+    assert.deepEqual(r.questions[1].wrongTop, { label: 'ข', n: 2 });
+    assert.equal(r.questions[2].wrongTop?.label, 'ไม่ได้ตอบ (หมดเวลา)');
+    assert.equal(r.summary.hardest[0].i, 1);
+    assert.equal(r.summary.easiest[0].i, 0);
+    assert.equal(r.summary.attempts, 7, 'ไม่นับคำตอบของผู้เล่นที่ถูกเชิญออก');
+    assert.equal(r.summary.answered, 2);
+    const p2 = r.players.find((p) => p.id === 'p2')!;
+    assert.deepEqual(p2.cells, ['ถูก', 'ผิด 2/2', 'ผิด']);
+    assert.deepEqual(p2.wrong, [1, 2]);
+    assert.deepEqual(r.summary.needHelp.map((p) => p.id), ['p2']);
+    assert.equal(r.players[0].id, 'p1');
+    assert.equal(r.players.find((p) => p.id === 'p3')!.pct, null);
+    const sheets = reportSheets(r, 'ทดสอบ');
+    assert.equal(sheets.length, 3);
+    assert.equal(sheets[2].rows[0].length, 4);
+    const { buildXlsx } = await import('../src/lib/game-creator/xlsxWrite');
+    const { xlsxRows } = await import('../src/lib/game-creator/quizSheet');
+    const blob = await buildXlsx(sheets);
+    const back = await xlsxRows(new Uint8Array(await blob.arrayBuffer()));
+    assert.ok(back.some(([, row]) => row.includes('โจทย์ 2') && row.includes('ข (2)')), 'อ่านไฟล์ Excel กลับได้');
+    const { speechRuns } = await import('../src/components/creator/SpeakButton');
+    assert.deepEqual(speechRuns('เลือกคำที่ถูก: She ___ to school. 1. go'), [
+      { lang: 'th-TH', text: 'เลือกคำที่ถูก:' },
+      { lang: 'en-US', text: 'She ___ to school. 1. go' },
+    ]);
+    // ตัวเลข/เครื่องหมายล้วนอ่านด้วยภาษาของข้อความข้างๆ (ไม่สลับเป็นเสียงอังกฤษกลางประโยคไทย)
+    assert.deepEqual(speechRuns('25 + 13 เท่ากับเท่าไร. 1. 38'), [{ lang: 'th-TH', text: '25 + 13 เท่ากับเท่าไร. 1. 38' }]);
+    assert.deepEqual(speechRuns('7 x 8 = ?'), [{ lang: 'en-US', text: '7 x 8 = ?' }]);
+    passed++;
+    console.log('  ok  รายงานผลหลังเล่น (รายข้อ/รายบุคคล/Excel) + แบ่งภาษาเสียงอ่านโจทย์');
+  }
   console.log(`\n${passed} tests passed`);
 })().catch((e) => {
   console.error(e);
