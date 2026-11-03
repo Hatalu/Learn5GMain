@@ -5,6 +5,7 @@
  * - checkAnswer / scoreFor: ตรวจคำตอบและคิดคะแนน (ฝั่งเซิร์ฟเวอร์เป็นตัวจริง)
  */
 import type { MediaRef, PointsMode, PublicQuestion, QuizChoice, QuizContent, QuizQuestion, Rich, Seg } from './types';
+import { cleanCover } from './cover';
 
 /** คำตอบแบบพิมพ์: จำนวน/ความยาวสูงสุด */
 export const ANSWER_MAX = 6;
@@ -197,7 +198,8 @@ export function sanitizeQuiz(input: unknown, mediaPrefix: string): QuizContent {
     for (const c of choices) if (c.media?.kind === 'audio') c.media = null;
     questions.push({ id, text: cleanRich(q.text, LIMITS.questionChars), media, choices, multi, time, points });
   }
-  return { v: 1, questions };
+  const cover = cleanCover(raw.cover, mediaPrefix);
+  return cover ? { v: 1, questions, cover } : { v: 1, questions };
 }
 
 function cleanAnswers(x: unknown): string[] {
@@ -267,6 +269,7 @@ export function playableQuiz(content: QuizContent): QuizContent {
 }
 
 export function quizCover(content: QuizContent): string | null {
+  if (content.cover) return content.cover;
   for (const q of content.questions) {
     if (q.media?.kind === 'image') return q.media.url;
   }
@@ -276,6 +279,9 @@ export function quizCover(content: QuizContent): string | null {
 
 export function mediaPaths(content: QuizContent): string[] {
   const s = new Set<string>();
+  // รูปปกที่อัปโหลดเอง (ค่าผ่าน cleanCover แล้ว ท้าย URL คือพาธในบักเก็ต)
+  const cp = /([0-9a-f-]{36}\/[A-Za-z0-9_.-]{1,120})$/.exec(content.cover && !content.cover.startsWith('st:') ? content.cover : '');
+  if (cp) s.add(cp[1]);
   content.questions.forEach((q) => {
     if (q.media) s.add(q.media.path);
     q.choices.forEach((c) => c.media && s.add(c.media.path));

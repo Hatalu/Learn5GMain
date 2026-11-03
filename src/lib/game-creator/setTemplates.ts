@@ -202,7 +202,7 @@ export const SET_TEMPLATES: SetTemplate[] = [
 ];
 
 /** แปลงข้อความเป็น Rich: ขึ้นต้น $ = สูตรทั้งข้อความ หรือมีส่วน $...$ อยู่ท้าย */
-function rich(s: string): Rich {
+export function rich(s: string): Rich {
   if (!s.startsWith('$')) return [{ t: 'x', v: s }];
   const body = s.slice(1);
   const cut = body.indexOf('$');

@@ -30,6 +30,7 @@ import {
   Upload,
   X,
 } from 'lucide-react';
+import { CoverPicker, SetCoverArt } from '@/components/creator/CoverPicker';
 import { createClient } from '@/lib/supabase/client';
 import type { MediaRef, PointsMode, QuizChoice, QuizContent, QuizQuestion, Rich } from '@/lib/game-creator/types';
 import {
@@ -153,6 +154,7 @@ export function QuizEditor({ gameId: initialId, userId, username, initial }: Pro
   const [saving, setSaving] = useState(false);
   const [saveErr, setSaveErr] = useState('');
   const [askTitle, setAskTitle] = useState(false);
+  const [coverOpen, setCoverOpen] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
   const [saved, setSaved] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
@@ -600,6 +602,9 @@ export function QuizEditor({ gameId: initialId, userId, username, initial }: Pro
       <header className="l5g-ebar">
         <button type="button" className="l5g-icon-btn" onClick={back} aria-label="กลับไปคลังเกม">
           <ArrowLeft className="w-5 h-5" />
+        </button>
+        <button type="button" className="l5g-ebar-cover" onClick={() => setCoverOpen(true)} aria-label="เปลี่ยนไอคอนชุดคำถาม" title="เปลี่ยนไอคอนชุดคำถาม">
+          {content.cover ? <SetCoverArt cover={content.cover} /> : <ImagePlus className="w-5 h-5" />}
         </button>
         <div className="l5g-ebar-title">
           <span className="l5g-ebar-tpl">ชุดคำถาม</span>
@@ -1087,6 +1092,21 @@ export function QuizEditor({ gameId: initialId, userId, username, initial }: Pro
         </PaperModal>
       )}
 
+      {coverOpen && (
+        <CoverPicker
+          userId={userId}
+          value={content.cover}
+          onClose={() => setCoverOpen(false)}
+          onPick={(v) => {
+            gsfx.pick();
+            update((c) => {
+              const { cover: _old, ...rest } = c;
+              void _old;
+              return v ? { ...rest, cover: v } : rest;
+            });
+          }}
+        />
+      )}
       {askTitle && (
         <PaperModal title="ตั้งชื่อชุดคำถาม"icon={<Save className="w-5 h-5" />} iconBg="#ffcf3f" onClose={() => setAskTitle(false)} busy={saving}>
           <p className="font-semibold opacity-80 mb-2">ชื่อนี้จะขึ้นในคลังและหน้าห้องเล่น</p>

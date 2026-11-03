@@ -53,6 +53,8 @@ export interface QuizQuestion {
 export interface QuizContent {
   v: 1;
   questions: QuizQuestion[];
+  /** ไอคอนปกที่ผู้สร้างเลือก (ดู cover.ts) ไม่มี = รูปแรกในชุด/ลายอัตโนมัติ */
+  cover?: string;
 }
 
 export type TemplateId = 'quiz';

@@ -7,7 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import { FREE_SET_LIMIT, creatorTier, setsUsed } from '@/lib/game-creator/quota';
 import { createClient } from '@/lib/supabase/client';
 import { QuizEditor } from '@/components/creator/quiz/QuizEditor';
-import { SET_TEMPLATES, buildSetTemplate } from '@/lib/game-creator/setTemplates';
+import type { QuizContent } from '@/lib/game-creator/types';
 import { NightSky } from '@/components/fx/NightSky';
 import '@/components/creator/creator.css';
 import '@/components/creator/creator-pages.css';
@@ -20,10 +20,16 @@ function EditInner() {
   const [id] = React.useState(() => sp.get('id'));
   const template = sp.get('template') || 'quiz';
   // ชุดใหม่จากแม่แบบวิชา (?tpl=) สร้างครั้งเดียวตอนเปิดหน้า
-  const [initial] = React.useState(() => {
-    const t = SET_TEMPLATES.find((x) => x.id === sp.get('tpl'));
-    return t ? { title: t.title, content: buildSetTemplate(t) } : undefined;
-  });
+  // คลังแม่แบบใหญ่ โหลดแยกไฟล์: ยังไม่ได้ = undefined, ไม่มีแม่แบบ = null
+  const [tpl] = React.useState(() => sp.get('tpl'));
+  const [initial, setInitial] = React.useState<{ title: string; content: QuizContent } | null | undefined>(tpl ? undefined : null);
+  useEffect(() => {
+    if (!tpl) return;
+    import('@/lib/game-creator/setBank').then(
+      (b) => setInitial(b.buildSet(tpl)),
+      () => setInitial(null),
+    );
+  }, [tpl]);
   const tier = creatorTier(!!user, profile);
   const allowed = tier !== 'guest';
   const [checked, setChecked] = React.useState(false);
@@ -50,7 +56,7 @@ function EditInner() {
     setChecked(true);
   }, [isLoading, allowed, tier, id, user, router]);
 
-  if (isLoading || !allowed || !checked || !user || !profile) {
+  if (isLoading || !allowed || !checked || !user || !profile || initial === undefined) {
     return (
       <div className="l5g-edit-loading">
         <Loader2 className="w-10 h-10 animate-spin" />
@@ -61,7 +67,7 @@ function EditInner() {
     router.replace('/create');
     return null;
   }
-  return <QuizEditor gameId={id && /^[0-9a-f-]{36}$/i.test(id) ? id : null} userId={user.id} username={profile.username} initial={id ? undefined : initial} />;
+  return <QuizEditor gameId={id && /^[0-9a-f-]{36}$/i.test(id) ? id : null} userId={user.id} username={profile.username} initial={id ? undefined : initial || undefined} />;
 }
 
 export default function EditPage() {

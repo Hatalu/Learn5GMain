@@ -15,6 +15,8 @@ import { createClient } from '@/lib/supabase/client';
 import { MODES } from '@/lib/game-creator/modes';
 import { ModeArt } from '@/components/creator/games/ModeArt';
 import { SetTemplates } from '@/components/creator/SetTemplates';
+import { SetCoverArt } from '@/components/creator/CoverPicker';
+import { parseCover } from '@/lib/game-creator/cover';
 import { cleanTitle, mediaPaths, sanitizeQuiz } from '@/lib/game-creator/quiz';
 import { mediaPrefix, removeMedia } from '@/lib/game-creator/media';
 import type { UserGameSummary } from '@/lib/game-creator/types';
@@ -43,10 +45,8 @@ const hashIdx = (s: string, n: number) => Array.from(s).reduce((a, c) => (a * 31
 
 function GameCover({ game }: { game: UserGameSummary }) {
   const c = COVER_COLORS[hashIdx(game.id, COVER_COLORS.length)];
-  if (game.cover_url) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={game.cover_url} alt="" className="l5g-gcover-img" loading="lazy" />;
-  }
+  // ปกที่เลือกเอง (สติกเกอร์/รูปในที่เก็บของเรา) ค่าอื่นแสดงลายอัตโนมัติ ไม่ดึงรูปจากเว็บภายนอก
+  if (parseCover(game.cover_url, mediaPrefix())) return <SetCoverArt cover={game.cover_url} className="l5g-gcover-img" />;
   return (
     <div className="l5g-gcover-art" style={{ background: `linear-gradient(135deg, ${c}, color-mix(in srgb, ${c} 55%, #fff))` }}>
       {[0, 1, 2, 3].map((i) => (
@@ -370,7 +370,7 @@ function CreateHub() {
                 </div>
 
                 <h2 className="l5g-sec-title mt-8">หรือเริ่มจากแม่แบบชุดคำถาม</h2>
-                <p className="l5g-sec-note">มีคำถามพร้อมเล่น 10 ข้อ แยกวิชาและช่วงชั้น แก้คำถาม/เพิ่มข้อได้ก่อนบันทึก</p>
+                <p className="l5g-sec-note">ชุดคำถามพร้อมเล่น ป.1 ถึง ม.6 กรองตามวิชา ชั้น หมวด และระดับความยาก แก้คำถาม/เพิ่มข้อได้ก่อนบันทึก</p>
                 <SetTemplates
                   disabled={dbMissing}
                   onPick={(id) => {

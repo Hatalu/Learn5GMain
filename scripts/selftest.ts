@@ -2071,6 +2071,50 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
     passed++;
     console.log('  ok  แม่แบบชุดคำถามแยกวิชา: ครบทุกวิชา ผ่านตัวกรอง ข้อถูก 1 ตัวเลือก');
   }
+  {
+    // คลังแม่แบบ ป.1–ม.6: 500+ ชุด ทุกชั้นทุกวิชา ข้อสร้างซ้ำได้เหมือนเดิม ตัวเลือกไม่ซ้ำ ไม่มีอิโมจิ/ค่าพัง
+    const { allSets, buildSet, SET_CATS } = await import('../src/lib/game-creator/setBank');
+    const { sanitizeQuiz: clean, quizIssues: issues } = await import('../src/lib/game-creator/quiz');
+    const sets = allSets();
+    assert.ok(sets.length >= 500, `แม่แบบมี ${sets.length} ชุด`);
+    assert.equal(new Set(sets.map((s) => s.id)).size, sets.length);
+    for (const sub of ['math', 'sci', 'eng'] as const) for (let g = 1; g <= 12; g++) assert.ok(sets.some((s) => s.subject === sub && s.g <= g && g <= (s.g2 || s.g)), `ไม่มี ${sub} ชั้น ${g}`);
+    const txt = (r: { v: string }[]) => r.map((s) => s.v).join('');
+    for (const m of sets) {
+      assert.ok(SET_CATS[m.subject].some((c) => c.id === m.cat), m.id);
+      const b = buildSet(m.id)!;
+      assert.equal(JSON.stringify(buildSet(m.id)!.content.questions.map((q) => [q.text, q.choices.map((c) => [c.text, c.correct])])), JSON.stringify(b.content.questions.map((q) => [q.text, q.choices.map((c) => [c.text, c.correct])])), m.id);
+      const c = clean(b.content, '');
+      assert.ok(c.questions.length >= 8, m.id);
+      assert.deepEqual(issues(c), [], m.id);
+      for (const q of b.content.questions) {
+        const all = JSON.stringify(q);
+        assert.ok(!/\p{Extended_Pictographic}|NaN|undefined|Infinity/u.test(all), `${m.id}: ${txt(q.text)}`);
+        assert.equal(q.choices.filter((x) => x.correct).length, 1, m.id);
+        const ts = q.choices.map((x) => JSON.stringify(x.text));
+        assert.equal(new Set(ts).size, ts.length, `${m.id} ตัวเลือกซ้ำ: ${txt(q.text)}`);
+      }
+    }
+    assert.equal(buildSet('nope'), null);
+    // ปกชุดคำถาม: รับเฉพาะสติกเกอร์ของเว็บ หรือรูปในที่เก็บของเรา
+    const { parseCover, cleanCover } = await import('../src/lib/game-creator/cover');
+    const pre = 'https://x.supabase.co/storage/v1/object/public/game-media/';
+    const uidp = '0b9a2c1e-1111-2222-3333-444455556666/abc.webp';
+    assert.equal(parseCover('st:pencil:2', pre)?.kind, 'sticker');
+    assert.equal(parseCover('st:pencil:9', pre), null);
+    assert.equal(parseCover(pre + uidp, pre)?.kind, 'image');
+    assert.equal(parseCover('https://evil.example/a.png', pre), null);
+    assert.equal(parseCover(pre + '../x.png', pre), null);
+    assert.equal(cleanCover('javascript:alert(1)', pre), undefined);
+    const withCover = clean({ v: 1, questions: [], cover: pre + uidp }, pre);
+    assert.equal(withCover.cover, pre + uidp);
+    assert.equal(clean({ v: 1, questions: [], cover: 'https://evil.example/a.png' }, pre).cover, undefined);
+    const { mediaPaths: paths, quizCover: qc } = await import('../src/lib/game-creator/quiz');
+    assert.deepEqual(paths(withCover), [uidp]);
+    assert.equal(qc(withCover), pre + uidp);
+    passed++;
+    console.log(`  ok  คลังแม่แบบ ป.1–ม.6 ${sets.length} ชุด ครบทุกชั้น/วิชา + ไอคอนปกชุดคำถาม`);
+  }
   console.log(`\n${passed} tests passed`);
 })().catch((e) => {
   console.error(e);
