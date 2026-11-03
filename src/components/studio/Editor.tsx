@@ -23,7 +23,6 @@ import {
   Loader2,
   Lock,
   Maximize,
-  Menu,
   MonitorPlay,
   Pencil,
   Plus,
@@ -1612,35 +1611,23 @@ export function StudioEditor({ id }: { id: string }) {
 
   return (
     <div className="st-shell" data-readonly={readOnly} data-mode={mode}>
-      {/* ---------------- แถบบน: โหมด Word = แถบชื่อ + ริบบอนแบบ Word / โหมด Canva = ไม่มีแถบบน (เครื่องมืออยู่แถบซ้าย) ---------------- */}
-      {(readOnly || mode === 'word') && (
-        <header className="st-top" data-word={mode === 'word' || undefined}>
-          {exitBtn}
-          {topCtl}
-        </header>
-      )}
+      {/* ---------------- แถบบน: ทุกโหมดมีแถบบน (ออก/ชื่อ/สลับโหมด/ส่งออก) โหมด Word เพิ่มริบบอน ---------------- */}
+      <header className="st-top" data-word={mode === 'word' || undefined}>
+        {exitBtn}
+        {topCtl}
+      </header>
       {!readOnly && mode === 'word' && <div ref={setTopEl} className="st-topribbon" />}
 
       <div className="st-body">
         {!readOnly && mode === 'canvas' && (
           <>
             <nav className="st-rail" aria-label="เครื่องมือ">
-              {exitBtn}
-              {/* สลับเป็นโหมด Word ได้ทันที (เดิมซ่อนอยู่ในเมนูไฟล์ หาไม่เจอ) */}
-              <button type="button" className="st-rail-btn" onClick={() => setMode('word')} title="เปลี่ยนเป็นโหมด Word: พิมพ์เอกสารต่อเนื่อง ขึ้นหน้าใหม่เอง" style={{ ['--c' as string]: '#2563eb' }}>
-                <span className="st-rail-ic"><FileText className="w-5 h-5" /></span>
-                <span className="st-rail-tx">โหมด Word</span>
-              </button>
               {RAIL.map((r) => (
                 <button key={r.id} type="button" className="st-rail-btn" data-on={panel === r.id} onClick={() => setPanel(panel === r.id ? null : r.id)} style={{ ['--c' as string]: r.color }}>
                   <span className="st-rail-ic">{r.icon}</span>
                   <span className="st-rail-tx">{r.label}</span>
                 </button>
               ))}
-              <span className="flex-1" />
-              <Pop title="ไฟล์และการแชร์" width={300} className="st-rail-btn st-rail-file" button={<><span className="st-rail-ic"><Menu className="w-5 h-5" /></span><span className="st-rail-tx">ไฟล์</span></>}>
-                <div className="st-filepop">{topCtl}</div>
-              </Pop>
             </nav>
             {panel && <Panels id={panel} ctl={ctl} onClose={() => setPanel(null)} />}
           </>
