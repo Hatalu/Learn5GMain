@@ -49,6 +49,7 @@ export const MODE_MUSIC: Record<GameMode, string> = {
   magic: 'quest',
   ocean: 'lofi',
   ghost: 'mystery',
+  shape: 'happy',
 };
 
 /** ค่าที่ตั้งในห้อง: 'auto' = ตามรูปแบบการเล่น, 'off' = ไม่มีเพลง, หรือ id เพลง */

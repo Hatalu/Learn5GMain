@@ -154,6 +154,54 @@ export function ModeArt({ mode }: { mode: GameMode }) {
       </div>
     );
   }
+  if (mode === 'shape') {
+    return (
+      <div className="ma ma-hs">
+        <svg viewBox="0 0 200 96" width="100%" height="100%" aria-hidden="true">
+          <rect width="200" height="96" fill="#bfe6ff" />
+          <rect y="84" width="200" height="12" fill="#9fe08a" />
+          {[24, 60, 150, 182].map((x, i) => (
+            <path key={i} className="ma-ar-star" d={`M${x} ${12 + (i % 2) * 10} l2 5 5 1 -4 3 1 5 -4 -3 -4 3 1 -5 -4 -3 5 -1z`} fill="#ffd23f" stroke="#2a2350" strokeWidth="1" style={{ animationDelay: `${i * 0.35}s` }} />
+          ))}
+          <path className="ma-hs-line" d="M60 84 L100 18 L140 84" fill="none" stroke="#ff5aa5" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="2 12" />
+          <g className="ma-hs-kid" style={{ animationDelay: '0s' }}>
+            <g transform="translate(78 62) rotate(14)" stroke="#2a2350" strokeWidth="2.2" strokeLinecap="round">
+              <line x1="-3" y1="6" x2="-5" y2="22" strokeWidth="5" />
+              <line x1="3" y1="6" x2="5" y2="22" strokeWidth="5" />
+              <rect x="-7" y="-10" width="14" height="18" rx="5" fill="#ff6b7a" />
+              <line x1="-6" y1="-8" x2="-2" y2="-34" strokeWidth="4.5" /><line x1="6" y1="-8" x2="10" y2="-32" strokeWidth="4.5" />
+              <circle cx="0" cy="-18" r="8" fill="#ffd9b8" />
+              <path d="M-8 -19 q0 -9 8 -9 q8 0 8 9 q-4 -4 -8 -4 q-4 0 -8 4z" fill="#3a2a20" strokeWidth="1.5" />
+            </g>
+          </g>
+          <g className="ma-hs-kid" style={{ animationDelay: '0.2s' }}>
+            <g transform="translate(122 62) rotate(-14)" stroke="#2a2350" strokeWidth="2.2" strokeLinecap="round">
+              <line x1="-3" y1="6" x2="-5" y2="22" strokeWidth="5" />
+              <line x1="3" y1="6" x2="5" y2="22" strokeWidth="5" />
+              <rect x="-7" y="-10" width="14" height="18" rx="5" fill="#4a7bf0" />
+              <line x1="-6" y1="-8" x2="-10" y2="-32" strokeWidth="4.5" /><line x1="6" y1="-8" x2="2" y2="-34" strokeWidth="4.5" />
+              <circle cx="0" cy="-18" r="8" fill="#ffd9b8" />
+              <path d="M-8 -19 q0 -9 8 -9 q8 0 8 9 q-4 -4 -8 -4 q-4 0 -8 4z" fill="#3a2a20" strokeWidth="1.5" />
+            </g>
+          </g>
+          <g className="ma-hs-kid" style={{ animationDelay: '0.4s' }}>
+            <g transform="translate(100 62) rotate(0)" stroke="#2a2350" strokeWidth="2.2" strokeLinecap="round">
+              <line x1="-3" y1="6" x2="-5" y2="22" strokeWidth="5" />
+              <line x1="3" y1="6" x2="5" y2="22" strokeWidth="5" />
+              <rect x="-7" y="-10" width="14" height="18" rx="5" fill="#25c48a" />
+              <line x1="-6" y1="-8" x2="-24" y2="-8" strokeWidth="4.5" /><line x1="6" y1="-8" x2="24" y2="-8" strokeWidth="4.5" />
+              <circle cx="0" cy="-18" r="8" fill="#ffd9b8" />
+              <path d="M-8 -19 q0 -9 8 -9 q8 0 8 9 q-4 -4 -8 -4 q-4 0 -8 4z" fill="#3a2a20" strokeWidth="1.5" />
+            </g>
+          </g>
+          <g transform="translate(100 74)">
+            <circle r="6" fill="#fff" stroke="#2a2350" strokeWidth="1.8" />
+            <text y="3" textAnchor="middle" fontSize="8" fontWeight="900" fill="#2a2350">3</text>
+          </g>
+        </svg>
+      </div>
+    );
+  }
   if (mode === 'ghost') {
     return (
       <div className="ma ma-mk ma-gh">

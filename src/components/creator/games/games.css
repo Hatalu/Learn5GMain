@@ -1735,3 +1735,21 @@
   left: 10px;
   top: 10px;
 }
+
+/* มนุษย์สร้างรูป */
+.ma-hs-kid {
+  animation: maHsBob 1.6s ease-in-out infinite;
+}
+.ma-hs-line {
+  animation: maHsDash 2.4s linear infinite;
+}
+@keyframes maHsBob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+@keyframes maHsDash {
+  to { stroke-dashoffset: -56; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ma-hs-kid, .ma-hs-line { animation: none; }
+}

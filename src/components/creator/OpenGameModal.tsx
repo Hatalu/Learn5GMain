@@ -18,6 +18,8 @@ import { BOSSES } from '@/lib/game-creator/ar/boss';
 import { MAGIC_BOSSES } from '@/lib/game-creator/magic/data';
 import { OCEAN_BOSSES } from '@/lib/game-creator/ocean/data';
 import { GHOST_BOSSES } from '@/lib/game-creator/ghost/data';
+import { SHAPE_DEFAULTS, shapeQuery, type ShapeSettings } from '@/lib/game-creator/shape/settings';
+import { ShapeSetup } from './games/shape/ShapeSetup';
 
 /** ข้อความ/บอสของเกม AR เล่นในเครื่องเดียวแต่ละเกม (quest = เกมผจญภัยแบบมีแผนที่: ทีมผลัดกันอย่างเดียว มีแบบการเล่น ความยาก 3 ระดับ) */
 const LOCAL_INFO: Partial<Record<GameMode, { bosses: { id: string; name: string }[]; swap: string; diff: string; auto: string; quest: boolean }>> = {
@@ -282,6 +284,7 @@ export function OpenGameModal({ gameId, title, username, onClose }: { gameId: st
   const [teams, setTeams] = useState(0);
   const [reset, setReset] = useState(0);
   const [local, setLocal] = useState<ArSettings>(AR_DEFAULTS);
+  const [shape, setShape] = useState<ShapeSettings>(SHAPE_DEFAULTS);
   const [nick, setNick] = useState(cleanNickname(username) || 'เจ้าของห้อง');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -313,7 +316,8 @@ export function OpenGameModal({ gameId, title, username, onClose }: { gameId: st
     if (!game) return;
     if (isLocal) {
       gsfx.start();
-      router.push(`/play/${game}?${arQuery(gameId, local)}`);
+      // มนุษย์สร้างรูปใช้ค่าตั้งของตัวเอง (ไม่มีบอส/กล้อง)
+      router.push(game === 'shape' ? `/play/shape?${shapeQuery(gameId, shape)}` : `/play/${game}?${arQuery(gameId, local)}`);
       return;
     }
     setBusy(true);
@@ -371,7 +375,26 @@ export function OpenGameModal({ gameId, title, username, onClose }: { gameId: st
         </>
       ) : isLocal && game ? (
         <>
-          <LocalSetup mode={game} usable={content ? modeFit(content, game).usable : 0} value={local} onChange={setLocal} />
+          {game === 'shape' ? (
+            <>
+              <div className="l5g-modechip mb-3" style={{ ['--mc' as string]: info?.color }}>
+                รูปแบบ: <b>{info?.name}</b> <span className="opacity-70">(ครูคุมจากเครื่องนี้ ไม่ต้องเปิดห้อง)</span>
+              </div>
+              <ShapeSetup
+                value={shape}
+                onChange={setShape}
+                usable={content ? modeFit(content, game).usable : 0}
+                music={
+                  <div>
+                    <p className="l5g-qset-label">เพลงประกอบ (กดปุ่มเล่นเพื่อฟังตัวอย่าง)</p>
+                    <MusicPicker value={shape.music} mode={game} onPick={(m) => setShape((v) => ({ ...v, music: m }))} />
+                  </div>
+                }
+              />
+            </>
+          ) : (
+            <LocalSetup mode={game} usable={content ? modeFit(content, game).usable : 0} value={local} onChange={setLocal} />
+          )}
           <div className="l5g-math-foot">
             <button type="button" className="l5g-btn l5g-btn-ghost" onClick={() => setStep(1)}>
               <ArrowLeft className="w-4 h-4" /> ย้อนกลับ

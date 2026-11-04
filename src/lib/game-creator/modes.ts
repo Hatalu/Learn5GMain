@@ -7,7 +7,7 @@ import type { QuizContent } from './types';
 import { playableQuiz } from './quiz';
 import { EGG_MAX_VALUE } from './eggValues';
 
-export type GameMode = 'quiz' | 'cafe' | 'tower' | 'racing' | 'brawl' | 'fishing' | 'turf' | 'treasure' | 'egg' | 'ar' | 'magic' | 'ocean' | 'ghost';
+export type GameMode = 'quiz' | 'cafe' | 'tower' | 'racing' | 'brawl' | 'fishing' | 'turf' | 'treasure' | 'egg' | 'ar' | 'magic' | 'ocean' | 'ghost' | 'shape';
 
 /** โหมดโลกเดียวกัน: ทุกคนเดินในแผนที่เดียว เห็นกันสดๆ (ส่งตำแหน่งผ่าน Realtime) */
 export const isWorldMode = (g: GameMode) => g === 'turf' || g === 'treasure' || g === 'egg';
@@ -265,6 +265,22 @@ export const MODES: ModeInfo[] = [
     playType: 'local',
     choiceOnly: true,
   },
+  {
+    id: 'shape',
+    name: 'มนุษย์สร้างรูป',
+    genre: 'กิจกรรมใช้ร่างกาย ครูคุมเครื่องเดียว',
+    tagline: 'นักเรียนใช้ร่างกายสร้างรูปทรง ตัวเลข ตัวอักษร สิ่งของ สัตว์ ตามโจทย์ มีภาพสาธิตบอกว่าใครยืนตรงไหน',
+    steps: ['ครูเลือกเดี่ยว/ทีม จำนวนคน ความยาก และประเภทภารกิจ', 'ขึ้นคำถามบนจอ แล้วสุ่มภารกิจสร้างรูปที่พอดีกับจำนวนคน', 'ดูภาพสาธิตทีละขั้น เด็กการ์ตูนมีหมายเลขบอกตำแหน่งและท่า', 'จับเวลา ครูตัดสินถูก/ผิด สำเร็จ/ไม่สำเร็จ แล้วดูตารางคะแนน'],
+    color: '#ff8a2f',
+    dark: '#c2560f',
+    soft: '#fff0e0',
+    minQuestions: 1,
+    noVideo: true,
+    endless: false,
+    teams: [0, 2, 3, 4, 5, 6],
+    scoreLabel: 'คะแนน',
+    playType: 'local',
+  },
 ];
 
 export const playTypeOf = (m: ModeInfo): PlayType => m.playType || 'room';
@@ -303,7 +319,8 @@ export function modeFit(content: QuizContent, mode: GameMode): ModeFit {
   const rules: ModeFit['rules'] = [{ text: `ต้องมีคำถามอย่างน้อย ${m.minQuestions} ข้อ (ใช้ได้ ${usable} ข้อ)`, pass: usable >= m.minQuestions }];
   if (m.noVideo) rules.push({ text: skippedVideo > 0 ? `ไม่รองรับคลิป ข้อที่มีคลิป ${skippedVideo} ข้อจะถูกข้าม` : 'ไม่รองรับคลิปวิดีโอ', pass: true });
   if (m.choiceOnly) rules.push({ text: notChoice ? `ใช้เฉพาะข้อเลือกตอบ 1 คำตอบ ข้อพิมพ์/หลายคำตอบ ${notChoice} ข้อจะถูกข้าม` : 'ใช้เฉพาะข้อเลือกตอบ 1 คำตอบ', pass: true });
-  if (m.playType === 'local') rules.push({ text: 'ใช้กล้องของเครื่องนี้ (ไม่มีกล้อง = แตะจอแทน)', pass: true });
+  if (m.playType === 'local')
+    rules.push(mode === 'shape' ? { text: 'ครูคุมเกมจากเครื่องนี้ ไม่ใช้กล้อง นักเรียนไม่ต้องใช้มือถือ', pass: true } : { text: 'ใช้กล้องของเครื่องนี้ (ไม่มีกล้อง = แตะจอแทน)', pass: true });
   if (m.endless) rules.push({ text: 'คำถามจะวนซ้ำจนหมดเวลา/ถึงเส้นชัย', pass: true });
   return { ok: usable >= m.minQuestions, usable, skippedVideo, rules };
 }
