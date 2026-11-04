@@ -6,6 +6,7 @@ import { Clock3, Gauge, Layers, ListOrdered, Shuffle, Sparkles, Star, Users, Wan
 import { gsfx } from '@/lib/game-creator/gsound';
 import { CATS, LEVELS, catBit, ALL_CATS } from '@/lib/game-creator/shape/missions';
 import { PATTERNS, PT_STEPS, SHAPE_PLAYERS, SHAPE_ROUNDS, SHAPE_TEAMS, SHAPE_TIMES, type ShapePts, type ShapeSettings } from '@/lib/game-creator/shape/settings';
+import './shape.css';
 
 const PT_ROWS: [keyof ShapePts, string][] = [
   ['answer', 'ตอบคำถามถูก'],
@@ -39,7 +40,7 @@ export function ShapeSetup({ value, onChange, usable, music }: { value: ShapeSet
     set({ cats: next || bit });
   };
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-4 hs-setup">
       <Row icon={<Users className="w-4 h-4" />} label="รูปแบบผู้เล่น">
         {SHAPE_TEAMS.map((t) => (
           <Chip key={t} on={value.teams === t} onClick={() => set({ teams: t })}>
@@ -61,6 +62,17 @@ export function ShapeSetup({ value, onChange, usable, music }: { value: ShapeSet
           </Chip>
         ))}
       </Row>
+      <Row icon={<Sparkles className="w-4 h-4" />} label="รูปแบบการเล่น">
+        {PATTERNS.map((p, i) => (
+          <button key={i} type="button" className="l5g-chipbtn hs-pat" data-on={value.pattern === i} onClick={() => set({ pattern: i })}>
+            <b>{p.name}</b>
+            <span>{p.desc}</span>
+          </button>
+        ))}
+      </Row>
+      <details className="hs-adv">
+        <summary>ตั้งค่าเพิ่มเติม (ประเภทภารกิจ จำนวนรอบ เวลา คะแนน)</summary>
+        <div className="grid gap-4 mt-3">
       <Row icon={<Layers className="w-4 h-4" />} label="ประเภทภารกิจ (เลือกได้หลายแบบ)">
         <Chip on={value.cats === ALL_CATS} onClick={() => set({ cats: ALL_CATS })}>
           สุ่มจากทุกประเภท
@@ -69,14 +81,6 @@ export function ShapeSetup({ value, onChange, usable, music }: { value: ShapeSet
           <Chip key={c.id} on={value.cats !== ALL_CATS && !!(value.cats & catBit(c.id))} onClick={() => toggleCat(catBit(c.id))}>
             {c.name}
           </Chip>
-        ))}
-      </Row>
-      <Row icon={<Sparkles className="w-4 h-4" />} label="รูปแบบการเล่น">
-        {PATTERNS.map((p, i) => (
-          <button key={i} type="button" className="l5g-chipbtn hs-pat" data-on={value.pattern === i} onClick={() => set({ pattern: i })}>
-            <b>{p.name}</b>
-            <span>{p.desc}</span>
-          </button>
         ))}
       </Row>
       <Row icon={<Wand2 className="w-4 h-4" />} label="การเลือกภารกิจ">
@@ -120,19 +124,23 @@ export function ShapeSetup({ value, onChange, usable, music }: { value: ShapeSet
       {value.scoring && (
         <div className="hs-pts">
           {PT_ROWS.map(([k, label]) => (
-            <label key={k} className="hs-pt">
+            <div key={k} className="hs-pt">
               <span>{label}</span>
-              <select value={value.pts[k]} onChange={(e) => set({ pts: { ...value.pts, [k]: Number(e.target.value) } })}>
-                {PT_STEPS.map((n) => (
-                  <option key={n} value={n}>
-                    {n} คะแนน
-                  </option>
-                ))}
-              </select>
-            </label>
+              <span className="hs-step">
+                <button type="button" aria-label={`ลด ${label}`} disabled={value.pts[k] <= PT_STEPS[0]} onClick={() => set({ pts: { ...value.pts, [k]: PT_STEPS[Math.max(0, PT_STEPS.indexOf(value.pts[k]) - 1)] } })}>
+                  -
+                </button>
+                <b>{value.pts[k]}</b>
+                <button type="button" aria-label={`เพิ่ม ${label}`} disabled={value.pts[k] >= PT_STEPS[PT_STEPS.length - 1]} onClick={() => set({ pts: { ...value.pts, [k]: PT_STEPS[Math.min(PT_STEPS.length - 1, PT_STEPS.indexOf(value.pts[k]) + 1)] } })}>
+                  +
+                </button>
+              </span>
+            </div>
           ))}
         </div>
       )}
+        </div>
+      </details>
       {music}
     </div>
   );

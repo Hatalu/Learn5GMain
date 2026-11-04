@@ -17,6 +17,20 @@ const norm = (r: number) => {
   return x;
 };
 
+function fitBox(all: Fig[], view: 'top' | 'front'): Box {
+  const pad = 52;
+  const x0 = Math.min(...all.map((f) => f.x)) - pad;
+  const x1 = Math.max(...all.map((f) => f.x)) + pad;
+  const y0 = Math.min(...all.map((f) => f.y)) - (view === 'top' ? pad : 64);
+  const y1 = Math.max(...all.map((f) => f.y)) + (view === 'top' ? pad : 50);
+  // อย่างน้อย 3:2 ให้คนเดียวไม่ใหญ่คับจอ
+  const mx = (x0 + x1) / 2;
+  const my = (y0 + y1) / 2;
+  const w = Math.max(x1 - x0, 220, (y1 - y0) * 1.25);
+  const h = Math.max(y1 - y0, 150, w / 2.2);
+  return [mx - w / 2, my - h / 2, w, h];
+}
+
 /** ท่าแต่ละขั้นของภาพสาธิต + กรอบเวทีที่ครอบทุกขั้น (ภาพไม่กระโดดตอนเปลี่ยนขั้น) */
 export function stageFrames(m: Mission, n: number) {
   const final = m.build(n).map((f) => ({ ...f, r: norm(f.r) }));
@@ -26,21 +40,10 @@ export function stageFrames(m: Mission, n: number) {
   const bottom = m.view === 'top' ? Math.max(...ys) + 96 : 0;
   const lineup: Fig[] = final.map((f, i) => ({ ...f, x: cx + (i - (final.length - 1) / 2) * 46, y: bottom, r: 0, pose: 'stand' }));
   const spot: Fig[] = final.map((f) => ({ ...f, r: m.view === 'top' ? 0 : f.r, pose: 'stand' }));
-  const all = [...final, ...lineup];
-  const pad = 52;
-  const x0 = Math.min(...all.map((f) => f.x)) - pad;
-  const x1 = Math.max(...all.map((f) => f.x)) + pad;
-  const y0 = Math.min(...all.map((f) => f.y)) - (m.view === 'top' ? pad : 64);
-  const y1 = Math.max(...all.map((f) => f.y)) + (m.view === 'top' ? pad : 50);
-  // อย่างน้อย 3:2 ให้คนเดียวไม่ใหญ่คับจอ
-  let w = x1 - x0;
-  let h = y1 - y0;
-  const mx = (x0 + x1) / 2;
-  const my = (y0 + y1) / 2;
-  w = Math.max(w, 220, h * 1.25);
-  h = Math.max(h, 150, w / 2.2);
-  const box: Box = [mx - w / 2, my - h / 2, w, h];
-  return { final, lineup, spot, box, outline: m.outline(n) };
+  const box = fitBox([...final, ...lineup], m.view);
+  // ภาพเล็ก/ภาพอ้างอิง: พอดีกับรูปสุดท้าย (ไม่เผื่อแถวเข้าแถว) เด็กจะตัวใหญ่ขึ้น
+  const boxFinal = fitBox(final, m.view);
+  return { final, lineup, spot, box, boxFinal, outline: m.outline(n) };
 }
 
 export function figsFor(fr: ReturnType<typeof stageFrames>, step: StageStep): Fig[] {
@@ -243,5 +246,5 @@ export function KidStage({
 /** ภาพนิ่งเล็ก (การ์ดเลือกภารกิจ/คำตอบ) */
 export function MiniStage({ m, n }: { m: Mission; n: number }) {
   const fr = stageFrames(m, n);
-  return <KidStage figs={fr.final} box={fr.box} view={m.view} outline={fr.outline} showOutline stagger={0} className="hs-mini" label={m.name} />;
+  return <KidStage figs={fr.final} box={fr.boxFinal} view={m.view} outline={fr.outline} showOutline stagger={0} className="hs-mini" label={m.name} />;
 }

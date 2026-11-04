@@ -186,7 +186,52 @@
 .hs-pat span { font-size: 0.8rem; font-weight: 600; opacity: 0.8; }
 .hs-pts { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
 .hs-pt { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 6px 10px; border-radius: 12px; border: 2px solid #ffc690; background: #fff8ef; font-size: 0.9rem; }
-.hs-pt select { border: 2px solid var(--ink); border-radius: 8px; padding: 2px 4px; font-weight: 800; background: #fff; }
+.hs-setup { --ink: #2a2350; --go: #ff8a2f; color: var(--ink); }
+.hs-pt span:first-child { font-weight: 700; }
+.hs-step { display: inline-flex; align-items: center; gap: 4px; flex: none; }
+.hs-step button { width: 32px; height: 32px; border-radius: 999px; border: 2.5px solid var(--ink); background: #fff; box-shadow: 0 2px 0 var(--ink); font-weight: 900; font-size: 1.1rem; line-height: 1; transition: transform 0.1s; }
+.hs-step button:active:not(:disabled) { transform: translateY(2px) scale(0.9); box-shadow: none; }
+.hs-step button:disabled { opacity: 0.35; }
+.hs-step b { min-width: 30px; text-align: center; font-size: 1.1rem; font-weight: 900; }
+.hs-adv { border: 2.5px dashed #c9b2ff; border-radius: 16px; padding: 10px 12px; background: #faf6ff; }
+.hs-adv summary { cursor: pointer; font-weight: 900; color: #5b2fc0; }
+.hs-adv[open] summary { margin-bottom: 4px; }
+
+/* สุ่มภารกิจแบบลุ้น */
+.hs-roll { display: grid; justify-items: center; gap: 6px; padding: 30px 10px; margin: 10px auto; width: min(640px, 100%); border-radius: 20px; border: 3px dashed #ffc690; background: repeating-linear-gradient(45deg, #fff8ef 0 14px, #fff0e0 14px 28px); }
+.hs-roll span { font-weight: 900; color: #c2560f; }
+.hs-roll b { font-size: clamp(1.6rem, 4vw, 2.6rem); font-weight: 900; animation: hsRoll 0.09s linear; }
+@keyframes hsRoll {
+  from { transform: translateY(-40%); opacity: 0.2; }
+}
+.hs-reveal { animation: hsReveal 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+@keyframes hsReveal {
+  0% { transform: scale(0.4) rotate(-6deg); opacity: 0; }
+  60% { transform: scale(1.12) rotate(2deg); opacity: 1; }
+}
+
+/* นับถอยหลัง 3-2-1 */
+.hs-count3 { position: absolute; inset: 0; z-index: 6; display: grid; place-items: center; align-content: center; gap: 10px; background: rgba(42, 35, 80, 0.45); pointer-events: none; }
+.hs-count3 b { font-size: min(40vh, 260px); line-height: 1; font-weight: 900; color: #ffd23f; -webkit-text-stroke: 6px var(--ink); paint-order: stroke fill; text-shadow: 0 10px 0 var(--ink); animation: hsBoom 0.85s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.hs-count3 span { font-size: 1.3rem; font-weight: 900; color: #fff; text-shadow: 0 2px 0 var(--ink); }
+@keyframes hsBoom {
+  0% { transform: scale(2.2); opacity: 0; }
+  35% { transform: scale(0.9); opacity: 1; }
+  55% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+/* ปุ่มสลับปุ่มครูทั้งหมด */
+.hs-more { align-self: center; display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 999px; border: 2px dashed var(--ink); background: #fff; font-weight: 800; font-size: 0.82rem; }
+
+/* ภารกิจสำเร็จ = ดาวเด้ง */
+.hs-tg[data-on='1'] { animation: hsJelly 0.45s cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes hsJelly {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.18, 0.86); }
+  65% { transform: scale(0.94, 1.08); }
+  100% { transform: scale(1); }
+}
 
 /* ---------- เวที ---------- */
 .hs-stage { display: block; width: 100%; height: 100%; }
@@ -389,8 +434,8 @@
   .hs-jrow { grid-template-columns: 1fr auto; }
   .hs-jbtns { grid-column: 1 / -1; grid-row: 2; }
   .hs-dock { max-height: 34dvh; padding: 6px; }
-  .hs-group { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; }
-  .hs-groups { flex-wrap: nowrap; flex-direction: column; align-items: stretch; }
+  .hs-group { max-width: 100%; }
+  .hs-groups { gap: 6px; }
   .hs-ctl { min-width: 70px; min-height: 50px; font-size: 0.72rem; flex: none; }
   .hs-stepbar { flex-wrap: wrap; justify-content: center; }
   .hs-steptext { order: -1; flex-basis: 100%; }
@@ -405,4 +450,14 @@
     animation: none !important;
     transition: none !important;
   }
+}
+
+/* แถบขั้นตอนของรอบ */
+.hs-flow { display: flex; gap: 4px; width: min(1100px, 100%); margin-bottom: 10px; flex-wrap: wrap; padding: 4px; }
+.hs-flow li { flex: 1 0 auto; display: flex; align-items: center; justify-content: center; gap: 4px; padding: 4px 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.55); border: 2px solid transparent; font-size: 0.8rem; font-weight: 800; white-space: nowrap; transition: background 0.3s, transform 0.3s; }
+.hs-flow li b { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 999px; background: #fff; border: 2px solid var(--ink); font-size: 0.72rem; }
+.hs-flow li[data-on='2'] { background: #d6fbe9; }
+.hs-flow li[data-on='1'] { background: #ffd23f; border-color: var(--ink); transform: scale(1.06); }
+@media (max-width: 640px) {
+  .hs-flow li:not([data-on='1']) span { display: none; }
 }

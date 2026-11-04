@@ -40,6 +40,8 @@ const PHASE_NAME: Record<Phase, string> = {
   board: 'ตารางคะแนน',
   summary: 'สรุปผล',
 };
+/** ลำดับช่วงในหนึ่งรอบ (แถบบอกขั้นตอน) */
+const FLOW: Phase[] = ['question', 'challenge', 'demo', 'playing', 'result', 'board'];
 const TEAM_COLORS = ['#2fb8ff', '#ff8a2f', '#3fd68a', '#ff6bb8', '#9b6cf0', '#ffc53a'];
 const TEAM_DEFAULT = ['ทีมฟ้า', 'ทีมส้ม', 'ทีมเขียว', 'ทีมชมพู', 'ทีมม่วง', 'ทีมเหลือง'];
 const STEPS: { step: StageStep; title: string }[] = [
@@ -50,6 +52,23 @@ const STEPS: { step: StageStep; title: string }[] = [
   { step: 'check', title: 'ให้ครูตรวจ' },
 ];
 const SAVE = 'l5g_shape_v1';
+type CtlId = 'restart' | 'pause' | 'resume' | 'skip' | 'next' | 'end' | 'rq' | 'rm' | 'demo' | 'reveal' | 'tstart' | 'tstop' | 'ok' | 'no' | 'win' | 'lose' | 'plus' | 'save';
+/** ปุ่มครูครบ 18 ปุ่ม แบ่งกลุ่ม */
+const CTL_GROUPS: CtlId[][] = [
+  ['restart', 'pause', 'resume', 'skip', 'next', 'end'],
+  ['rq', 'rm', 'demo', 'reveal'],
+  ['tstart', 'tstop'],
+  ['ok', 'no', 'win', 'lose', 'plus', 'save'],
+];
+/** ปุ่มหลักของแต่ละช่วง (ที่เหลือกด "ปุ่มครูทั้งหมด") */
+const QUICK: Partial<Record<Phase, CtlId[]>> = {
+  question: ['reveal', 'ok', 'no', 'rq', 'skip'],
+  challenge: ['rm', 'demo', 'tstart'],
+  demo: ['rm', 'tstart'],
+  playing: ['tstart', 'tstop', 'win', 'lose'],
+  result: ['ok', 'no', 'win', 'lose', 'plus', 'save'],
+  board: ['plus', 'next', 'end'],
+};
 const SAFETY = 'ไม่ปีน ไม่ยกเพื่อน ไม่นอนทับกัน จับมือหรือไม่ก็ได้';
 const EASY_ROLE = 'ใครไม่สะดวกเคลื่อนไหว: นั่งทำท่าแขน หรือเป็นผู้ตรวจท่าให้ทีม';
 
@@ -127,6 +146,11 @@ export function ShapeGame({ questions, settings, title, onExit, persist = true }
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [party, setParty] = useState(0);
   const [hist, setHist] = useState<Hist[]>([]);
+  const [allCtl, setAllCtl] = useState(false);
+  /** นับถอยหลัง 3-2-1 ก่อนเริ่มจับเวลา (0 = ไม่นับ) */
+  const [count, setCount] = useState(0);
+  /** ชื่อภารกิจที่หมุนสุ่มอยู่ (null = หยุดแล้ว) */
+  const [rolling, setRolling] = useState<string | null>(null);
   const recent = useRef<string[]>([]);
   const endAt = useRef(0);
   const resumeTimer = useRef(false);
@@ -201,6 +225,7 @@ export function ShapeGame({ questions, settings, title, onExit, persist = true }
 
   const resetTimer = useCallback(() => {
     setRunning(false);
+    setCount(0);
     setTimerUsed(false);
     setRemain(cfg.time);
     lastTick.current = -1;
@@ -260,7 +285,29 @@ export function ShapeGame({ questions, settings, title, onExit, persist = true }
   /* ------------------------------ จับเวลา ------------------------------ */
 
   const startTimer = () => {
-    if (paused) return;
+    if (paused || count > 0) return;
+    if (!timerUsed && !reducedMotion()) {
+      setPhase('playing');
+      setCount(3);
+      gsfx.count();
+      return;
+    }
+    realStart();
+  };
+  useEffect(() => {
+    if (count <= 0 || paused) return;
+    const id = window.setTimeout(() => {
+      if (count === 1) {
+        setCount(0);
+        realStart();
+      } else {
+        gsfx.count();
+        setCount(count - 1);
+      }
+    }, 850);
+    return () => window.clearTimeout(id);
+  });
+  const realStart = () => {
     gsfx.go();
     const left = remain > 0 ? remain : cfg.time;
     endAt.current = Date.now() + left * 1000;
@@ -340,6 +387,7 @@ export function ShapeGame({ questions, settings, title, onExit, persist = true }
   const markMis = (v: boolean) => {
     v ? gsfx.streak() : gsfx.wrong();
     if (running) stopTimer();
+    setCount(0);
     judge({ mis: v });
     if (phase !== 'result') setPhase('result');
   };
@@ -354,6 +402,7 @@ export function ShapeGame({ questions, settings, title, onExit, persist = true }
 
   const saveResult = () => {
     if (running) stopTimer();
+    setCount(0);
     const res = ents.map((_, i) => ({ ans: judges[i]?.ans ?? null, mis: judges[i]?.mis ?? null, pts: pointsOf(i) }));
     setEnts((es) =>
       es.map((e, i) => ({
@@ -383,6 +432,7 @@ export function ShapeGame({ questions, settings, title, onExit, persist = true }
   };
   const finish = () => {
     setConfirmEnd(false);
+    setCount(0);
     setRunning(false);
     setPaused(false);
     gsfx.fanfare();
@@ -409,10 +459,29 @@ export function ShapeGame({ questions, settings, title, onExit, persist = true }
         ? missionForText(richToPlain(q.text, 400), answerText, people, cfg.cats, cfg.level)
         : pickMission(people, cfg.cats, cfg.level, Math.random, [mission?.id || '', ...recent.current]);
     // C ได้ภารกิจเดิมซ้ำ = สุ่มจากหมวดที่เลือกแทน
-    applyMission(m.id === mission?.id ? pickMission(people, cfg.cats, cfg.level, Math.random, [m.id]) : m);
+    const pickM = m.id === mission?.id ? pickMission(people, cfg.cats, cfg.level, Math.random, [m.id]) : m;
+    applyMission(pickM);
+    roll(pickM.name);
     setAnsMs([]);
     setPicker(false);
     if (phase !== 'challenge') setPhase('challenge');
+  };
+  /** หมุนสุ่มชื่อภารกิจให้ลุ้นก่อนเผยภารกิจจริง */
+  const roll = (finalName: string) => {
+    if (reducedMotion()) return;
+    const names = missionPool(people, cfg.cats).map((m) => m.name);
+    let k = 0;
+    setRolling(finalName);
+    const id = window.setInterval(() => {
+      k++;
+      gsfx.tick();
+      setRolling(names[Math.floor(Math.random() * names.length)] || finalName);
+      if (k >= 12) {
+        window.clearInterval(id);
+        setRolling(null);
+        gsfx.correct();
+      }
+    }, 85);
   };
   const showDemo = () => {
     if (!demoMission) return setPicker(true);
@@ -446,6 +515,28 @@ export function ShapeGame({ questions, settings, title, onExit, persist = true }
   });
 
   if (!mounted) return null;
+
+  const judgingNow = phase === 'question' || phase === 'challenge' || phase === 'demo' || phase === 'playing' || phase === 'result';
+  const ctls: Record<CtlId, { icon: React.ReactNode; label: string; onClick: () => void; disabled?: boolean; tone?: string; on?: boolean }> = {
+    restart: { icon: <RotateCcw className="w-5 h-5" />, label: 'เริ่มเกมใหม่', onClick: () => (gsfx.tap(), setRunning(false), setPaused(false), setCount(0), setPhase('start')) },
+    pause: { icon: <Pause className="w-5 h-5" />, label: 'หยุดเกม', onClick: togglePause, disabled: paused },
+    resume: { icon: <Play className="w-5 h-5" />, label: 'เล่นต่อ', onClick: togglePause, disabled: !paused },
+    skip: { icon: <SkipForward className="w-5 h-5" />, label: 'ข้ามคำถาม', onClick: skipQuestion, disabled: phase === 'board' },
+    next: { icon: <ChevronsRight className="w-5 h-5" />, label: 'เล่นรอบถัดไป', onClick: nextRound, disabled: phase !== 'board', tone: 'go' },
+    end: { icon: <Flag className="w-5 h-5" />, label: 'จบเกม', onClick: () => (gsfx.tap(), setConfirmEnd(true)), tone: 'no' },
+    rq: { icon: <Shuffle className="w-5 h-5" />, label: 'สุ่มคำถาม', onClick: randomQuestion, disabled: questions.length < 2 || phase === 'board' },
+    rm: { icon: <Wand2 className="w-5 h-5" />, label: 'สุ่มภารกิจ', onClick: randomMission, disabled: phase === 'board' || (cfg.pattern === 1 && ansMs.length > 0) },
+    demo: { icon: <Eye className="w-5 h-5" />, label: 'ดูภาพสาธิต', onClick: showDemo, disabled: phase === 'board', on: phase === 'demo' },
+    reveal: { icon: <Lightbulb className="w-5 h-5" />, label: reveal ? 'ซ่อนเฉลย' : 'แสดงเฉลย', onClick: () => (gsfx.tap(), setReveal((r) => !r), phase !== 'question' && phase !== 'result' && setPhase('question')), disabled: !q || phase === 'board', on: reveal },
+    tstart: { icon: <Timer className="w-5 h-5" />, label: 'เริ่มจับเวลา', onClick: startTimer, disabled: running || count > 0 || phase === 'board' || paused, tone: 'go' },
+    tstop: { icon: <Square className="w-5 h-5" />, label: 'หยุดจับเวลา', onClick: stopTimer, disabled: !running },
+    ok: { icon: <Check className="w-5 h-5" />, label: 'ตอบถูก', onClick: () => markAns(true), disabled: !judgingNow || !q, tone: 'ok' },
+    no: { icon: <X className="w-5 h-5" />, label: 'ตอบผิด', onClick: () => markAns(false), disabled: !judgingNow || !q, tone: 'no' },
+    win: { icon: <Star className="w-5 h-5" />, label: 'ภารกิจสำเร็จ', onClick: () => markMis(true), disabled: !judgingNow, tone: 'ok' },
+    lose: { icon: <RotateCcw className="w-5 h-5" />, label: 'ภารกิจไม่สำเร็จ', onClick: () => markMis(false), disabled: !judgingNow, tone: 'no' },
+    plus: { icon: <Plus className="w-5 h-5" />, label: 'เพิ่มคะแนน +5', onClick: () => addPoints(5), disabled: !cfg.scoring },
+    save: { icon: <ListChecks className="w-5 h-5" />, label: 'บันทึกผลภารกิจ', onClick: saveResult, disabled: !judgingNow, tone: 'go' },
+  };
 
   /* ------------------------------ ส่วนแสดงผล ------------------------------ */
 
@@ -498,7 +589,7 @@ export function ShapeGame({ questions, settings, title, onExit, persist = true }
           <button type="button" className="hs-btn" onClick={() => (gsfx.tap(), setReveal((r) => !r))}>
             <Eye className="w-5 h-5" /> {reveal ? 'ซ่อนเฉลย' : 'แสดงเฉลย'}
           </button>
-          <button type="button" className="hs-btn hs-go" onClick={() => (gsfx.pick(), setPhase('challenge'), !mission && setPicker(true))}>
+          <button type="button" className="hs-btn hs-go" onClick={() => (gsfx.pick(), setPhase('challenge'), !mission ? setPicker(true) : cfg.pattern !== 1 && roll(mission.name))}>
             {cfg.pattern === 1 ? 'ดูท่าตอบ' : 'ไปที่ภารกิจ'} <ArrowRight className="w-5 h-5" />
           </button>
         </div>
@@ -527,9 +618,14 @@ export function ShapeGame({ questions, settings, title, onExit, persist = true }
               ))}
             </div>
           </>
+        ) : rolling ? (
+          <div className="hs-roll" aria-live="polite">
+            <span>กำลังสุ่มภารกิจ</span>
+            <b key={rolling}>{rolling}</b>
+          </div>
         ) : demoMission ? (
           <>
-            <h2 className="hs-mname">สร้าง{demoMission.name.replace(/\s*\(.*\)$/, '')}</h2>
+            <h2 className="hs-mname hs-reveal">สร้าง{demoMission.name.replace(/\s*\(.*\)$/, '')}</h2>
             <div className="hs-tags">
               {cat && (
                 <span className="hs-tag" style={{ ['--c' as string]: cat.color }}>
@@ -692,7 +788,7 @@ export function ShapeGame({ questions, settings, title, onExit, persist = true }
         </div>
         {demoMission && frames && (
           <div className="hs-play-ref">
-            <KidStage figs={frames.final} box={frames.box} view={demoMission.view} outline={frames.outline} showOutline stagger={40} label={demoMission.name} />
+            <KidStage figs={frames.final} box={frames.boxFinal} view={demoMission.view} outline={frames.outline} showOutline stagger={40} label={demoMission.name} />
             <b>{cfg.pattern === 1 && ansMs.length ? 'ทำรูปตามหมายเลขคำตอบ' : demoMission.name}</b>
           </div>
         )}
@@ -706,7 +802,7 @@ export function ShapeGame({ questions, settings, title, onExit, persist = true }
               <Play className="w-5 h-5" /> {remain <= 0 ? 'จับเวลาใหม่' : 'จับเวลาต่อ'}
             </button>
           )}
-          <button type="button" className="hs-btn hs-go" onClick={() => (stopTimer(), gsfx.pick(), setPhase('result'))}>
+          <button type="button" className="hs-btn hs-go" onClick={() => (stopTimer(), setCount(0), gsfx.pick(), setPhase('result'))}>
             <Flag className="w-5 h-5" /> ตัดสินผล
           </button>
         </div>
@@ -1020,6 +1116,16 @@ export function ShapeGame({ questions, settings, title, onExit, persist = true }
       </header>
 
       <main className="hs-main">
+        {inGame && (
+          <ol className="hs-flow" aria-label="ขั้นตอนของรอบนี้">
+            {FLOW.map((p, i) => (
+              <li key={p} data-on={p === phase ? 1 : FLOW.indexOf(phase) > i ? 2 : 0}>
+                <b>{i + 1}</b>
+                <span>{PHASE_NAME[p]}</span>
+              </li>
+            ))}
+          </ol>
+        )}
         {phase === 'start' && StartView()}
         {phase === 'question' && QuestionView()}
         {phase === 'challenge' && ChallengeView()}
@@ -1046,32 +1152,20 @@ export function ShapeGame({ questions, settings, title, onExit, persist = true }
             </div>
           )}
           <div className="hs-groups">
-            <div className="hs-group">
-              <Ctl icon={<Play className="w-5 h-5" />} label="เริ่มเกมใหม่" onClick={() => (gsfx.tap(), setRunning(false), setPaused(false), setPhase('start'))} />
-              <Ctl icon={<Pause className="w-5 h-5" />} label="หยุดเกม" onClick={togglePause} disabled={paused} />
-              <Ctl icon={<Play className="w-5 h-5" />} label="เล่นต่อ" onClick={togglePause} disabled={!paused} />
-              <Ctl icon={<SkipForward className="w-5 h-5" />} label="ข้ามคำถาม" onClick={skipQuestion} disabled={phase === 'board'} />
-              <Ctl icon={<ChevronsRight className="w-5 h-5" />} label="เล่นรอบถัดไป" onClick={nextRound} disabled={phase !== 'board'} tone="go" />
-              <Ctl icon={<Flag className="w-5 h-5" />} label="จบเกม" onClick={() => (gsfx.tap(), setConfirmEnd(true))} tone="no" />
-            </div>
-            <div className="hs-group">
-              <Ctl icon={<Shuffle className="w-5 h-5" />} label="สุ่มคำถาม" onClick={randomQuestion} disabled={questions.length < 2 || phase === 'board'} />
-              <Ctl icon={<Wand2 className="w-5 h-5" />} label="สุ่มภารกิจ" onClick={randomMission} disabled={phase === 'board' || (cfg.pattern === 1 && ansMs.length > 0)} />
-              <Ctl icon={<Eye className="w-5 h-5" />} label="ดูภาพสาธิต" onClick={showDemo} disabled={phase === 'board'} on={phase === 'demo'} />
-              <Ctl icon={<Lightbulb className="w-5 h-5" />} label={reveal ? 'ซ่อนเฉลย' : 'แสดงเฉลย'} onClick={() => (gsfx.tap(), setReveal((r) => !r), phase !== 'question' && phase !== 'result' && setPhase('question'))} disabled={!q || phase === 'board'} on={reveal} />
-            </div>
-            <div className="hs-group">
-              <Ctl icon={<Timer className="w-5 h-5" />} label="เริ่มจับเวลา" onClick={startTimer} disabled={running || phase === 'board' || paused} tone="go" />
-              <Ctl icon={<Square className="w-5 h-5" />} label="หยุดจับเวลา" onClick={stopTimer} disabled={!running} />
-            </div>
-            <div className="hs-group">
-              <Ctl icon={<Check className="w-5 h-5" />} label="ตอบถูก" onClick={() => markAns(true)} disabled={!judging || !q} tone="ok" />
-              <Ctl icon={<X className="w-5 h-5" />} label="ตอบผิด" onClick={() => markAns(false)} disabled={!judging || !q} tone="no" />
-              <Ctl icon={<Star className="w-5 h-5" />} label="ภารกิจสำเร็จ" onClick={() => markMis(true)} disabled={!judging} tone="ok" />
-              <Ctl icon={<RotateCcw className="w-5 h-5" />} label="ภารกิจไม่สำเร็จ" onClick={() => markMis(false)} disabled={!judging} tone="no" />
-              <Ctl icon={<Plus className="w-5 h-5" />} label="เพิ่มคะแนน +5" onClick={() => addPoints(5)} disabled={!cfg.scoring} />
-              <Ctl icon={<ListChecks className="w-5 h-5" />} label="บันทึกผลภารกิจ" onClick={saveResult} disabled={!judging} tone="go" />
-            </div>
+            {CTL_GROUPS.map((g, gi) => {
+              const list = g.filter((id) => allCtl || (QUICK[phase] || []).includes(id));
+              return list.length ? (
+                <div key={gi} className="hs-group">
+                  {list.map((id) => {
+                    const c = ctls[id];
+                    return <Ctl key={id} icon={c.icon} label={c.label} onClick={c.onClick} disabled={c.disabled} tone={c.tone} on={c.on} />;
+                  })}
+                </div>
+              ) : null;
+            })}
+            <button type="button" className="hs-more" onClick={() => (gsfx.tap(), setAllCtl((v) => !v))}>
+              <SlidersHorizontal className="w-4 h-4" /> {allCtl ? 'ปุ่มหลักเท่านั้น' : 'ปุ่มครูทั้งหมด'}
+            </button>
           </div>
         </nav>
       )}
@@ -1160,6 +1254,12 @@ export function ShapeGame({ questions, settings, title, onExit, persist = true }
               </button>
             </div>
           </div>
+        </div>
+      )}
+      {count > 0 && (
+        <div className="hs-count3" aria-live="assertive">
+          <b key={count}>{count}</b>
+          <span>เตรียมตัว... ไปที่ตำแหน่งของตัวเอง</span>
         </div>
       )}
       {party > 0 && <Confetti key={party} />}
