@@ -8,7 +8,8 @@ import { Navbar } from '@/components/navbar/Navbar';
 import { NightSky } from '@/components/fx/NightSky';
 import { MathInline } from '@/components/creator/math/MathText';
 import { SET_SUBJECTS, type SetSubject } from '@/lib/game-creator/setTemplates';
-import { texToPlain } from '@/lib/game-creator/quiz';
+import { rich } from '@/lib/game-creator/setTemplates';
+import { MathLine } from '@/components/creator/math/MathText';
 import '@/components/creator/creator.css';
 import s from './secondary.module.css';
 
@@ -19,7 +20,6 @@ const ICON: Record<SetSubject, React.ReactNode> = {
   sci: <FlaskConical className="w-5 h-5" />,
   eng: <Languages className="w-5 h-5" />,
 };
-const sample = (q: string) => (q.startsWith('$') ? texToPlain(q.slice(1).split('$')[0]) : q);
 
 /** กราฟตัวอย่าง y = x² - 2x - 3 และ y = x + 1 (วาดเอง ไม่ใช่รูป) */
 function GraphArt() {
@@ -137,7 +137,7 @@ export default function SecondaryPage() {
             {topics.map((t) => (
               <button key={t.id} type="button" className={s.topic} style={{ ['--c' as string]: SET_SUBJECTS.find((x) => x.id === t.subject)!.color }} onClick={() => router.push(`/create/edit?tpl=${t.id}`)}>
                 <b>{t.title}</b>
-                <span>{sample(t.sample)}</span>
+                <span><MathLine value={rich(t.sample)} /></span>
                 <i>
                   {t.count} ข้อ เริ่มเลย <ArrowRight className="w-4 h-4" />
                 </i>

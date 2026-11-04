@@ -854,6 +854,24 @@ html.dark .st-save {
   background: var(--st-acc);
   color: #fff;
 }
+/* หมวดเยอะ: เลื่อนซ้าย-ขวาแถวเดียว */
+.st-chips-scroll {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+}
+.st-chips-scroll button {
+  flex: none;
+}
+.st-more {
+  width: 100%;
+  padding: 9px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 13px;
+  background: var(--st-soft);
+}
 .st-drop {
   width: 100%;
   display: flex;

@@ -61,6 +61,7 @@ import { mediaPrefix, probeVideo, uploadAudio, uploadImage, type VideoProbe } fr
 import { gsfx } from '@/lib/game-creator/gsound';
 import { UsageMeter } from '../UsageMeter';
 import { RichInput, type RichInputHandle } from '../math/RichInput';
+import { MathLine } from '../math/MathText';
 import { MediaView } from '../MediaView';
 import { ChoiceShape, choiceStyle } from '../ChoiceShape';
 import { VideoTrimModal } from '../VideoTrimModal';
@@ -770,7 +771,7 @@ export function QuizEditor({ gameId: initialId, userId, username, initial, guest
                       )}
                     </span>
                   )}
-                  <span className="l5g-qitem-text">{richToPlain(q.text, 60) || (q.media ? 'โจทย์เป็นสื่อ' : 'คำถามว่าง')}</span>
+                  <span className="l5g-qitem-text" title={richToPlain(q.text, 200)}>{richIsEmpty(q.text) ? (q.media ? 'โจทย์เป็นสื่อ' : 'คำถามว่าง') : <MathLine value={q.text} />}</span>
                 </span>
                 {issueQs.has(i) ? <span className="l5g-qitem-warn" title="ยังไม่ครบ" /> : <CheckCircle2 className="l5g-qitem-ok w-4 h-4" />}
                 <GripVertical className="l5g-qitem-grip w-4 h-4" />
@@ -1094,7 +1095,7 @@ export function QuizEditor({ gameId: initialId, userId, username, initial, guest
                   <div key={r.row} className="l5g-sheet-row" data-bad={!r.q}>
                     <span className="l5g-sheet-num">แถว {r.row}</span>
                     {r.q ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertTriangle className="w-4 h-4 shrink-0" />}
-                    <span className="l5g-sheet-text">{r.q ? richToPlain(r.q.text, 70) : r.errs.join(' · ')}</span>
+                    <span className="l5g-sheet-text">{r.q ? <MathLine value={r.q.text} /> : r.errs.join(' · ')}</span>
                   </div>
                 ))}
               </div>

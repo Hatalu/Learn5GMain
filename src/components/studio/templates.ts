@@ -10,6 +10,7 @@ import { CLASS_TEMPLATES } from './tpl/class';
 import { DECOR_TEMPLATES } from './tpl/decor';
 import { MORE_TEMPLATES } from './tpl/more';
 import { LAB_TEMPLATES } from './tpl/lab';
+import { STIX_TEMPLATES } from './tpl/stix';
 
 export { TEMPLATE_CATS, type Template, type TemplateCat } from './tpl/kit';
 
@@ -570,4 +571,4 @@ const BASE: Template[] = [
   },
 ];
 
-export const TEMPLATES: Template[] = [...BASE, ...MATH_TEMPLATES, ...THAI_TEMPLATES, ...ENG_TEMPLATES, ...SCI_TEMPLATES, ...LAB_TEMPLATES, ...ORG_TEMPLATES, ...TEST_TEMPLATES, ...CLASS_TEMPLATES, ...DECOR_TEMPLATES, ...MORE_TEMPLATES];
+export const TEMPLATES: Template[] = [...BASE, ...MATH_TEMPLATES, ...THAI_TEMPLATES, ...ENG_TEMPLATES, ...SCI_TEMPLATES, ...LAB_TEMPLATES, ...ORG_TEMPLATES, ...TEST_TEMPLATES, ...CLASS_TEMPLATES, ...DECOR_TEMPLATES, ...MORE_TEMPLATES, ...STIX_TEMPLATES];

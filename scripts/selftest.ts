@@ -105,7 +105,8 @@ import { ACCS, ANIMAL_PRESETS, CHAR_PRESETS, POSES, SPECIES, cleanLook, toggleAc
 import { clampEdu, DECO_IDS, EDU_KINDS, makeDeco, makeEdu } from '../src/lib/studio/doc';
 import { mediaPrefix } from '../src/lib/game-creator/prefix';
 import { TEMPLATES } from '../src/components/studio/templates';
-import { STICKERS } from '../src/components/studio/stickers';
+import { STICKERS, STICKER_CATS } from '../src/components/studio/stickers';
+import { MORE_STICKERS } from '../src/components/studio/stix';
 
 let passed = 0;
 const t = (name: string, fn: () => void) => {
@@ -696,6 +697,14 @@ t('ข้อที่ยังไม่ครบไม่ถูกนำไป�
 t('ข้อความสั้นสำหรับรายการ: เศษส่วนอ่านออก', () => {
   assert.equal(texToPlain('\\frac{3}{4}+\\frac{1}{4}'), '3/4+1/4');
   assert.equal(richToPlain([{ t: 'x', v: 'ผล ' }, { t: 'm', v: '2\\times3' }]), 'ผล 2×3');
+  // ลิมิต/ปริพันธ์/ยกกำลัง ไม่หลุดเป็น "_x 4..." แบบเดิม
+  assert.equal(texToPlain('\\lim_{x\\to 4}(-3x - 1)=?'), 'lim(x→4) (-3x - 1)=?');
+  assert.equal(texToPlain('\\lim_{x\\to 3}\\frac{x^2-9}{x-3}=?'), 'lim(x→3) (x²-9)/(x-3)=?');
+  assert.equal(texToPlain('\\int_{0}^{5}8x\\,dx=?'), '∫[0→5] 8x dx=?');
+  assert.equal(texToPlain('\\int_{0}^{4}3x^{2}\\,dx=?'), '∫[0→4] 3x² dx=?');
+  assert.equal(texToPlain('\\log_{2}32-\\log_{2}4'), 'log₂32-log₂4');
+  assert.equal(texToPlain('\\det\\begin{bmatrix}1&2\\\\3&4\\end{bmatrix}'), 'det[1 2; 3 4]');
+  assert.equal(texToPlain('x^{10}+y_{n+1}\\le\\pi'), 'x¹⁰+yₙ₊₁≤π');
 });
 
 t('พื้นหลังห้อง/ชื่อเล่น/เลขห้อง', () => {
@@ -986,6 +995,14 @@ t('สร้างสื่อ: ค่าเริ่มต้น A4 แนว�
   for (const s of SIZES) assert.ok(s.w >= 200 && s.h >= 200 && s.w <= 2400 && s.h <= 2400, s.id);
   const stickerIds = new Set(STICKERS.map((x) => x.id));
   assert.equal(stickerIds.size, STICKERS.length);
+  // สติกเกอร์ชุดเพิ่ม 300+ (4 พ.ย. 2026): ค้นหาได้ทุกตัว ไม่มีอิโมจิ หมวดมีอยู่จริง
+  assert.ok(MORE_STICKERS.length >= 300 && STICKERS.length >= 400, `stickers ${STICKERS.length}`);
+  const cats = new Set(STICKER_CATS.map((c) => c.id));
+  for (const st of STICKERS) {
+    assert.ok(st.label.trim() && cats.has(st.cat), st.id);
+    assert.ok(!/\p{Extended_Pictographic}|[↔☐]/u.test(`${st.label} ${st.tags ?? ''}`), st.id);
+  }
+  for (const st of MORE_STICKERS) assert.ok(st.tags?.trim(), `${st.id}: tags`);
   for (const tp of TEMPLATES) {
     const d = tp.make();
     const back = sanitizeDesign(JSON.parse(JSON.stringify(d)));
@@ -1446,7 +1463,7 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
     const fs = await import('node:fs');
     // อ่าน id จากไฟล์ตรงๆ (stickers.tsx มี JSX ไม่ import ในสคริปต์นี้)
     const idsIn = (f: string) => new Set([...fs.readFileSync(f, 'utf8').matchAll(/id: '([a-z0-9-]+)'/g)].map((m) => m[1]));
-    const stickers = idsIn('src/components/studio/stickers.tsx');
+    const stickers = new Set(STICKERS.map((x) => x.id));
     const shapes = idsIn('src/components/studio/shapes.ts');
     const cats = new Set<string>(TEMPLATE_CATS.map((c) => c.id));
     assert.ok(TEMPLATES.length >= 100, `แม่แบบ ${TEMPLATES.length}`);

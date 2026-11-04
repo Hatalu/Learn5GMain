@@ -1,4 +1,5 @@
 import React from 'react';
+import { MORE_STICKERS } from './stix';
 
 /** สติกเกอร์วาดเอง (SVG ล้วน ห้ามอิโมจิ) กรอบ 0-100 เส้นขอบเข้มหนาแบบการ์ตูน */
 const O = '#2a2350';
@@ -8,9 +9,13 @@ export interface StickerDef {
   id: string;
   label: string;
   cat: StickerCat;
+  /** คำค้นเพิ่ม (ไทย/อังกฤษ) */
+  tags?: string;
   el: React.ReactNode;
 }
-export type StickerCat = 'math' | 'sci' | 'eng' | 'thai' | 'learn' | 'nature' | 'animal' | 'award' | 'sign' | 'stamp';
+export type StickerCat =
+  | 'math' | 'sci' | 'eng' | 'thai' | 'learn' | 'nature' | 'animal' | 'award' | 'sign' | 'stamp'
+  | 'feel' | 'food' | 'weather' | 'space' | 'ocean' | 'bug' | 'vehicle' | 'sport' | 'music' | 'home' | 'body' | 'fest' | 'label' | 'thaiabc' | 'abc' | 'number';
 export const STICKER_CATS: { id: StickerCat; label: string }[] = [
   { id: 'math', label: 'คณิตศาสตร์' },
   { id: 'sci', label: 'วิทยาศาสตร์' },
@@ -22,6 +27,22 @@ export const STICKER_CATS: { id: StickerCat; label: string }[] = [
   { id: 'award', label: 'รางวัล' },
   { id: 'sign', label: 'สัญลักษณ์' },
   { id: 'stamp', label: 'ตราคำชม' },
+  { id: 'feel', label: 'อารมณ์' },
+  { id: 'label', label: 'ป้ายข้อความ' },
+  { id: 'food', label: 'อาหาร' },
+  { id: 'weather', label: 'อากาศ' },
+  { id: 'space', label: 'อวกาศ' },
+  { id: 'ocean', label: 'ทะเล' },
+  { id: 'bug', label: 'แมลง' },
+  { id: 'vehicle', label: 'ยานพาหนะ' },
+  { id: 'sport', label: 'กีฬา' },
+  { id: 'music', label: 'ดนตรี' },
+  { id: 'home', label: 'บ้าน/ของใช้' },
+  { id: 'body', label: 'ร่างกาย' },
+  { id: 'fest', label: 'เทศกาล' },
+  { id: 'thaiabc', label: 'ก-ฮ' },
+  { id: 'abc', label: 'A-Z' },
+  { id: 'number', label: 'ตัวเลข' },
 ];
 
 const eyes = (y = 48, dx = 13, cx = 50) => (
@@ -1348,6 +1369,8 @@ function star(n: number, inner: number) {
     return `${(50 + r * Math.cos(a)).toFixed(1)},${(50 + r * Math.sin(a)).toFixed(1)}`;
   });
 }
+
+STICKERS.push(...MORE_STICKERS);
 
 const byId = new Map(STICKERS.map((x) => [x.id, x]));
 export const stickerById = (id: string) => byId.get(id);

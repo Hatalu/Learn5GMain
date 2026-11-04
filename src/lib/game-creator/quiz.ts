@@ -61,24 +61,50 @@ export function richToPlain(r: Rich, max = 80): string {
   return s.length > max ? s.slice(0, max - 1) + '…' : s;
 }
 
-/** แปลง LaTeX อย่างง่ายเป็นข้อความอ่านได้ (เช่น \frac{1}{2} -> 1/2) สำหรับตัวอย่างสั้นๆ */
+const SUP: Record<string, string> = { '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹', '+': '⁺', '-': '⁻', '=': '⁼', '(': '⁽', ')': '⁾', n: 'ⁿ', x: 'ˣ', i: 'ⁱ', y: 'ʸ', a: 'ᵃ', b: 'ᵇ', k: 'ᵏ', m: 'ᵐ' };
+const SUB: Record<string, string> = { '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄', '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉', '+': '₊', '-': '₋', '=': '₌', '(': '₍', ')': '₎', n: 'ₙ', x: 'ₓ', i: 'ᵢ', a: 'ₐ', k: 'ₖ', m: 'ₘ' };
+const SYM: Record<string, string> = {
+  times: '×', div: '÷', cdot: '·', pm: '±', mp: '∓', pi: 'π', theta: 'θ', alpha: 'α', beta: 'β', gamma: 'γ', delta: 'δ', Delta: 'Δ', lambda: 'λ', mu: 'μ', sigma: 'σ', Sigma: 'Σ', omega: 'ω', Omega: 'Ω', phi: 'φ', rho: 'ρ', epsilon: 'ε',
+  le: '≤', leq: '≤', ge: '≥', geq: '≥', ne: '≠', neq: '≠', approx: '≈', to: '→', rightarrow: '→', Rightarrow: '⇒', leftrightarrow: '↔', infty: '∞', degree: '°', circ: '°', angle: '∠', triangle: '△', perp: '⊥', parallel: '∥',
+  in: '∈', notin: '∉', subset: '⊂', subseteq: '⊆', cup: '∪', cap: '∩', emptyset: '∅', forall: '∀', exists: '∃', therefore: '∴', sum: 'Σ', prod: 'Π', int: '∫', partial: '∂', nabla: '∇', cdots: '⋯', ldots: '…', dots: '…', percent: '%',
+};
+/** ^{...} / _{...} เป็นตัวยก/ตัวห้อย unicode ถ้าทำได้ทุกตัว ไม่งั้นใช้ ^(...) */
+const script = (body: string, map: Record<string, string>, mark: string) => {
+  const t = body.trim();
+  if (t && [...t].every((c) => map[c])) return [...t].map((c) => map[c]).join('');
+  return t.length === 1 ? mark + t : `${mark}(${t})`;
+};
+
+/** แปลง LaTeX เป็นข้อความอ่านได้ (เช่น \frac{1}{2} -> 1/2, \lim_{x\to2} -> lim(x→2)) ใช้ทุกที่ที่โชว์โจทย์แบบข้อความล้วน */
 export function texToPlain(tex: string): string {
-  let s = tex;
-  for (let i = 0; i < 4; i++) s = s.replace(/\\[dt]?frac\{([^{}]*)\}\{([^{}]*)\}/g, '$1/$2');
-  return s
-    .replace(/\\sqrt\{([^{}]*)\}/g, '√$1')
-    .replace(/\\times/g, '×')
-    .replace(/\\div/g, '÷')
-    .replace(/\\cdot/g, '·')
-    .replace(/\\pi/g, 'π')
-    .replace(/\\le(q)?/g, '≤')
-    .replace(/\\ge(q)?/g, '≥')
-    .replace(/\\neq?/g, '≠')
-    .replace(/\^\{([^{}]*)\}/g, '^$1')
-    .replace(/\\left|\\right/g, '')
-    .replace(/\\[a-zA-Z]+/g, '')
-    .replace(/[{}]/g, '')
-    .trim();
+  const wrap = (a: string) => (/^[\w.]+$/.test(a) ? a : `(${a})`);
+  const unbrace = (a: string) => a.replace(/^\{|\}$/g, '');
+  let s = tex
+    .replace(/\\(?:text(?:rm|bf)?|mathrm|mathbf|operatorname)\{([^{}]*)\}/g, '$1')
+    .replace(/\\begin\{[a-z]*matrix\}([\s\S]*?)\\end\{[a-z]*matrix\}/g, (_, b: string) => '[' + b.split('\\\\').map((r) => r.split('&').map((c) => c.trim()).join(' ')).join('; ') + ']')
+    .replace(/\\begin\{[^{}]*\}|\\end\{[^{}]*\}/g, '')
+    .replace(/\\\\/g, '; ')
+    .replace(/&/g, ' ')
+    .replace(/\\!/g, '')
+    .replace(/\\[,;: ]|~/g, ' ')
+    .replace(/\\(?:left|right|[bB]ig[lr]?)/g, '');
+  for (let i = 0; i < 4; i++) {
+    s = s
+      .replace(/\\[dt]?frac\{([^{}]*)\}\{([^{}]*)\}/g, (_, a: string, b: string) => `${wrap(a)}/${wrap(b)}`)
+      .replace(/\\sqrt\[([^\]]*)\]\{([^{}]*)\}/g, (_, n: string, a: string) => `${script(n, SUP, '^')}√${a.length > 1 ? `(${a})` : a}`)
+      .replace(/\\sqrt\{([^{}]*)\}/g, (_, a: string) => `√${a.length > 1 ? `(${a})` : a}`)
+      .replace(/\\(?:overline|bar|vec|hat)\{([^{}]*)\}/g, '$1');
+  }
+  s = s
+    .replace(/\\lim_\{([^{}]*)\}/g, (_, b: string) => `lim(${texToPlain(b)}) `)
+    .replace(/\\(int|sum|prod)_(\{[^{}]*\}|\S)\^(\{[^{}]*\}|\S)/g, (_, op: string, a: string, b: string) => `${SYM[op]}[${texToPlain(unbrace(a))}→${texToPlain(unbrace(b))}] `)
+    .replace(/\\([a-zA-Z]+)/g, (_, w: string) => SYM[w] ?? w)
+    .replace(/\\([%$#{}])/g, '$1')
+    .replace(/\^\{([^{}]*)\}/g, (_, b: string) => script(b, SUP, '^'))
+    .replace(/\^([\w+-])/g, (_, b: string) => script(b, SUP, '^'))
+    .replace(/_\{([^{}]*)\}/g, (_, b: string) => script(b, SUB, '_'))
+    .replace(/_(\w)/g, (_, b: string) => script(b, SUB, '_'));
+  return s.replace(/[{}]/g, '').replace(/\s+/g, ' ').replace(/→ /g, '→').trim();
 }
 
 const CTRL = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;

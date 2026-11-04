@@ -358,24 +358,36 @@ function ShapePanel({ ctl }: { ctl: Ctl }) {
 
 /* ------------------------------------------------------------------ สติกเกอร์ */
 
+const STICKER_PAGE = 60;
+
 function StickerPanel({ ctl }: { ctl: Ctl }) {
   const [cat, setCat] = useState<StickerCat | 'all'>('all');
   const [q, setQ] = useState('');
+  const [more, setMore] = useState(1);
   const term = q.trim().toLowerCase();
   const catLabel = (c: StickerCat) => STICKER_CATS.find((x) => x.id === c)?.label ?? '';
-  const list = STICKERS.filter((s) => (cat === 'all' || s.cat === cat) && (!term || s.label.toLowerCase().includes(term) || catLabel(s.cat).includes(term)));
+  // ค้นได้หลายคำ ทุกคำต้องเจอในชื่อ/คำค้น/หมวด
+  const words = term.split(/s+/).filter(Boolean);
+  const all = STICKERS.filter((s) => {
+    if (cat !== 'all' && s.cat !== cat) return false;
+    if (!words.length) return true;
+    const hay = `${s.label} ${s.tags ?? ''} ${catLabel(s.cat)} ${s.id}`.toLowerCase();
+    return words.every((w) => hay.includes(w));
+  });
+  const list = all.slice(0, more * STICKER_PAGE);
   return (
     <>
       <label className="st-search">
         <Search className="w-4 h-4" />
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="ค้นหาสติกเกอร์ เช่น คณิต แมว ดาว" aria-label="ค้นหาสติกเกอร์" />
+        <input value={q} onChange={(e) => (setQ(e.target.value), setMore(1))} placeholder="ค้นหาสติกเกอร์ เช่น แมว จรวด เก่งมาก ก ไก่" aria-label="ค้นหาสติกเกอร์" />
       </label>
-      <div className="st-chips mt-3">
-        <button type="button" data-on={cat === 'all'} onClick={() => setCat('all')}>
+      <p className="st-note mt-2">{all.length} แบบ พื้นหลังโปร่งใส</p>
+      <div className="st-chips st-chips-scroll mt-2">
+        <button type="button" data-on={cat === 'all'} onClick={() => (setCat('all'), setMore(1))}>
           ทั้งหมด
         </button>
         {STICKER_CATS.map((c) => (
-          <button key={c.id} type="button" data-on={cat === c.id} onClick={() => setCat(c.id)}>
+          <button key={c.id} type="button" data-on={cat === c.id} onClick={() => (setCat(c.id), setMore(1))}>
             {c.label}
           </button>
         ))}
@@ -388,6 +400,11 @@ function StickerPanel({ ctl }: { ctl: Ctl }) {
           </button>
         ))}
       </div>
+      {all.length > list.length && (
+        <button type="button" className="st-more mt-3" onClick={() => setMore((n) => n + 1)}>
+          แสดงเพิ่ม (เหลืออีก {all.length - list.length} แบบ)
+        </button>
+      )}
     </>
   );
 }

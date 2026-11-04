@@ -3,7 +3,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { BookOpen, ChevronDown, ChevronRight, Loader2, Search, X } from 'lucide-react';
 import { SET_SUBJECTS, type SetSubject } from '@/lib/game-creator/setTemplates';
-import { texToPlain } from '@/lib/game-creator/quiz';
+import { rich } from '@/lib/game-creator/setTemplates';
+import { MathLine } from '@/components/creator/math/MathText';
 
 type Bank = typeof import('@/lib/game-creator/setBank');
 const PAGE = 24;
@@ -15,7 +16,6 @@ const BANDS = [
   { id: 'm2', label: 'ม.ปลาย', lo: 10, hi: 12 },
 ] as const;
 
-const sample = (q: string) => (q.startsWith('$') ? texToPlain(q.slice(1).split('$')[0]) : q);
 
 /** แม่แบบชุดคำถาม ป.1–ม.6: กรองวิชา ชั้น หมวด ระดับ ค้นหา แล้วเปิดตัวแก้ไขพร้อมคำถาม (แก้ต่อแล้วค่อยบันทึก) */
 export function SetTemplates({ disabled, onPick }: { disabled?: boolean; onPick: (id: string) => void }) {
@@ -175,7 +175,7 @@ export function SetTemplates({ disabled, onPick }: { disabled?: boolean; onPick:
                   {t.level && <span data-lv={t.level}>{bank.LEVEL_LABEL[t.level]}</span>}
                 </span>
                 <span className="l5g-stpl-note">{t.note}</span>
-                <span className="l5g-stpl-q">ข้อ 1: {sample(t.sample)}</span>
+                <span className="l5g-stpl-q">ข้อ 1: <MathLine value={rich(t.sample)} /></span>
                 <span className="l5g-stpl-go">
                   {t.count} ข้อ ใช้แม่แบบนี้ <ChevronRight className="w-4 h-4" strokeWidth={3} />
                 </span>

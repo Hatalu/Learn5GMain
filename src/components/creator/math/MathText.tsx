@@ -25,9 +25,18 @@ export function texToHtml(tex: string, display = false, big = true): string {
   return html;
 }
 
-export function MathInline({ tex, className }: { tex: string; className?: string }) {
-  const html = useMemo(() => texToHtml(tex), [tex]);
+export function MathInline({ tex, className, small }: { tex: string; className?: string; small?: boolean }) {
+  const html = useMemo(() => texToHtml(tex, false, !small), [tex, small]);
   return <span className={className ?? 'l5g-math'} dangerouslySetInnerHTML={{ __html: html }} />;
+}
+
+/** ข้อความผสมสูตรแบบบรรทัดเดียว/ย่อ (รายการข้อ การ์ดแม่แบบ) สูตรขนาดตัวอักษรปกติ ไม่ขึ้นเป็นโค้ด LaTeX */
+export function MathLine({ value, className }: { value: Rich; className?: string }) {
+  return (
+    <span className={className}>
+      {value.map((s, i) => (s.t === 'm' ? <MathInline key={i} tex={s.v} small className="l5g-math l5g-math-line" /> : <React.Fragment key={i}>{s.v}</React.Fragment>))}
+    </span>
+  );
 }
 
 /** แสดงข้อความผสมสูตร (ข้อความธรรมดาเป็น text node ปลอดภัย, สูตรผ่าน KaTeX) */
