@@ -60,7 +60,7 @@ export function PlayTypeTag({ mode }: { mode: GameMode }) {
       </span>
       {m.teams && (
         <span className="l5g-ptag" style={{ ['--pc' as string]: '#25c48a' }}>
-          <Users className="w-3.5 h-3.5" strokeWidth={3} /> เดี่ยว & ทีม
+          <Users className="w-3.5 h-3.5" strokeWidth={3} /> {m.teams.includes(0) ? 'เดี่ยว & ทีม' : 'เล่นเป็นกลุ่ม'}
         </span>
       )}
     </span>

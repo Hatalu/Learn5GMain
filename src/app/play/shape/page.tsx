@@ -12,7 +12,7 @@ import { parseShapeSettings } from '@/lib/game-creator/shape/settings';
 import type { QuizQuestion } from '@/lib/game-creator/types';
 import '@/components/creator/creator.css';
 
-/** เล่นในเครื่องเดียว: Human Shape Builder (/play/shape?id=<ชุดคำถาม>&teams=&m=&lv=&c=&t=&sc=&n=&p=&pk=&o=&music=) ครูคุม ไม่ใช้กล้อง */
+/** เล่นในเครื่องเดียว: Human Shape Builder (/play/shape?id=<ชุดคำถาม>&teams=&n=&ord=&music=) ครูคุม ไม่ใช้กล้อง */
 function ShapeInner() {
   const sp = useSearchParams();
   const router = useRouter();
@@ -34,7 +34,7 @@ function ShapeInner() {
       .then(({ data: row, error }) => {
         if (error || !row) return setErr('เปิดชุดคำถามนี้ไม่ได้ (ต้องเข้าสู่ระบบด้วยบัญชีเจ้าของชุด หรือชุดที่เปิดสาธารณะ)');
         const content = sanitizeQuiz(row.content, mediaPrefix());
-        if (!modeFit(content, 'shape').ok) return setErr('ชุดคำถามนี้ยังไม่มีคำถามที่ใช้ได้');
+        if (!modeFit(content, 'shape').ok) return setErr('ชุดคำถามนี้ยังไม่มีข้อเลือกตอบ 1 คำตอบ');
         setData({ title: row.title, questions: modeQuiz(content, 'shape').questions });
       });
   }, [id]);

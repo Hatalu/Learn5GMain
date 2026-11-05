@@ -1,168 +1,84 @@
 /**
- * Human Shape Builder: ค่าที่ตั้งก่อนเล่น (ส่งผ่าน URL ของ /play/shape ไม่เก็บในฐานข้อมูล) + การคิดคะแนน
- * ครูปรับต่อได้ในหน้าเริ่มเกม (ชื่อทีม/รายชื่อนักเรียนตั้งในหน้าเกมเท่านั้น ไม่ใส่ใน URL)
+ * มนุษย์สร้างรูป: ค่าตั้ง (ส่งผ่าน URL ของ /play/shape) + ท่าประจำตัวเลือก + คะแนน
+ * ทุกกลุ่มทำท่าของตัวเลือกที่ตอบ ครูมองแล้วแตะกลุ่มที่ตอบถูกเอง
  */
-import { ALL_CATS } from './missions';
-
-export interface ShapePts {
-  /** ตอบคำถามถูก */
-  answer: number;
-  /** สร้างรูปสำเร็จ */
-  mission: number;
-  /** ทำตามเงื่อนไขครบ */
-  cond: number;
-  /** ความร่วมมือ */
-  team: number;
-  /** โบนัสสูงสุดเมื่อเสร็จเร็ว (คิดตามเวลาที่เหลือ) */
-  time: number;
-}
 
 export interface ShapeSettings {
-  /** 0 = เล่นเดี่ยว, 2-6 = จำนวนทีม */
   teams: number;
-  /** เดี่ยว = จำนวนผู้เล่น, ทีม = สมาชิกต่อทีม */
-  players: number;
-  /** 0 ง่าย / 1 กลาง / 2 ยาก */
-  level: number;
-  /** หมวดภารกิจ (บิตตาม CATS) */
-  cats: number;
-  /** วินาทีต่อภารกิจ */
-  time: number;
-  scoring: boolean;
-  /** จำนวนรอบ (0 = เท่าจำนวนคำถาม) */
-  rounds: number;
-  /** 0 = A คำถามแล้วสร้างรูป / 1 = B ตอบด้วยร่างกาย / 2 = C ภารกิจจากบทเรียน */
-  pattern: number;
-  /** 0 ระบบสุ่มภารกิจ / 1 ครูเลือกเอง */
-  pick: number;
-  /** 0 ตามลำดับ / 1 สุ่มคำถาม */
-  order: number;
-  pts: ShapePts;
+  /** จำนวนข้อ (0 = ทั้งชุด) */
+  count: number;
+  /** นับอันดับตอบก่อน-หลังหรือไม่ */
+  order: boolean;
   music: string;
 }
 
-export const SHAPE_TEAMS = [0, 2, 3, 4, 5, 6];
-export const SHAPE_PLAYERS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20];
-export const SHAPE_TIMES = [30, 45, 60, 90, 120, 180];
-export const SHAPE_ROUNDS = [3, 5, 8, 10, 15, 0];
-export const PT_STEPS = [0, 1, 2, 3, 4, 5, 10, 15, 20];
-export const PATTERNS = [
-  { name: 'A: คำถาม แล้วสร้างรูป', desc: 'ตอบคำถามก่อน ครูตรวจแล้วสุ่มภารกิจสร้างรูปรับคะแนนเพิ่ม' },
-  { name: 'B: ตอบด้วยร่างกาย', desc: 'สร้างตัวเลข/ท่าทางแทนหมายเลขคำตอบที่เลือก' },
-  { name: 'C: ภารกิจจากบทเรียน', desc: 'ภารกิจเชื่อมกับเนื้อหาคำถาม แล้วอธิบายว่าเกี่ยวกันอย่างไร' },
-];
+export const SHAPE_TEAMS = [2, 3, 4, 5, 6, 8, 10];
+export const SHAPE_COUNTS = [5, 10, 15, 20, 0];
+export const SHAPE_DEFAULTS: ShapeSettings = { teams: 4, count: 0, order: true, music: 'auto' };
 
-export const SHAPE_DEFAULTS: ShapeSettings = {
-  teams: 2,
-  players: 4,
-  level: 0,
-  cats: ALL_CATS,
-  time: 60,
-  scoring: true,
-  rounds: 5,
-  pattern: 0,
-  pick: 0,
-  order: 0,
-  pts: { answer: 10, mission: 10, cond: 5, team: 5, time: 5 },
-  music: 'auto',
-};
-
-const pick = (v: string | null, ok: number[], d: number) => {
-  const n = Number(v);
-  return v !== null && v !== '' && ok.includes(n) ? n : d;
-};
-const PT_KEYS: [keyof ShapePts, string][] = [
-  ['answer', 'pa'],
-  ['mission', 'pm'],
-  ['cond', 'pc'],
-  ['team', 'pt'],
-  ['time', 'pb'],
-];
-
-/** อ่านค่าจาก URL (ค่าแปลกปลอม = ค่าเริ่มต้น) */
 export function parseShapeSettings(get: (k: string) => string | null): ShapeSettings {
-  const d = SHAPE_DEFAULTS;
+  const num = (k: string, ok: number[], d: number) => {
+    const v = get(k);
+    return v !== null && v !== '' && ok.includes(Number(v)) ? Number(v) : d;
+  };
   const music = get('music') || 'auto';
-  const c = Number(get('c'));
-  const pts = { ...d.pts };
-  for (const [k, q] of PT_KEYS) pts[k] = pick(get(q), PT_STEPS, d.pts[k]);
   return {
-    teams: pick(get('teams'), SHAPE_TEAMS, d.teams),
-    players: pick(get('m'), SHAPE_PLAYERS, d.players),
-    level: pick(get('lv'), [0, 1, 2], d.level),
-    cats: Number.isInteger(c) && c > 0 && c <= ALL_CATS ? c : d.cats,
-    time: pick(get('t'), SHAPE_TIMES, d.time),
-    scoring: get('sc') === null ? d.scoring : get('sc') === '1',
-    rounds: pick(get('n'), SHAPE_ROUNDS, d.rounds),
-    pattern: pick(get('p'), [0, 1, 2], d.pattern),
-    pick: pick(get('pk'), [0, 1], d.pick),
-    order: pick(get('o'), [0, 1], d.order),
-    pts,
+    teams: num('teams', SHAPE_TEAMS, SHAPE_DEFAULTS.teams),
+    count: num('n', SHAPE_COUNTS, SHAPE_DEFAULTS.count),
+    order: get('ord') === null ? SHAPE_DEFAULTS.order : get('ord') === '1',
     music: /^[a-z0-9_-]{1,24}$/.test(music) ? music : 'auto',
   };
 }
 
 export function shapeQuery(gameId: string, s: ShapeSettings): string {
-  const q = new URLSearchParams({
-    id: gameId,
-    teams: String(s.teams),
-    m: String(s.players),
-    lv: String(s.level),
-    c: String(s.cats),
-    t: String(s.time),
-    sc: s.scoring ? '1' : '0',
-    n: String(s.rounds),
-    p: String(s.pattern),
-    pk: String(s.pick),
-    o: String(s.order),
-    music: s.music,
-  });
-  for (const [k, key] of PT_KEYS) q.set(key, String(s.pts[k]));
-  return q.toString();
+  return new URLSearchParams({ id: gameId, teams: String(s.teams), n: String(s.count), ord: s.order ? '1' : '0', music: s.music }).toString();
 }
+
+export const teamName = (i: number) => `ทีม ${String.fromCharCode(65 + i)}`;
+
+/* ------------------------------ ท่าประจำตัวเลือก ------------------------------ */
+
+/** มุมแขน [ต้นแขน, ปลายแขนเทียบต้นแขน] และขา (องศา, 0 = ชี้ลง) dy = ตัวต่ำลง */
+export interface PoseDef {
+  name: string;
+  la: [number, number];
+  ra: [number, number];
+  ll: number;
+  rl: number;
+  dy: number;
+}
+
+export const STAND: PoseDef = { name: 'ยืนตรง', la: [8, 0], ra: [-8, 0], ll: 4, rl: -4, dy: 0 };
+
+/** ตัวเลือกที่ 1-6 (ชุดคำถามมีได้สูงสุด 6 ตัวเลือก) ท่าปลอดภัย ไม่ต้องแตะตัวเพื่อน มองจากไกลก็แยกออก */
+export const CHOICE_POSES: PoseDef[] = [
+  { name: 'ชูแขนเป็นตัว V', la: [145, 0], ra: [-145, 0], ll: 4, rl: -4, dy: 0 },
+  { name: 'กางแขนออกข้าง', la: [90, 0], ra: [-90, 0], ll: 4, rl: -4, dy: 0 },
+  { name: 'มือแตะหัว', la: [150, 72], ra: [-150, -72], ll: 4, rl: -4, dy: 0 },
+  { name: 'นั่งลงกับพื้น', la: [24, 0], ra: [-24, 0], ll: 78, rl: -78, dy: 16 },
+  { name: 'งอศอกแบบหุ่นยนต์', la: [90, 90], ra: [-90, -90], ll: 10, rl: -10, dy: 0 },
+  { name: 'กางแขนกางขาเป็นดาว', la: [128, 0], ra: [-128, 0], ll: 26, rl: -26, dy: 3 },
+];
 
 /* ------------------------------ คะแนน ------------------------------ */
 
-/** ผลที่ครูตัดสินของทีม/ผู้เล่นหนึ่งในรอบนั้น */
-export interface Judge {
-  ans: boolean | null;
-  mis: boolean | null;
-  cond: boolean;
-  team: boolean;
-  /** คะแนนที่ครูเพิ่ม/ลดเองในรอบนี้ */
-  bonus: number;
-}
-export const EMPTY_JUDGE: Judge = { ans: null, mis: null, cond: false, team: false, bonus: 0 };
-
-/** โบนัสเวลา: จำนวนเต็ม 0..max ตามสัดส่วนเวลาที่เหลือ */
-export function timeBonus(max: number, remain: number, total: number): number {
-  if (!(total > 0) || !(max > 0)) return 0;
-  return Math.round(max * Math.min(1, Math.max(0, remain / total)));
+/** ผลหนึ่งข้อ: teams = ทีมที่ตอบถูกเรียงตามลำดับที่ครูแตะ */
+export interface Round {
+  teams: number[];
+  order: boolean;
 }
 
-/** คะแนนของรอบ (ปิดระบบคะแนน = 0) เงื่อนไข/ความร่วมมือ/เวลา นับเมื่อภารกิจสำเร็จเท่านั้น */
-export function roundPoints(p: ShapePts, j: Judge, remain: number, total: number, on = true): number {
-  if (!on) return 0;
-  const ok = j.mis === true;
-  return (j.ans === true ? p.answer : 0) + (ok ? p.mission + timeBonus(p.time, remain, total) + (j.cond ? p.cond : 0) + (j.team ? p.team : 0) : 0) + j.bonus;
-}
+/** ไม่นับอันดับ = ถูกได้ 10 / นับอันดับ = ที่ 1 ได้ 10, 8, 6 แล้วทีมต่อไปได้ 5 (rank เริ่มที่ 0) */
+export const pointsFor = (rank: number, order: boolean) => (order ? Math.max(5, 10 - 2 * rank) : 10);
 
-/** คะแนนรวมไม่ติดลบ */
-export const addScore = (score: number, delta: number) => Math.max(0, score + delta);
+/** แตะทีม: ยังไม่เลือก = ต่อท้าย, เลือกแล้ว = เอาออก (ทีมหลังขยับอันดับขึ้น) */
+export const toggleTeam = (list: number[], t: number) => (list.includes(t) ? list.filter((x) => x !== t) : [...list, t]);
 
-/** อันดับ (คะแนนเท่ากัน = อันดับเดียวกัน) คืนอันดับตามลำดับเดิม */
-export function ranks(scores: number[]): number[] {
-  return scores.map((s) => 1 + scores.filter((x) => x > s).length);
-}
-
-/** แบ่งรายชื่อเป็น k ทีมแบบสุ่ม (ขนาดต่างกันไม่เกิน 1) */
-export function splitTeams<T>(names: T[], k: number, rnd: () => number = Math.random): T[][] {
-  const a = [...names];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(rnd() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  const out: T[][] = Array.from({ length: Math.max(1, k) }, () => []);
-  a.forEach((x, i) => out[i % out.length].push(x));
+export function totals(rounds: Round[], teams: number): number[] {
+  const out: number[] = Array.from({ length: teams }, () => 0);
+  for (const r of rounds) r.teams.forEach((t, rank) => (out[t] += pointsFor(rank, r.order)));
   return out;
 }
+
+/** อันดับรวม (คะแนนเท่ากัน = อันดับเดียวกัน) */
+export const ranks = (scores: number[]) => scores.map((s) => 1 + scores.filter((x) => x > s).length);

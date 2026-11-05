@@ -2177,78 +2177,33 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
     console.log('  ok  รายงานผลหลังเล่น (รายข้อ/รายบุคคล/Excel) + แบ่งภาษาเสียงอ่านโจทย์');
   }
   {
-    const SM = await import('../src/lib/game-creator/shape/missions');
     const SS = await import('../src/lib/game-creator/shape/settings');
     const fs = await import('node:fs');
     const path = await import('node:path');
     const EMO = /\p{Extended_Pictographic}|️/u;
-    // ไม่มีอิโมจิในข้อมูลภารกิจและไฟล์ของเกม
-    const dump = JSON.stringify(SM.MISSIONS.map((m) => ({ ...m, figs: m.build(m.max), line: m.outline(m.max) }))) + JSON.stringify(SM.POSES) + JSON.stringify(SM.CATS) + JSON.stringify(SS.PATTERNS) + JSON.stringify(SM.ANSWER_POSES);
-    assert.ok(!EMO.test(dump), 'ข้อมูลภารกิจมีอิโมจิ');
-    const files = ['src/lib/game-creator/shape/missions.ts', 'src/lib/game-creator/shape/settings.ts', 'src/components/creator/games/shape/ShapeGame.tsx', 'src/components/creator/games/shape/ShapeSetup.tsx', 'src/components/creator/games/shape/KidStage.tsx', 'src/components/creator/games/shape/shape.css', 'src/app/play/shape/page.tsx'];
+    const files = ['src/lib/game-creator/shape/settings.ts', 'src/components/creator/games/shape/ShapeGame.tsx', 'src/components/creator/games/shape/ShapeSetup.tsx', 'src/components/creator/games/shape/KidStage.tsx', 'src/components/creator/games/shape/shape.css', 'src/app/play/shape/page.tsx'];
     for (const f of files) assert.ok(!EMO.test(fs.readFileSync(path.join(__dirname, '..', f), 'utf8')), `${f} มีอิโมจิ`);
-    // id ไม่ซ้ำ ทุกหมวดมีภารกิจคนเดียว
-    assert.equal(new Set(SM.MISSIONS.map((m) => m.id)).size, SM.MISSIONS.length);
-    for (const c of SM.CATS) assert.ok(SM.MISSIONS.some((m) => m.cat === c.id && m.min === 1), `หมวด ${c.id} ไม่มีภารกิจคนเดียว`);
-    // ภาพสาธิตใช้คนตามจำนวนจริง และปลอดภัยทุกจำนวน
-    for (const m of SM.MISSIONS) {
-      assert.ok(m.min >= 1 && m.max >= m.min, m.id);
-      for (let n = m.min; n <= Math.min(m.max, 24); n++) {
-        const figs = m.build(n);
-        assert.equal(figs.length, n, `${m.id} ใช้ ${n} คน ได้ ${figs.length}`);
-        assert.deepEqual(SM.safetyIssues(m, figs), [], `${m.id} n=${n}`);
-        assert.ok(figs.every((f) => Number.isFinite(f.x) && Number.isFinite(f.y) && f.role.length > 0), m.id);
-      }
-    }
-    // ไม่เคยเลือกภารกิจที่ต้องใช้คนเกินจำนวนที่มี
-    let seed = 7;
-    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-    for (let n = 1; n <= 40; n++)
-      for (let cats = 1; cats <= SM.ALL_CATS; cats++)
-        for (let lv = 0; lv < 3; lv++) {
-          const m = SM.pickMission(n, cats, lv, rnd);
-          assert.ok(m.min <= n, `n=${n} cats=${cats} lv=${lv} ได้ ${m.id} (${m.min} คน)`);
-          if (n === 1 || n >= 6) assert.ok(cats & SM.catBit(m.cat), `n=${n} cats=${cats} ได้หมวด ${m.cat}`);
-          assert.ok(SM.useCount(m, n) <= n && SM.useCount(m, n) >= m.min);
-        }
-    assert.ok(SM.missionPool(3, SM.ALL_CATS).every((m) => m.min <= 3));
-    // ทีมหลายคนได้ภารกิจกลุ่ม (ไม่ใช่ท่าคนเดียว) / คนเดียวได้ท่าคนเดียว
-    for (let n = 2; n <= 40; n++) for (let lv = 0; lv < 3; lv++) assert.ok(SM.pickMission(n, SM.ALL_CATS, lv, rnd).min >= 2, `n=${n} lv=${lv}`);
-    for (let lv = 0; lv < 3; lv++) assert.equal(SM.pickMission(1, SM.ALL_CATS, lv, rnd).min, 1);
-    // รูปแบบ C เชื่อมคำในโจทย์ / B ตอบด้วยร่างกาย
-    assert.equal(SM.missionForText('รูปสามเหลี่ยมมีกี่ด้าน', '3', 4, SM.ALL_CATS, 0, rnd).keys.includes('สามเหลี่ยม'), true);
-    assert.equal(SM.missionForText('What letter comes after K?', 'L', 4, SM.ALL_CATS, 1, rnd).id, 'n-L');
-    assert.ok(SM.missionForText('สัตว์ใดมีงวง', 'ช้าง', 4, SM.ALL_CATS, 1, rnd).min >= 2);
-    assert.equal(SM.missionForText('สัตว์ใดมีงวง', 'ช้าง', 1, SM.ALL_CATS, 1, rnd).id, 'a-ele1');
-    assert.ok(SM.missionForText('ข้อใดถูก', 'ไม่มีคำเชื่อม', 1, SM.ALL_CATS, 0, rnd).min <= 1);
-    assert.ok(SM.answerMissions(4, 1).every((m) => m.min === 1 && m.build(1).length === 1));
-    assert.deepEqual(SM.answerMissions(4, 9).map((m) => m.id), ['n-1', 'n-2', 'n-3', 'n-4']);
-    // ไขว้ทับกันตรวจเจอจริง
-    assert.ok(SM.segmentsCross([[0, -10], [0, 10]], [[-10, 0], [10, 0]]) && !SM.segmentsCross([[0, 0], [0, 10]], [[5, 0], [5, 10]]));
+    // ชุดคำถามมีได้สูงสุด 6 ตัวเลือก ทุกตัวเลือกต้องมีท่าไม่ซ้ำกัน
+    assert.equal(SS.CHOICE_POSES.length, 6);
+    assert.equal(new Set(SS.CHOICE_POSES.map((p) => JSON.stringify([p.la, p.ra, p.ll, p.dy]))).size, 6);
+    assert.equal(new Set(SS.CHOICE_POSES.map((p) => p.name)).size, 6);
+    // แตะทีม: ต่อท้าย / แตะซ้ำเอาออก ทีมหลังขยับอันดับ
+    assert.deepEqual(SS.toggleTeam([1, 3], 0), [1, 3, 0]);
+    assert.deepEqual(SS.toggleTeam([1, 3, 0], 1), [3, 0]);
     // คะแนน
-    const p = { answer: 10, mission: 10, cond: 5, team: 5, time: 5 };
-    const J = SS.EMPTY_JUDGE;
-    assert.equal(SS.roundPoints(p, { ...J, ans: true, mis: true, cond: true, team: true }, 30, 60), 10 + 10 + 3 + 5 + 5);
-    assert.equal(SS.roundPoints(p, { ...J, ans: true, mis: false, cond: true, team: true }, 60, 60), 10);
-    assert.equal(SS.roundPoints(p, { ...J, ans: false, mis: true }, 0, 60), 10);
-    assert.equal(SS.roundPoints(p, { ...J, ans: true, mis: true, bonus: 5 }, 60, 60, false), 0);
-    assert.equal(SS.roundPoints({ ...p, answer: 20, time: 0 }, { ...J, ans: true, mis: true, bonus: -3 }, 60, 60), 27);
-    assert.deepEqual([0, 30, 60, 90, -5].map((r) => SS.timeBonus(5, r, 60)), [0, 3, 5, 5, 0]);
-    assert.equal(SS.timeBonus(5, 10, 0), 0);
-    assert.equal(SS.addScore(3, -10), 0);
-    assert.deepEqual(SS.ranks([10, 30, 30, 5]), [3, 1, 1, 4]);
-    const sp = SS.splitTeams(['a', 'b', 'c', 'd', 'e', 'f', 'g'], 3, rnd);
-    assert.deepEqual(sp.map((t) => t.length).sort(), [2, 2, 3]);
-    assert.deepEqual(sp.flat().sort(), ['a', 'b', 'c', 'd', 'e', 'f', 'g']);
+    assert.deepEqual([0, 1, 2, 3, 7].map((r) => SS.pointsFor(r, true)), [10, 8, 6, 5, 5]);
+    assert.deepEqual([0, 1, 7].map((r) => SS.pointsFor(r, false)), [10, 10, 10]);
+    assert.deepEqual(SS.totals([{ teams: [2, 0], order: true }, { teams: [0, 1], order: false }, { teams: [], order: true }], 3), [18, 10, 10]);
+    assert.deepEqual(SS.ranks([18, 10, 10]), [1, 2, 2]);
+    assert.equal(SS.teamName(1), 'ทีม B');
     // URL ไป-กลับ + ค่าแปลกปลอม
-    const s = { ...SS.SHAPE_DEFAULTS, teams: 3, players: 6, level: 2, cats: 5, time: 90, scoring: false, rounds: 8, pattern: 2, pick: 1, order: 1, pts: { answer: 20, mission: 15, cond: 0, team: 3, time: 2 }, music: 'happy' };
+    const s = { teams: 6, count: 10, order: false, music: 'happy' };
     const qs = new URLSearchParams(SS.shapeQuery('x', s));
     assert.deepEqual(SS.parseShapeSettings((k) => qs.get(k)), s);
-    const bad = new URLSearchParams('teams=9&m=999&lv=7&c=999&t=1&sc=x&n=4&p=5&pa=7&music=<b>');
-    const pb = SS.parseShapeSettings((k) => bad.get(k));
-    assert.deepEqual({ ...pb, scoring: true }, SS.SHAPE_DEFAULTS);
+    const bad = new URLSearchParams('teams=99&n=7&music=<b>');
+    assert.deepEqual(SS.parseShapeSettings((k) => bad.get(k)), SS.SHAPE_DEFAULTS);
     passed++;
-    console.log('  ok  Human Shape Builder: ภารกิจพอดีจำนวนคน ท่าปลอดภัย ไม่มีอิโมจิ คะแนน');
+    console.log('  ok  มนุษย์สร้างรูป: ท่าครบทุกตัวเลือก อันดับ คะแนน ไม่มีอิโมจิ');
   }
   console.log(`\n${passed} tests passed`);
 })().catch((e) => {

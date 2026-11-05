@@ -1,20 +1,10 @@
 'use client';
 
-/** ตั้งค่า Human Shape Builder (ใช้ทั้งในหน้าต่างเปิดเกม และหน้าเริ่มเกม/ทดลองเล่น) */
+/** ตั้งค่ามนุษย์สร้างรูปในหน้าต่างเปิดเกม */
 import React from 'react';
-import { Clock3, Gauge, Layers, ListOrdered, Shuffle, Sparkles, Star, Users, Wand2 } from 'lucide-react';
+import { ListOrdered, Medal, Users } from 'lucide-react';
 import { gsfx } from '@/lib/game-creator/gsound';
-import { CATS, LEVELS, catBit, ALL_CATS } from '@/lib/game-creator/shape/missions';
-import { PATTERNS, PT_STEPS, SHAPE_PLAYERS, SHAPE_ROUNDS, SHAPE_TEAMS, SHAPE_TIMES, type ShapePts, type ShapeSettings } from '@/lib/game-creator/shape/settings';
-import './shape.css';
-
-const PT_ROWS: [keyof ShapePts, string][] = [
-  ['answer', 'ตอบคำถามถูก'],
-  ['mission', 'สร้างรูปสำเร็จ'],
-  ['cond', 'ทำตามเงื่อนไขครบ'],
-  ['team', 'ความร่วมมือ'],
-  ['time', 'โบนัสเสร็จเร็ว (สูงสุด)'],
-];
+import { SHAPE_COUNTS, SHAPE_TEAMS, type ShapeSettings } from '@/lib/game-creator/shape/settings';
 
 function Row({ icon, label, children }: { icon: React.ReactNode; label: string; children: React.ReactNode }) {
   return (
@@ -29,118 +19,31 @@ function Row({ icon, label, children }: { icon: React.ReactNode; label: string; 
 
 export function ShapeSetup({ value, onChange, usable, music }: { value: ShapeSettings; onChange: (v: ShapeSettings) => void; usable: number; music?: React.ReactNode }) {
   const set = (p: Partial<ShapeSettings>) => (gsfx.tap(), onChange({ ...value, ...p }));
-  const Chip = ({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) => (
-    <button type="button" className="l5g-chipbtn" data-on={on} onClick={onClick}>
-      {children}
-    </button>
-  );
-  const toggleCat = (bit: number) => {
-    if (value.cats === ALL_CATS) return set({ cats: bit });
-    const next = value.cats & bit ? value.cats & ~bit : value.cats | bit;
-    set({ cats: next || bit });
-  };
+  const counts = SHAPE_COUNTS.filter((n) => n === 0 || n < usable);
   return (
-    <div className="grid gap-4 hs-setup">
-      <Row icon={<Users className="w-4 h-4" />} label="รูปแบบผู้เล่น">
+    <div className="grid gap-4">
+      <Row icon={<Users className="w-4 h-4" />} label="จำนวนกลุ่ม">
         {SHAPE_TEAMS.map((t) => (
-          <Chip key={t} on={value.teams === t} onClick={() => set({ teams: t })}>
-            {t ? `${t} ทีม` : 'เล่นเดี่ยว'}
-          </Chip>
-        ))}
-      </Row>
-      <Row icon={<Users className="w-4 h-4" />} label={value.teams ? 'สมาชิกต่อทีม (ภารกิจจะไม่ใช้คนเกินนี้)' : 'จำนวนผู้เล่น (ทำภารกิจคนละรูป)'}>
-        {SHAPE_PLAYERS.map((n) => (
-          <Chip key={n} on={value.players === n} onClick={() => set({ players: n })}>
-            {n} คน
-          </Chip>
-        ))}
-      </Row>
-      <Row icon={<Gauge className="w-4 h-4" />} label="ระดับความยาก">
-        {LEVELS.map((l, i) => (
-          <Chip key={i} on={value.level === i} onClick={() => set({ level: i })}>
-            {l}
-          </Chip>
-        ))}
-      </Row>
-      <Row icon={<Sparkles className="w-4 h-4" />} label="รูปแบบการเล่น">
-        {PATTERNS.map((p, i) => (
-          <button key={i} type="button" className="l5g-chipbtn hs-pat" data-on={value.pattern === i} onClick={() => set({ pattern: i })}>
-            <b>{p.name}</b>
-            <span>{p.desc}</span>
+          <button key={t} type="button" className="l5g-chipbtn" data-on={value.teams === t} onClick={() => set({ teams: t })}>
+            {t} กลุ่ม
           </button>
         ))}
       </Row>
-      <details className="hs-adv">
-        <summary>ตั้งค่าเพิ่มเติม (ประเภทภารกิจ จำนวนรอบ เวลา คะแนน)</summary>
-        <div className="grid gap-4 mt-3">
-      <Row icon={<Layers className="w-4 h-4" />} label="ประเภทภารกิจ (เลือกได้หลายแบบ)">
-        <Chip on={value.cats === ALL_CATS} onClick={() => set({ cats: ALL_CATS })}>
-          สุ่มจากทุกประเภท
-        </Chip>
-        {CATS.map((c) => (
-          <Chip key={c.id} on={value.cats !== ALL_CATS && !!(value.cats & catBit(c.id))} onClick={() => toggleCat(catBit(c.id))}>
-            {c.name}
-          </Chip>
+      <Row icon={<ListOrdered className="w-4 h-4" />} label="จำนวนข้อ">
+        {counts.map((n) => (
+          <button key={n} type="button" className="l5g-chipbtn" data-on={value.count === n || (value.count >= usable && n === 0)} onClick={() => set({ count: n })}>
+            {n ? `${n} ข้อ` : `ทั้งหมด ${usable} ข้อ`}
+          </button>
         ))}
       </Row>
-      <Row icon={<Wand2 className="w-4 h-4" />} label="การเลือกภารกิจ">
-        <Chip on={value.pick === 0} onClick={() => set({ pick: 0 })}>
-          ระบบสุ่มให้
-        </Chip>
-        <Chip on={value.pick === 1} onClick={() => set({ pick: 1 })}>
-          ครูเลือกเอง
-        </Chip>
+      <Row icon={<Medal className="w-4 h-4" />} label="อันดับการตอบ">
+        <button type="button" className="l5g-chipbtn" data-on={value.order} onClick={() => set({ order: true })}>
+          นับอันดับ (ตอบก่อนได้คะแนนมากกว่า)
+        </button>
+        <button type="button" className="l5g-chipbtn" data-on={!value.order} onClick={() => set({ order: false })}>
+          ไม่นับอันดับ (ถูกได้เท่ากัน)
+        </button>
       </Row>
-      <Row icon={<ListOrdered className="w-4 h-4" />} label={`จำนวนรอบ (ชุดนี้มี ${usable} ข้อ)`}>
-        {SHAPE_ROUNDS.map((n) => (
-          <Chip key={n} on={value.rounds === n} onClick={() => set({ rounds: n })}>
-            {n ? `${n} รอบ` : `เท่าจำนวนข้อ (${usable})`}
-          </Chip>
-        ))}
-      </Row>
-      <Row icon={<Shuffle className="w-4 h-4" />} label="ลำดับคำถาม">
-        <Chip on={value.order === 0} onClick={() => set({ order: 0 })}>
-          เรียงตามชุด
-        </Chip>
-        <Chip on={value.order === 1} onClick={() => set({ order: 1 })}>
-          สุ่มคำถาม
-        </Chip>
-      </Row>
-      <Row icon={<Clock3 className="w-4 h-4" />} label="เวลาทำภารกิจ">
-        {SHAPE_TIMES.map((t) => (
-          <Chip key={t} on={value.time === t} onClick={() => set({ time: t })}>
-            {t < 60 ? `${t} วินาที` : `${t / 60} นาที`}
-          </Chip>
-        ))}
-      </Row>
-      <Row icon={<Star className="w-4 h-4" />} label="ระบบคะแนน">
-        <Chip on={value.scoring} onClick={() => set({ scoring: true })}>
-          ใช้คะแนน
-        </Chip>
-        <Chip on={!value.scoring} onClick={() => set({ scoring: false })}>
-          ไม่แข่งขัน (นับภารกิจที่สำเร็จ)
-        </Chip>
-      </Row>
-      {value.scoring && (
-        <div className="hs-pts">
-          {PT_ROWS.map(([k, label]) => (
-            <div key={k} className="hs-pt">
-              <span>{label}</span>
-              <span className="hs-step">
-                <button type="button" aria-label={`ลด ${label}`} disabled={value.pts[k] <= PT_STEPS[0]} onClick={() => set({ pts: { ...value.pts, [k]: PT_STEPS[Math.max(0, PT_STEPS.indexOf(value.pts[k]) - 1)] } })}>
-                  -
-                </button>
-                <b>{value.pts[k]}</b>
-                <button type="button" aria-label={`เพิ่ม ${label}`} disabled={value.pts[k] >= PT_STEPS[PT_STEPS.length - 1]} onClick={() => set({ pts: { ...value.pts, [k]: PT_STEPS[Math.min(PT_STEPS.length - 1, PT_STEPS.indexOf(value.pts[k]) + 1)] } })}>
-                  +
-                </button>
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-        </div>
-      </details>
       {music}
     </div>
   );
