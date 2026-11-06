@@ -192,9 +192,9 @@ export function PromoBanners({ audience, onLibrary, className = '' }: { audience
         bg: 'linear-gradient(115deg,#fff3c4 0%,#ffd75e 100%)',
         art: <ArtOffer perDay={perDay} />,
       });
-    // เลือกกลุ่มไว้แล้ว: เรื่องของกลุ่มนั้นขึ้นก่อน
+    // เลือกกลุ่มไว้แล้ว: โชว์เฉพาะเรื่องของกลุ่มนั้น + เรื่องที่ใช้ร่วมกัน
     if (!audience) return all;
-    return [...all.filter((s) => s.who === audience), ...all.filter((s) => s.who !== audience)];
+    return [...all.filter((s) => s.who === audience), ...all.filter((s) => s.who === 'all')];
   }, [audience, member, ready, welcome, perDay, grown, user, onLibrary]);
 
   const n = slides.length;

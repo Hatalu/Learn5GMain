@@ -37,7 +37,7 @@ export function AudiencePaths({
   className = '',
 }: {
   audience: Audience | null;
-  onPick: (a: Audience) => void;
+  onPick: (a: Audience | null) => void;
   onLibrary: () => void;
   onDaily: () => void;
   className?: string;
@@ -81,7 +81,7 @@ export function AudiencePaths({
         <h2 id="aud-title" className="font-display text-2xl sm:text-3xl text-gray-900 dark:text-white">
           คุณมาที่นี่เพื่อ...
         </h2>
-        <p className="mt-1 text-sm sm:text-base font-semibold text-gray-500 dark:text-gray-400">เลือกแล้วเราจะพาไปลองสิ่งที่ตรงกับคุณที่สุด</p>
+        <p className="mt-1 text-sm sm:text-base font-semibold text-gray-500 dark:text-gray-400">เลือกแล้วหน้านี้จะโชว์เฉพาะสิ่งที่ตรงกับคุณ กดซ้ำเพื่อดูทั้งหมด</p>
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-5 max-w-3xl mx-auto">
@@ -96,7 +96,7 @@ export function AudiencePaths({
             <button
               key={c.id}
               type="button"
-              onClick={() => onPick(c.id)}
+              onClick={() => onPick(on ? null : c.id)}
               aria-pressed={on}
               className={`group relative overflow-hidden flex flex-col sm:flex-row items-center gap-1 sm:gap-4 p-3 sm:p-4 rounded-3xl border-[3px] ${INK} bg-gradient-to-br ${c.bg} text-center sm:text-left transition-all duration-300 ${
                 on ? 'shadow-[0_6px_0_#2a2350] -translate-y-1 ring-4 ring-amber-300' : audience ? 'opacity-70 hover:opacity-100 shadow-[0_3px_0_#2a2350]' : 'shadow-[0_5px_0_#2a2350] hover:-translate-y-1'

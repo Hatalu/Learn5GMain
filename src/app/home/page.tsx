@@ -42,9 +42,13 @@ import { SocialProof } from '@/components/membership/SocialProof';
 import { PromoBanners } from '@/components/home/PromoBanners';
 import { AudiencePaths } from '@/components/home/AudiencePaths';
 import { useAudience } from '@/components/home/audience';
+import { ArZone } from '@/components/home/ArZone';
 import hp from '@/components/home/home-page.module.css';
 
 // หน้าต่างที่เปิดเมื่อกดเท่านั้น: แยกไฟล์ โหลดตอนใช้ ไม่ถ่วงการเปิดหน้าแรก
+const LiveDemo = dynamic(() => import('@/components/home/TeacherZones').then((m) => m.LiveDemo), { ssr: false });
+const TeacherJobs = dynamic(() => import('@/components/home/TeacherZones').then((m) => m.TeacherJobs), { ssr: false });
+const TeacherGallery = dynamic(() => import('@/components/home/TeacherZones').then((m) => m.TeacherGallery), { ssr: false });
 const AddMediaModal = dynamic(() => import('@/components/dev/AddMediaModal').then((m) => m.AddMediaModal), { ssr: false });
 const MediaDetailModal = dynamic(() => import('@/components/media/MediaDetailModal').then((m) => m.MediaDetailModal), { ssr: false });
 
@@ -383,22 +387,32 @@ export default function HomePage() {
       ))}
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-2 pb-6">
+        {/* เลือกกลุ่มก่อน: บล็อกด้านล่างแสดงตามกลุ่มที่เลือก (ยังไม่เลือก = แบบทั่วไป) */}
+        <Reveal className="mt-4 sm:mt-6">
+          <AudiencePaths audience={audience} onPick={setAudience} onLibrary={openGames} onDaily={scrollToDaily} />
+        </Reveal>
+
+        {audience === 'teacher' && (
+          <>
+            <LiveDemo className="mt-6 sm:mt-8" />
+            <TeacherJobs className="mt-6 sm:mt-8" />
+            <TeacherGallery className="mt-6 sm:mt-8" />
+          </>
+        )}
+
         {/* ป้ายโฆษณาระบบต่างๆ ในเว็บ (กดปิดได้ ซ่อน 1 วัน) */}
-        <PromoBanners className="mt-2" audience={audience} onLibrary={openGames} />
+        <PromoBanners className="mt-6" audience={audience} onLibrary={openGames} />
 
         {/* ข้อเสนอสมาชิก (ส่วนลดบัญชีใหม่ / โบนัสต่ออายุ) + ตัวเลขผู้ใช้จริง */}
         <OfferBanner className="mt-6" />
         <SocialProof className="mt-5" />
 
-        {/* เลือกกลุ่ม ผู้ปกครอง / คุณครู แล้วได้ภารกิจลองใช้ + ความคุ้มของสมาชิก */}
-        <Reveal className="mt-8 sm:mt-10">
-          <AudiencePaths audience={audience} onPick={setAudience} onLibrary={openGames} onDaily={scrollToDaily} />
-        </Reveal>
-
         {/* ปริศนาวันนี้ + ห้องเลี้ยงปุ๋ง + ซีซัน */}
-        <Reveal className="mt-6 sm:mt-8">
-          <HomeHub />
-        </Reveal>
+        {audience !== 'teacher' && (
+          <Reveal className="mt-6 sm:mt-8">
+            <HomeHub />
+          </Reveal>
+        )}
 
         {/* เกมประจำวัน: เปลี่ยนทุกวัน แอดมินกำหนดได้ที่หน้า Dev */}
         <Reveal className="mt-6 sm:mt-8">
@@ -412,12 +426,14 @@ export default function HomePage() {
           <JoinRoomBanner />
         </Reveal>
 
-        <div className="mt-6 sm:mt-8">
-          <FeatureStrip />
-        </div>
+        {audience !== 'teacher' && (
+          <div className="mt-6 sm:mt-8">
+            <FeatureStrip />
+          </div>
+        )}
 
         {/* Netflix-style Rail: สื่อใหม่ล่าสุด */}
-        {latestMediaList.length > 0 && (
+        {audience !== 'teacher' && latestMediaList.length > 0 && (
           <Reveal className="mb-8">
             <MediaRail
               title="สื่อใหม่ล่าสุด"
@@ -434,6 +450,9 @@ export default function HomePage() {
             />
           </Reveal>
         )}
+
+        {/* เกม AR ยังไม่ผ่านการทดสอบกล้องจริง: วางท้าย เล็ก และไม่อยู่ในส่วนหัว */}
+        <ArZone className="mt-8" />
 
         {/* ---------- คลังเกม: ซุ้มแบบหน้าสมาชิก + เลือกวิชาได้ทันที ---------- */}
         <section id="library" data-tour="library" className="relative mt-12 sm:mt-16 scroll-mt-24">

@@ -220,6 +220,22 @@ export const SEASONS: Season[] = [
   { month: 12, name: 'ฉลองปีใหม่', line: 'ของขวัญรออยู่', c1: '#e8402f', c2: '#2f9e5a', decor: { id: 's12-d', label: 'ต้นคริสต์มาส', sticker: 'fe-tree' }, wear: { id: 's12-w', label: 'หมวกซานต้า', slot: 'hat' } },
 ];
 
+/** สติกเกอร์ลอยบนฉากหน้าแรกของแต่ละเดือน (ลำดับตาม SEASONS) */
+export const SEASON_SKY: string[][] = [
+  ['fe-balloons', 'fe-party', 'fe-gift'],
+  ['fe-lantern', 'fe-firework', 'fe-gift'],
+  ['oc-starfish', 'w-sun', 'oc-shell'],
+  ['fe-water', 'w-drop', 'w-sun'],
+  ['h-plant', 'w-rain', 'w-sunrain'],
+  ['h-school', 'h-clock', 'w-rainbow'],
+  ['w-umbrella', 'w-rain', 'w-rainbow'],
+  ['fe-wai', 'fe-candle', 'w-moon'],
+  ['sp-telescope', 'sp-rocket', 'sp-stars'],
+  ['fe-pumpkin', 'w-moon', 'sp-stars'],
+  ['fe-krathong', 'w-moon', 'fe-candle'],
+  ['fe-tree', 'fe-gift', 'fe-firework'],
+];
+
 ITEMS.push(...ROOM_ITEMS);
 
 for (const s of SEASONS) {

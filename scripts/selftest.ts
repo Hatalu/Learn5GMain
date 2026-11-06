@@ -43,7 +43,8 @@ import {
   setColor,
   setHat,
 } from '../src/lib/companion-store';
-import { FOODS, ITEMS as PET_ITEMS, SEASONS, itemById } from '../src/lib/pet/catalog';
+import { FOODS, ITEMS as PET_ITEMS, SEASONS, SEASON_SKY, itemById } from '../src/lib/pet/catalog';
+import { SHOWCASE_MAX, showcaseRows } from '../src/lib/game-creator/showcase';
 import { ROOMS } from '../src/lib/pet/rooms';
 import { CORRECT_STAR_CAP, NEED_FLOOR, equip, balance, buy, buyCheck, claimMission, claimSeason, cleanPet, emptyPet, logAnswer, mergePet, moodOf, needsAt, petLevel, pickSpecies, puzzleStreak, roll, savePuzzle, sleepStart, track, weekOf } from '../src/lib/pet/logic';
 import { ACHIEVEMENTS, DAILY_POOL, WEEKLY_POOL, dailyMissions, weeklyMissions } from '../src/lib/pet/missions';
@@ -211,6 +212,17 @@ t('ของทุกชิ้นมีภาพ ไม่ซ้ำ ไม่ม
   for (const f of FOODS) assert.ok(stickerById(f.id), 'ไม่มีภาพอาหาร ' + f.id);
   for (const s of SEASONS) assert.ok(stickerById(s.decor.sticker), s.name);
   assert.equal(SEASONS.length, 12);
+  assert.equal(SEASON_SKY.length, 12);
+  for (const row of SEASON_SKY) for (const id of row) assert.ok(stickerById(id), 'ไม่มีสติกเกอร์ฉาก ' + id);
+});
+
+t('ผลงานครูหน้าแรก: ไม่ส่งเฉลย/ชื่อเจ้าของ ตัดของซ้ำ ของน้อยไม่โชว์', () => {
+  const row = (i: number, extra = {}) => ({ id: 'g' + i, title: 'ชุด ' + i, question_count: 10, cover_url: null, content: { secret: 1 }, owner_name: 'ครู', ...extra });
+  assert.deepEqual(showcaseRows([row(1), row(2)]), []);
+  const out = showcaseRows([row(1), row(1), row(2), row(3), row(4, { title: 'ทดสอบ' }), row(5, { question_count: 2 })]);
+  assert.deepEqual(out.map((x) => x.id), ['g1', 'g2', 'g3']);
+  for (const x of out) assert.deepEqual(Object.keys(x).sort(), ['cover_url', 'id', 'question_count', 'title']);
+  assert.equal(showcaseRows(Array.from({ length: 30 }, (_, i) => row(i))).length, SHOWCASE_MAX);
 });
 
 t('ดาวใช้จ่ายไม่ลดดาวสะสม เลเวลไม่ถอย ซื้อเกินไม่ได้', () => {

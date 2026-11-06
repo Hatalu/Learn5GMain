@@ -10,6 +10,10 @@ import { NightSky } from '@/components/fx/NightSky';
 import { ChoiceShape, choiceStyle } from '@/components/creator/ChoiceShape';
 import { FiveG3D, type ShowPose } from '@/components/mascot/FiveG3D';
 import { sfx } from '@/lib/sound';
+import { bkkParts } from '@/lib/companion';
+import { SEASON_SKY, seasonOfMonth } from '@/lib/pet/catalog';
+import { Buddy } from '@/components/companion/Buddy';
+import { StickerArt } from '@/components/studio/stickers';
 import { RedeemBox } from './RedeemBox';
 import s from './home-hero.module.css';
 
@@ -22,7 +26,6 @@ const SAY: Record<ShowPose, string> = {
   cheer: 'เก่งมาก ทำได้แล้ว!',
   tablet: 'วันนี้เล่นเกมอะไรดีนะ',
 };
-const FLAGS = ['#ff6b7a', '#ffcf3f', '#3fd6a8', '#4fb3ff', '#9b6cf0', '#ff9a3d'];
 const SUBJECT_COLOR: Record<Subject, string> = { คณิตศาสตร์: '#3fd6a8', วิทยาศาสตร์: '#4fb3ff', ภาษาอังกฤษ: '#ffcf3f' };
 const TOKENS = [
   { l: '6%', t: '22%', i: 0, d: '0s' },
@@ -64,6 +67,8 @@ export function HomeHero({
   onDaily: () => void;
 }) {
   const { user } = useAuth();
+  const season = useMemo(() => seasonOfMonth(bkkParts().month), []);
+  const flags = [season.c1, '#fff8ec', season.c2, '#ffcf3f'];
   const [pose, setPose] = useState<ShowPose>('wave');
   // เลื่อนพ้นส่วนหัวแล้ว: หยุดแอนิเมชันตกแต่งทั้งหมดในส่วนนี้ (ธง ดาว เมฆ แถบภาพ) ไม่ให้กิน CPU/GPU
   const sec = useRef<HTMLElement>(null);
@@ -87,23 +92,38 @@ export function HomeHero({
   const gameCount = media.filter((m) => m.media_type !== 'วิดีโอ').length;
 
   return (
-    <section ref={sec} className={s.world} data-off={off || undefined} data-tour="hero" aria-label="ยินดีต้อนรับสู่สื่อการสอน 5G">
+    <section ref={sec} className={s.world} style={{ ['--s1' as string]: season.c1, ['--s2' as string]: season.c2 }} data-off={off || undefined} data-tour="hero" aria-label="ยินดีต้อนรับสู่สื่อการสอน 5G">
       <NightSky />
       <div className={s.sky} aria-hidden="true">
         <div className={s.dots} />
         <span className={s.cloud} style={{ top: '14%', animationDelay: '-18s' }} />
         <span className={s.cloud} style={{ top: '38%', animationDelay: '-52s', ['--s' as string]: 0.7 }} />
         <span className={s.cloud} style={{ top: '6%', animationDelay: '-80s', ['--s' as string]: 0.55 }} />
+        {SEASON_SKY[season.month - 1].map((id, i) => (
+          <span key={id} className={s.seasonFloat} data-i={i} style={{ animationDelay: `${i * -1.6}s` }}>
+            <StickerArt id={id} />
+          </span>
+        ))}
       </div>
       <div className={s.bunting} aria-hidden="true">
         {Array.from({ length: 48 }).map((_, i) => (
-          <i key={i} style={{ background: FLAGS[i % FLAGS.length], animationDelay: `${(i % 7) * 0.25}s` }} />
+          <i key={i} style={{ background: flags[i % flags.length], animationDelay: `${(i % 7) * 0.25}s` }} />
         ))}
       </div>
 
       <div className={s.inner}>
         {/* ---------- ข้อความ ---------- */}
         <div className={s.copy}>
+          <Link href="/buddy" className={s.seasonTag} style={{ background: `linear-gradient(100deg,${season.c1},${season.c2})` }}>
+            <span className={s.seasonBuddy} aria-hidden="true">
+              <Buddy stage={1} color="sun" size={46} animate={false} wear={{ [season.wear.slot]: season.wear.id }} />
+            </span>
+            <span>
+              <b>{season.name}</b>
+              <small>เก็บแต้มรับ{season.wear.label} เฉพาะเดือนนี้</small>
+            </span>
+            <ChevronRight className="w-4 h-4 shrink-0" strokeWidth={3} />
+          </Link>
           <span className={s.tagline}>
             <ShieldCheck className="w-4 h-4 text-emerald-600" /> เกมการเรียนรู้ ป.1 - ป.6 · ไม่มีโฆษณา ไม่มีแชท
           </span>

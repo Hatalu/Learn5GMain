@@ -23,15 +23,15 @@ const write = (k: string, v: string) => {
   }
 };
 
-export function useAudience(): [Audience | null, (a: Audience) => void] {
+export function useAudience(): [Audience | null, (a: Audience | null) => void] {
   const [aud, setAud] = useState<Audience | null>(null);
   useEffect(() => {
     const v = read(KEY);
     if (v === 'parent' || v === 'teacher') setAud(v);
   }, []);
-  const set = useCallback((a: Audience) => {
+  const set = useCallback((a: Audience | null) => {
     setAud(a);
-    write(KEY, a);
+    write(KEY, a ?? '');
   }, []);
   return [aud, set];
 }
