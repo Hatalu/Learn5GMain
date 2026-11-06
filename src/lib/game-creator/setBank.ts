@@ -13,6 +13,8 @@ import { mathHi } from './bank/hi-math.mjs';
 import { scienceHi } from './bank/hi-science.mjs';
 import { scienceHiFacts } from './bank/hi-sci-facts.mjs';
 import { englishHi } from './bank/hi-english.mjs';
+import { thai } from './bank/thai.mjs';
+import { social } from './bank/social.mjs';
 import { rng } from './bank/util.mjs';
 
 export interface SetMeta {
@@ -48,6 +50,18 @@ export const SET_CATS: Record<SetSubject, { id: string; label: string }[]> = {
     { id: 'grammar', label: 'ไวยากรณ์' },
     { id: 'comm', label: 'การสื่อสาร' },
     { id: 'read', label: 'การอ่าน' },
+  ],
+  thai: [
+    { id: 'word', label: 'คำและภาษา' },
+    { id: 'gram', label: 'หลักภาษา' },
+    { id: 'read', label: 'การอ่าน' },
+    { id: 'lit', label: 'วรรณคดีและการเขียน' },
+  ],
+  social: [
+    { id: 'civic', label: 'หน้าที่พลเมือง' },
+    { id: 'hist', label: 'ประวัติศาสตร์' },
+    { id: 'geo', label: 'ภูมิศาสตร์' },
+    { id: 'econ', label: 'เศรษฐศาสตร์' },
   ],
 };
 export const LEVEL_LABEL = ['', 'เริ่มต้น', 'ฝึกฝน', 'ท้าทาย'];
@@ -99,6 +113,8 @@ const SOURCES: [SetSubject, Bank][] = [
   ['sci', scienceHiFacts as unknown as Bank],
   ['eng', english as unknown as Bank],
   ['eng', englishHi as unknown as Bank],
+  ['thai', thai as unknown as Bank],
+  ['social', social as unknown as Bank],
 ];
 
 const PER_SET = 10;
@@ -159,7 +175,7 @@ function index(): Map<string, Entry> {
             m.set(id, { topic: t, meta: { id, subject, g, cat, level: lv, title: t.name, note: `ระดับ${LEVEL_LABEL[lv]} โจทย์ไม่ซ้ำกัน`, sample: qs[0]?.[0] || '', count: qs.length } });
           });
         } else {
-          m.set(base, { topic: t, meta: { id: base, subject, g, cat, title: t.name, note: 'ไล่จากง่ายไปท้าทาย มีคำใบ้ทุกข้อ', sample: t.qs![0][1], count: t.qs!.length } });
+          m.set(base, { topic: t, meta: { id: base, subject, g, cat, title: t.name, note: 'ไล่จากง่ายไปท้าทาย', sample: t.qs![0][1], count: t.qs!.length } });
         }
       }
     }

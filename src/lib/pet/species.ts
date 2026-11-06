@@ -26,7 +26,7 @@ export interface Species {
   body: string;
   dark: string;
   light: string;
-  ears: 'round' | 'cat' | 'fox' | 'flop' | 'long' | 'koala' | 'panda' | 'mouse' | 'pig' | 'cow' | 'sheep' | 'elephant' | 'monkey' | 'lion' | 'frog' | 'tuft' | 'owl' | 'dino' | 'dragon' | 'unicorn' | 'none';
+  ears: 'round' | 'cat' | 'fox' | 'flop' | 'long' | 'koala' | 'panda' | 'mouse' | 'pig' | 'cow' | 'sheep' | 'elephant' | 'monkey' | 'lion' | 'frog' | 'tuft' | 'owl' | 'dino' | 'dragon' | 'unicorn' | 'deer' | 'giraffe' | 'horse' | 'antenna' | 'spike' | 'fin' | 'none';
   tail: 'none' | 'long' | 'bushy' | 'puff' | 'curl' | 'stripe' | 'tuft' | 'dino' | 'arrow' | 'shell' | 'wings' | 'wool';
   nose: 'none' | 'cat' | 'dog' | 'snout' | 'beak' | 'bill' | 'trunk' | 'monkey' | 'bear';
   mark?: 'stripes' | 'patches' | 'eyes' | 'belly' | 'spots' | 'mask';
@@ -67,6 +67,31 @@ export const SPECIES: Species[] = [
   S('dino', 'ไดโนเสาร์', '#6fcf97', '#2f8f5f', '#d8f5e2', 'dino', 'dino', 'none', 'stomp', 'visit', 10),
   S('unicorn', 'ยูนิคอร์น', '#fbeeff', '#b38ad6', '#ffd9f0', 'unicorn', 'bushy', 'none', 'spin', 'puzzle', 20),
   S('dragon', 'มังกรน้อย', '#8e7bff', '#5238c9', '#ffe08a', 'dragon', 'arrow', 'none', 'flip', 'correct', 300, 'belly'),
+  /* ชุดเพิ่ม 7 พ.ย. 2026: 24 ตัว ปลดด้วยเควสแนวใหม่ */
+  S('squirrel', 'กระรอกน้อย', '#c98a52', '#8a5a2b', '#f6e1cc', 'cat', 'bushy', 'cat', 'tiptoe', 'catch', 3),
+  S('deer', 'กวางน้อย', '#d9a273', '#94633a', '#fff1e0', 'deer', 'puff', 'dog', 'hop', 'match', 3, 'spots'),
+  S('hedgehog', 'เม่นน้อย', '#c7a98a', '#6d4d32', '#fff1e0', 'spike', 'none', 'dog', 'wiggle', 'answer', 20),
+  S('otter', 'นากน้ำ', '#a5714a', '#6a4326', '#f3d4b2', 'round', 'long', 'dog', 'flip', 'wash', 15),
+  S('seal', 'แมวน้ำ', '#b8c4d4', '#6d7c91', '#eef3f8', 'none', 'wings', 'dog', 'wiggle', 'wash', 25),
+  S('bee', 'ผึ้งน้อย', '#ffd23f', '#2a2740', '#fff0a8', 'antenna', 'wings', 'none', 'hop', 'balloon', 10, 'stripes'),
+  S('ladybug', 'เต่าทอง', '#ef5d5d', '#2a2740', '#ffd6d6', 'antenna', 'wings', 'none', 'tiptoe', 'balloon', 25, 'spots'),
+  S('capybara', 'คาปิบารา', '#b98a5e', '#7a5634', '#e8cfae', 'round', 'none', 'bear', 'stretch', 'sleep', 15),
+  S('goat', 'แพะน้อย', '#f1ebe0', '#8a7f6e', '#ffd6e0', 'cow', 'puff', 'bear', 'jump', 'veg', 20),
+  S('horse', 'ม้าน้อย', '#c98a52', '#6d4528', '#f6e1cc', 'horse', 'long', 'snout', 'stomp', 'play', 3),
+  S('zebra', 'ม้าลาย', '#fafafa', '#2f2f3a', '#e8e8ee', 'horse', 'long', 'snout', 'hop', 'play', 10, 'stripes'),
+  S('giraffe', 'ยีราฟ', '#ffd27a', '#b97f24', '#fff1cf', 'giraffe', 'tuft', 'bear', 'stretch', 'decor', 3, 'spots'),
+  S('flamingo', 'ฟลามิงโก', '#ff9fc0', '#d9638d', '#ffe0ea', 'tuft', 'wings', 'beak', 'tiptoe', 'wear', 5),
+  S('parrot', 'นกแก้ว', '#4cc38a', '#1f8a5c', '#ffe08a', 'tuft', 'wings', 'beak', 'dance', 'color', 3),
+  S('croc', 'จระเข้น้อย', '#6fbf73', '#2f7f3f', '#e5f5c8', 'dino', 'dino', 'snout', 'stomp', 'full', 5, 'belly'),
+  S('bat', 'ค้างคาวน้อย', '#6b6088', '#3c3358', '#d6cfe6', 'fox', 'wings', 'cat', 'flip', 'album', 3),
+  S('wolf', 'หมาป่าน้อย', '#9aa0ad', '#555b68', '#e8eaef', 'fox', 'bushy', 'dog', 'stomp', 'happy', 5),
+  S('redpanda', 'แพนด้าแดง', '#d9622b', '#7a3412', '#ffe9d6', 'round', 'stripe', 'cat', 'wave', 'report', 2, 'mask'),
+  S('polar', 'หมีขั้วโลก', '#fbfdff', '#a9bbcb', '#ffffff', 'round', 'none', 'bear', 'bow', 'feed', 40),
+  S('alpaca', 'อัลปากา', '#f5e9d6', '#a58f6c', '#fff8ec', 'sheep', 'wool', 'bear', 'shake', 'pet', 30),
+  S('fennec', 'จิ้งจอกทะเลทราย', '#f2d39a', '#b98a45', '#fff4dc', 'fox', 'bushy', 'cat', 'wiggle', 'buy', 12),
+  S('shark', 'ฉลามน้อย', '#7fa8cf', '#46698c', '#f2f7fb', 'fin', 'dino', 'none', 'spin', 'correct', 200, 'belly'),
+  S('phoenix', 'นกฟีนิกซ์', '#ff8a3d', '#c8481a', '#ffe08a', 'tuft', 'wings', 'beak', 'spin', 'visit', 30),
+  S('golddragon', 'มังกรทอง', '#ffc83d', '#b9850c', '#fff3c4', 'dragon', 'arrow', 'none', 'flip', 'correct', 500, 'belly'),
 ];
 
 const byId = new Map(SPECIES.map((s) => [s.id, s]));
@@ -77,6 +102,7 @@ export const openSpeciesCount = (pet: Pick<PetState, 'total'>) => SPECIES.filter
 
 const HOW: Partial<Record<PetEv, string>> = {
   feed: 'ป้อนอาหาร', pet: 'ลูบหัว', veg: 'กินผักผลไม้', correct: 'ตอบถูก', wash: 'อาบน้ำ', game: 'เล่นมินิเกม', puzzle: 'เล่นปริศนา', sleep: 'พาเข้านอน', visit: 'มาเยี่ยม', buy: 'ซื้อของ',
+  catch: 'เล่นเกมรับผลไม้', match: 'เล่นเกมจับคู่ภาพ', answer: 'ตอบคำถาม', balloon: 'ยิงลูกโป่งถูก', play: 'เล่นเกมในเว็บ', full: 'ป้อนจนอิ่มแปล้', happy: 'ทำให้ทุกหลอดเกิน 70%', decor: 'จัดห้อง', wear: 'เปลี่ยนชุด', color: 'เปลี่ยนสีตัว', album: 'เปิดสมุดสติกเกอร์', report: 'ดูรายงาน',
 };
-const UNIT: Partial<Record<PetEv, string>> = { correct: 'ข้อ', puzzle: 'วัน', visit: 'วัน', buy: 'ชิ้น', veg: 'ครั้ง' };
+const UNIT: Partial<Record<PetEv, string>> = { correct: 'ข้อ', puzzle: 'วัน', visit: 'วัน', buy: 'ชิ้น', veg: 'ครั้ง', answer: 'ข้อ', balloon: 'ลูก', play: 'เกม', catch: 'รอบ', match: 'รอบ', full: 'วัน', happy: 'วัน' };
 export const unlockText = (s: Species) => (s.ev ? `${HOW[s.ev]} ${s.need} ${UNIT[s.ev] || 'ครั้ง'}` : '');

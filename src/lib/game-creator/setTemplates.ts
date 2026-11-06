@@ -5,11 +5,13 @@ import type { QuizContent, Rich } from './types';
  * แม่แบบชุดคำถามแยกวิชา: กดแล้วได้ชุดคำถามพร้อมเล่น (แก้ต่อได้ทุกข้อ ยังไม่บันทึกจนกว่าครูจะกดบันทึก)
  * ข้อ = [คำถาม, คำตอบถูก, ตัวลวง x3] ข้อความที่ขึ้นต้น $ = สูตร (LaTeX)
  */
-export type SetSubject = 'math' | 'sci' | 'eng';
+export type SetSubject = 'math' | 'sci' | 'eng' | 'thai' | 'social';
 export const SET_SUBJECTS: { id: SetSubject; label: string; color: string }[] = [
   { id: 'math', label: 'คณิตศาสตร์', color: '#3fd6a8' },
   { id: 'sci', label: 'วิทยาศาสตร์', color: '#4fb3ff' },
   { id: 'eng', label: 'ภาษาอังกฤษ', color: '#ffb020' },
+  { id: 'thai', label: 'ภาษาไทย', color: '#ff6b7a' },
+  { id: 'social', label: 'สังคมศึกษา', color: '#9b6cf0' },
 ];
 
 type Q = [string, string, string, string, string];

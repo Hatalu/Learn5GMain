@@ -76,6 +76,18 @@ export const ACHIEVEMENTS: Mission[] = [
   ...([[50, 3], [500, 15]] as const).map(([n, s]) => M(`a-pet${n}`, `ลูบหัวรวม ${n} ครั้ง`, 'pet', n, s, 'pet')),
   ...([[10, 4], [50, 12], [200, 30]] as const).map(([n, s]) => M(`a-game${n}`, `เล่นมินิเกมรวม ${n} รอบ`, 'game', n, s, 'play')),
   ...([[1, 2], [10, 10], [30, 30]] as const).map(([n, s]) => M(`a-buy${n}`, `สะสมของรวม ${n} ชิ้น`, 'buy', n, s, 'shop')),
+  ...([[20, 4], [100, 12], [500, 40]] as const).map(([n, s]) => M(`a-answer${n}`, `ตอบคำถามรวม ${n} ข้อ`, 'answer', n, s, 'play', true)),
+  ...([[10, 4], [50, 12], [200, 30]] as const).map(([n, s]) => M(`a-balloon${n}`, `ยิงลูกโป่งถูกรวม ${n} ลูก`, 'balloon', n, s, 'play', true)),
+  ...([[3, 3], [10, 8], [30, 20]] as const).map(([n, s]) => M(`a-play${n}`, `เล่นเกมในเว็บรวม ${n} เกม`, 'play', n, s, 'home', true)),
+  ...([[5, 3], [30, 12]] as const).map(([n, s]) => M(`a-catch${n}`, `เล่นเกมรับผลไม้รวม ${n} รอบ`, 'catch', n, s, 'play')),
+  ...([[5, 3], [30, 12]] as const).map(([n, s]) => M(`a-match${n}`, `เล่นเกมจับคู่ภาพรวม ${n} รอบ`, 'match', n, s, 'play')),
+  ...([[5, 4], [20, 12]] as const).map(([n, s]) => M(`a-full${n}`, `ป้อนจนอิ่มแปล้รวม ${n} วัน`, 'full', n, s, 'food')),
+  ...([[5, 5], [20, 15]] as const).map(([n, s]) => M(`a-happy${n}`, `ทำให้ทุกหลอดเกิน 70% รวม ${n} วัน`, 'happy', n, s, 'food')),
+  ...([[5, 3], [25, 10]] as const).map(([n, s]) => M(`a-decor${n}`, `จัดห้องรวม ${n} ครั้ง`, 'decor', n, s, 'room')),
+  ...([[5, 3], [25, 10]] as const).map(([n, s]) => M(`a-wear${n}`, `เปลี่ยนชุดรวม ${n} ครั้ง`, 'wear', n, s, 'shop')),
+  M('a-color3', 'เปลี่ยนสีตัวรวม 3 ครั้ง', 'color', 3, 3, 'shop'),
+  M('a-album3', 'เปิดสมุดสติกเกอร์รวม 3 ครั้ง', 'album', 3, 3, 'album'),
+  M('a-report4', 'ดูรายงานรวม 4 ครั้ง', 'report', 4, 6, 'report'),
   ...([[7, 8], [30, 25], [100, 70]] as const).map(([n, s]) => M(`a-visit${n}`, `มาเยี่ยมปุ๋งรวม ${n} วัน`, 'visit', n, s)),
 ];
 

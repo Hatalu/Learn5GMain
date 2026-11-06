@@ -15,7 +15,7 @@ import s from './secondary.module.css';
 
 type Bank = typeof import('@/lib/game-creator/setBank');
 const GRADES = [7, 8, 9, 10, 11, 12];
-const ICON: Record<SetSubject, React.ReactNode> = {
+const ICON: Partial<Record<SetSubject, React.ReactNode>> = {
   math: <Sigma className="w-5 h-5" />,
   sci: <FlaskConical className="w-5 h-5" />,
   eng: <Languages className="w-5 h-5" />,
@@ -127,7 +127,7 @@ export default function SecondaryPage() {
             ))}
           </div>
           <div className={s.chips} role="tablist" aria-label="เลือกวิชา">
-            {SET_SUBJECTS.map((x) => (
+            {SET_SUBJECTS.filter((x) => ICON[x.id]).map((x) => (
               <button key={x.id} type="button" role="tab" aria-selected={sub === x.id} data-on={sub === x.id} style={{ ['--c' as string]: x.color }} onClick={() => setSub(x.id)}>
                 {ICON[x.id]} {x.label}
               </button>

@@ -387,7 +387,7 @@ t('ห้อง 4 ห้อง ห้องละ 50 แบบขึ้นไป
 });
 
 t('คู่หู: เกิน 20 แบบ ปลดล็อกจากภารกิจจริง ชนิดที่ล็อกเลือกไม่ได้', () => {
-  assert.ok(PET_SPECIES.length > 20);
+  assert.ok(PET_SPECIES.length >= 50, 'คู่หู ' + PET_SPECIES.length);
   assert.equal(new Set(PET_SPECIES.map((s) => s.id)).size, PET_SPECIES.length);
   const evs = new Set([...DAILY_POOL, ...WEEKLY_POOL, ...ACHIEVEMENTS].map((m) => m.ev));
   for (const s of PET_SPECIES.slice(1)) {
@@ -1687,7 +1687,7 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
     const stickers = new Set(STICKERS.map((x) => x.id));
     const shapes = idsIn('src/components/studio/shapes.ts');
     const cats = new Set<string>(TEMPLATE_CATS.map((c) => c.id));
-    assert.ok(TEMPLATES.length >= 100, `แม่แบบ ${TEMPLATES.length}`);
+    assert.ok(TEMPLATES.length >= 340, `แม่แบบ ${TEMPLATES.length}`);
     assert.equal(new Set(TEMPLATES.map((t) => t.id)).size, TEMPLATES.length, 'id แม่แบบซ้ำ');
     for (const t of TEMPLATES) {
       assert.ok(cats.has(t.cat), `${t.id}: หมวด ${t.cat}`);
@@ -2297,7 +2297,7 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
     // แม่แบบชุดคำถาม: ทุกวิชามี ผ่านตัวกรองครบ 1 ข้อถูกต่อข้อ ตำแหน่งข้อถูกไม่ซ้ำที่เดิมตลอด
     const { SET_TEMPLATES, SET_SUBJECTS, buildSetTemplate } = await import('../src/lib/game-creator/setTemplates');
     const { sanitizeQuiz: clean, quizIssues: issues } = await import('../src/lib/game-creator/quiz');
-    for (const s of SET_SUBJECTS) assert.ok(SET_TEMPLATES.some((t) => t.subject === s.id), `ไม่มีแม่แบบวิชา ${s.id}`);
+    for (const s of SET_SUBJECTS.filter((x) => x.id !== 'thai' && x.id !== 'social')) assert.ok(SET_TEMPLATES.some((t) => t.subject === s.id), `ไม่มีแม่แบบวิชา ${s.id}`);
     assert.equal(new Set(SET_TEMPLATES.map((t) => t.id)).size, SET_TEMPLATES.length);
     for (const t of SET_TEMPLATES) {
       const c = clean(buildSetTemplate(t), '');
@@ -2314,7 +2314,8 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
     const { allSets, buildSet, SET_CATS } = await import('../src/lib/game-creator/setBank');
     const { sanitizeQuiz: clean, quizIssues: issues } = await import('../src/lib/game-creator/quiz');
     const sets = allSets();
-    assert.ok(sets.length >= 500, `แม่แบบมี ${sets.length} ชุด`);
+    assert.ok(sets.length >= 550, `แม่แบบมี ${sets.length} ชุด`);
+    for (const sub of ['thai', 'social'] as const) for (let g = 1; g <= 6; g++) assert.ok(sets.filter((s) => s.subject === sub && s.g === g).length >= 4, sub + g);
     assert.equal(new Set(sets.map((s) => s.id)).size, sets.length);
     for (const sub of ['math', 'sci', 'eng'] as const) for (let g = 1; g <= 12; g++) assert.ok(sets.some((s) => s.subject === sub && s.g <= g && g <= (s.g2 || s.g)), `ไม่มี ${sub} ชั้น ${g}`);
     const txt = (r: { v: string }[]) => r.map((s) => s.v).join('');

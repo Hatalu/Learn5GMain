@@ -166,6 +166,15 @@ const SHELF: [string, string][] = [
 ];
 
 export const ROOM_ITEMS: RoomItem[] = [
+  /* ชุดเพิ่ม 7 พ.ย. 2026: ของแต่ง 36 แบบ */
+  ...stickers('pic', 'lp', [['an-panda', 'ภาพแพนด้า'], ['an-fox', 'ภาพจิ้งจอก'], ['sp-rocket', 'ภาพจรวด'], ['w-rainbow', 'ภาพสายรุ้ง'], ['v-balloon', 'ภาพบอลลูน'], ['mu-notes', 'ภาพตัวโน้ต'], ['em-love', 'ภาพหน้ายิ้มหัวใจ'], ['fe-firework', 'ภาพพลุ']], 14, 4),
+  ...stickers('toy', 'lg', [['mu-guitar', 'กีตาร์ของเล่น'], ['mu-drum', 'กลองใบเล็ก'], ['sg-soccer', 'ลูกฟุตบอล'], ['sg-basket', 'ลูกบาสเกตบอล'], ['v-car', 'รถของเล่น'], ['v-train', 'รถไฟของเล่น'], ['blocks', 'บล็อกตัวต่อ'], ['an-unicorn', 'ตุ๊กตายูนิคอร์น'], ['sg-takraw', 'ลูกตะกร้อ'], ['mu-xylo', 'ระนาดของเล่น']], 12, 4),
+  ...stickers('n_pic', 'nq', [['sp-planet', 'ภาพดาวเคราะห์'], ['sp-comet', 'ภาพดาวหาง'], ['an-owl', 'ภาพนกฮูก'], ['sp-moonface', 'ภาพพระจันทร์ยิ้ม']], 14, 5),
+  ...stickers('n_toy', 'nh', [['an-koala', 'ตุ๊กตาโคอาลา'], ['an-bunny', 'ตุ๊กตากระต่าย'], ['an-bear', 'ตุ๊กตาหมี'], ['book', 'นิทานก่อนนอน']], 12, 5),
+  ...stickers('b_toy', 'bh', [['oc-whale', 'วาฬลอยน้ำ'], ['oc-dolphin', 'โลมาลอยน้ำ'], ['oc-shark', 'ฉลามยาง']], 14, 5),
+  ...stickers('b_deco', 'bj', [['oc-lighthouse', 'ประภาคารจิ๋ว'], ['oc-wave', 'ภาพคลื่นทะเล'], ['oc-anchor', 'สมอเรือแต่งห้อง']], 14, 5),
+  ...stickers('d_dish', 'de', [['f-cupcake', 'คัพเค้กจานโปรด'], ['f-watermelon', 'แตงโมผ่าซีก'], ['f-burger', 'เบอร์เกอร์ชิ้นโต'], ['f-sticky', 'ข้าวเหนียวมะม่วง']], 14, 5),
+
   /* ห้องกินข้าว */
   ...surfaces('d_wall', 'dw', turn(WP, 7), 8, 4),
   ...surfaces('d_floor', 'df', FL, 8, 5),
