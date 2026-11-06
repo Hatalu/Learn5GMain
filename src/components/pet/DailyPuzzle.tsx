@@ -13,7 +13,7 @@ import { seasonOfMonth } from '@/lib/pet/catalog';
 import { PUZZLE_COUNT, PUZZLE_LEVELS, PUZZLE_SECONDS, dailyPuzzle, puzzleNumber, puzzleScore, shareText, type PuzzleLevel } from '@/lib/pet/puzzle';
 import { gsfx } from '@/lib/game-creator/gsound';
 import { sfx } from '@/lib/sound';
-import { LevelPick, saveLevel, savedLevel } from './PetGames';
+import { AnswerStamp, LevelPick, saveLevel, savedLevel } from './PetGames';
 import './pet.css';
 
 /** ปริศนาประจำวัน 1 นาที: โจทย์เดียวกันทุกเครื่องในวันเดียวกัน เล่นได้วันละครั้ง ไม่ต้องล็อกอิน */
@@ -182,7 +182,9 @@ function Play({ date, lv, onEnd }: { date: string; lv: PuzzleLevel; onEnd: (mark
       <div className="pz-marks" aria-hidden="true">
         {Array.from({ length: PUZZLE_COUNT }, (_, k) => <span key={k} className="pz-mark" data-v={marks[k]} data-cur={k === i || undefined} />)}
       </div>
-      <div className="pz-card" key={i} style={{ animation: 'pr-bounce .35s both' }}>
+      <div className="pz-card" key={i} style={{ animation: 'pr-bounce .35s both', position: 'relative' }}>
+        {okPick && <AnswerStamp kind="ok" />}
+        {!okPick && wrong.length > 0 && <AnswerStamp key={wrong.length} kind="no" />}
         <span className="pz-tag">{q.tag}</span>
         <p className="pz-prompt">{q.prompt}</p>
         {wrong.length > 0 && !reveal && <p className="pz-hint">{q.hint} ลองอีกครั้ง</p>}

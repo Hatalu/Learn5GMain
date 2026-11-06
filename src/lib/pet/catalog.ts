@@ -1,7 +1,9 @@
 /** รายการของในห้องเลี้ยงปุ๋ง: ชุด ห้อง อาหาร ซีซัน (ข้อมูลล้วน ภาพอยู่ components/pet) */
 
 export type WearSlot = 'hat' | 'face' | 'body' | 'back';
-export type RoomSlot = 'wall' | 'floor' | 'rug' | 'sofa' | 'tv' | 'lamp' | 'pic' | 'toy' | 'fest';
+import { ROOM_ITEMS, type RoomSlot } from './rooms';
+
+export type { RoomSlot };
 export type Slot = WearSlot | RoomSlot;
 
 export interface PetItem {
@@ -15,6 +17,8 @@ export interface PetItem {
   season?: number;
   /** สติกเกอร์ของ Studio ที่ใช้เป็นภาพ */
   sticker?: string;
+  /** [ชื่อภาพใน roomShapes, สี 1, สี 2] */
+  art?: [string, string, string?];
 }
 
 const wear = (slot: WearSlot, rows: [string, string, number, number?][]): PetItem[] =>
@@ -122,6 +126,9 @@ export const ITEMS: PetItem[] = [
     ['pi-earth', 'ภาพโลก', 18, 3, 'sp-earth'],
     ['pi-planet', 'ภาพดาวเสาร์', 24, 4, 'sp-planet'],
     ['pi-trophy', 'ภาพถ้วยรางวัล', 40, 6, 'sg-trophy'],
+    ['pi-rocket', 'ภาพจรวด', 16, 2, 'sp-rocket'],
+    ['pi-turtle', 'ภาพเต่าทะเล', 20, 3, 'oc-turtle'],
+    ['pi-bee', 'ภาพผึ้งน้อย', 22, 3, 'b-bee'],
   ]),
   ...room('toy', [
     ['to-ball', 'ลูกฟุตบอล', 8, 1, 'sg-soccer'],
@@ -133,6 +140,9 @@ export const ITEMS: PetItem[] = [
     ['to-gift', 'กล่องของขวัญ', 26, 3, 'fe-gift'],
     ['to-rocket', 'จรวดจำลอง', 40, 5, 'sp-rocket'],
     ['to-ufo', 'จานบินจำลอง', 50, 6, 'sp-ufo'],
+    ['to-tuk', 'รถตุ๊กตุ๊กของเล่น', 18, 2, 'v-tuktuk'],
+    ['to-piano', 'ระนาด', 24, 3, 'mu-xylo'],
+    ['to-basket', 'ลูกบาส', 10, 1, 'sg-basket'],
   ]),
 ];
 
@@ -210,6 +220,8 @@ export const SEASONS: Season[] = [
   { month: 12, name: 'ฉลองปีใหม่', line: 'ของขวัญรออยู่', c1: '#e8402f', c2: '#2f9e5a', decor: { id: 's12-d', label: 'ต้นคริสต์มาส', sticker: 'fe-tree' }, wear: { id: 's12-w', label: 'หมวกซานต้า', slot: 'hat' } },
 ];
 
+ITEMS.push(...ROOM_ITEMS);
+
 for (const s of SEASONS) {
   ITEMS.push({ id: s.decor.id, label: s.decor.label, slot: 'fest', price: 0, season: s.month, sticker: s.decor.sticker });
   ITEMS.push({ id: s.wear.id, label: s.wear.label, slot: s.wear.slot, price: 0, season: s.month });
@@ -230,15 +242,4 @@ export const WEAR_SLOTS: { id: WearSlot; label: string }[] = [
   { id: 'face', label: 'ใบหน้า' },
   { id: 'body', label: 'เสื้อผ้า' },
   { id: 'back', label: 'ด้านหลัง' },
-];
-export const ROOM_SLOTS: { id: RoomSlot; label: string }[] = [
-  { id: 'wall', label: 'ผนัง' },
-  { id: 'floor', label: 'พื้น' },
-  { id: 'rug', label: 'พรม' },
-  { id: 'sofa', label: 'ที่นั่ง' },
-  { id: 'tv', label: 'มุมโปรด' },
-  { id: 'lamp', label: 'โคมไฟ' },
-  { id: 'pic', label: 'ภาพผนัง' },
-  { id: 'toy', label: 'ของเล่น' },
-  { id: 'fest', label: 'ของเทศกาล' },
 ];

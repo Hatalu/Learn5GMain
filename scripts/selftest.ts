@@ -43,8 +43,9 @@ import {
   setColor,
   setHat,
 } from '../src/lib/companion-store';
-import { FOODS, ITEMS as PET_ITEMS, SEASONS } from '../src/lib/pet/catalog';
-import { CORRECT_STAR_CAP, NEED_FLOOR, balance, buy, buyCheck, claimMission, claimSeason, cleanPet, emptyPet, logAnswer, mergePet, moodOf, needsAt, petLevel, pickSpecies, puzzleStreak, roll, savePuzzle, sleepStart, track, weekOf } from '../src/lib/pet/logic';
+import { FOODS, ITEMS as PET_ITEMS, SEASONS, itemById } from '../src/lib/pet/catalog';
+import { ROOMS } from '../src/lib/pet/rooms';
+import { CORRECT_STAR_CAP, NEED_FLOOR, equip, balance, buy, buyCheck, claimMission, claimSeason, cleanPet, emptyPet, logAnswer, mergePet, moodOf, needsAt, petLevel, pickSpecies, puzzleStreak, roll, savePuzzle, sleepStart, track, weekOf } from '../src/lib/pet/logic';
 import { ACHIEVEMENTS, DAILY_POOL, WEEKLY_POOL, dailyMissions, weeklyMissions } from '../src/lib/pet/missions';
 import { ACTIONS, SPECIES as PET_SPECIES, unlockText } from '../src/lib/pet/species';
 import { PUZZLE_COUNT, dailyPuzzle, puzzleScore, shareText } from '../src/lib/pet/puzzle';
@@ -203,6 +204,7 @@ t('ของทุกชิ้นมีภาพ ไม่ซ้ำ ไม่ม
     const isWear = ['hat', 'face', 'body', 'back'].includes(it.slot);
     if (isWear) assert.ok(TOP_ART[it.id] || BODY_ART[it.id] || BACK_ART[it.id], 'ไม่มีภาพ ' + it.id);
     else if (it.slot !== 'fest') assert.ok(hasRoomArt(it.id), 'ไม่มีภาพ ' + it.id);
+    if (it.art && !isWear) assert.ok(new Set(PET_ITEMS.map((x) => x.id)).has(it.id));
     if (it.sticker) assert.ok(stickerById(it.sticker), 'ไม่มีสติกเกอร์ ' + it.sticker);
     assert.ok(!/\p{Extended_Pictographic}/u.test(it.label), it.label);
   }
@@ -344,6 +346,32 @@ t('รายงาน: นับจากข้อมูลจริง ใบ�
   assert.equal(r.subjects[0].key, 'm');
   assert.equal(weekReport(ps.pet, '2026-11-12').ok, 0);
   assert.equal(weekReport(ps.pet, '2026-11-12').prevOk, 12);
+});
+
+t('ห้อง 4 ห้อง ห้องละ 50 แบบขึ้นไป ของตั้งต้นฟรี ของเก่าได้ห้องใหม่', () => {
+  assert.equal(ROOMS.length, 4);
+  for (const r of ROOMS) {
+    const items = PET_ITEMS.filter((i) => r.slots.some((s) => s.id === i.slot) && !i.season);
+    assert.ok(items.length >= 50, r.id + ' ' + items.length);
+    for (const [slot, id] of Object.entries(r.starter)) {
+      assert.equal(itemById(id!)?.slot, slot, id);
+      assert.equal(itemById(id!)?.price, 0, id);
+    }
+    assert.ok(r.starter[r.wall] && r.starter[r.floor], r.id);
+    for (const s of r.slots) if (s.id !== r.wall && s.id !== r.floor) assert.ok(s.box, s.id);
+  }
+  const old = cleanPet({ room: { wall: 'wa-mint', floor: 'fl-wood', rug: 'ru-star' } });
+  assert.equal(old.room.wall, 'wa-mint');
+  assert.equal(old.room.sofa, undefined);
+  assert.equal(old.room.b_tub, 'bt-round-0');
+  assert.equal(old.room.n_bed, 'nb-classic-0');
+  const d = '2026-11-06';
+  let ps = { stars: 500, pet: emptyPet() };
+  ps = equip(ps, 'b_tub', 'bt-round-0', d);
+  assert.equal(ps.pet.room.b_tub, undefined);
+  assert.equal(cleanPet(ps.pet).room.b_tub, undefined);
+  ps = equip(ps, 'b_wall', ps.pet.room.b_wall!, d);
+  assert.equal(ps.pet.room.b_wall, 'bw-1');
 });
 
 t('คู่หู: เกิน 20 แบบ ปลดล็อกจากภารกิจจริง ชนิดที่ล็อกเลือกไม่ได้', () => {

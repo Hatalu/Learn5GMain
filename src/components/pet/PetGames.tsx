@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { RotateCcw, X } from 'lucide-react';
+import { Check, RotateCcw, X } from 'lucide-react';
 import { StickerArt } from '@/components/studio/stickers';
 import { Buddy } from '@/components/companion/Buddy';
 import { StarIcon } from '@/components/companion/Stars';
@@ -64,6 +64,16 @@ export function saveLevel(lv: PuzzleLevel) {
   }
 }
 
+/** ตราถูก/ผิดเด้งบนการ์ดคำถาม ใช้ทั้งลูกโป่งและปริศนา */
+export function AnswerStamp({ kind }: { kind: 'ok' | 'no' }) {
+  return (
+    <span className="pr-stamp" data-kind={kind} role="status">
+      {kind === 'ok' ? <Check className="w-6 h-6" strokeWidth={4} /> : <X className="w-6 h-6" strokeWidth={4} />}
+      {kind === 'ok' ? 'ถูกต้อง' : 'ยังไม่ใช่'}
+    </span>
+  );
+}
+
 /* ------------------------------ ลูกโป่งคำตอบ ------------------------------ */
 const ROUND_Q = 6;
 const BALLOON_COLORS = ['#ff6f91', '#5ab0ff', '#ffc53a', '#5fd38d'];
@@ -76,6 +86,9 @@ export function BalloonGame({ onClose, onDone }: GameProps) {
   const [wrong, setWrong] = useState<string[]>([]);
   const [popped, setPopped] = useState<string | null>(null);
   const [hint, setHint] = useState(false);
+  const [result, setResult] = useState<'ok' | 'no' | null>(null);
+  const [gained, setGained] = useState(0);
+  const resultTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const seed = useRef(Date.now());
   const firstTry = useRef(true);
   const q: PuzzleQ | null = useMemo(() => {
@@ -92,25 +105,32 @@ export function BalloonGame({ onClose, onDone }: GameProps) {
     if (!q || popped) return;
     if (c === q.answer) {
       setPopped(c);
+      setResult('ok');
+      sfx.pop();
       gsfx.correct();
       const gain = recordAnswer(true, q.subj);
+      setGained(gain);
       setStars((s) => s + gain);
       setGot((g) => g + 1);
       setTimeout(() => {
         setPopped(null);
+        setResult(null);
         setWrong([]);
         setHint(false);
         firstTry.current = true;
         const next = n + 1;
         setN(next);
         if (next === ROUND_Q) onDone('balloon');
-      }, 650);
+      }, 950);
     } else {
       gsfx.wrong();
       if (firstTry.current) recordAnswer(false, q.subj);
       firstTry.current = false;
       setWrong((w) => [...w, c]);
       setHint(true);
+      setResult('no');
+      if (resultTimer.current) clearTimeout(resultTimer.current);
+      resultTimer.current = setTimeout(() => setResult(null), 900);
     }
   };
 
@@ -130,7 +150,8 @@ export function BalloonGame({ onClose, onDone }: GameProps) {
   }
   return (
     <Shell title="ลูกโป่งคำตอบ" onClose={onClose} score={<><StarIcon className="w-5 h-5" /> {stars}</>}>
-      <div className="pr-q-card">
+      <div className="pr-q-card" data-result={result || undefined}>
+        {result && <AnswerStamp key={result + wrong.length} kind={result} />}
         <small>{q!.tag} · ข้อ {n + 1}/{ROUND_Q}</small>
         <strong>{q!.prompt}</strong>
         {hint && <em>{q!.hint}</em>}
@@ -143,10 +164,17 @@ export function BalloonGame({ onClose, onDone }: GameProps) {
             disabled={wrong.includes(c)}
             onClick={() => pick(c)}
             data-pop={popped === c || undefined}
+            data-fail={wrong.includes(c) || undefined}
             className="pr-balloon"
             style={{ '--c': BALLOON_COLORS[i % 4], animationDelay: `${i * -0.7}s` } as React.CSSProperties}
           >
-            <span>{c}</span>
+            <span className="pr-balloon-face"><b>{c}</b></span>
+            {popped === c && (
+              <span className="pr-burst" aria-hidden="true">
+                {Array.from({ length: 14 }, (_, k) => <i key={k} style={{ '--a': `${(k * 360) / 14}deg`, '--d': `${k % 2 ? 78 : 104}px` } as React.CSSProperties} />)}
+                {gained > 0 && <em><StarIcon className="w-6 h-6" /> +{gained}</em>}
+              </span>
+            )}
           </button>
         ))}
       </div>

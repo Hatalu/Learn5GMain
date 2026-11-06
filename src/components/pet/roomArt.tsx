@@ -1,6 +1,8 @@
 import React, { useId } from 'react';
 import { stickerById } from '@/components/studio/stickers';
 import { itemById, type RoomSlot, type Season } from '@/lib/pet/catalog';
+import { roomById, type RoomId } from '@/lib/pet/rooms';
+import { SHAPES, SHELF_VB, SURFACE_KINDS, ShelfArt, tileOf } from './roomShapes';
 import type { Phase } from '@/lib/companion';
 
 const O = '#2a2350';
@@ -91,6 +93,8 @@ const PIECES: Record<string, { vb: string; el: React.ReactNode }> = {
   'ru-math': { vb: '0 0 260 110', el: (<g><ellipse cx="130" cy="55" rx="126" ry="50" fill="#ffe58f" {...st} />{['1', '+', '2', '=', '3'].map((c, i) => <text key={i} x={58 + i * 36} y="68" fontSize="34" fontWeight="800" textAnchor="middle" fill="#7c5cff">{c}</text>)}</g>) },
 };
 
+const isSurface = (slot: string) => slot === 'wall' || slot === 'floor' || slot.endsWith('_wall') || slot.endsWith('_floor');
+
 export function StickerAt({ id, x, y, w, h }: { id: string; x: number; y: number; w: number; h: number }) {
   return (
     <svg x={x} y={y} width={w} height={h} viewBox="0 0 100 100" style={{ overflow: 'visible' }}>
@@ -99,10 +103,29 @@ export function StickerAt({ id, x, y, w, h }: { id: string; x: number; y: number
   );
 }
 
+function pieceOf(id: string): { vb: string; el: React.ReactNode } | undefined {
+  const it = itemById(id);
+  if (it?.art) {
+    const [shape, a, b] = it.art;
+    if (shape === 'shelf') return { vb: SHELF_VB, el: <ShelfArt wood={a} list={b || ''} /> };
+    return SHAPES[shape]?.(a, b || a);
+  }
+  return PIECES[id];
+}
+
+function surfaceOf(id: string) {
+  const it = itemById(id);
+  if (it?.art) {
+    const [size, tile] = tileOf(it.art[0], it.art[2] || it.art[1]);
+    return { bg: it.art[1], size, tile };
+  }
+  return (it?.slot === 'floor' ? FLOORS : WALLS)[id];
+}
+
 function Piece({ id, x, y, w, h }: { id: string; x: number; y: number; w: number; h: number }) {
   const it = itemById(id);
   if (it?.sticker) return <StickerAt id={it.sticker} x={x} y={y} w={w} h={h} />;
-  const p = PIECES[id];
+  const p = pieceOf(id);
   if (!p) return null;
   return (
     <svg x={x} y={y} width={w} height={h} viewBox={p.vb} style={{ overflow: 'visible' }}>
@@ -110,15 +133,6 @@ function Piece({ id, x, y, w, h }: { id: string; x: number; y: number; w: number
     </svg>
   );
 }
-
-const SLOT_BOX: Partial<Record<RoomSlot, [number, number, number, number]>> = {
-  rug: [255, 450, 290, 118],
-  sofa: [203, 285, 150, 136],
-  tv: [452, 268, 145, 158],
-  lamp: [340, 0, 120, 108],
-  toy: [212, 442, 82, 82],
-  fest: [508, 426, 88, 88],
-};
 
 function Window({ phase, season }: { phase: Phase; season: Season }) {
   const sky = { dawn: '#ffd9b8', day: '#a5e0ff', dusk: '#ffb48f', night: '#27306f' }[phase];
@@ -170,37 +184,46 @@ function Bunting({ season }: { season: Season }) {
   );
 }
 
-export function RoomScene({ room, season, phase }: { room: Partial<Record<RoomSlot, string>>; season: Season; phase: Phase }) {
+export function RoomScene({ where, room, season, phase }: { where: RoomId; room: Partial<Record<RoomSlot, string>>; season: Season; phase: Phase }) {
   const uid = useId().replace(/:/g, '');
-  const wall = WALLS[room.wall || 'wa-sky'] || WALLS['wa-sky'];
-  const floor = FLOORS[room.floor || 'fl-wood'] || FLOORS['fl-wood'];
-  const place = (slot: RoomSlot) => {
-    const id = room[slot];
-    const b = SLOT_BOX[slot];
-    return id && b ? <Piece key={slot} id={id} x={b[0]} y={b[1]} w={b[2]} h={b[3]} /> : null;
-  };
-  const picId = room.pic;
+  const def = roomById(where);
+  const wall = surfaceOf(room[def.wall] || def.starter[def.wall]!);
+  const floor = surfaceOf(room[def.floor] || def.starter[def.floor]!);
   return (
     <svg className="pr-scene" viewBox="0 -250 800 850" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
       <Surface def={wall} x={0} y={-250} w={800} h={662} pid={`${uid}w`} />
       <Surface def={floor} x={0} y={412} w={800} h={188} pid={`${uid}f`} />
       <rect x="0" y="400" width="800" height="16" fill="#fff" stroke={O} strokeWidth="4" />
-      <Window phase={phase} season={season} />
-      {picId && (
-        <g>
-          <rect x="446" y="84" width="104" height="104" rx="8" fill="#fff" stroke={O} strokeWidth="7" />
-          <rect x="446" y="84" width="104" height="104" rx="8" fill="none" stroke="#c98a52" strokeWidth="3" />
-          <Piece id={picId} x={458} y={96} w={80} h={80} />
-        </g>
-      )}
+      {where === 'living' && <Window phase={phase} season={season} />}
       <Bunting season={season} />
-      {room.lamp && <path d="M400 -250 V4" stroke={O} strokeWidth="4" />}
-      {place('lamp')}
-      {place('sofa')}
-      {place('tv')}
-      {place('rug')}
-      {place('toy')}
-      {place('fest')}
+      {def.slots.filter((sl) => !sl.front).map((sl) => {
+        const id = room[sl.id];
+        if (!id || !sl.box) return null;
+        const [x, y, w, h] = sl.box;
+        return (
+          <g key={sl.id}>
+            {sl.frame && (
+              <>
+                <rect x={x - 12} y={y - 12} width={w + 24} height={h + 24} rx="8" fill="#fff" stroke={O} strokeWidth="7" />
+                <rect x={x - 12} y={y - 12} width={w + 24} height={h + 24} rx="8" fill="none" stroke="#c98a52" strokeWidth="3" />
+              </>
+            )}
+            {sl.cord && <path d={`M${x + w / 2} -250 V${y + 4}`} stroke={O} strokeWidth="4" />}
+            <Piece id={id} x={x} y={y} w={w} h={h} />
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+/** ของที่อยู่หน้าคู่หู กรอบเดียวกับฉากหลัง */
+export function RoomFront({ where, room }: { where: RoomId; room: Partial<Record<RoomSlot, string>> }) {
+  const slots = roomById(where).slots.filter((sl) => sl.front && room[sl.id] && sl.box);
+  if (!slots.length) return null;
+  return (
+    <svg className="pr-scene pr-scene-front" viewBox="0 -250 800 850" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+      {slots.map((sl) => <Piece key={sl.id} id={room[sl.id]!} x={sl.box![0]} y={sl.box![1]} w={sl.box![2]} h={sl.box![3]} />)}
     </svg>
   );
 }
@@ -210,8 +233,8 @@ export function RoomThumb({ id }: { id: string }) {
   const uid = useId().replace(/:/g, '');
   const it = itemById(id);
   if (!it) return null;
-  if (it.slot === 'wall' || it.slot === 'floor') {
-    const def = (it.slot === 'wall' ? WALLS : FLOORS)[id];
+  if (isSurface(it.slot)) {
+    const def = surfaceOf(id);
     return (
       <svg viewBox="0 0 200 200" className="pr-thumb" aria-hidden="true">
         <Surface def={def} x={0} y={0} w={200} h={200} pid={`${uid}t`} />
@@ -225,9 +248,10 @@ export function RoomThumb({ id }: { id: string }) {
       </svg>
     );
   }
+  const p = pieceOf(id);
   return (
-    <svg viewBox={PIECES[id]?.vb} className="pr-thumb" aria-hidden="true" style={{ overflow: 'visible' }}>
-      {PIECES[id]?.el}
+    <svg viewBox={p?.vb} className="pr-thumb" aria-hidden="true" style={{ overflow: 'visible' }}>
+      {p?.el}
     </svg>
   );
 }
@@ -236,8 +260,10 @@ export function RoomThumb({ id }: { id: string }) {
 export function hasRoomArt(id: string): boolean {
   const it = itemById(id);
   if (!it) return false;
+  if (it.art && isSurface(it.slot)) return SURFACE_KINDS.includes(it.art[0]);
   if (it.slot === 'wall') return !!WALLS[id];
   if (it.slot === 'floor') return !!FLOORS[id];
   if (it.sticker) return !!stickerById(it.sticker);
-  return !!PIECES[id];
+  if (it.art?.[0] === 'shelf') return (it.art[2] || '').split('|').every((x) => stickerById(x));
+  return !!pieceOf(id);
 }

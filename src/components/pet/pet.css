@@ -233,10 +233,38 @@ html[data-gfx='lite'] .bd-tail, html[data-gfx='lite'] .bd-ears, html[data-gfx='l
 @media (min-width: 620px) { .pr-balloons { grid-template-columns: repeat(4, 1fr); } }
 .pr-balloon { position: relative; width: min(100%, 138px); aspect-ratio: .86; border-radius: 50% 50% 48% 48%; background: radial-gradient(circle at 32% 26%, rgba(255, 255, 255, .85) 0 9%, transparent 10%), var(--c); border: 3px solid var(--ink); box-shadow: inset -8px -10px 0 rgba(0, 0, 0, .1); animation: pr-float 3s ease-in-out infinite; font-weight: 800; color: var(--ink); padding: 8px; line-height: 1.1; font-size: clamp(16px, 4.6vw, 22px); }
 .pr-balloon::after { content: ''; position: absolute; left: 50%; bottom: -13px; width: 14px; height: 12px; margin-left: -7px; background: var(--c); border: 3px solid var(--ink); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
-.pr-balloon:disabled { opacity: .3; filter: grayscale(.7); }
-.pr-balloon[data-pop] { animation: pr-pop .4s ease-out both; }
+.pr-balloon-face { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 8px; }
+.pr-balloon[data-pop] { animation: none; background: none; border-color: transparent; box-shadow: none; }
+.pr-balloon[data-pop]::after { display: none; }
+.pr-balloon[data-pop] .pr-balloon-face { animation: pr-pop-text .5s ease-out both; }
+.pr-balloon[data-fail] { animation: pr-deflate .8s cubic-bezier(.4, .1, .6, 1) both; opacity: 1; filter: none; }
+.pr-burst { position: absolute; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none; }
+.pr-burst i { position: absolute; left: -7px; top: -7px; width: 14px; height: 14px; border-radius: 4px; background: var(--c); border: 2px solid var(--ink); animation: pr-shard .6s cubic-bezier(.2, .7, .3, 1) both; }
+.pr-burst i:nth-child(odd) { border-radius: 50%; background: #fff; }
+.pr-burst em { position: absolute; left: -40px; width: 80px; top: -18px; display: flex; align-items: center; justify-content: center; gap: 3px; font-style: normal; font-weight: 800; font-size: 22px; color: var(--ink); animation: pr-plus .9s ease-out both; }
+@keyframes pr-shard { 0% { transform: rotate(var(--a)) translateX(0) scale(1); opacity: 1; } 100% { transform: rotate(var(--a)) translateX(var(--d)) scale(.3) rotate(160deg); opacity: 0; } }
+@keyframes pr-pop-text { 0% { transform: scale(1.2); } 100% { transform: scale(1.5); opacity: 0; } }
+@keyframes pr-plus { 0% { transform: translateY(10px) scale(.5); opacity: 0; } 30% { transform: translateY(-6px) scale(1.2); opacity: 1; } 100% { transform: translateY(-46px); opacity: 0; } }
+@keyframes pr-deflate { 0% { transform: none; } 15% { transform: rotate(-10deg) scale(.96); } 30% { transform: rotate(10deg) scale(.88); } 45% { transform: rotate(-8deg) scale(.78); } 100% { transform: translateY(90px) rotate(18deg) scale(.5, .42); opacity: .35; filter: grayscale(.8); } }
+.pr-q-card { position: relative; transition: background .2s, border-color .2s; }
+.pr-q-card[data-result='ok'] { background: #dcfbe6; border-color: #17794a; }
+.pr-q-card[data-result='no'] { background: #ffe4e8; border-color: #c0304f; animation: pz-shake .35s; }
+.pr-stamp { position: absolute; z-index: 3; top: -12px; right: 10px; display: inline-flex; align-items: center; gap: 4px; padding: 3px 11px 3px 7px; border-radius: 13px; color: #fff; font-weight: 800; font-size: 15px; border: 3px solid var(--ink); box-shadow: 0 3px 0 var(--ink); animation: pr-stamp .4s cubic-bezier(.34, 1.8, .64, 1) both; }
+.pr-stamp[data-kind='ok'] { background: #1f9d5b; }
+.pr-stamp[data-kind='no'] { background: #d6365a; }
+@keyframes pr-stamp { from { transform: scale(2.2) rotate(-14deg); opacity: 0; } }
+.pr-room-in { position: absolute; inset: 0; animation: pr-room .38s ease-out both; }
+@keyframes pr-room { from { opacity: 0; transform: scale(1.04); } }
+.pr-rooms { position: absolute; z-index: 5; top: 74px; left: 10px; right: 10px; display: flex; justify-content: center; gap: 5px; }
+.pr-rooms button { display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; border-radius: 13px; background: #fff; border: 2.5px solid var(--ink); box-shadow: 0 2px 0 var(--ink); font-weight: 800; font-size: 13px; white-space: nowrap; color: #5b3fc4; transition: transform .2s cubic-bezier(.34, 1.56, .64, 1); }
+.pr-rooms button[data-on] { background: #ffe08a; color: var(--ink); transform: translateY(-1px) scale(1.04); }
+@media (max-width: 420px) { .pr-rooms { top: 64px; left: 4px; right: 4px; gap: 3px; } .pr-rooms button { padding: 4px 6px; font-size: 12px; gap: 2px; } }
+.pr-scene-front { z-index: 4; pointer-events: none; animation: pr-room .38s ease-out both; }
+/* ยืนหลังเฟอร์นิเจอร์: ยกเท้าขึ้นถึงแนวผนัง = 170 หน่วยฉาก คิดตามสเกล slice ของฉาก */
+.pr-stage { container-type: size; }
+.pr-pet-wrap[data-spot] { bottom: max(21.25cqw, 20cqh); width: min(46%, 34vh, 230px); }
+.pr-stage[data-sheet] .pr-pet-wrap[data-spot] { transform: translate(-50%, -12vh) scale(.72); }
 @keyframes pr-float { 50% { transform: translateY(-14px) rotate(2deg); } }
-@keyframes pr-pop { 40% { transform: scale(1.3); opacity: 1; } 100% { transform: scale(1.7); opacity: 0; } }
 .pr-catch { position: relative; flex: 1; overflow: hidden; touch-action: none; cursor: none; }
 .pr-catch-tip { position: absolute; top: 4px; left: 0; right: 0; text-align: center; font-weight: 800; color: #1a6d8f; }
 .pr-fall { position: absolute; top: 0; width: 56px; height: 56px; margin-left: -28px; will-change: transform; pointer-events: none; }

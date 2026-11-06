@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { BarChart3, BookImage, Check, Cloud, Crown, Gamepad2, Gift, HardDrive, Lock, Moon, Puzzle, RotateCcw, ShowerHead, Shirt, ShoppingBag, Sparkles, Sun, Trophy, UtensilsCrossed, X, Smile } from 'lucide-react';
+import { BarChart3, BookImage, Check, Cloud, Crown, Gamepad2, Gift, HardDrive, Lock, Moon, Puzzle, RotateCcw, ShowerHead, Shirt, ShoppingBag, Sparkles, Sun, Trophy, UtensilsCrossed, X, Smile, Sofa, Bath, BedDouble } from 'lucide-react';
 import { Buddy, type BuddyExpr } from '@/components/companion/Buddy';
 import { StarIcon } from '@/components/companion/Stars';
 import { useCompanion } from '@/components/companion/CompanionProvider';
@@ -13,14 +13,15 @@ import { Modal } from '@/components/ui/Modal';
 import { JoinButton } from '@/components/membership/JoinButton';
 import { petAct, resetStore, setColor } from '@/lib/companion-store';
 import { BUDDY_COLORS, BUDDY_COLOR_HEX, BUDDY_NAME, COLOR_LABEL, TIER_INFO, bkkParts, buddyStage, phaseOf, shownStage, stickerTier, unlockedHats } from '@/lib/companion';
-import { FOODS, ITEMS, ROOM_SLOTS, SEASON_STAR_PRIZE, SEASON_STEPS, WEAR_SLOTS, foodById, itemById, seasonOfMonth, type RoomSlot, type Slot, type WearSlot } from '@/lib/pet/catalog';
+import { ROOMS, isRoomSlot, roomById, type RoomId } from '@/lib/pet/rooms';
+import { FOODS, ITEMS, SEASON_STAR_PRIZE, SEASON_STEPS, WEAR_SLOTS, foodById, itemById, seasonOfMonth, type RoomSlot, type Slot, type WearSlot } from '@/lib/pet/catalog';
 import {
   pickSpecies, balance, buy, buyCheck, claimAllBonus, claimMission, claimSeason, equip, feed, gameDone, hatch, missionRows, moodOf, needsAt, ownsItem, petLevel, petTap, roll, sleepStart, track, wakeUp, washDone,
   type MissionRow, type NeedKey, type PS,
 } from '@/lib/pet/logic';
 import { sfx } from '@/lib/sound';
 import { ACTIONS, IDLE_ACTIONS, SPECIES, openSpeciesCount, speciesById, speciesOpen, unlockText, type ActionId, type Species } from '@/lib/pet/species';
-import { RoomScene, RoomThumb } from './roomArt';
+import { RoomFront, RoomScene, RoomThumb } from './roomArt';
 import { BalloonGame, CatchGame, MatchGame, type GameKind } from './PetGames';
 import './pet.css';
 
@@ -50,6 +51,8 @@ export function PetRoom() {
   const parts = useMemo(() => bkkParts(new Date(now)), [now]);
   const today = parts.date;
   const [panel, setPanel] = useState<Panel>(null);
+  const [where, setWhere] = useState<RoomId>('living');
+  const [shopTab, setShopTab] = useState<'pet' | 'wear' | 'room'>('wear');
   const [game, setGame] = useState<GameKind | null>(null);
   const [washing, setWashing] = useState(0); // 0 = ไม่ได้อาบ, >0 = ความคืบหน้า + 1
   const [expr, setExpr] = useState<BuddyExpr | null>(null);
@@ -218,6 +221,7 @@ export function PetRoom() {
     setPanel(null);
     if (sleeping) wake();
     sfx.pop();
+    setWhere('bath');
     setWashing(1);
     say('ถูตัวปุ๋งเลย');
   };
@@ -252,6 +256,7 @@ export function PetRoom() {
       return;
     }
     sfx.pop();
+    setWhere('bed');
     const t = Date.now();
     petAct((p) => sleepStart(p, t, today));
     setNow(t);
@@ -286,12 +291,12 @@ export function PetRoom() {
       case 'puzzle': router.push('/puzzle'); break;
       case 'home': router.push('/home'); break;
       case 'report': router.push('/report'); break;
-      case 'food': setPanel('food'); break;
+      case 'food': setWhere('dining'); setPanel('food'); break;
       case 'wash': startWash(); break;
       case 'sleep': toggleSleep(); break;
       case 'play': setPanel('play'); break;
       case 'shop': setPanel('shop'); break;
-      case 'room': setPanel('shop'); break;
+      case 'room': setShopTab('room'); setPanel('shop'); break;
       case 'album': openPanel('album'); break;
       default: say('ลูบหัวฉันเลย');
     }
@@ -306,7 +311,7 @@ export function PetRoom() {
   }, [state.pet.wear, trial]);
   const shownRoom = useMemo(() => {
     const r = { ...state.pet.room };
-    if (trial && ROOM_SLOTS.some((s) => s.id === trial.slot)) r[trial.slot as RoomSlot] = trial.id;
+    if (trial && isRoomSlot(trial.slot)) r[trial.slot] = trial.id;
     return r;
   }, [state.pet.room, trial]);
 
@@ -320,7 +325,7 @@ export function PetRoom() {
   return (
     <div className="pr-root">
       <div className="pr-stage" data-sheet={panel ? '1' : undefined} data-sleep={sleeping || undefined}>
-        <RoomScene room={shownRoom} season={season} phase={phase} />
+        <div key={where} className="pr-room-in"><RoomScene where={where} room={shownRoom} season={season} phase={phase} /></div>
         {sleeping && <div className="pr-night" />}
 
         {/* แถบบน */}
@@ -349,8 +354,33 @@ export function PetRoom() {
           </div>
         </div>
 
+        {/* เปลี่ยนห้อง */}
+        {hatched && !washing && (
+          <div className="pr-rooms" role="tablist" aria-label="เลือกห้อง">
+            {ROOMS.map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                role="tab"
+                aria-selected={where === r.id}
+                data-on={where === r.id || undefined}
+                onClick={() => {
+                  if (sleeping) wake();
+                  sfx.pop();
+                  setTrial(null);
+                  setWhere(r.id);
+                }}
+              >
+                {r.id === 'living' ? <Sofa className="w-4 h-4" /> : r.id === 'dining' ? <UtensilsCrossed className="w-4 h-4" /> : r.id === 'bath' ? <Bath className="w-4 h-4" /> : <BedDouble className="w-4 h-4" />}
+                <span>{r.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* ปุ๋ง */}
-        <div className="pr-pet-wrap">
+        <RoomFront key={`f${where}`} where={where} room={shownRoom} />
+        <div className="pr-pet-wrap" data-spot={where !== 'living' || undefined}>
           {line && <div key={line} className="pr-bubble" role="status">{line}</div>}
           {!hatched ? (
             <button
@@ -407,7 +437,7 @@ export function PetRoom() {
           <nav className="pr-dock" aria-label="ดูแลปุ๋ง">
             <NeedBtn label="ร้านค้า" icon={<ShoppingBag className="w-6 h-6" />} onClick={() => openPanel('shop')} active={panel === 'shop'} />
             <NeedBtn pct={needs.fun} label="เล่น" icon={<Smile className="w-6 h-6" />} onClick={() => openPanel('play')} active={panel === 'play'} />
-            <NeedBtn pct={needs.food} label="อาหาร" icon={<UtensilsCrossed className="w-6 h-6" />} onClick={() => openPanel('food')} active={panel === 'food'} />
+            <NeedBtn pct={needs.food} label="อาหาร" icon={<UtensilsCrossed className="w-6 h-6" />} onClick={() => { setWhere('dining'); openPanel('food'); }} active={panel === 'food'} />
             <NeedBtn pct={needs.clean} label="อาบน้ำ" icon={<ShowerHead className="w-6 h-6" />} onClick={startWash} />
             <NeedBtn pct={needs.energy} label="นอน" icon={sleeping ? <Sun className="w-6 h-6" /> : <Moon className="w-6 h-6" />} onClick={toggleSleep} active={sleeping} />
           </nav>
@@ -419,7 +449,7 @@ export function PetRoom() {
             <button type="button" className="pr-sheet-close" onClick={() => { setPanel(null); setTrial(null); }} aria-label="ปิด"><X className="w-5 h-5" /></button>
             {panel === 'food' && <FoodPanel ps={ps} onGive={giveFood} onGoPlay={() => setPanel('play')} />}
             {panel === 'play' && <PlayPanel onPick={(g) => { setPanel(null); setGame(g); }} puzzleDone={state.pet.puzzles.some((p) => p.d === today)} onAct={(id) => { sfx.pop(); flashExpr('happy', 1000); playAct(id); petAct((p) => petTap(p, Date.now(), today)); }} move={mySpecies.move} />}
-            {panel === 'shop' && <ShopPanel ps={ps} today={today} legacyOpen={legacyOpen} trial={trial} setTrial={setTrial} color={state.color} look={look} onBought={() => { sfx.cheer(); burst('star', 3); }} onPicked={(s) => playAct(s.move)} />}
+            {panel === 'shop' && <ShopPanel where={where} initialTab={shopTab} ps={ps} today={today} legacyOpen={legacyOpen} trial={trial} setTrial={setTrial} color={state.color} look={look} onBought={() => { sfx.cheer(); burst('star', 3); }} onPicked={(s) => playAct(s.move)} />}
             {panel === 'missions' && <MissionPanel rows={rows} level={level} onClaim={claim} onGo={goMission} onAll={() => { petAct((p) => claimAllBonus(p, today).ps); sfx.cheer(); burst('star', 6); }} />}
             {panel === 'season' && <SeasonPanel season={season} pts={seasonPet.pts} got={seasonPet.got} onClaim={() => { petAct((p) => claimSeason(p, today)); sfx.cheer(); burst('star', 6); }} />}
             {panel === 'album' && <AlbumPanel entitled={entitled} loggedIn={loggedIn} media={media} plays={state.plays} syncStatus={syncStatus} onReset={() => setConfirmReset(true)} />}
@@ -571,17 +601,22 @@ function SpeciesPick({ ps, today, onPicked }: { ps: PS; today: string; onPicked:
 
 /* ------------------------------ ร้านค้า ------------------------------ */
 
-function ShopPanel({ ps, today, legacyOpen, trial, setTrial, color, look, onBought, onPicked }: {
-  ps: PS; today: string; legacyOpen: readonly string[]; trial: { slot: Slot; id: string } | null; setTrial: (t: { slot: Slot; id: string } | null) => void; color: string;
+function ShopPanel({ where, initialTab, ps, today, legacyOpen, trial, setTrial, color, look, onBought, onPicked }: {
+  where: RoomId; initialTab: 'pet' | 'wear' | 'room'; ps: PS; today: string; legacyOpen: readonly string[]; trial: { slot: Slot; id: string } | null; setTrial: (t: { slot: Slot; id: string } | null) => void; color: string;
   look: { stage: number; color: string; species: string; wear: Partial<Record<WearSlot, string>> };
   onBought: () => void;
   onPicked: (s: Species) => void;
 }) {
-  const [tab, setTab] = useState<'pet' | 'wear' | 'room'>('wear');
-  const [slot, setSlot] = useState<string>('hat');
+  const [tab, setTab] = useState<'pet' | 'wear' | 'room'>(initialTab);
+  const roomSlots = roomById(where).slots;
+  const [slot, setSlot] = useState<string>(initialTab === 'room' ? roomSlots[0].id : 'hat');
+  // เปลี่ยนห้องระหว่างเปิดร้าน: ย้ายไปช่องของห้องนั้น
+  useEffect(() => {
+    if (tab === 'room') setSlot(roomById(where).slots[0].id);
+  }, [where, tab]);
   const list = useMemo(() => ITEMS.filter((i) => i.slot === slot), [slot]);
   const lv = petLevel(ps.stars).lv;
-  const slots = tab === 'wear' ? [...WEAR_SLOTS, { id: 'color', label: 'สีตัว' }] : ROOM_SLOTS;
+  const slots = tab === 'wear' ? [...WEAR_SLOTS, { id: 'color', label: 'สีตัว' }] : roomSlots;
   const isOn = (id: string) => (ps.pet.wear as Record<string, string>)[slot] === id || (ps.pet.room as Record<string, string>)[slot] === id;
 
   const tap = (id: string) => {
@@ -598,7 +633,7 @@ function ShopPanel({ ps, today, legacyOpen, trial, setTrial, color, look, onBoug
     <div>
       <div className="pr-tabs">
         <button type="button" data-on={tab === 'wear' || undefined} onClick={() => { setTab('wear'); setSlot('hat'); setTrial(null); }}><Shirt className="w-4 h-4" /> แต่งตัว</button>
-        <button type="button" data-on={tab === 'room' || undefined} onClick={() => { setTab('room'); setSlot('wall'); setTrial(null); }}><Sparkles className="w-4 h-4" /> แต่งห้อง</button>
+        <button type="button" data-on={tab === 'room' || undefined} onClick={() => { setTab('room'); setSlot(roomSlots[0].id); setTrial(null); }}><Sparkles className="w-4 h-4" /> แต่ง{roomById(where).label.replace('ห้อง', '')}</button>
         <button type="button" data-on={tab === 'pet' || undefined} onClick={() => { setTab('pet'); setTrial(null); }}><Smile className="w-4 h-4" /> คู่หู</button>
       </div>
       {tab === 'pet' ? <SpeciesPick ps={ps} today={today} onPicked={onPicked} /> : <>
@@ -639,7 +674,7 @@ function ShopPanel({ ps, today, legacyOpen, trial, setTrial, color, look, onBoug
             return (
               <div key={it.id} className="pr-item" data-on={on || undefined} data-try={trying || undefined}>
                 <button type="button" className="pr-item-main" onClick={() => tap(it.id)} aria-pressed={on}>
-                  {tab === 'wear' ? (
+                  {!isRoomSlot(it.slot) ? (
                     <Buddy stage={Math.max(1, look.stage)} color={look.color} species={look.species} wear={{ [it.slot]: it.id }} size={70} animate={false} />
                   ) : (
                     <RoomThumb id={it.id} />

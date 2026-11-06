@@ -4,6 +4,7 @@
  * หลอดลดตามเวลาแต่ไม่ถึงศูนย์ และไม่มีบทลงโทษ (ห้ามทำให้เด็กรู้สึกผิดที่ไม่ได้เข้าเล่น)
  */
 import { FOODS, ITEMS, LEGACY_WEAR, SEASON_STAR_PRIZE, SEASON_STEPS, foodById, itemById, seasonOfMonth, type RoomSlot, type Slot, type WearSlot } from './catalog';
+import { ROOMS, isRequiredSlot, isRoomSlot } from './rooms';
 import { speciesById, speciesOpen, PUNG } from './species';
 import { ACHIEVEMENTS, DAY_ALL_BONUS, dailyMissions, weeklyMissions, type Mission, type PetEv } from './missions';
 
@@ -62,8 +63,8 @@ export interface PS {
   pet: PetState;
 }
 
-/** ห้องเริ่มต้นมีของครบพอดูอบอุ่น ของเหล่านี้ราคา 0 */
-export const DEFAULT_ROOM: Partial<Record<RoomSlot, string>> = { wall: 'wa-sky', floor: 'fl-wood', rug: 'ru-round', sofa: 'so-orange', lamp: 'la-ball', pic: 'pi-sun', tv: 'tv-old' };
+/** ทุกห้องเริ่มมีของพอดูอบอุ่น ของเหล่านี้ราคา 0 */
+export const DEFAULT_ROOM: Partial<Record<RoomSlot, string>> = Object.assign({}, ...ROOMS.map((r) => r.starter));
 
 export function emptyPet(): PetState {
   return {
@@ -107,12 +108,16 @@ export function cleanPet(raw: unknown, legacyHat?: string): PetState {
     if (typeof id === 'string' && itemById(id)?.slot === slot) wear[slot as WearSlot] = id;
   }
   if (!r.wear && legacyHat && LEGACY_WEAR[legacyHat]) wear[LEGACY_WEAR[legacyHat]] = legacyHat;
-  const room: PetState['room'] = r.room ? {} : { ...DEFAULT_ROOM };
+  const room: PetState['room'] = {};
   for (const [slot, id] of Object.entries(r.room || {})) {
     if (typeof id === 'string' && itemById(id)?.slot === slot) room[slot as RoomSlot] = id;
   }
-  room.wall = room.wall || DEFAULT_ROOM.wall;
-  room.floor = room.floor || DEFAULT_ROOM.floor;
+  // ห้องที่ยังไม่เคยจัด (รวมข้อมูลก่อนมีหลายห้อง) ได้ของตั้งต้น ห้องที่เคยจัดแล้วเก็บชิ้นที่เอาออกไว้ตามเดิม
+  for (const def of ROOMS) {
+    if (!def.slots.some((x) => room[x.id])) Object.assign(room, def.starter);
+    room[def.wall] = room[def.wall] || def.starter[def.wall];
+    room[def.floor] = room[def.floor] || def.starter[def.floor];
+  }
   const needs = { ...base.needs };
   for (const k of NEED_KEYS) needs[k] = num(r.needs?.[k], NEED_FLOOR, 100, base.needs[k]);
   return {
@@ -440,10 +445,11 @@ export function equip(ps0: PS, slot: Slot, id: string, today: string): PS {
     else wear[slot as WearSlot] = id;
     return { ...ps, pet: bump({ ...ps.pet, wear }, 'wear') };
   }
+  if (!isRoomSlot(slot)) return ps;
   const room = { ...ps.pet.room };
-  if (room[slot as RoomSlot] === id) {
-    if (slot !== 'wall' && slot !== 'floor') delete room[slot as RoomSlot];
-  } else room[slot as RoomSlot] = id;
+  if (room[slot] === id) {
+    if (!isRequiredSlot(slot)) delete room[slot];
+  } else room[slot] = id;
   return { ...ps, pet: bump({ ...ps.pet, room }, 'decor') };
 }
 
