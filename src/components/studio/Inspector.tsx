@@ -49,7 +49,7 @@ import {
 } from 'lucide-react';
 import { clampEdu, EDU_KINDS, FONT_IDS, type Cap, type Dash, type DecoItem, type EduItem, type Fx, type Item, type TableItem, type WriteKind } from '@/lib/studio/doc';
 import { fxFilter } from './render';
-import { FONTS } from './fonts';
+import { FONTS, FONT_GROUPS } from './fonts';
 import { ColorGrid, ColorPop, Pop, Seg, Slider, Stepper } from './ui';
 import type { Ctl } from './Editor';
 
@@ -320,11 +320,16 @@ function FontPick({ value, onChange }: { value: (typeof FONT_IDS)[number]; onCha
     <Pop title="ฟอนต์" width={240} className="st-font-btn" button={<span style={{ fontFamily: FONTS[value].family }}>{FONTS[value].label}</span>}>
       {(close) => (
         <div className="st-fontlist">
-          {FONT_IDS.map((f) => (
-            <button key={f} type="button" data-on={f === value} onClick={() => (onChange(f), close())}>
-              <span style={{ fontFamily: FONTS[f].family, fontSize: 20 }}>{FONTS[f].label} กขค</span>
-              <small>{FONTS[f].note}</small>
-            </button>
+          {FONT_GROUPS.map((g) => (
+            <div key={g.label}>
+              <p className="st-fontgrp">{g.label}</p>
+              {g.ids.map((f) => (
+                <button key={f} type="button" data-on={f === value} onClick={() => (onChange(f), close())}>
+                  <span style={{ fontFamily: FONTS[f].family, fontSize: 20 }}>{FONTS[f].label} กขค</span>
+                  <small>{FONTS[f].note}</small>
+                </button>
+              ))}
+            </div>
           ))}
         </div>
       )}

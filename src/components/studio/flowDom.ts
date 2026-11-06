@@ -68,17 +68,26 @@ export const figureKey = (el: HTMLElement) => (el.dataset.graph ? `g:${el.datase
 
 /** วาดสมการ/กราฟ/รูปร่างในเนื้อหาโหมดเอกสาร (HTML เก็บแค่ข้อมูลต้นทาง data-tex / data-graph / data-shape) */
 export function hydrateFlow(root: HTMLElement) {
-  root.querySelectorAll<HTMLElement>('span[data-tex]').forEach((el) => {
+  // เขียนทั้งหมดก่อน แล้วอ่านฟอนต์ แล้วค่อยเขียนอีกรอบ: อ่านสลับเขียนทีละสมการทำให้เบราว์เซอร์คำนวณสไตล์ใหม่ทั้งหน้าทุกสมการ (เอกสาร 700 สมการเคยค้างเกิน 1 วินาที)
+  const eqs = Array.from(root.querySelectorAll<HTMLElement>('span[data-tex]'));
+  for (const el of eqs) {
     const t = el.dataset.tex || '';
     if (el.dataset.done !== t) {
       el.innerHTML = texToHtml(t, false, true);
       el.dataset.done = t;
     }
-    el.contentEditable = 'false';
-    // ข้อความไทยในสูตรใช้ฟอนต์เดียวกับข้อความรอบๆ (ไม่ใช้ฟอนต์สำรองของ KaTeX ที่ใหญ่และคนละแบบ) ไม่ถูกบันทึก
-    const fam = el.parentElement ? getComputedStyle(el.parentElement).fontFamily : '';
+    if (el.contentEditable !== 'false') el.contentEditable = 'false';
+  }
+  // ข้อความไทยในสูตรใช้ฟอนต์เดียวกับข้อความรอบๆ (ไม่ใช้ฟอนต์สำรองของ KaTeX ที่ใหญ่และคนละแบบ) ไม่ถูกบันทึก
+  const fams = new Map<HTMLElement, string>();
+  for (const el of eqs) {
+    const par = el.parentElement;
+    if (par && !fams.has(par)) fams.set(par, getComputedStyle(par).fontFamily);
+  }
+  for (const el of eqs) {
+    const fam = el.parentElement ? fams.get(el.parentElement) : '';
     if (fam && el.style.getPropertyValue('--tf') !== fam) el.style.setProperty('--tf', fam);
-  });
+  }
   root.querySelectorAll<HTMLElement>('figure[data-graph]').forEach((el) => {
     const g = el.dataset.graph || '';
     if (el.dataset.done !== g) {

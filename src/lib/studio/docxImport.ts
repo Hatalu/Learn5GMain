@@ -39,7 +39,7 @@ export interface ImportResult {
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const escAttr = (s: string) => esc(s).replace(/"/g, '&quot;');
 const num = (v: string | undefined) => (v && /^-?\d+(\.\d+)?$/.test(v) ? +v : undefined);
-const twip = (v: string | undefined) => Math.round((num(v) ?? 0) / 15);
+const twip = (v: string | undefined) => Math.round(((num(v) ?? 0) / 15) * 100) / 100;
 const r2 = (v: number) => Math.round(v * 100) / 100;
 const ptToPx = (pt: number) => r2((pt * 4) / 3);
 const emu = (v: string | undefined) => Math.round((num(v) ?? 0) / 9525);
@@ -126,6 +126,9 @@ interface RunFmt {
   fontCs?: string;
   color?: string;
   bg?: string;
+  /** ข้อความที่ซ่อนไว้ใน Word (Hidden) ไม่แสดง */
+  vanish?: boolean;
+  caps?: boolean;
 }
 const onOff = (n: XNode | undefined) => {
   if (!n) return undefined;
@@ -138,6 +141,8 @@ function readRpr(p: XNode | undefined): RunFmt {
   const set = <K extends keyof RunFmt>(k: K, v: RunFmt[K] | undefined) => v !== undefined && (f[k] = v);
   set('b', onOff(kid(p, 'w:b')));
   set('bCs', onOff(kid(p, 'w:bCs')));
+  set('vanish', onOff(kid(p, 'w:vanish')));
+  set('caps', onOff(kid(p, 'w:caps')) ?? onOff(kid(p, 'w:smallCaps')));
   set('i', onOff(kid(p, 'w:i')));
   set('iCs', onOff(kid(p, 'w:iCs')));
   const u = val(p, 'w:u');
@@ -432,9 +437,9 @@ class Conv {
   }
   /** รูปแบบสุดท้ายของตัวอักษรเป็น style + แท็ก */
   wrapRun(text: string, f: RunFmt): string {
-    if (!text) return '';
+    if (!text || f.vanish) return '';
     const st = this.runCss(text, f);
-    let h = esc(text);
+    let h = esc(f.caps ? text.toUpperCase() : text);
     if (st.length) h = `<span style="${st.join('; ')}">${h}</span>`;
     if (f.va) h = `<${f.va}>${h}</${f.va}>`;
     return h;
@@ -629,7 +634,7 @@ class Conv {
     const jc = pf.jc;
     if (jc === 'center') st.push('text-align: center');
     else if (jc === 'right' || jc === 'end') st.push('text-align: right');
-    else if (jc === 'both' || jc === 'distribute') st.push('text-align: justify');
+    else if (jc === 'both' || jc === 'distribute' || jc === 'thaiDistribute') st.push('text-align: justify');
     else if (!jc && p.kids.length === 2 && kid(p, 'm:oMathPara')) st.push('text-align: center');
     if (!numPr) {
       const left = Math.max(-200, Math.min(600, pf.left ?? 0));

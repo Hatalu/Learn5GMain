@@ -583,6 +583,18 @@ html.dark .st-save {
   border-radius: 8px;
   text-align: left;
 }
+.st-fontlist > div,
+.st-rfonts > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.st-fontgrp {
+  margin: 8px 6px 2px;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--st-muted);
+}
 .st-fontlist button small {
   font-size: 11px;
   opacity: 0.6;
@@ -2069,7 +2081,10 @@ html.dark .st-quizlink {
   font-size: 21px;
   line-height: 1.6;
   color: #1f1b36;
-  overflow-wrap: anywhere;
+  /* ตัดบรรทัดตามคำไทย (ไม่ฉีกกลางคำ) ตัดกลางคำเฉพาะคำยาวเกินบรรทัด */
+  word-break: normal;
+  overflow-wrap: break-word;
+  line-break: auto;
   /* กล่องตำแหน่งสัมบูรณ์เป็น BFC: margin-top ที่ใช้ดันขึ้นหน้าใหม่ไม่ยุบรวมกับกล่องแม่ */
 }
 .st-flow > *,
@@ -3634,4 +3649,51 @@ html.dark .st-top[data-word] {
   left: 0;
   right: 0;
   width: auto;
+}
+
+/* ---------------- ตรวจคำผิดภาษาไทย ---------------- */
+::highlight(l5g-typo) {
+  text-decoration: underline wavy #e11d48;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+}
+.st-spellmenu {
+  position: fixed;
+  z-index: 400;
+  min-width: 190px;
+  max-width: 280px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: #fff;
+  color: #1f1b36;
+  border: 1.5px solid #c4b5fd;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(60, 30, 120, 0.25);
+  font-size: 14px;
+}
+.st-spell-head {
+  margin: 2px 6px 4px;
+  font-size: 12px;
+  color: #7c3aed;
+  font-weight: 800;
+}
+.st-spell-none {
+  margin: 2px 8px 4px;
+  font-size: 13px;
+  opacity: 0.6;
+}
+.st-spellmenu button {
+  text-align: left;
+  padding: 7px 10px;
+  border-radius: 8px;
+  font-weight: 600;
+}
+.st-spellmenu button:hover {
+  background: #f1edff;
+}
+.st-spellmenu .st-spell-sug {
+  font-size: 17px;
+  font-weight: 800;
 }

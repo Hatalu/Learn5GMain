@@ -10,6 +10,7 @@ import { FONTS, FONT_VARS_CSS } from './fonts';
 import { shapeById } from './shapes';
 import { StickerArt } from './stickers';
 import { pastePlain } from './ui';
+import { attachSpell } from './spell';
 
 /**
  * วาดหน้าสื่อ 1 หน้าที่ขนาดจริง (พิกเซล) ใช้ร่วมกันทั้งตัวแก้ไข รูปย่อ และตอนส่งออกเป็นรูป/PDF
@@ -302,7 +303,8 @@ export function textCss(t: Pick<TextItem, 'font' | 'size' | 'color' | 'bold' | '
     lineHeight: t.lh,
     letterSpacing: t.ls ? `${t.ls}px` : undefined,
     whiteSpace: 'pre-wrap',
-    overflowWrap: 'anywhere',
+    overflowWrap: 'break-word',
+    wordBreak: 'normal',
   };
 }
 
@@ -310,8 +312,14 @@ function TextView({ t, edit }: { t: TextItem; edit?: EditText }) {
   const box: React.CSSProperties = t.bg ? { background: t.bg, padding: `${t.size * 0.28}px ${t.size * 0.5}px`, borderRadius: t.size * 0.45 } : {};
   const css = { ...textCss(t), ...box, textShadow: t.shadow ? `${Math.max(2, t.size * 0.07)}px ${Math.max(2, t.size * 0.07)}px 0 rgba(42,35,80,.32)` : undefined };
   const empty = !t.text && !edit;
+  const editing = !!edit;
+  useEffect(() => {
+    const el = edit?.ref.current;
+    return el ? attachSpell(el) : undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing]);
   return (
-    <div style={{ position: 'relative' }}>
+    <div lang="th" style={{ position: 'relative' }}>
       {t.stroke && t.strokeW > 0 && (
         <div aria-hidden="true" style={{ ...css, position: 'absolute', inset: 0, color: t.stroke, WebkitTextStroke: `${t.strokeW * 2}px ${t.stroke}`, background: 'transparent', textShadow: 'none' }}>
           {t.text || ' '}
@@ -443,6 +451,7 @@ function TableView({ t, edit }: { t: TableItem; edit?: EditCell }) {
               {editing ? (
                 <div
                   ref={edit.ref}
+                  lang="th"
                   contentEditable="plaintext-only"
                   suppressContentEditableWarning
                   data-editing="1"
@@ -1250,7 +1259,7 @@ export function FlowLayer({ html, index, W, H, opt = defaultWordOpt(false) }: { 
     el.replaceChildren(out);
     hydrateFlow(el);
   }, [html, W, H, index, opt.mt, opt.mb, opt.ml, opt.mr, opt.std, fontsReady]);
-  return <div ref={ref} className="st-flow" data-std={opt.std || undefined} aria-hidden="true" style={{ ...flowBoxStyle(opt, W), position: 'absolute', left: 0, top: -index * (H + FLOW_GAP), pointerEvents: 'none' }} />;
+  return <div ref={ref} lang="th" className="st-flow" data-std={opt.std || undefined} aria-hidden="true" style={{ ...flowBoxStyle(opt, W), position: 'absolute', left: 0, top: -index * (H + FLOW_GAP), pointerEvents: 'none' }} />;
 }
 
 /** หัวกระดาษ ท้ายกระดาษ และเลขหน้า (แบบ Word) วางในพื้นที่ขอบกระดาษ */
@@ -1282,7 +1291,7 @@ export function PageDeco({ opt, index, total, W, H, hide }: { opt: WordOpt; inde
   // เลขหน้าที่อยู่ในหัว/ท้ายกระดาษแล้ว (ช่องเลขหน้า) ไม่วาดแยกซ้ำ
   const band = (top: boolean, html: string, n: string) =>
     html || n ? (
-      <div className="st-flow st-hf" data-std={opt.std || undefined} style={{ [top ? 'top' : 'bottom']: hfOffset(top ? opt.mt : opt.mb), left: opt.ml, right: opt.mr, fontFamily: (opt.std ? FONTS.thsarabun : FONTS.sarabun).family }}>
+      <div lang="th" className="st-flow st-hf" data-std={opt.std || undefined} style={{ [top ? 'top' : 'bottom']: hfOffset(top ? opt.mt : opt.mb), left: opt.ml, right: opt.mr, fontFamily: (opt.std ? FONTS.thsarabun : FONTS.sarabun).family }}>
         {html && <HfHtml html={html} num={label} />}
         {n && !hasPageField(html) && <p className="st-hf-num" style={{ textAlign: opt.numAlign }}>{n}</p>}
       </div>

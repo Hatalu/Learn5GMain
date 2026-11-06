@@ -1,4 +1,4 @@
-import { Sarabun, Kanit, Prompt, Itim, Mali, Sriracha, Chonburi, Charm, Pattaya, Chakra_Petch } from 'next/font/google';
+import { Sarabun, Kanit, Prompt, Itim, Mali, Sriracha, Chonburi, Charm, Pattaya, Chakra_Petch, Anuphan, IBM_Plex_Sans_Thai, Noto_Sans_Thai_Looped, K2D, Krub, Niramit, Bai_Jamjuree, Athiti, Kodchasan, KoHo, Playpen_Sans_Thai, Thasadith, Noto_Serif_Thai, Taviraj, Trirong, Pridi, Maitree, Fahkwang, Srisakdi, Charmonman } from 'next/font/google';
 import type { FontId } from '@/lib/studio/doc';
 
 // ฟอนต์ไทยของ Studio โหลดจากเว็บเราเอง (next/font) ตอนส่งออกเป็นรูป/PDF จึงฝังฟอนต์ได้ครบ
@@ -13,6 +13,27 @@ const chonburi = Chonburi({ subsets: ['thai', 'latin'], weight: '400', display: 
 const charm = Charm({ subsets: ['thai', 'latin'], weight: ['400', '700'], display: 'swap' });
 const pattaya = Pattaya({ subsets: ['thai', 'latin'], weight: '400', display: 'swap' });
 const chakra = Chakra_Petch({ subsets: ['thai', 'latin'], weight: ['400', '700'], display: 'swap' });
+// ฟอนต์ไทยฟรีเพิ่ม (Google Fonts ใช้ได้ทุกงานรวมงานขาย) ไม่ preload: ดึงไฟล์เมื่อมีข้อความใช้จริงเท่านั้น
+const f_anuphan = Anuphan({ subsets: ['thai', 'latin'], weight: ['400', '700'], display: 'swap', preload: false });
+const f_plexthai = IBM_Plex_Sans_Thai({ subsets: ['thai', 'latin'], weight: ['400', '700'], display: 'swap', preload: false });
+const f_notoloop = Noto_Sans_Thai_Looped({ subsets: ['thai', 'latin'], weight: ['400', '700'], display: 'swap', preload: false });
+const f_k2d = K2D({ subsets: ['thai', 'latin'], weight: ['400', '700'], display: 'swap', preload: false });
+const f_krub = Krub({ subsets: ['thai', 'latin'], weight: ['400', '700'], display: 'swap', preload: false });
+const f_niramit = Niramit({ subsets: ['thai', 'latin'], weight: ['400', '700'], display: 'swap', preload: false });
+const f_bai = Bai_Jamjuree({ subsets: ['thai', 'latin'], weight: ['400', '700'], display: 'swap', preload: false });
+const f_athiti = Athiti({ subsets: ['thai', 'latin'], weight: ['400', '700'], display: 'swap', preload: false });
+const f_kodchasan = Kodchasan({ subsets: ['thai', 'latin'], weight: ['400', '700'], display: 'swap', preload: false });
+const f_koho = KoHo({ subsets: ['thai', 'latin'], weight: ['400', '700'], display: 'swap', preload: false });
+const f_playpen = Playpen_Sans_Thai({ subsets: ['thai', 'latin'], weight: ['400', '700'], display: 'swap', preload: false });
+const f_thasadith = Thasadith({ subsets: ['thai', 'latin'], weight: ['400', '700'], display: 'swap', preload: false });
+const f_notoserif = Noto_Serif_Thai({ subsets: ['thai', 'latin'], weight: ['400', '700'], display: 'swap', preload: false });
+const f_taviraj = Taviraj({ subsets: ['thai', 'latin'], weight: ['400', '700'], display: 'swap', preload: false });
+const f_trirong = Trirong({ subsets: ['thai', 'latin'], weight: ['400', '700'], display: 'swap', preload: false });
+const f_pridi = Pridi({ subsets: ['thai', 'latin'], weight: ['400', '700'], display: 'swap', preload: false });
+const f_maitree = Maitree({ subsets: ['thai', 'latin'], weight: ['400', '700'], display: 'swap', preload: false });
+const f_fahkwang = Fahkwang({ subsets: ['thai', 'latin'], weight: ['400', '700'], display: 'swap', preload: false });
+const f_srisakdi = Srisakdi({ subsets: ['thai', 'latin'], weight: ['400', '700'], display: 'swap', preload: false });
+const f_charmonman = Charmonman({ subsets: ['thai', 'latin'], weight: ['400', '700'], display: 'swap', preload: false });
 
 // ชื่อฟอนต์เป็นภาษาอังกฤษแบบ Word (ผู้ใช้สั่ง) TH SarabunPSK กับ Angsana New ขึ้นก่อน
 export const FONTS: Record<FontId, { label: string; family: string; note: string }> = {
@@ -31,7 +52,36 @@ export const FONTS: Record<FontId, { label: string; family: string; note: string
   charm: { label: 'Charm', family: charm.style.fontFamily, note: 'ตัวเขียนสวย' },
   pattaya: { label: 'Pattaya', family: pattaya.style.fontFamily, note: 'หัวเรื่องสนุก' },
   chakra: { label: 'Chakra Petch', family: chakra.style.fontFamily, note: 'เหลี่ยมเท่' },
+  anuphan: { label: 'Anuphan', family: f_anuphan.style.fontFamily, note: 'ทันสมัย เรียบสะอาด' },
+  plexthai: { label: 'IBM Plex Sans Thai', family: f_plexthai.style.fontFamily, note: 'ดูเป็นมืออาชีพ' },
+  notoloop: { label: 'Noto Sans Thai Looped', family: f_notoloop.style.fontFamily, note: 'มีหัว อ่านง่ายสำหรับเด็ก' },
+  k2d: { label: 'K2D', family: f_k2d.style.fontFamily, note: 'เหลี่ยมมนทันสมัย' },
+  krub: { label: 'Krub', family: f_krub.style.fontFamily, note: 'เรียบ อ่านสบาย' },
+  niramit: { label: 'Niramit', family: f_niramit.style.fontFamily, note: 'เรียบ เนื้อหาทั่วไป' },
+  bai: { label: 'Bai Jamjuree', family: f_bai.style.fontFamily, note: 'เหลี่ยมโค้งสมัยใหม่' },
+  athiti: { label: 'Athiti', family: f_athiti.style.fontFamily, note: 'นุ่มนวล' },
+  kodchasan: { label: 'Kodchasan', family: f_kodchasan.style.fontFamily, note: 'เอียงน่ารัก' },
+  koho: { label: 'KoHo', family: f_koho.style.fontFamily, note: 'กลมสนุก' },
+  playpen: { label: 'Playpen Sans Thai', family: f_playpen.style.fontFamily, note: 'ลายมือเด็ก คัดไทย' },
+  thasadith: { label: 'Thasadith', family: f_thasadith.style.fontFamily, note: 'บางเรียว หัวข้อสวย' },
+  notoserif: { label: 'Noto Serif Thai', family: f_notoserif.style.fontFamily, note: 'มีหัว ทางการ' },
+  taviraj: { label: 'Taviraj', family: f_taviraj.style.fontFamily, note: 'มีหัว สง่า' },
+  trirong: { label: 'Trirong', family: f_trirong.style.fontFamily, note: 'มีหัว ประกาศนียบัตร' },
+  pridi: { label: 'Pridi', family: f_pridi.style.fontFamily, note: 'มีหัว นุ่มตา' },
+  maitree: { label: 'Maitree', family: f_maitree.style.fontFamily, note: 'มีหัว อบอุ่น' },
+  fahkwang: { label: 'Fahkwang', family: f_fahkwang.style.fontFamily, note: 'มีหัว คลาสสิก' },
+  srisakdi: { label: 'Srisakdi', family: f_srisakdi.style.fontFamily, note: 'ลายมือหัวข้อ' },
+  charmonman: { label: 'Charmonman', family: f_charmonman.style.fontFamily, note: 'ตัวเขียนพู่กัน' },
 };
+
+/** กลุ่มฟอนต์ในรายการเลือก (ทุกตัวฟรี ใช้ได้ไม่มีค่าลิขสิทธิ์) */
+export const FONT_GROUPS: { label: string; ids: FontId[] }[] = [
+  { label: 'แบบ Word / เอกสาร', ids: ['thsarabun', 'angsana', 'sarabun', 'noto', 'notoloop', 'krub', 'niramit', 'athiti'] },
+  { label: 'ทันสมัย / หัวข้อ', ids: ['kanit', 'prompt', 'mitr', 'anuphan', 'plexthai', 'k2d', 'bai', 'thasadith', 'chakra'] },
+  { label: 'มีหัว (ทางการ)', ids: ['notoserif', 'taviraj', 'trirong', 'pridi', 'maitree', 'fahkwang'] },
+  { label: 'ลายมือ / น่ารัก', ids: ['itim', 'mali', 'sriracha', 'kodchasan', 'koho', 'playpen'] },
+  { label: 'ตกแต่ง / หัวเรื่อง', ids: ['chonburi', 'charm', 'pattaya', 'srisakdi', 'charmonman'] },
+];
 
 /**
  * ฟอนต์ในเนื้อเอกสารโหมด Word เก็บเป็น var(--sf-<id>) ไม่ใช่ชื่อฟอนต์จริง

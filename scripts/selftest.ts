@@ -14,6 +14,8 @@ import { mtefToTex, oleEquationTex } from '../src/lib/studio/mtef';
 import { textToFlow } from '../src/lib/studio/textImport';
 import { cutBlocks, docxToFlow } from '../src/lib/studio/docxImport';
 import { prepTex } from '../src/lib/mathTex';
+import { buildDict, checkText, ruleCheck, suggest } from '../src/lib/studio/thaiSpell';
+import { FONT_IDS } from '../src/lib/studio/doc';
 import katex from 'katex';
 import { MATH_DEFAULTS, WORD_KEYS, assignMath, comboLabel, comboOf, conflictOf, mathKeyOf } from '../src/lib/studio/keys';
 import { FREE_SET_LIMIT, FREE_UPLOAD_MB, MEMBER_UPLOAD_MB, creatorTier, fmtMB, quotaBytes, setsUsed } from '../src/lib/game-creator/quota';
@@ -2471,6 +2473,23 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
     assert.deepEqual(SS.parseShapeSettings((k) => bad.get(k)), SS.SHAPE_DEFAULTS);
     passed++;
     console.log('  ok  มนุษย์สร้างรูป: ท่าครบทุกตัวเลือก อันดับ คะแนน ไม่มีอิโมจิ');
+  }
+  {
+    // ตรวจคำผิดไทย: กฎสะกด + พจนานุกรม (ใช้พจนานุกรมจริงที่เสิร์ฟให้เบราว์เซอร์)
+    assert.equal(ruleCheck('สวัสดี'), null);
+    assert.equal(ruleCheck('สิทธิ์'), null, 'ิ์ ถูกต้อง');
+    assert.equal(ruleCheck('เเล้ว')?.fix, 'แ', 'เเ -> แ');
+    assert.ok(ruleCheck('ก้่'), 'วรรณยุกต์ซ้อน');
+    assert.ok(ruleCheck('ิก'), 'ขึ้นต้นด้วยสระบน');
+    const { readFileSync } = await import('node:fs');
+    buildDict(readFileSync(new URL('../public/dict/th-words.txt', import.meta.url), 'utf8').split('\n'));
+    assert.deepEqual(checkText('ห้องเรียนอนุบาล สวัสดีครับ วันนี้อากาศดี'), []);
+    assert.ok(checkText('คณิตสาตร์สนุกมาก').length > 0, 'สาตร์ ผิด');
+    assert.ok(suggest('สาตร์', 8).length > 0);
+    assert.deepEqual(checkText('ฟอนต์เรนจ์'), [], 'ทับศัพท์ลงท้ายการันต์ไม่ขีด');
+    assert.equal(new Set(FONT_IDS).size, FONT_IDS.length, 'ฟอนต์ไม่ซ้ำ');
+    passed++;
+    console.log('  ok  ตรวจคำผิดไทย: กฎสะกด + พจนานุกรม + ฟอนต์ไม่ซ้ำ');
   }
   console.log(`\n${passed} tests passed`);
 })().catch((e) => {

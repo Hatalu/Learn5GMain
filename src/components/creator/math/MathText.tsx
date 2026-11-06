@@ -20,7 +20,7 @@ export function texToHtml(tex: string, display = false, big = true): string {
   } catch {
     html = '';
   }
-  if (cache.size > 800) cache.clear();
+  if (cache.size > 3000) cache.clear(); // เอกสารสมการเยอะ (700+) ต้องจำได้ทั้งหมด ไม่งั้นสลับโหมดวาดใหม่หมด
   cache.set(key, html);
   return html;
 }

@@ -70,6 +70,17 @@ export async function exportPdf(nodes: HTMLElement[], W: number, H: number, titl
   saveBlob(new Blob([pdf as BlobPart], { type: 'application/pdf' }), `${safeName(title)}.pdf`);
 }
 
+/** รูป PNG ของทุกหน้า (ไว้ใส่ในไฟล์ Word แบบรูปเต็มหน้า) */
+export async function pagePngBytes(nodes: HTMLElement[], W: number, H: number, onStep?: (i: number) => void): Promise<Uint8Array[]> {
+  const r = Math.min(2, exportRatio(W, H));
+  const out: Uint8Array[] = [];
+  for (let i = 0; i < nodes.length; i++) {
+    onStep?.(i);
+    out.push(bytesOf(await snap(nodes[i], W, H, 'png', r, 0.92, i === 0)));
+  }
+  return out;
+}
+
 /** รูปปกเล็ก (กว้าง 300px) เก็บในฐานข้อมูลไว้โชว์บนการ์ด จำกัดไม่เกิน ~58KB */
 let thumbWarm = false;
 export async function makeThumb(node: HTMLElement, W: number, H: number): Promise<string | null> {

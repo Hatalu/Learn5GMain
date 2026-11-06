@@ -142,9 +142,29 @@ const KNOWN_FONTS: Record<string, string> = {
   charm: 'charm',
   pattaya: 'pattaya',
   'chakra petch': 'chakra',
+  'anuphan': 'anuphan',
+  'ibm plex sans thai': 'plexthai',
+  'noto sans thai looped': 'notoloop',
+  'k2d': 'k2d',
+  'krub': 'krub',
+  'niramit': 'niramit',
+  'bai jamjuree': 'bai',
+  'athiti': 'athiti',
+  'kodchasan': 'kodchasan',
+  'koho': 'koho',
+  'playpen sans thai': 'playpen',
+  'thasadith': 'thasadith',
+  'noto serif thai': 'notoserif',
+  'taviraj': 'taviraj',
+  'trirong': 'trirong',
+  'pridi': 'pridi',
+  'maitree': 'maitree',
+  'fahkwang': 'fahkwang',
+  'srisakdi': 'srisakdi',
+  'charmonman': 'charmonman',
 };
 export function stableFont(val: string): string {
-  if (/^var\(--sf-[a-z]+\)$/.test(val)) return val;
+  if (/^var\(--sf-[a-z0-9]+\)$/.test(val)) return val;
   const first = val.split(',')[0].trim().replace(/^['"]|['"]$/g, '');
   // ชื่อจาก next/font เช่น __Chakra_Petch_1a2b3c
   const name = (/^__(.+?)_(Fallback_)?[0-9a-f]{4,}$/i.exec(first)?.[1] ?? first).replace(/_/g, ' ').toLowerCase();

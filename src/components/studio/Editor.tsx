@@ -48,7 +48,7 @@ import { texToHtml } from '@/components/creator/math/MathText';
 import { MathPopover } from '@/components/creator/math/MathPopover';
 import '@/components/creator/creator.css';
 import type { CharLook } from '@/lib/studio/char';
-import { exportPdf, exportPng, makeThumb } from '@/lib/studio/export';
+import { exportPdf, exportPng, makeThumb, pagePngBytes, safeName, saveBlob } from '@/lib/studio/export';
 import { PageView, type EditCell, type EditText } from './render';
 import { GraphEditor } from './GraphEditor';
 import { WordEditor, type WordHandle } from './WordEditor';
@@ -184,7 +184,7 @@ export function StudioEditor({ id }: { id: string }) {
   const [guides, setGuides] = useState<{ x: number[]; y: number[] }>({ x: [], y: [] });
   const [uploading, setUploading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-  const [exporting, setExporting] = useState<null | { kind: 'png' | 'pdf' | 'png1'; step: number }>(null);
+  const [exporting, setExporting] = useState<null | { kind: 'png' | 'pdf' | 'png1' | 'docx'; step: number }>(null);
   const [copying, setCopying] = useState(false);
   const [present, setPresent] = useState<number | null>(null);
   const [charDlg, setCharDlg] = useState<{ look: CharLook; itemId?: string; flip: boolean } | null>(null);
@@ -1294,7 +1294,7 @@ export function StudioEditor({ id }: { id: string }) {
   const editCell: EditCell | undefined = editId && sel?.type === 'table' && cell ? { ref: editRef, r: cell[0], c: cell[1], done: () => finishEdit() } : undefined;
 
   /* ------------------------------------------------------------ ส่งออก */
-  const runExport = (kind: 'png' | 'pdf' | 'png1') => {
+  const runExport = (kind: 'png' | 'pdf' | 'png1' | 'docx') => {
     if (!doc || exporting) return;
     finishEdit();
     setSelId(null);
@@ -1309,7 +1309,18 @@ export function StudioEditor({ id }: { id: string }) {
       try {
         const name = cleanTitle(title) || 'สื่อการสอน';
         const step = (i: number) => !off && setExporting((x) => (x ? { ...x, step: i } : x));
-        if (exporting.kind === 'pdf') await exportPdf(nodes, W, H, name, step);
+        if (exporting.kind === 'docx') {
+          const { buildDocx, buildImageDocx } = await import('./docxExport');
+          if (doc.mode === 'word') {
+            const r = await buildDocx({ flow: doc.flow || '<p><br></p>', wopt: doc.word, W, H, title: name, pages: doc.pages.length });
+            saveBlob(r.blob, `${safeName(name)}.docx`);
+            if (r.warnings.length) say(`ส่งออก Word แล้ว (${r.warnings[0]})`);
+            else say('ดาวน์โหลดแล้ว');
+            if (!off) setExporting(null);
+            return;
+          }
+          saveBlob(await buildImageDocx(await pagePngBytes(nodes, W, H, step), W, H, name), `${safeName(name)}.docx`);
+        } else if (exporting.kind === 'pdf') await exportPdf(nodes, W, H, name, step);
         else await exportPng(exporting.kind === 'png1' ? nodes.slice(ap, ap + 1) : nodes, W, H, exporting.kind === 'png1' && doc.pages.length > 1 ? `${name}-หน้า${ap + 1}` : name, step);
         say('ดาวน์โหลดแล้ว');
       } catch (e) {
@@ -1605,7 +1616,7 @@ export function StudioEditor({ id }: { id: string }) {
           <button type="button" className="st-topbtn st-g st-g-grape" onClick={() => (finishEdit(), setSelId(null), setPresent(ap))} title="นำเสนอเต็มจอ">
             <MonitorPlay className="w-4 h-4" /> <span className="max-xl:hidden">นำเสนอ</span>
           </button>
-          <ExportMenu pages={doc.pages.length} busy={!!exporting} label={exportLabel} onPick={runExport} />
+          <ExportMenu pages={doc.pages.length} busy={!!exporting} label={exportLabel} wordMode={mode === 'word'} onPick={runExport} />
     </>
   );
 
@@ -1965,7 +1976,7 @@ export function StudioEditor({ id }: { id: string }) {
   );
 }
 
-function ExportMenu({ pages, busy, label, onPick }: { pages: number; busy: boolean; label: string; onPick: (k: 'png' | 'pdf' | 'png1') => void }) {
+function ExportMenu({ pages, busy, label, wordMode, onPick }: { pages: number; busy: boolean; label: string; wordMode: boolean; onPick: (k: 'png' | 'pdf' | 'png1' | 'docx') => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -1974,7 +1985,7 @@ function ExportMenu({ pages, busy, label, onPick }: { pages: number; busy: boole
     document.addEventListener('pointerdown', out, true);
     return () => document.removeEventListener('pointerdown', out, true);
   }, [open]);
-  const pick = (k: 'png' | 'pdf' | 'png1') => {
+  const pick = (k: 'png' | 'pdf' | 'png1' | 'docx') => {
     setOpen(false);
     onPick(k);
   };
@@ -1990,6 +2001,12 @@ function ExportMenu({ pages, busy, label, onPick }: { pages: number; busy: boole
             <FileText className="w-5 h-5 text-rose-500" />
             <span>
               <b>PDF</b> พร้อมพิมพ์ {pages > 1 ? `(${pages} หน้า)` : ''}
+            </span>
+          </button>
+          <button type="button" onClick={() => pick('docx')}>
+            <FileText className="w-5 h-5 text-sky-600" />
+            <span>
+              <b>Word (.docx)</b> {wordMode ? 'แก้ไขต่อใน Word ได้' : 'รูปเต็มหน้า (แก้ข้อความไม่ได้)'}
             </span>
           </button>
           <button type="button" onClick={() => pick('png1')}>

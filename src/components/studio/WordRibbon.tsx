@@ -68,7 +68,8 @@ import {
 import { texToHtml } from '@/components/creator/math/MathText';
 import { MathKeysDialog } from '@/components/creator/math/MathKeys';
 import { MARGIN_PRESETS, NUM_FMTS, type WordOpt } from '@/lib/studio/flow';
-import { FONTS, FONT_PREVIEW_SCALE } from './fonts';
+import { FONTS, FONT_GROUPS, FONT_PREVIEW_SCALE } from './fonts';
+import { setSpellEnabled, spellEnabled } from './spell';
 import type { FontId } from '@/lib/studio/doc';
 import { SHAPES } from './shapes';
 import { COLORS, FORMULAS, HILITES, MORE_SYMBOLS, SHADES, SIZES, SYMBOLS, WORDART, type WordApi } from './WordPanels';
@@ -256,18 +257,23 @@ export function WordRibbon({
                   <Drop label={fontNow ? FONTS[fontNow].label : 'ฟอนต์'} icon={null} title="ฟอนต์" width={250}>
                     {(close) => (
                       <div className="st-rfonts" role="listbox" aria-label="ฟอนต์">
-                        {(Object.keys(FONTS) as FontId[]).map((id) => (
-                          <button
-                            key={id}
-                            type="button"
-                            role="option"
-                            aria-selected={fontNow === id}
-                            data-on={fontNow === id}
-                            onClick={() => (api.setFont(id), close())}
-                            style={{ fontFamily: FONTS[id].family, fontSize: 17 * (FONT_PREVIEW_SCALE[id] ?? 1) }}
-                          >
-                            {FONTS[id].label}
-                          </button>
+                        {FONT_GROUPS.map((g) => (
+                          <div key={g.label}>
+                            <p className="st-fontgrp">{g.label}</p>
+                            {g.ids.map((id) => (
+                              <button
+                                key={id}
+                                type="button"
+                                role="option"
+                                aria-selected={fontNow === id}
+                                data-on={fontNow === id}
+                                onClick={() => (api.setFont(id), close())}
+                                style={{ fontFamily: FONTS[id].family, fontSize: 17 * (FONT_PREVIEW_SCALE[id] ?? 1) }}
+                              >
+                                {FONTS[id].label}
+                              </button>
+                            ))}
+                          </div>
                         ))}
                       </div>
                     )}
@@ -557,6 +563,7 @@ export function WordRibbon({
         return (
           <>
             <G label="การพิสูจน์อักษร">
+              <SpellToggle />
               <Drop big title="จำนวนคำ" label="จำนวนคำ" icon={<BarChart3 />} width={230}>
                 {() => <WordCount api={api} />}
               </Drop>
@@ -876,6 +883,15 @@ function Margins({ api, close }: { api: WordApi; close: () => void }) {
       </div>
     </div>
   );
+}
+
+/** รีวิว > เปิด/ปิดขีดเส้นแดงคำไทยสะกดผิด (คลิกขวาที่คำที่ถูกขีดเพื่อแก้) */
+function SpellToggle() {
+  const [on, setOn] = useState(true);
+  useEffect(() => {
+    setOn(spellEnabled());
+  }, []);
+  return <Big label={on ? 'ตรวจคำผิด: เปิด' : 'ตรวจคำผิด: ปิด'} icon={<SpellCheck />} on={on} title="ขีดเส้นแดงคำไทยที่ไม่พบในพจนานุกรม คลิกขวาที่คำเพื่อแก้" onClick={() => (setSpellEnabled(!on), setOn(!on))} />;
 }
 
 /** รีวิว > จำนวนคำ */

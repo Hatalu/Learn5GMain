@@ -16,6 +16,7 @@ import { cleanGraph, type GraphSpec } from '@/lib/studio/graph';
 import { wordClipboardHtml } from './wordCopy';
 import { ItemView, PageView, fillPageFields, flowBoxStyle, hfOffset } from './render';
 import { FONTS, fontVar } from './fonts';
+import { attachSpell } from './spell';
 import type { FontId } from '@/lib/studio/doc';
 import { hydrateFlow, isLineShape } from './flowDom';
 import { ColorPop } from './ui';
@@ -126,8 +127,15 @@ export const WordEditor = forwardRef<
   // แผงเครื่องมือด้านข้าง: จอใหญ่เปิดแผงหน้าแรกไว้ก่อน
   const [panel, setPanel] = useState<WordPanelId | null>(null);
   const [findFocus, setFindFocus] = useState(0);
+  // ขีดเส้นแดงคำไทยสะกดผิด (เนื้อเอกสารและหัว/ท้ายกระดาษ)
   useEffect(() => {
-  }, []);
+    const el = ed.current;
+    return el && !readOnly ? attachSpell(el) : undefined;
+  }, [readOnly]);
+  useEffect(() => {
+    const el = hfRef.current;
+    return el ? attachSpell(el) : undefined;
+  }, [hf]);
   const zoomRef = useRef(zoom);
   zoomRef.current = zoom;
   const P = H + FLOW_GAP;
@@ -1277,6 +1285,7 @@ export const WordEditor = forwardRef<
           <div
             ref={ed}
             className="st-flow st-word-ed"
+            lang="th"
             data-std={wopt.std || undefined}
             contentEditable={!readOnly}
             suppressContentEditableWarning
@@ -1318,6 +1327,7 @@ export const WordEditor = forwardRef<
               <div
                 ref={hfRef}
                 className="st-flow st-hf-ed"
+                lang="th"
                 data-std={wopt.std || undefined}
                 contentEditable
                 suppressContentEditableWarning
