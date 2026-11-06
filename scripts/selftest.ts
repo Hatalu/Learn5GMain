@@ -43,6 +43,15 @@ import {
   setColor,
   setHat,
 } from '../src/lib/companion-store';
+import { FOODS, ITEMS as PET_ITEMS, SEASONS } from '../src/lib/pet/catalog';
+import { CORRECT_STAR_CAP, NEED_FLOOR, balance, buy, buyCheck, claimMission, claimSeason, cleanPet, emptyPet, logAnswer, mergePet, moodOf, needsAt, petLevel, pickSpecies, puzzleStreak, roll, savePuzzle, sleepStart, track, weekOf } from '../src/lib/pet/logic';
+import { ACHIEVEMENTS, DAILY_POOL, WEEKLY_POOL, dailyMissions, weeklyMissions } from '../src/lib/pet/missions';
+import { ACTIONS, SPECIES as PET_SPECIES, unlockText } from '../src/lib/pet/species';
+import { PUZZLE_COUNT, dailyPuzzle, puzzleScore, shareText } from '../src/lib/pet/puzzle';
+import { puzzleStars } from '../src/lib/pet/logic';
+import { weekReport } from '../src/lib/pet/report';
+import { BACK_ART, BODY_ART, TOP_ART } from '../src/components/companion/wearArt';
+import { hasRoomArt } from '../src/components/pet/roomArt';
 import { hasMembership } from '../src/lib/membership';
 import { CircleDraw, Swipe } from '../src/lib/game-creator/ar/inputs';
 import { CODE_ABC, isCode, makeCode, normCode } from '../src/lib/redeem';
@@ -105,7 +114,7 @@ import { ACCS, ANIMAL_PRESETS, CHAR_PRESETS, POSES, SPECIES, cleanLook, toggleAc
 import { clampEdu, DECO_IDS, EDU_KINDS, makeDeco, makeEdu } from '../src/lib/studio/doc';
 import { mediaPrefix } from '../src/lib/game-creator/prefix';
 import { TEMPLATES } from '../src/components/studio/templates';
-import { STICKERS, STICKER_CATS } from '../src/components/studio/stickers';
+import { STICKERS, STICKER_CATS, stickerById } from '../src/components/studio/stickers';
 import { MORE_STICKERS } from '../src/components/studio/stix';
 
 let passed = 0;
@@ -183,6 +192,178 @@ t('เลือกอัตโนมัติ: คงที่ในวันเ
   assert.equal(autoPickDaily([{ id: 'only' }], '2026-10-13')?.id, 'only');
   assert.equal(shiftDate('2026-12-31', 1), '2027-01-01');
   assert.equal(shiftDate('2026-03-01', -1), '2026-02-28');
+});
+
+console.log('ห้องเลี้ยงปุ๋ง/ปริศนา/รายงาน');
+t('ของทุกชิ้นมีภาพ ไม่ซ้ำ ไม่มีอิโมจิ', () => {
+  const ids = new Set<string>();
+  for (const it of PET_ITEMS) {
+    assert.ok(!ids.has(it.id), 'ซ้ำ ' + it.id);
+    ids.add(it.id);
+    const isWear = ['hat', 'face', 'body', 'back'].includes(it.slot);
+    if (isWear) assert.ok(TOP_ART[it.id] || BODY_ART[it.id] || BACK_ART[it.id], 'ไม่มีภาพ ' + it.id);
+    else if (it.slot !== 'fest') assert.ok(hasRoomArt(it.id), 'ไม่มีภาพ ' + it.id);
+    if (it.sticker) assert.ok(stickerById(it.sticker), 'ไม่มีสติกเกอร์ ' + it.sticker);
+    assert.ok(!/\p{Extended_Pictographic}/u.test(it.label), it.label);
+  }
+  for (const f of FOODS) assert.ok(stickerById(f.id), 'ไม่มีภาพอาหาร ' + f.id);
+  for (const s of SEASONS) assert.ok(stickerById(s.decor.sticker), s.name);
+  assert.equal(SEASONS.length, 12);
+});
+
+t('ดาวใช้จ่ายไม่ลดดาวสะสม เลเวลไม่ถอย ซื้อเกินไม่ได้', () => {
+  let ps = { stars: 50, pet: { ...emptyPet(), hatched: true } };
+  const before = petLevel(ps.stars).lv;
+  assert.equal(before, 3);
+  assert.equal(buyCheck(ps, 'h-bow'), null);
+  assert.equal(buyCheck({ stars: 5, pet: ps.pet }, 'h-bow'), 'stars');
+  assert.equal(buyCheck(ps, 'h-astro'), 'level');
+  assert.equal(buyCheck(ps, 's11-w'), 'season');
+  ps = buy(ps, 'h-bow', '2026-11-05').ps;
+  assert.equal(ps.stars, 50);
+  assert.equal(balance(ps), 42);
+  assert.equal(petLevel(ps.stars).lv, before);
+  assert.equal(buyCheck(ps, 'h-bow'), 'owned');
+});
+
+t('หลอดลดตามเวลาแต่ไม่ต่ำกว่าพื้น นอนแล้วแรงเพิ่ม', () => {
+  const now = Date.parse('2026-11-05T05:00:00Z');
+  const pet = { ...emptyPet(), at: now };
+  assert.equal(needsAt(pet, now + 1000 * 3600 * 24 * 30).food, NEED_FLOOR);
+  assert.ok(needsAt(pet, now + 3600 * 1000).food < pet.needs.food);
+  const sl = sleepStart({ stars: 0, pet: { ...pet, needs: { ...pet.needs, energy: 20 } } }, now, '2026-11-05').pet;
+  assert.equal(needsAt(sl, now + 5000).energy, 40);
+  assert.equal(moodOf({ food: 20, fun: 90, clean: 90, energy: 90 }), 'hungry');
+  assert.equal(moodOf({ food: 80, fun: 90, clean: 90, energy: 90 }), 'happy');
+});
+
+t('ตอบถูกได้ดาวมีเพดานต่อวัน ตอบผิดไม่ได้ ข้ามวันเริ่มใหม่', () => {
+  const d = '2026-11-05';
+  let ps = { stars: 0, pet: emptyPet() };
+  assert.equal(logAnswer(ps, false, 'm', d).gained, 0);
+  for (let i = 0; i < CORRECT_STAR_CAP + 5; i++) ps = logAnswer(ps, true, 'm', d).ps;
+  assert.equal(ps.stars, CORRECT_STAR_CAP);
+  assert.equal(ps.pet.log[0].ok, CORRECT_STAR_CAP + 5);
+  assert.equal(logAnswer(ps, true, 'm', '2026-11-06').gained, 1);
+});
+
+t('ภารกิจรายวันคงที่ต่อวัน มีเรียนรู้ 2 ข้อ รับซ้ำไม่ได้', () => {
+  const d = '2026-11-05';
+  const a = dailyMissions(d);
+  assert.deepEqual(a.map((m) => m.id), dailyMissions(d).map((m) => m.id));
+  assert.equal(a.length, 6);
+  assert.equal(a.filter((m) => m.learn).length, 2);
+  assert.equal(new Set(a.map((m) => m.ev)).size, 6);
+  for (let i = 0; i < 400; i++) {
+    const date = shiftDate(d, i);
+    assert.equal(dailyMissions(date).length, 6, date);
+    assert.equal(weeklyMissions(date).length, 4, date);
+  }
+  const m = a[0];
+  let ps = { stars: 0, pet: emptyPet() };
+  assert.equal(claimMission(ps, m.id, d).stars, 0);
+  ps = track(ps, m.ev, d, m.need);
+  const c = claimMission(ps, m.id, d);
+  assert.equal(c.stars, m.stars);
+  assert.equal(claimMission(c.ps, m.id, d).stars, 0);
+});
+
+t('ซีซัน: รับของตามแต้ม ข้ามเดือนได้ของที่ถึงแล้วแต่ลืมรับ', () => {
+  let ps = { stars: 0, pet: emptyPet() };
+  ps = roll(ps, '2026-11-05');
+  ps = { ...ps, pet: { ...ps.pet, season: { ...ps.pet.season, pts: 45 } } };
+  const c = claimSeason(ps, '2026-11-05');
+  assert.ok(c.pet.owned.includes('s11-d') && c.pet.owned.includes('s11-w'));
+  assert.equal(c.stars, 0);
+  const next = roll(ps, '2026-12-01');
+  assert.ok(next.pet.owned.includes('s11-w'));
+  assert.equal(next.pet.season.pts, 0);
+  assert.equal(next.pet.season.k, '2026-12');
+});
+
+t('ของเก่าและข้อมูลเสียไม่พัง รวมสองเครื่องไม่ทำของหาย', () => {
+  assert.equal(cleanPet(undefined, 'crown').wear.hat, 'crown');
+  assert.equal(cleanPet({ wear: { hat: 'ไม่มีจริง' }, owned: ['xx', 'h-bow'], needs: { food: 9999 } }).wear.hat, undefined);
+  assert.deepEqual(cleanPet({ owned: ['xx', 'h-bow'] }).owned, ['h-bow']);
+  assert.equal(cleanPet({ needs: { food: 9999 } }).needs.food, 100);
+  const a = { ...emptyPet(), owned: ['h-bow'], spent: 8, hatched: true };
+  const b = { ...emptyPet(), owned: ['g-sun'], spent: 3 };
+  const m = mergePet(a, b, false);
+  assert.deepEqual(m.owned.sort(), ['g-sun', 'h-bow']);
+  assert.equal(m.spent, 8);
+  assert.equal(m.hatched, true);
+});
+
+t('ปริศนา: วันและระดับเดียวกันได้โจทย์เดิม คำตอบอยู่ในตัวเลือก เล่นซ้ำไม่ได้ดาว', () => {
+  const d = '2026-11-05';
+  assert.equal(JSON.stringify(dailyPuzzle(d, 2)), JSON.stringify(dailyPuzzle(d, 2)));
+  assert.notEqual(JSON.stringify(dailyPuzzle(d, 2)), JSON.stringify(dailyPuzzle('2026-11-06', 2)));
+  for (let i = 0; i < 200; i++) {
+    const date = shiftDate(d, i);
+    for (const lv of [1, 2, 3] as const) {
+      const qs = dailyPuzzle(date, lv);
+      assert.equal(qs.length, PUZZLE_COUNT);
+      for (const q of qs) {
+        if (q.kind === 'word') assert.equal([...q.choices].sort().join(''), q.answer.split('').sort().join(''));
+        else {
+          assert.ok(q.choices.includes(q.answer), q.prompt);
+          assert.equal(new Set(q.choices).size, q.choices.length, q.prompt);
+          assert.equal(q.choices.length, 4, q.prompt);
+          if (q.kind === 'seq' || q.kind === 'miss') assert.ok(q.choices.every((c) => Number(c) >= 0 && Number.isInteger(Number(c))), q.prompt);
+        }
+        assert.ok(!/\p{Extended_Pictographic}/u.test(q.prompt + q.hint + q.choices.join('')), q.prompt);
+      }
+    }
+  }
+  assert.equal(puzzleScore('22222', 40), 520);
+  assert.equal(puzzleStars('22100'), 7);
+  assert.ok(!/\p{Extended_Pictographic}/u.test(shareText(d, 1, '21000', 30)));
+  let ps = { stars: 0, pet: emptyPet() };
+  const r1 = savePuzzle(ps, { d, lv: 1, m: '22100', s: 30 }, d);
+  assert.equal(r1.stars, 7);
+  assert.equal(savePuzzle(r1.ps, { d, lv: 1, m: '22222', s: 3 }, d).stars, 0);
+  ps = { ...r1.ps, pet: { ...r1.ps.pet, puzzles: [{ d: '2026-11-04', lv: 1, m: '0', s: 1 }, ...r1.ps.pet.puzzles] } };
+  assert.equal(puzzleStreak(ps.pet, d), 2);
+  assert.equal(puzzleStreak(ps.pet, '2026-11-06'), 2);
+  assert.equal(puzzleStreak(ps.pet, '2026-11-08'), 0);
+});
+
+t('รายงาน: นับจากข้อมูลจริง ใบประกาศตามเงื่อนไข สัปดาห์เริ่มวันจันทร์', () => {
+  assert.equal(weekOf('2026-11-05'), '2026-11-02');
+  assert.equal(weekOf('2026-11-08'), '2026-11-02');
+  assert.equal(weekOf('2026-11-09'), '2026-11-09');
+  let ps = { stars: 0, pet: emptyPet() };
+  assert.equal(weekReport(ps.pet, '2026-11-05').cert, null);
+  for (const d of ['2026-11-02', '2026-11-03']) for (let i = 0; i < 6; i++) ps = logAnswer(ps, true, 'm', d).ps;
+  ps = logAnswer(ps, false, 's', '2026-11-03').ps;
+  const r = weekReport(ps.pet, '2026-11-05');
+  assert.equal(r.activeDays, 2);
+  assert.equal(r.ok, 12);
+  assert.equal(r.tot, 13);
+  assert.equal(r.cert, 'bronze');
+  assert.equal(r.subjects[0].key, 'm');
+  assert.equal(weekReport(ps.pet, '2026-11-12').ok, 0);
+  assert.equal(weekReport(ps.pet, '2026-11-12').prevOk, 12);
+});
+
+t('คู่หู: เกิน 20 แบบ ปลดล็อกจากภารกิจจริง ชนิดที่ล็อกเลือกไม่ได้', () => {
+  assert.ok(PET_SPECIES.length > 20);
+  assert.equal(new Set(PET_SPECIES.map((s) => s.id)).size, PET_SPECIES.length);
+  const evs = new Set([...DAILY_POOL, ...WEEKLY_POOL, ...ACHIEVEMENTS].map((m) => m.ev));
+  for (const s of PET_SPECIES.slice(1)) {
+    assert.ok(s.ev && s.need, s.id);
+    assert.ok(evs.has(s.ev!), 'ภารกิจไม่มีเหตุการณ์ ' + s.id);
+    assert.ok(unlockText(s).length > 3 && !unlockText(s).includes('undefined'), s.id);
+    assert.ok(ACTIONS.some((a) => a.id === s.move), s.id);
+  }
+  assert.equal(new Set(PET_SPECIES.map((s) => s.ev + ':' + s.need)).size, PET_SPECIES.length, 'เงื่อนไขซ้ำทำให้ฉลองผิดตัว');
+  let ps = { stars: 0, pet: emptyPet() };
+  assert.equal(pickSpecies(ps, 'cat').pet.species, 'pung');
+  ps = track(ps, 'feed', '2026-11-06', 3);
+  assert.equal(pickSpecies(ps, 'cat').pet.species, 'cat');
+  assert.equal(pickSpecies(ps, 'ไม่มี').pet.species, 'pung');
+  assert.equal(cleanPet({ species: 'ขยะ' }).species, 'pung');
+  assert.equal(cleanPet({ species: 'cat' }).species, 'cat');
 });
 
 console.log('ตัวละคร/สติกเกอร์');
@@ -390,7 +571,7 @@ t('sanitize: ตัดข้อมูลผิดรูป/เกินช่ว
   assert.equal(sanitize('ขยะ').createdAt, 0);
 });
 
-t('คำทักทายโหมดล็อก: ชวนสมัครสมาชิก และยังสั้น', () => {
+t('คำทักทายผู้ที่ไม่ใช่สมาชิก: ชวนเล่นปริศนา และยังสั้น', () => {
   const g = buildGreeting({
     parts: bkkParts(new Date('2026-10-13T03:00:00Z')),
     phase: 'day',
@@ -405,7 +586,7 @@ t('คำทักทายโหมดล็อก: ชวนสมัครส
     locked: true,
   });
   assert.equal(g.length, 2);
-  assert.match(g[1], /สมัครสมาชิก/);
+  assert.match(g[1], /ปริศนา/);
   for (const l of g) assert.ok(l.length <= 60);
 });
 

@@ -179,7 +179,8 @@ export function CompanionProvider({ children }: { children: React.ReactNode }) {
     attach({ userId: uid, entitled });
 
     if (!entitled || !uid) {
-      setVisit({ checkinStars: 0, firstEver: false });
+      const r = recordVisit(bkkParts().date);
+      setVisit({ checkinStars: r.checkinStars, firstEver: r.firstEver });
       setSyncStatus('idle');
       setReady(true);
       return;

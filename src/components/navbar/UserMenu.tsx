@@ -7,7 +7,7 @@ import { useCompanionOptional } from '@/components/companion/CompanionProvider';
 import { Buddy } from '@/components/companion/Buddy';
 import { StarIcon } from '@/components/companion/Stars';
 import { CountUp } from '@/components/fx/CountUp';
-import { buddyStage } from '@/lib/companion';
+import { buddyStage, shownStage } from '@/lib/companion';
 import { hasMembership } from '@/lib/membership';
 import { cn } from '@/lib/utils/cn';
 import { CalendarDays, ChevronDown, ChevronRight, Compass, Crown, Gamepad2, Heart, LogOut, Palette, ShieldCheck, Sticker, Sparkles } from 'lucide-react';
@@ -133,7 +133,7 @@ export function UserMenu() {
               </div>
               {st && (
                 <div className={cn(s.float, 'shrink-0 -mr-1 drop-shadow-lg')} aria-hidden="true">
-                  <Buddy stage={stage.index} color={st.color} hat={st.hat} size={58} animate={false} />
+                  <Buddy stage={shownStage(stars, st.pet.hatched)} color={st.color} wear={st.pet.wear} species={st.pet.species} size={58} animate={false} />
                 </div>
               )}
             </div>

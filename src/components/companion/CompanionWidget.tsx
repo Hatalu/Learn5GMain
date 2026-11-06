@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { Volume2, X } from 'lucide-react';
 import { Buddy } from './Buddy';
 import { useCompanion } from './CompanionProvider';
-import { BUDDY_NAME, CHATTER, CHATTER_LOCKED, bkkParts, buddyStage, buildGreeting, eventOf, phaseOf, type Hat } from '@/lib/companion';
+import { BUDDY_NAME, CHATTER, CHATTER_LOCKED, bkkParts, buddyStage, buildGreeting, eventOf, phaseOf, shownStage } from '@/lib/companion';
 import { sfx, speakThai } from '@/lib/sound';
 
 type Mode = 'asleep' | 'awake';
@@ -136,9 +136,10 @@ export function CompanionWidget() {
           className={`block rounded-full focus-visible:outline-offset-4 ${mode === 'asleep' ? 'buddy-snooze' : waking ? 'buddy-wake' : ''}`}
         >
           <Buddy
-            stage={stage.index}
+            stage={shownStage(stars, state.pet.hatched)}
             color={state.color}
-            hat={state.hat as Hat}
+            wear={state.pet.wear}
+            species={state.pet.species}
             size={typeof window !== 'undefined' && window.innerWidth < 640 ? 78 : 104}
             asleep={mode === 'asleep'}
             animate={mode === 'awake' && !waking}
@@ -166,7 +167,7 @@ export function CompanionWidget() {
           ))}
           <div className="mt-2.5 flex flex-wrap items-center gap-2">
             <Link href="/buddy" className="btn-jelly inline-flex items-center px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-200 text-sm font-bold">
-              {entitled ? 'ห้องของฉัน' : 'ดูสิทธิ์สมาชิก'}
+              ห้องของฉัน
             </Link>
             {canSpeak && (
               <button type="button" onClick={speak} aria-label="ฟังเสียงพูด" className="btn-jelly p-1.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">

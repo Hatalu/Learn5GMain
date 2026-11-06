@@ -7,9 +7,8 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { ThemeToggle } from './ThemeToggle';
 import { SoundToggle } from './SoundToggle';
-import { useCompanionOptional } from '@/components/companion/CompanionProvider';
 import { UserMenu } from './UserMenu';
-import { ShieldCheck, Home, LogIn, UserX, Sparkles, Lock, Crown, Wand2, Palette } from 'lucide-react';
+import { ShieldCheck, Home, LogIn, UserX, Sparkles, Crown, Wand2, Palette } from 'lucide-react';
 import { FacebookIcon } from '@/components/icons/FacebookIcon';
 import { cn } from '@/lib/utils/cn';
 import fx from '@/components/ui/fancy.module.css';
@@ -18,8 +17,6 @@ import { JoinButton } from '@/components/membership/JoinButton';
 
 export function Navbar() {
   const { user, profile, isDev } = useAuth();
-  const companion = useCompanionOptional();
-  const buddyLocked = !!companion && companion.ready && !companion.entitled;
   const pathname = usePathname();
   const isDevPage = pathname.startsWith('/dev');
   const showJoin = !isDev && !(user && hasMembership(profile)) && !pathname.startsWith('/membership');
@@ -172,11 +169,11 @@ export function Navbar() {
           {!isDevPage && !pathname.startsWith('/buddy') && (
             <Link
               href="/buddy"
-              className={cn(fx.shine, 'btn-jelly inline-flex items-center gap-2 pl-1.5 pr-3 py-1.5 text-sm font-bold rounded-2xl text-white bg-gradient-to-r from-violet-600 via-fuchsia-500 to-pink-500 border-2 border-white/40 dark:border-white/15 shadow-[0_3px_0_0_rgba(126,34,206,0.5)] whitespace-nowrap')}
-              title="ห้องของคู่หูและสมุดสะสมสติกเกอร์"
+              className={cn(fx.shine, 'btn-jelly hidden min-[440px]:inline-flex items-center gap-2 pl-1.5 pr-3 py-1.5 text-sm font-bold rounded-2xl text-white bg-gradient-to-r from-violet-600 via-fuchsia-500 to-pink-500 border-2 border-white/40 dark:border-white/15 shadow-[0_3px_0_0_rgba(126,34,206,0.5)] whitespace-nowrap')}
+              title="ห้องเลี้ยงปุ๋ง"
             >
               <span className="w-7 h-7 rounded-xl bg-white/95 flex items-center justify-center shrink-0 text-fuchsia-600">
-                {buddyLocked ? <Lock className="w-4 h-4" /> : <Sparkles className={cn('w-4 h-4', fx.twinkle)} />}
+                <Sparkles className={cn('w-4 h-4', fx.twinkle)} />
               </span>
               <span className="hidden xl:inline [text-shadow:0_1px_1px_rgba(0,0,0,0.25)]">คู่หูของฉัน</span>
             </Link>

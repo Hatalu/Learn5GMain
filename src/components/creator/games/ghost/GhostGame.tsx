@@ -12,6 +12,7 @@
  * - คะแนนการเล่นต่อข้อสูงสุดน้อยกว่าคะแนนตอบถูกเสมอ (maxPlayFor ทดสอบใน selftest) ภาพกล้องไม่บันทึก/ไม่ส่งออก
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { recordAnswer } from '@/lib/companion-store';
 import { createPortal } from 'react-dom';
 import { ArrowBigLeft, ArrowBigRight, BookOpen, Camera, Check, Coins, Crown, Download, Flashlight, Hand, Heart, KeyRound, Lock as LockIcon, LogOut, Map as MapIcon, Pause, Play, Radio, ScanFace, Settings2, Shield, Sparkles, Star, Timer, Users, X, Zap } from 'lucide-react';
 import type { QuizQuestion } from '@/lib/game-creator/types';
@@ -651,6 +652,7 @@ export function GhostGame({ questions, settings, title, onExit, persist = true }
       const choice = g.q.choices.find((c) => c.id === cid);
       const s = g.scores[g.team];
       const h = hero();
+      recordAnswer(!!choice?.correct);
       if (choice?.correct) {
         g.got = true;
         s.streak++;

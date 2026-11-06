@@ -17,6 +17,7 @@ import {
   bkkParts,
   type Hat,
 } from './companion';
+import { cleanPet, emptyPet, logAnswer, mergePet, track, trackVisit, type PS, type PetState, type SubjKey } from './pet/logic';
 
 const KEY_PREFIX = 'l5g_companion_v2:';
 export const LEGACY_KEY = 'l5g_companion_v1';
@@ -40,6 +41,7 @@ export interface CompanionState {
   color: string;
   hat: string;
   dailyClaimed: string | null; // วันที่รับโบนัสเกมประจำวันแล้ว
+  pet: PetState; // ห้องเลี้ยงปุ๋ง (lib/pet)
 }
 
 export const EMPTY_STATE: CompanionState = {
@@ -53,6 +55,7 @@ export const EMPTY_STATE: CompanionState = {
   color: 'violet',
   hat: 'none',
   dailyClaimed: null,
+  pet: emptyPet(),
 };
 
 export interface Reward {
@@ -101,6 +104,7 @@ export function sanitize(raw: unknown): CompanionState {
     color: (BUDDY_COLORS as readonly string[]).includes(String(r.color)) ? String(r.color) : 'violet',
     hat: (HATS as readonly string[]).includes(String(r.hat)) ? String(r.hat) : 'none',
     dailyClaimed: typeof r.dailyClaimed === 'string' ? r.dailyClaimed : null,
+    pet: cleanPet(r.pet, String(r.hat)),
   };
 }
 
@@ -138,6 +142,7 @@ export function mergeStates(a: CompanionState, b: CompanionState): CompanionStat
     color: newer.color,
     hat: newer.hat,
     dailyClaimed: [a.dailyClaimed, b.dailyClaimed].filter(Boolean).sort().pop() ?? null,
+    pet: mergePet(a.pet, b.pet, a.savedAt >= b.savedAt),
   };
 }
 
@@ -148,7 +153,8 @@ function sameContent(a: CompanionState, b: CompanionState): boolean {
 
 /* ------------------------------ store ------------------------------ */
 
-type Mode = 'off' | 'on';
+// on = สมาชิก ซิงก์ขึ้นระบบ, guest = ไม่ใช่สมาชิก เลี้ยงปุ๋งได้แต่เก็บในเครื่องนี้ (สติกเกอร์ยังเป็นสิทธิ์สมาชิก), off = ก่อนรู้สิทธิ์
+type Mode = 'off' | 'on' | 'guest';
 let state: CompanionState = EMPTY_STATE;
 let mode: Mode = 'off';
 let userId: string | null = null;
@@ -156,9 +162,10 @@ let onChange: (() => void) | null = null;
 const listeners = new Set<() => void>();
 
 const keyFor = (uid: string) => `${KEY_PREFIX}${uid}`;
+const GUEST_ID = 'guest';
 
 function persistLocal() {
-  if (mode !== 'on' || !userId) return;
+  if (mode === 'off' || !userId) return;
   try {
     window.localStorage.setItem(keyFor(userId), JSON.stringify(state));
   } catch {
@@ -193,7 +200,7 @@ function commit(next: CompanionState) {
 /**
  * ตั้งโหมดตามสิทธิ์
  * - entitled + มี userId: โหลดแคชในเครื่องของบัญชีนี้
- * - นอกนั้น: โหมดล็อก เป็นข้อมูลทดลองในหน่วยความจำ ไม่บันทึกที่ใด
+ * - นอกนั้น: โหมด guest เก็บในเครื่องนี้เครื่องเดียว สมัครสมาชิกแล้วบัญชีใหม่รับต่อ (readLegacy)
  */
 export function attach(opts: { userId: string | null; entitled: boolean }) {
   if (typeof window === 'undefined') return;
@@ -209,27 +216,38 @@ export function attach(opts: { userId: string | null; entitled: boolean }) {
     }
     state = local && local.createdAt > 0 ? local : { ...EMPTY_STATE, createdAt: Date.now(), savedAt: 0 };
   } else {
-    mode = 'off';
-    userId = null;
-    state = { ...EMPTY_STATE, createdAt: Date.now() };
+    mode = 'guest';
+    userId = GUEST_ID;
+    let local: CompanionState | null = null;
+    try {
+      const raw = window.localStorage.getItem(keyFor(GUEST_ID));
+      if (raw) local = sanitize(JSON.parse(raw));
+    } catch {
+      /* ข้าม */
+    }
+    state = local && local.createdAt > 0 ? local : { ...EMPTY_STATE, createdAt: Date.now() };
   }
   emit();
 }
 
 /** ข้อมูลเก่าที่ผู้ใช้เคยสะสมไว้ก่อนมีระบบสมาชิก (ใช้ตั้งต้นให้บัญชีใหม่ครั้งเดียว) */
 export function readLegacy(): CompanionState | null {
-  try {
-    const raw = window.localStorage.getItem(LEGACY_KEY);
-    if (!raw) return null;
-    const s = sanitize(JSON.parse(raw));
-    return s.createdAt > 0 && (s.stars > 0 || Object.keys(s.plays).length > 0) ? s : null;
-  } catch {
-    return null;
+  for (const key of [LEGACY_KEY, keyFor(GUEST_ID)]) {
+    try {
+      const raw = window.localStorage.getItem(key);
+      if (!raw) continue;
+      const s = sanitize(JSON.parse(raw));
+      if (s.createdAt > 0 && (s.stars > 0 || Object.keys(s.plays).length > 0)) return s;
+    } catch {
+      /* ข้าม */
+    }
   }
+  return null;
 }
 export function clearLegacy() {
   try {
     window.localStorage.removeItem(LEGACY_KEY);
+    window.localStorage.removeItem(keyFor(GUEST_ID));
   } catch {
     /* ข้าม */
   }
@@ -258,12 +276,15 @@ export function snapshotForSave(): CompanionState {
 
 /** บันทึกการเข้าเว็บของวันนี้ คืนดาวเช็คอินที่ได้ (0 ถ้าเคยเช็คอินวันนี้แล้ว หรือยังไม่มีสิทธิ์) */
 export function recordVisit(today: string): { checkinStars: number; firstEver: boolean; evolved?: Reward['evolved'] } {
-  if (mode !== 'on') return { checkinStars: 0, firstEver: false };
+  if (mode === 'off') return { checkinStars: 0, firstEver: false };
   const firstEver = state.visitDays.length === 0 && state.stars === 0 && Object.keys(state.plays).length === 0;
-  if (state.visitDays.includes(today)) return { checkinStars: 0, firstEver: false };
+  if (state.visitDays.includes(today)) {
+    if (!state.pet.day.c.visit || state.pet.day.d !== today) petAct((ps) => trackVisit(ps, today));
+    return { checkinStars: 0, firstEver: false };
+  }
   const before = buddyStage(state.stars).index;
   const stars = state.stars + STAR_RULES.checkin;
-  commit({ ...state, visitDays: [...state.visitDays, today].slice(-90), stars });
+  commit({ ...state, visitDays: [...state.visitDays, today].slice(-90), stars, pet: trackVisit({ stars, pet: state.pet }, today).pet });
   const after = buddyStage(stars);
   return {
     checkinStars: STAR_RULES.checkin,
@@ -276,9 +297,10 @@ export function recordPlay(
   media: { id: string; title: string; icon_url: string; subject: string },
   opts: { dailyId?: string | null; now?: number } = {}
 ): Reward {
-  if (mode !== 'on') return { starsGained: 0, counted: false };
   const now = opts.now ?? Date.now();
   const today = bkkParts(new Date(now)).date;
+  if (mode === 'guest') petAct((ps) => track(ps, 'play', today));
+  if (mode !== 'on') return { starsGained: 0, counted: false };
   const prev = state.plays[media.id];
 
   // เปิดซ้ำภายในช่วงคูลดาวน์ไม่นับ (กันกดรัวปั่นดาว)
@@ -321,12 +343,13 @@ export function recordPlay(
       [media.id]: { c: count, last: now, title: media.title, icon: media.icon_url, subject: media.subject },
     },
     lastPlayed: { id: media.id, title: media.title, at: now, day: today },
+    pet: track({ stars, pet: state.pet }, 'play', today).pet,
   });
   return reward;
 }
 
 export function setColor(color: string) {
-  if (mode !== 'on') return;
+  if (mode === 'off') return;
   if (!(BUDDY_COLORS as readonly string[]).includes(color)) return;
   commit({ ...state, color });
 }
@@ -340,9 +363,25 @@ export function setHat(hat: string): boolean {
   return true;
 }
 
+/** ทุกการกระทำในห้องเลี้ยงปุ๋งผ่านตรงนี้ */
+export function petAct(f: (ps: PS) => PS) {
+  if (mode === 'off') return;
+  const r = f({ stars: state.stars, pet: state.pet });
+  if (r.stars === state.stars && r.pet === state.pet) return;
+  commit({ ...state, stars: r.stars, pet: r.pet });
+}
+
+/** เรียกจากทุกเกมเมื่อรู้ผลว่าตอบถูก/ผิด: บันทึกสถิติ + ได้ดาว (มีเพดานต่อวัน) */
+export function recordAnswer(ok: boolean, subj: SubjKey = 'x'): number {
+  if (mode === 'off') return 0;
+  const r = logAnswer({ stars: state.stars, pet: state.pet }, ok, subj, bkkParts().date);
+  commit({ ...state, stars: r.ps.stars, pet: r.ps.pet });
+  return r.gained;
+}
+
 /** เริ่มใหม่ทั้งหมด (ลบทั้งในเครื่องและบนระบบ) */
 export function resetStore() {
-  if (mode !== 'on') return;
+  if (mode === 'off') return;
   commit({ ...EMPTY_STATE, createdAt: Date.now() });
 }
 

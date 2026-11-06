@@ -13,6 +13,7 @@ import { ChoiceShape, choiceStyle } from '../ChoiceShape';
 import type { QuizEngine } from '../quiz/QuizRunner';
 import { gsfx } from '@/lib/game-creator/gsound';
 import { quickCheck, richLength } from '@/lib/game-creator/quiz';
+import { recordAnswer } from '@/lib/companion-store';
 
 type Phase = 'loading' | 'question' | 'sending' | 'feedback' | 'idle' | 'error';
 
@@ -171,6 +172,7 @@ export function QuestionPad({
         await load();
         return;
       }
+      recordAnswer(r.correct);
       setRes(r);
       setPhase('feedback');
       if (quick === null || quick !== r.correct) {

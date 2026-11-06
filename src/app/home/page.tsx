@@ -24,6 +24,7 @@ import { HomeHero } from '@/components/home/HomeHero';
 import { FeatureStrip } from '@/components/media/FeatureStrip';
 import { DailyGameCard } from '@/components/media/DailyGameCard';
 import { JoinRoomBanner } from '@/components/media/JoinRoomBanner';
+import { HomeHub } from '@/components/pet/HomeHub';
 import { BuddyLoader } from '@/components/fx/BuddyLoader';
 import { Reveal } from '@/components/ui/Reveal';
 import {
@@ -392,6 +393,11 @@ export default function HomePage() {
         {/* เลือกกลุ่ม ผู้ปกครอง / คุณครู แล้วได้ภารกิจลองใช้ + ความคุ้มของสมาชิก */}
         <Reveal className="mt-8 sm:mt-10">
           <AudiencePaths audience={audience} onPick={setAudience} onLibrary={openGames} onDaily={scrollToDaily} />
+        </Reveal>
+
+        {/* ปริศนาวันนี้ + ห้องเลี้ยงปุ๋ง + ซีซัน */}
+        <Reveal className="mt-6 sm:mt-8">
+          <HomeHub />
         </Reveal>
 
         {/* เกมประจำวัน: เปลี่ยนทุกวัน แอดมินกำหนดได้ที่หน้า Dev */}

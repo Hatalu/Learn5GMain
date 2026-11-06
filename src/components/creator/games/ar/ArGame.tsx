@@ -9,6 +9,7 @@
  * - ไม่มีกล้อง/ไม่อนุญาต/กล้องหลุด = แตะจอแทน (มีปุ่มแทนทุกท่า) ภาพกล้องไม่ถูกบันทึกหรือส่งออกจากเครื่อง
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { recordAnswer } from '@/lib/companion-store';
 import { createPortal } from 'react-dom';
 import { Crosshair, ScanFace, ArrowBigLeft, ArrowBigRight, BatteryCharging, Camera, Check, ChevronsUp, Gauge, Hand, HeartHandshake, LogOut, Pause, Play, Settings2, Shield, ShieldCheck, Sparkles, Timer, Users, X, Zap } from 'lucide-react';
 import type { QuizQuestion } from '@/lib/game-creator/types';
@@ -769,6 +770,7 @@ export function ArGame({ questions, settings, title, onExit, persist = true }: {
       if (!p) return;
       const tr = teamRT.current[sd.team];
       const correct = !!qr.q.choices.find((c) => c.id === cid)?.correct;
+      recordAnswer(correct);
       sc?.laser(`ship${s}`, p.x, p.y, TEAM_HEX[sd.team]);
       gsfx.laser();
       if (correct) {
