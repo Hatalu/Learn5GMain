@@ -7,7 +7,8 @@ import { Buddy } from '@/components/companion/Buddy';
 import { StarIcon } from '@/components/companion/Stars';
 import { useCompanion } from '@/components/companion/CompanionProvider';
 import { petAct, recordAnswer } from '@/lib/companion-store';
-import { bkkParts, msUntilMidnight, shownStage } from '@/lib/companion';
+import { bkkParts, msUntilMidnight } from '@/lib/companion';
+import { bodyLook } from '@/lib/pet/logic';
 import { puzzleStreak, savePuzzle } from '@/lib/pet/logic';
 import { seasonOfMonth } from '@/lib/pet/catalog';
 import { PUZZLE_COUNT, PUZZLE_LEVELS, PUZZLE_SECONDS, dailyPuzzle, puzzleNumber, puzzleScore, shareText, type PuzzleLevel } from '@/lib/pet/puzzle';
@@ -57,7 +58,7 @@ export function DailyPuzzle() {
         {!ready ? (
           <div className="pz-card">กำลังโหลด...</div>
         ) : played ? (
-          <Result date={today} lv={played.lv as PuzzleLevel} marks={played.m} secs={played.s} streak={puzzleStreak(state.pet, today)} stars={justStars} look={{ stage: shownStage(state.stars, state.pet.hatched), color: state.color, wear: state.pet.wear, species: state.pet.species }} />
+          <Result date={today} lv={played.lv as PuzzleLevel} marks={played.m} secs={played.s} streak={puzzleStreak(state.pet, today)} stars={justStars} look={{ stage: bodyLook(state.pet, state.pet.hatched, Date.now()).stage, color: state.color, wear: state.pet.wear, species: state.pet.species }} />
         ) : !lv ? (
           <div className="pz-card">
             <LevelPick onPick={(l) => { saveLevel(l); setLv(l); }} />

@@ -330,12 +330,6 @@ export const CHATTER = [
   'มาทุกวัน ฉันจะปลดล็อกผ้าคลุมฮีโร่ให้',
 ];
 
-/** ขั้นตัวละครที่แสดง: ฟักไข่แล้วอย่างน้อยเป็นลูกน้อย */
-export function shownStage(stars: number, hatched: boolean): number {
-  const i = buddyStage(stars).index;
-  return hatched ? Math.max(1, i) : i;
-}
-
 /** ข้อความตอนกดคุยกับปุ๋งสำหรับผู้ที่ยังไม่มีสิทธิ์ */
 export const CHATTER_LOCKED = [
   'เข้าห้องของฉันสิ ฉันหิวแล้ว',

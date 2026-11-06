@@ -6,7 +6,8 @@ import { usePathname } from 'next/navigation';
 import { Volume2, X } from 'lucide-react';
 import { Buddy } from './Buddy';
 import { useCompanion } from './CompanionProvider';
-import { BUDDY_NAME, CHATTER, CHATTER_LOCKED, bkkParts, buddyStage, buildGreeting, eventOf, phaseOf, shownStage } from '@/lib/companion';
+import { bodyLook } from '@/lib/pet/logic';
+import { BUDDY_NAME, CHATTER, CHATTER_LOCKED, bkkParts, buddyStage, buildGreeting, eventOf, phaseOf } from '@/lib/companion';
 import { sfx, speakThai } from '@/lib/sound';
 
 type Mode = 'asleep' | 'awake';
@@ -136,7 +137,7 @@ export function CompanionWidget() {
           className={`block rounded-full focus-visible:outline-offset-4 ${mode === 'asleep' ? 'buddy-snooze' : waking ? 'buddy-wake' : ''}`}
         >
           <Buddy
-            stage={shownStage(stars, state.pet.hatched)}
+            {...bodyLook(state.pet, state.pet.hatched, Date.now())}
             color={state.color}
             wear={state.pet.wear}
             species={state.pet.species}

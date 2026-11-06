@@ -6,9 +6,9 @@ import { Buddy } from '@/components/companion/Buddy';
 import { useCompanion } from '@/components/companion/CompanionProvider';
 import { StarIcon } from '@/components/companion/Stars';
 import { StickerArt } from '@/components/studio/stickers';
-import { bkkParts, shownStage } from '@/lib/companion';
+import { bkkParts } from '@/lib/companion';
 import { seasonOfMonth } from '@/lib/pet/catalog';
-import { balance, missionRows, moodOf, needsAt, puzzleStreak, roll } from '@/lib/pet/logic';
+import { bodyLook, balance, missionRows, moodOf, needsAt, puzzleStreak, roll } from '@/lib/pet/logic';
 import { puzzleNumber } from '@/lib/pet/puzzle';
 import './pet.css';
 
@@ -43,7 +43,7 @@ export function HomeHub() {
       </Link>
       <Link href="/buddy" className="hh-card" style={{ background: 'linear-gradient(120deg,#22a7d8,#37c8a0)' }}>
         <span className="hh-art">
-          <Buddy stage={shownStage(state.stars, hatched)} color={state.color} wear={state.pet.wear} species={state.pet.species} size={84} />
+          <Buddy {...bodyLook(state.pet, hatched, Date.now())} color={state.color} wear={state.pet.wear} species={state.pet.species} size={84} />
         </span>
         <div>
           <h3>ห้องเลี้ยงปุ๋ง</h3>

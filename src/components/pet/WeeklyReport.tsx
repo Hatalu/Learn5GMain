@@ -7,7 +7,8 @@ import { Buddy } from '@/components/companion/Buddy';
 import { useCompanion } from '@/components/companion/CompanionProvider';
 import { JoinButton } from '@/components/membership/JoinButton';
 import { petAct } from '@/lib/companion-store';
-import { bkkParts, shownStage } from '@/lib/companion';
+import { bkkParts } from '@/lib/companion';
+import { bodyLook } from '@/lib/pet/logic';
 import { track, weekOf } from '@/lib/pet/logic';
 import { CERT_LABEL, CERT_RULES, DAY_LABEL, SUBJ_LABEL, prevWeek, weekReport, type WeekReport } from '@/lib/pet/report';
 import './pet.css';
@@ -81,7 +82,7 @@ export function WeeklyReport() {
           )}
         </section>
 
-        <Certificate r={r} look={{ stage: Math.max(1, shownStage(state.stars, state.pet.hatched)), color: state.color, wear: state.pet.wear, species: state.pet.species }} />
+        <Certificate r={r} look={{ stage: Math.max(1, bodyLook(state.pet, state.pet.hatched, Date.now()).stage), color: state.color, wear: state.pet.wear, species: state.pet.species }} />
         <p className="pr-note" style={{ textAlign: 'center' }}>
           นับจากปริศนา ลูกโป่งคำตอบ และเกมจากชุดคำถาม {entitled ? 'บันทึกกับบัญชี' : 'บันทึกในเครื่องนี้'} · เกมในคลังยังไม่ส่งคะแนนรายข้อเข้ารายงาน
         </p>

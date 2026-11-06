@@ -12,11 +12,11 @@ import { StickerArt } from '@/components/studio/stickers';
 import { Modal } from '@/components/ui/Modal';
 import { JoinButton } from '@/components/membership/JoinButton';
 import { petAct, resetStore, setColor } from '@/lib/companion-store';
-import { BUDDY_COLORS, BUDDY_COLOR_HEX, BUDDY_NAME, COLOR_LABEL, TIER_INFO, bkkParts, buddyStage, phaseOf, shownStage, stickerTier, unlockedHats } from '@/lib/companion';
+import { BUDDY_COLORS, BUDDY_COLOR_HEX, BUDDY_NAME, COLOR_LABEL, TIER_INFO, bkkParts, buddyStage, phaseOf, stickerTier, unlockedHats } from '@/lib/companion';
 import { ROOMS, isRoomSlot, roomById, type RoomId } from '@/lib/pet/rooms';
 import { FOODS, ITEMS, SEASON_STAR_PRIZE, SEASON_STEPS, WEAR_SLOTS, foodById, itemById, seasonOfMonth, type RoomSlot, type Slot, type WearSlot } from '@/lib/pet/catalog';
 import {
-  pickSpecies, balance, buy, buyCheck, claimAllBonus, claimMission, claimSeason, equip, feed, gameDone, hatch, missionRows, moodOf, needsAt, ownsItem, petLevel, petTap, roll, sleepStart, track, wakeUp, washDone,
+  bodyAt, bodyLook, sleepDone, wakeTime, GROW_FULL, STAGE_DAYS, STAGE_LABEL, WEIGHT_LABEL, weightBand, tiredLevel, pickSpecies, balance, buy, buyCheck, claimAllBonus, claimMission, claimSeason, equip, feed, gameDone, hatch, missionRows, moodOf, needsAt, ownsItem, petLevel, petTap, roll, sleepStart, track, wakeUp, washDone,
   type MissionRow, type NeedKey, type PS,
 } from '@/lib/pet/logic';
 import { sfx } from '@/lib/sound';
@@ -25,7 +25,7 @@ import { RoomFront, RoomScene, RoomThumb } from './roomArt';
 import { BalloonGame, CatchGame, MatchGame, type GameKind } from './PetGames';
 import './pet.css';
 
-type Panel = null | 'food' | 'shop' | 'play' | 'missions' | 'season' | 'album';
+type Panel = null | 'body' | 'food' | 'shop' | 'play' | 'missions' | 'season' | 'album';
 const CARE_LINES = ['ลูบอีกสิ ชอบจัง', 'จั๊กจี้นะ', 'วันนี้เรียนอะไรมา', 'เธอเก่งมากเลย', 'พักสายตาบ้างนะ', 'อยากไปทายปริศนาจัง'];
 const MOOD_LINE = { happy: '', hungry: 'หิวแล้ว ขอข้าวหน่อย', bored: 'เบื่อจัง มาเล่นกันไหม', dirty: 'ตัวเหนียว อยากอาบน้ำ', sleepy: 'ง่วงแล้ว ขอนอนหน่อย' } as const;
 
@@ -74,8 +74,11 @@ export function PetRoom() {
 
   const mySpecies = speciesById(state.pet.species) || SPECIES[0];
   const sleeping = !!state.pet.sleepAt;
+  const wakeAtMs = wakeTime(state.pet);
   const hatched = state.pet.hatched || buddyStage(state.stars).index >= 1;
-  const stage = shownStage(state.stars, hatched);
+  const body = bodyLook(state.pet, hatched, now);
+  const stage = body.stage;
+  const bodyNow = bodyAt(state.pet, now);
   const needs = needsAt(state.pet, now);
   const level = petLevel(state.stars);
   const season = seasonOfMonth(parts.month);
@@ -85,7 +88,7 @@ export function PetRoom() {
   const seasonReady = SEASON_STEPS.some((need, i) => seasonPet.pts >= need && !seasonPet.got.includes(i));
 
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), sleeping ? 500 : 15000);
+    const t = setInterval(() => setNow(Date.now()), sleeping ? 60000 : 15000);
     return () => clearInterval(t);
   }, [sleeping]);
 
@@ -125,15 +128,26 @@ export function PetRoom() {
     lastLv.current = level.lv;
   }, [level.lv, ready]);
 
-  // นอนจนเต็มแล้วตื่นเอง
+  // นอนครบตามเวลาจริงแล้วตื่นเอง กลับมาเปิดเว็บทีหลังก็คิดจากเวลาที่เข้านอน
   useEffect(() => {
-    if (sleeping && needs.energy >= 100) {
-      petAct((p) => wakeUp(p, Date.now()));
-      sfx.wake();
-      flashExpr('happy');
-      say('ตื่นแล้ว สดชื่นจัง');
+    if (!ready || !sleepDone(state.pet, now)) return;
+    const hours = Math.round((wakeAtMs - state.pet.sleepAt) / 360000) / 10;
+    petAct((p) => wakeUp(p, Date.now()));
+    sfx.wake();
+    flashExpr('happy');
+    say(`ตื่นแล้ว นอนไป ${hours} ชั่วโมง สดชื่นจัง`, 4500);
+  }, [ready, state.pet, now, wakeAtMs, flashExpr, say]);
+
+  // โตข้ามขั้นตามเวลาจริง: ฉลองเมื่อเห็นครั้งแรก
+  const lastStage = useRef<number | null>(null);
+  useEffect(() => {
+    if (!ready || !hatched) return;
+    if (lastStage.current !== null && stage > lastStage.current) {
+      sfx.cheer();
+      say(`โตเป็น${STAGE_LABEL[stage]}แล้ว!`, 5000);
     }
-  }, [sleeping, needs.energy, flashExpr, say]);
+    lastStage.current = stage;
+  }, [ready, hatched, stage, say]);
 
   const playAct = useCallback((id: ActionId) => setAct({ id, key: Date.now() }), []);
   useEffect(() => {
@@ -168,7 +182,8 @@ export function PetRoom() {
   const openPanel = (p: Panel) => {
     sfx.pop();
     setTrial(null);
-    if (sleeping) wake();
+    // ดูร้านค้า/ภารกิจไม่ปลุก ปลุกเฉพาะเล่นกับกินซึ่งต้องลุกจริง
+    if (sleeping && (p === 'play' || p === 'food')) wake();
     setPanel((c) => (c === p ? null : p));
     if (p === 'album') petAct((x) => track(x, 'album', today));
   };
@@ -182,7 +197,7 @@ export function PetRoom() {
     if (!hatched) return;
     if (washing) return;
     if (sleeping) {
-      wake();
+      say(`ชู่ว หลับอยู่ อีก ${wakeLeft(wakeAtMs, Date.now())} จะตื่น`);
       return;
     }
     const t = Date.now();
@@ -213,6 +228,7 @@ export function PetRoom() {
       setNow(t);
       flashExpr('eat', 1300);
       burst('yum', 1, f.good ? 'มีประโยชน์' : f.sweet ? 'หวานจัง' : 'อร่อย');
+      if (f.sweet && bodyNow.w + 4 >= 65) setTimeout(() => say('ของหวานเยอะแล้วนะ ลองผักผลไม้ หรือมาวิ่งเล่นกัน', 3500), 700);
       sfx.sparkle();
     }, 560);
   };
@@ -253,6 +269,11 @@ export function PetRoom() {
     setPanel(null);
     if (sleeping) {
       wake();
+      say('ตื่นก่อนเวลา ยังง่วงอยู่เลย');
+      return;
+    }
+    if (needs.energy >= 90) {
+      say('ยังไม่ง่วงเลย มาเล่นกันก่อนไหม');
       return;
     }
     sfx.pop();
@@ -318,7 +339,7 @@ export function PetRoom() {
   const mood = moodOf(needs);
   const face: BuddyExpr = expr || (mood === 'sleepy' ? 'sleepy' : mood === 'happy' ? 'smile' : 'sad');
   const phase = sleeping ? 'night' : phaseOf(parts.hour);
-  const look = { stage, color: state.color, wear: shownWear, species: state.pet.species };
+  const look = { stage, grow: body.grow, weight: body.weight, tired: body.tired, color: state.color, wear: shownWear, species: state.pet.species };
 
   if (!ready) return <div className="pr-root pr-loading">กำลังเปิดห้องปุ๋ง...</div>;
 
@@ -335,6 +356,12 @@ export function PetRoom() {
               <b>{level.lv}</b>
             </span>
           </button>
+          {hatched && (
+            <button type="button" className="pr-age" onClick={() => openPanel('body')} aria-label="ดูร่างกายคู่หู">
+              <b>{STAGE_LABEL[stage]}</b>
+              <small>อายุ {ageDays(bodyNow.born, now)} วัน</small>
+            </button>
+          )}
           <div className="pr-stars" title="ดาวที่ใช้ได้">
             <StarIcon className="w-5 h-5" />
             <b>{balance(ps)}</b>
@@ -406,7 +433,7 @@ export function PetRoom() {
           ) : (
             <button ref={petEl} type="button" className="pr-pet" onClick={onPet} onPointerMove={scrub} aria-label={`ลูบหัว${BUDDY_NAME}`} data-wash={washing > 0 || undefined}>
               <span key={act?.key} className="pr-act" data-act={act?.id}>
-                <Buddy stage={stage} color={state.color} wear={shownWear} species={state.pet.species} size={300} asleep={sleeping} expr={face} animate={!sleeping && !expr && !act} />
+                <Buddy {...body} color={state.color} wear={shownWear} species={state.pet.species} size={300} asleep={sleeping} expr={face} animate={!sleeping && !expr && !act} />
               </span>
               {sleeping && <span className="pr-zzz" aria-hidden="true"><i>Z</i><i>z</i><i>z</i></span>}
               {washing > 0 && <span className="pr-foam" style={{ opacity: Math.min(1, washing / 40) }} aria-hidden="true" />}
@@ -432,6 +459,16 @@ export function PetRoom() {
           </div>
         )}
 
+        {sleeping && !panel && (
+          <div className="pr-sleep-card" role="status">
+            <Moon className="w-5 h-5" />
+            <span>
+              <b>หลับอยู่ ตื่นเวลา {new Date(wakeAtMs).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น. (อีก {wakeLeft(wakeAtMs, now)})</b>
+              <small>ปิดเว็บได้เลย กลับมาจะนับเวลาจริงให้</small>
+            </span>
+          </div>
+        )}
+
         {/* ปุ่มล่าง */}
         {hatched && !washing && (
           <nav className="pr-dock" aria-label="ดูแลปุ๋ง">
@@ -452,6 +489,7 @@ export function PetRoom() {
             {panel === 'shop' && <ShopPanel where={where} initialTab={shopTab} ps={ps} today={today} legacyOpen={legacyOpen} trial={trial} setTrial={setTrial} color={state.color} look={look} onBought={() => { sfx.cheer(); burst('star', 3); }} onPicked={(s) => playAct(s.move)} />}
             {panel === 'missions' && <MissionPanel rows={rows} level={level} onClaim={claim} onGo={goMission} onAll={() => { petAct((p) => claimAllBonus(p, today).ps); sfx.cheer(); burst('star', 6); }} />}
             {panel === 'season' && <SeasonPanel season={season} pts={seasonPet.pts} got={seasonPet.got} onClaim={() => { petAct((p) => claimSeason(p, today)); sfx.cheer(); burst('star', 6); }} />}
+            {panel === 'body' && <BodyPanel body={bodyNow} energy={needs.energy} look={{ ...body, color: state.color, species: state.pet.species, wear: state.pet.wear }} now={now} />}
             {panel === 'album' && <AlbumPanel entitled={entitled} loggedIn={loggedIn} media={media} plays={state.plays} syncStatus={syncStatus} onReset={() => setConfirmReset(true)} />}
           </section>
         )}
@@ -841,3 +879,31 @@ function AlbumPanel({ entitled, loggedIn, media, plays, syncStatus, onReset }: {
 }
 
 export type { NeedKey };
+
+/** เวลาที่เหลือก่อนตื่น */
+function wakeLeft(at: number, now: number) {
+  const m = Math.max(1, Math.round((at - now) / 60000));
+  return m >= 60 ? `${Math.floor(m / 60)} ชม. ${m % 60} นาที` : `${m} นาที`;
+}
+const ageDays = (born: number, now: number) => (born ? Math.max(0, Math.floor((now - born) / 86400000)) : 0);
+
+/** ร่างกายคู่หู: อายุ ความสูง น้ำหนัก การนอน และคำแนะนำ */
+function BodyPanel({ body, energy, look, now }: { body: { born: number; g: number; w: number; debt: number }; energy: number; look: React.ComponentProps<typeof Buddy>; now: number }) {
+  const band = weightBand(body.w);
+  const grow = Math.min(1, body.g / GROW_FULL);
+  const tired = tiredLevel(energy, body.debt);
+  const next = STAGE_DAYS.find((d) => d > body.g);
+  const tip = tired ? 'ขอบตาดำแล้ว พาเข้านอนให้ครบ 8 ชั่วโมงนะ' : band === 'chubby' || band === 'round' ? 'ลดของหวาน เพิ่มผักผลไม้ แล้วชวนเล่นเกมรับผลไม้' : band === 'thin' ? 'ป้อนอาหารให้บ่อยขึ้นหน่อยนะ' : 'ดูแลดีมาก กินดี นอนพอ จะโตเร็วขึ้น';
+  return (
+    <div className="pr-body">
+      <div className="pr-body-art"><Buddy {...look} size={110} animate={false} /></div>
+      <div className="pr-body-rows">
+        <p><b>อายุ</b> {ageDays(body.born, now)} วัน · {STAGE_LABEL[look.stage ?? 1]}</p>
+        <p><b>สูง</b> {Math.round(18 + grow * 42)} ซม. {next != null ? `· โตขั้นต่อไปอีกราว ${Math.ceil(next - body.g)} วัน` : '· โตเต็มวัยแล้ว'}</p>
+        <p><b>หนัก</b> {(3 + grow * 12) * (body.w / 50) >= 10 ? Math.round((3 + grow * 12) * (body.w / 50)) : ((3 + grow * 12) * (body.w / 50)).toFixed(1)} กก. · {WEIGHT_LABEL[band]}</p>
+        <p><b>การนอน</b> {tired === 2 ? 'อดนอนมาก' : tired === 1 ? 'เริ่มอดนอน' : 'นอนเพียงพอ'}</p>
+        <em>{tip}</em>
+      </div>
+    </div>
+  );
+}

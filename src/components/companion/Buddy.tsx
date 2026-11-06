@@ -23,6 +23,9 @@ export function Buddy({
   wear,
   expr = 'smile',
   species,
+  grow,
+  weight,
+  tired = 0,
 }: {
   stage?: number;
   color?: string;
@@ -37,12 +40,22 @@ export function Buddy({
   expr?: BuddyExpr;
   /** ชนิดคู่หู (lib/pet/species) ไม่ส่ง = ปุ๋ง */
   species?: string;
+  /** อายุ 0-1 ใช้แทนขนาดตามขั้น ไม่ส่ง = ขนาดเดิม */
+  grow?: number;
+  /** น้ำหนัก 50 = สมส่วน มากกว่า = ตัวกว้าง */
+  weight?: number;
+  /** ขอบตาดำ 0-2 */
+  tired?: number;
 }) {
   const clipId = React.useId();
   const sp = species && species !== PUNG ? speciesById(species) : undefined;
   const c = sp ?? BUDDY_COLOR_HEX[(color as BuddyColor) in BUDDY_COLOR_HEX ? (color as BuddyColor) : 'violet'];
   const isEgg = stage === 0;
-  const scale = [0.8, 0.82, 0.92, 1][Math.max(0, Math.min(3, stage))];
+  const scale = grow != null && !isEgg ? 0.72 + 0.28 * grow : [0.8, 0.82, 0.92, 1][Math.max(0, Math.min(3, stage))];
+  const w = isEgg ? 50 : weight ?? 50;
+  const sx = w > 50 ? 1 + ((Math.min(w, 100) - 50) / 50) * 0.26 : 1 - ((50 - Math.max(w, 15)) / 35) * 0.1;
+  const sy = w > 50 ? 1 - ((Math.min(w, 100) - 50) / 50) * 0.05 : 1;
+  const cheek = w >= 65 ? 13 : 9;
 
   return (
     <svg
@@ -53,14 +66,14 @@ export function Buddy({
       role="img"
       aria-label="ตัวละครคู่หู"
     >
-      <ellipse cx="100" cy="206" rx={52 * scale} ry="9" fill="#000" opacity="0.14" />
+      <ellipse cx="100" cy="206" rx={52 * scale * sx} ry="9" fill="#000" opacity="0.14" />
 
       {/* ผ้าคลุมอยู่หลังตัว */}
       {!wear && hat === 'cape' && !isEgg && (
         <path d="M58 104 Q100 92 142 104 L160 190 Q100 214 40 190 Z" fill="#f53d9b" stroke="#bb1569" strokeWidth="3" />
       )}
 
-      <g transform={`translate(100 ${isEgg ? 112 : 118}) scale(${scale}) translate(-100 -112)`}>
+      <g transform={`translate(100 ${isEgg ? 112 : 118}) scale(${scale * sx} ${scale * sy}) translate(-100 -112)`}>
         {!isEgg && sp && <SpeciesTail s={sp} />}
         {!isEgg && wear?.back && BACK_ART[wear.back]}
         {isEgg ? (
@@ -150,6 +163,12 @@ export function Buddy({
                 <circle cx="124" cy="104" r="3.4" fill="#fff" />
               </g>
             )}
+            {tired > 0 && !asleep && (
+              <g fill="none" stroke="#4b3a6b" strokeLinecap="round" opacity={tired > 1 ? 0.75 : 0.42}>
+                <path d="M60 126 Q76 137 92 126" strokeWidth={tired > 1 ? 7 : 5} />
+                <path d="M108 126 Q124 137 140 126" strokeWidth={tired > 1 ? 7 : 5} />
+              </g>
+            )}
             {/* ปาก + แก้ม */}
             {expr === 'eat' && !asleep ? (
               <ellipse className="pr-chew" cx="100" cy="142" rx="14" ry="12" fill="#7a2840" stroke="#2a2740" strokeWidth="4" />
@@ -162,8 +181,8 @@ export function Buddy({
             ) : (
               <path d={asleep ? 'M90 142 Q100 148 110 142' : 'M86 138 Q100 154 114 138'} fill={asleep ? 'none' : '#fff'} stroke="#2a2740" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
             )}
-            <circle cx="58" cy="132" r="9" fill="#ff8fb3" opacity="0.55" />
-            <circle cx="142" cy="132" r="9" fill="#ff8fb3" opacity="0.55" />
+            <circle cx="58" cy="134" r={cheek} fill="#ff8fb3" opacity="0.55" />
+            <circle cx="142" cy="134" r={cheek} fill="#ff8fb3" opacity="0.55" />
             {sp && <SpeciesOver s={sp} />}
             {/* เท้า */}
             <ellipse cx="74" cy="196" rx="20" ry="9" fill={c.dark} />

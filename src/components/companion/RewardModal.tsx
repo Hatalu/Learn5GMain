@@ -8,7 +8,8 @@ import { StarIcon } from './Stars';
 import { useCompanion } from './CompanionProvider';
 import { Confetti } from '@/components/fx/Confetti';
 import { CountUp } from '@/components/fx/CountUp';
-import { BUDDY_NAME, TIER_INFO, buddyStage, type Hat } from '@/lib/companion';
+import { BUDDY_NAME, TIER_INFO, type Hat } from '@/lib/companion';
+import { bodyLook } from '@/lib/pet/logic';
 import { sfx } from '@/lib/sound';
 
 const FRAME: Record<number, string> = {
@@ -38,7 +39,6 @@ export function RewardModal() {
 
   const sticker = r.newSticker || r.tierUp;
   const tier = r.tierUp ? r.tierUp.tier : r.newSticker ? 1 : 0;
-  const stage = buddyStage(state.stars);
   const title = r.evolved
     ? `${BUDDY_NAME}โตขึ้นแล้ว!`
     : r.tierUp
@@ -59,7 +59,7 @@ export function RewardModal() {
               <Image src={sticker.icon} alt={sticker.title} fill sizes="112px" className="object-cover" />
             </div>
           )}
-          {(r.evolved || !sticker) && <Buddy stage={r.evolved ? r.evolved.stage : stage.index} color={state.color} hat={state.hat as Hat} size={110} />}
+          {(r.evolved || !sticker) && <Buddy {...bodyLook(state.pet, state.pet.hatched, Date.now())} color={state.color} hat={state.hat as Hat} size={110} />}
         </div>
 
         {sticker && <p className="font-semibold text-gray-900 dark:text-white line-clamp-2">{sticker.title}</p>}

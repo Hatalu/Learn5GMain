@@ -7,7 +7,7 @@ import { useCompanionOptional } from '@/components/companion/CompanionProvider';
 import { Buddy } from '@/components/companion/Buddy';
 import { StarIcon } from '@/components/companion/Stars';
 import { CountUp } from '@/components/fx/CountUp';
-import { buddyStage, shownStage } from '@/lib/companion';
+import { bodyLook, stageOfGrowth, STAGE_DAYS, STAGE_LABEL, bodyAt } from '@/lib/pet/logic';
 import { hasMembership } from '@/lib/membership';
 import { cn } from '@/lib/utils/cn';
 import { CalendarDays, ChevronDown, ChevronRight, Compass, Crown, Gamepad2, Heart, LogOut, Palette, ShieldCheck, Sticker, Sparkles } from 'lucide-react';
@@ -58,7 +58,9 @@ export function UserMenu() {
   const stickers = st ? Object.keys(st.plays).length : 0;
   const plays = st ? Object.values(st.plays).reduce((a, p) => a + (p.c || 0), 0) : 0;
   const days = st?.visitDays.length ?? 0;
-  const stage = buddyStage(stars);
+  const grownDays = st ? bodyAt(st.pet, Date.now()).g : 0;
+  const stageNow = stageOfGrowth(grownDays);
+  const nextDays = STAGE_DAYS[stageNow + 1];
 
   const roleLabel = isDev ? 'ผู้พัฒนา' : member ? 'สมาชิก' : 'ยังไม่เป็นสมาชิก';
 
@@ -133,7 +135,7 @@ export function UserMenu() {
               </div>
               {st && (
                 <div className={cn(s.float, 'shrink-0 -mr-1 drop-shadow-lg')} aria-hidden="true">
-                  <Buddy stage={shownStage(stars, st.pet.hatched)} color={st.color} wear={st.pet.wear} species={st.pet.species} size={58} animate={false} />
+                  <Buddy {...bodyLook(st.pet, st.pet.hatched, Date.now())} color={st.color} wear={st.pet.wear} species={st.pet.species} size={58} animate={false} />
                 </div>
               )}
             </div>
@@ -215,8 +217,8 @@ export function UserMenu() {
             </div>
             {st && (
               <p className={cn(s.row, 'text-[11px] text-center text-gray-500 dark:text-gray-400')} style={{ animationDelay: '320ms' }}>
-                คู่หูอยู่ขั้น <b className="text-gray-700 dark:text-gray-200">{stage.name}</b>
-                {stage.next !== null ? ` · อีก ${stage.next - stars} ดาวจะโตขึ้น` : ' · โตเต็มที่แล้ว'}
+                คู่หูอยู่ขั้น <b className="text-gray-700 dark:text-gray-200">{st.pet.hatched ? STAGE_LABEL[stageNow] : STAGE_LABEL[0]}</b>
+                {nextDays != null ? ` · อีกราว ${Math.ceil(nextDays - grownDays)} วันจะโตขึ้น` : ' · โตเต็มที่แล้ว'}
               </p>
             )}
 

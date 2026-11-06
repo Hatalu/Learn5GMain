@@ -104,7 +104,7 @@ export function sanitize(raw: unknown): CompanionState {
     color: (BUDDY_COLORS as readonly string[]).includes(String(r.color)) ? String(r.color) : 'violet',
     hat: (HATS as readonly string[]).includes(String(r.hat)) ? String(r.hat) : 'none',
     dailyClaimed: typeof r.dailyClaimed === 'string' ? r.dailyClaimed : null,
-    pet: cleanPet(r.pet, String(r.hat)),
+    pet: cleanPet(r.pet, String(r.hat), buddyStage(Number(r.stars) || 0).index),
   };
 }
 
@@ -282,14 +282,11 @@ export function recordVisit(today: string): { checkinStars: number; firstEver: b
     if (!state.pet.day.c.visit || state.pet.day.d !== today) petAct((ps) => trackVisit(ps, today));
     return { checkinStars: 0, firstEver: false };
   }
-  const before = buddyStage(state.stars).index;
   const stars = state.stars + STAR_RULES.checkin;
   commit({ ...state, visitDays: [...state.visitDays, today].slice(-90), stars, pet: trackVisit({ stars, pet: state.pet }, today).pet });
-  const after = buddyStage(stars);
   return {
     checkinStars: STAR_RULES.checkin,
     firstEver,
-    evolved: after.index > before ? { name: after.name, stage: after.index } : undefined,
   };
 }
 
@@ -328,10 +325,7 @@ export function recordPlay(
     reward.dailyBonus = true;
   }
 
-  const stageBefore = buddyStage(state.stars).index;
   const stars = state.stars + gained;
-  const stageAfter = buddyStage(stars);
-  if (stageAfter.index > stageBefore) reward.evolved = { name: stageAfter.name, stage: stageAfter.index };
   reward.starsGained = gained;
 
   commit({

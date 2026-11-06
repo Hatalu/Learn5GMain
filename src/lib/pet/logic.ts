@@ -11,10 +11,17 @@ import { ACHIEVEMENTS, DAY_ALL_BONUS, dailyMissions, weeklyMissions, type Missio
 export type NeedKey = 'food' | 'fun' | 'clean' | 'energy';
 export const NEED_KEYS: NeedKey[] = ['food', 'fun', 'clean', 'energy'];
 /** ลดกี่หน่วยต่อชั่วโมง */
-const DECAY: Record<NeedKey, number> = { food: 5, fun: 6, clean: 3, energy: 4 };
+const DECAY: Record<NeedKey, number> = { food: 5, fun: 6, clean: 3, energy: 5 };
 export const NEED_FLOOR = 15;
-/** นอนแล้วแรงเพิ่มกี่หน่วยต่อวินาที (เปิดจออยู่) และต่อชั่วโมงเมื่อปิดเว็บไปแล้ว */
-export const SLEEP_PER_SEC = 4;
+/** นอนจริงตามนาฬิกา: แรงเพิ่มต่อชั่วโมง (0 ถึง 100 ใช้ 8 ชม.) ปิดเว็บแล้วก็นับต่อจาก sleepAt */
+export const SLEEP_PER_HOUR = 12.5;
+const SLEEP_DECAY = 0.5;
+
+/** การเติบโต: วันที่โต (g) ขั้นตัวละคร และเพดานต่อการหายไปหนึ่งครั้ง (กันตั้งนาฬิกาเครื่องล่วงหน้า) */
+export const GROW_FULL = 120;
+export const STAGE_DAYS = [0, 0, 21, 75];
+const GROW_GAP_CAP_H = 14 * 24;
+export const WEIGHT_NORMAL = 50;
 
 /** ดาวจากการตอบถูก: ข้อละ 1 ไม่เกินวันละเท่านี้ */
 export const CORRECT_STAR_CAP = 40;
@@ -46,6 +53,8 @@ export interface PetState {
   at: number;
   /** เวลาที่เข้านอน 0 = ตื่นอยู่ */
   sleepAt: number;
+  /** เวลาเกิด ms, g วันที่โตสะสม, w น้ำหนัก 15-100 (50 สมส่วน), debt ชั่วโมงอดนอน 0-24 */
+  body: { born: number; g: number; w: number; debt: number };
   owned: string[];
   wear: Partial<Record<WearSlot, string>>;
   room: Partial<Record<RoomSlot, string>>;
@@ -74,6 +83,7 @@ export function emptyPet(): PetState {
     needs: { food: 70, fun: 70, clean: 80, energy: 80 },
     at: 0,
     sleepAt: 0,
+    body: { born: 0, g: 0, w: WEIGHT_NORMAL, debt: 0 },
     owned: [],
     wear: {},
     room: { ...DEFAULT_ROOM },
@@ -99,8 +109,11 @@ const counters = (v: unknown): Partial<Record<PetEv, number>> => {
 const strs = (v: unknown, max: number): string[] => (Array.isArray(v) ? v.filter((x) => typeof x === 'string').slice(-max) : []);
 const dayRe = /^\d{4}-\d{2}-\d{2}$/;
 
-/** ตรวจข้อมูลที่อ่านเข้ามา ของที่ไม่รู้จักตัดทิ้ง; legacyHat = หมวกจากระบบเดิม */
-export function cleanPet(raw: unknown, legacyHat?: string): PetState {
+/**
+ * ตรวจข้อมูลที่อ่านเข้ามา ของที่ไม่รู้จักตัดทิ้ง; legacyHat = หมวกจากระบบเดิม
+ * starStage = ขั้นเดิมจากดาว ข้อมูลก่อนมีการเติบโตเริ่มที่ขั้นนั้น คู่หูจะไม่ตัวเล็กลงหลังอัปเดต
+ */
+export function cleanPet(raw: unknown, legacyHat?: string, starStage = 0): PetState {
   const base = emptyPet();
   const r = (raw && typeof raw === 'object' ? raw : {}) as Partial<PetState>;
   const wear: PetState['wear'] = {};
@@ -127,6 +140,12 @@ export function cleanPet(raw: unknown, legacyHat?: string): PetState {
     needs,
     at: num(r.at, 0, 9e15),
     sleepAt: num(r.sleepAt, 0, 9e15),
+    body: {
+      born: num(r.body?.born, 0, 9e15, num(r.at, 0, 9e15)),
+      g: num(r.body?.g, 0, 100000, STAGE_DAYS[Math.max(0, Math.min(3, starStage))]),
+      w: num(r.body?.w, 15, 100, WEIGHT_NORMAL),
+      debt: num(r.body?.debt, 0, 24),
+    },
     owned: strs(r.owned, 400).filter((id) => itemById(id)),
     wear,
     room,
@@ -178,6 +197,8 @@ export function mergePet(a: PetState, b: PetState, aNewer: boolean): PetState {
   return {
     ...n,
     hatched: a.hatched || b.hatched,
+    // เครื่องที่ใหม่กว่าไม่รีเซ็ตอายุ: เกิดเร็วสุด โตมากสุด
+    body: { ...n.body, born: Math.min(a.body.born || Infinity, b.body.born || Infinity) === Infinity ? 0 : Math.min(a.body.born || Infinity, b.body.born || Infinity), g: Math.max(a.body.g, b.body.g) },
     spent: Math.max(a.spent, b.spent),
     owned: Array.from(new Set([...a.owned, ...b.owned])),
     total: maxC(a.total, b.total),
@@ -324,21 +345,83 @@ export function claimAllBonus(ps0: PS, today: string): { ps: PS; stars: number }
 
 /* ------------------------------ หลอด ------------------------------ */
 
-/** ค่าหลอด ณ เวลาหนึ่ง (คิดตอนอ่าน ไม่ต้องบันทึกทุกวินาที) */
+/** เวลาตื่นเอง: นอนจนแรงเต็ม (ms) 0 = ไม่ได้นอน */
+export function wakeTime(pet: Pick<PetState, 'sleepAt' | 'needs'>): number {
+  if (!pet.sleepAt) return 0;
+  return pet.sleepAt + (Math.max(0, 100 - pet.needs.energy) / SLEEP_PER_HOUR) * 3600000;
+}
+export const sleepDone = (pet: Pick<PetState, 'sleepAt' | 'needs'>, now: number) => !!pet.sleepAt && now >= wakeTime(pet);
+
+/** ช่วงที่ผ่านไปแบ่งเป็นชั่วโมงหลับ/ตื่น นาฬิกาย้อนหลัง = 0 */
+function spanOf(pet: PetState, now: number): { h: number; asleep: number; awake: number } {
+  const h = pet.at ? Math.max(0, now - pet.at) / 3600000 : 0;
+  if (!pet.sleepAt) return { h, asleep: 0, awake: h };
+  const asleep = Math.min(h, Math.max(0, wakeTime(pet) - Math.max(pet.at, pet.sleepAt)) / 3600000);
+  return { h, asleep, awake: h - asleep };
+}
+
+/** ค่าหลอด ณ เวลาหนึ่ง (คิดตอนอ่าน ไม่ต้องบันทึกทุกวินาที ปิดเว็บไปก็คิดจากเวลาจริง) */
 export function needsAt(pet: PetState, now: number): Record<NeedKey, number> {
   const out = { ...pet.needs };
   if (!pet.at) return out;
-  const h = Math.max(0, now - pet.at) / 3600000;
-  for (const k of NEED_KEYS) out[k] = Math.max(NEED_FLOOR, Math.min(100, pet.needs[k] - DECAY[k] * h));
-  if (pet.sleepAt) out.energy = Math.min(100, pet.needs.energy + ((now - Math.max(pet.at, pet.sleepAt)) / 1000) * SLEEP_PER_SEC);
+  const { asleep, awake } = spanOf(pet, now);
+  for (const k of NEED_KEYS) out[k] = Math.max(NEED_FLOOR, Math.min(100, pet.needs[k] - DECAY[k] * (awake + asleep * SLEEP_DECAY)));
+  if (pet.sleepAt) out.energy = Math.max(NEED_FLOOR, Math.min(100, pet.needs.energy + asleep * SLEEP_PER_HOUR - awake * DECAY.energy));
   return out;
+}
+
+/** ร่างกาย ณ เวลาหนึ่ง: โตตามเวลาจริงคูณการดูแล น้ำหนักค่อยๆ กลับสู่สมส่วน */
+export function bodyAt(pet: PetState, now: number): PetState['body'] {
+  const b = pet.body;
+  if (!pet.at) return b;
+  const { h, asleep, awake } = spanOf(pet, now);
+  if (!h) return b;
+  const end = needsAt(pet, now);
+  const avg = (k: NeedKey) => (pet.needs[k] + end[k]) / 2;
+  const care = 0.4 + (0.6 * (avg('food') + avg('energy') + avg('clean'))) / 300;
+  const days = h / 24;
+  const g = b.g + (Math.min(h, GROW_GAP_CAP_H) / 24) * care;
+  let w = b.w;
+  w += Math.sign(WEIGHT_NORMAL - w) * Math.min(Math.abs(WEIGHT_NORMAL - w), 1.5 * days);
+  if (avg('food') < 25) w -= 1.5 * days;
+  const debt = b.debt - asleep * 2 + (avg('energy') < 35 ? awake : 0);
+  return { born: b.born, g, w: Math.max(15, Math.min(100, w)), debt: Math.max(0, Math.min(24, debt)) };
 }
 
 function setNeeds(pet: PetState, patch: Partial<Record<NeedKey, number>>, now: number): PetState {
   const cur = needsAt(pet, now);
   const needs = { ...cur };
   for (const [k, v] of Object.entries(patch)) needs[k as NeedKey] = Math.max(NEED_FLOOR, Math.min(100, cur[k as NeedKey] + (v as number)));
-  return { ...pet, needs, at: now };
+  return { ...pet, needs, body: bodyAt(pet, now), at: now };
+}
+
+const addWeight = (pet: PetState, d: number): PetState => ({ ...pet, body: { ...pet.body, w: Math.max(15, Math.min(100, pet.body.w + d)) } });
+
+export const stageOfGrowth = (g: number) => (g >= STAGE_DAYS[3] ? 3 : g >= STAGE_DAYS[2] ? 2 : 1);
+export const STAGE_LABEL = ['ไข่', 'วัยเบบี้', 'วัยเด็ก', 'โตเต็มวัย'];
+
+export type WeightBand = 'thin' | 'fit' | 'chubby' | 'round';
+export const weightBand = (w: number): WeightBand => (w >= 80 ? 'round' : w >= 65 ? 'chubby' : w <= 30 ? 'thin' : 'fit');
+export const WEIGHT_LABEL: Record<WeightBand, string> = { thin: 'ผอมไปนิด', fit: 'สมส่วน', chubby: 'ตุ้ยนุ้ย', round: 'ตุ้ยนุ้ยมาก' };
+
+/** ขอบตาดำ: 0 ไม่มี 1 เริ่มมี 2 ชัดเจน จากแรงที่เหลือและการอดนอนสะสม */
+export function tiredLevel(energy: number, debt: number): 0 | 1 | 2 {
+  if (energy < 25 || debt >= 10) return 2;
+  if (energy < 40 || debt >= 4) return 1;
+  return 0;
+}
+
+/** ค่าที่ส่งให้ Buddy ทุกจอใช้ชุดเดียวกัน คู่หูจะได้หน้าตาเดียวกันทั้งเว็บ */
+export function bodyLook(pet: PetState, hatched: boolean, now: number) {
+  const b = bodyAt(pet, now);
+  const energy = needsAt(pet, now).energy;
+  return {
+    stage: hatched ? stageOfGrowth(b.g) : 0,
+    grow: Math.min(1, b.g / GROW_FULL),
+    weight: b.w,
+    tired: tiredLevel(energy, b.debt),
+    asleep: !!pet.sleepAt && !sleepDone(pet, now),
+  };
 }
 
 /** หลังเปลี่ยนหลอด: ถึงเกณฑ์ก็นับภารกิจ */
@@ -361,14 +444,18 @@ export function moodOf(needs: Record<NeedKey, number>): Mood {
 export const HATCH_STARS = 8;
 export function hatch(ps: PS, now: number): PS {
   if (ps.pet.hatched) return ps;
-  return { stars: ps.stars + HATCH_STARS, pet: { ...ps.pet, hatched: true, at: now } };
+  return { stars: ps.stars + HATCH_STARS, pet: { ...ps.pet, hatched: true, at: now, body: { ...ps.pet.body, born: ps.pet.body.born || now } } };
 }
 
 export function feed(ps0: PS, foodId: string, now: number, today: string): { ps: PS; ok: boolean } {
   const ps = roll(ps0, today);
   const f = foodById(foodId);
   if (!f || balance(ps) < f.price) return { ps: ps0, ok: false };
+  const stuffed = needsAt(ps.pet, now).food >= 95;
   let pet = setNeeds(ps.pet, { food: f.food, energy: f.good ? 4 : 0, fun: f.sweet ? 10 : 2 }, now);
+  // ของหวานทำให้ตุ้ยนุ้ยเร็ว อิ่มแล้วยังกินก็เพิ่ม ผักผลไม้ช่วยดึงกลับสู่สมส่วน
+  const w = pet.body.w;
+  pet = addWeight(pet, (f.sweet ? 4 : f.good ? (w > WEIGHT_NORMAL ? -1 : w < WEIGHT_NORMAL ? 1 : 0) : 1) + (stuffed ? 2 : 0));
   pet = bump(pet, 'feed');
   if (f.good) pet = bump(pet, 'veg');
   pet = afterCare({ ...pet, spent: pet.spent + f.price });
@@ -385,9 +472,13 @@ export function sleepStart(ps0: PS, now: number, today: string): PS {
   return { ...ps, pet: bump({ ...setNeeds(ps.pet, {}, now), sleepAt: now }, 'sleep') };
 }
 
+/** ตื่น: นอนครบตั้งแต่ 6 ชม. ขึ้นไปได้โตเพิ่มเล็กน้อย (เด็กโตตอนหลับ) */
 export function wakeUp(ps0: PS, now: number): PS {
-  const needs = needsAt(ps0.pet, now);
-  return { ...ps0, pet: afterCare({ ...ps0.pet, needs, at: now, sleepAt: 0 }) };
+  const p = ps0.pet;
+  const needs = needsAt(p, now);
+  const slept = p.sleepAt ? Math.min(Math.max(0, now - p.sleepAt), Math.max(0, wakeTime(p) - p.sleepAt)) / 3600000 : 0;
+  const body = bodyAt(p, now);
+  return { ...ps0, pet: afterCare({ ...p, needs, body: { ...body, g: body.g + (slept >= 6 ? 0.25 : 0) }, at: now, sleepAt: 0 }) };
 }
 
 /** ลูบหัว: สนุกขึ้นเล็กน้อย */
@@ -400,6 +491,7 @@ export function petTap(ps0: PS, now: number, today: string): PS {
 export function gameDone(ps0: PS, kind: 'catch' | 'match' | 'balloon', now: number, today: string): PS {
   const ps = roll(ps0, today);
   let pet = setNeeds(ps.pet, { fun: 30, energy: -6 }, now);
+  if (kind === 'catch' && pet.body.w > 35) pet = addWeight(pet, -3);
   pet = bump(pet, 'game');
   if (kind !== 'balloon') pet = bump(pet, kind);
   return { ...ps, pet: afterCare(pet) };

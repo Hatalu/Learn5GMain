@@ -46,7 +46,7 @@ import {
 import { FOODS, ITEMS as PET_ITEMS, SEASONS, SEASON_SKY, itemById } from '../src/lib/pet/catalog';
 import { SHOWCASE_MAX, showcaseRows } from '../src/lib/game-creator/showcase';
 import { ROOMS } from '../src/lib/pet/rooms';
-import { CORRECT_STAR_CAP, NEED_FLOOR, equip, balance, buy, buyCheck, claimMission, claimSeason, cleanPet, emptyPet, logAnswer, mergePet, moodOf, needsAt, petLevel, pickSpecies, puzzleStreak, roll, savePuzzle, sleepStart, track, weekOf } from '../src/lib/pet/logic';
+import { STAGE_DAYS, bodyAt, feed, sleepDone, stageOfGrowth, tiredLevel, wakeTime, weightBand, CORRECT_STAR_CAP, NEED_FLOOR, equip, balance, buy, buyCheck, claimMission, claimSeason, cleanPet, emptyPet, logAnswer, mergePet, moodOf, needsAt, petLevel, pickSpecies, puzzleStreak, roll, savePuzzle, sleepStart, track, weekOf } from '../src/lib/pet/logic';
 import { ACHIEVEMENTS, DAILY_POOL, WEEKLY_POOL, dailyMissions, weeklyMissions } from '../src/lib/pet/missions';
 import { ACTIONS, SPECIES as PET_SPECIES, unlockText } from '../src/lib/pet/species';
 import { PUZZLE_COUNT, dailyPuzzle, puzzleScore, shareText } from '../src/lib/pet/puzzle';
@@ -225,6 +225,51 @@ t('ผลงานครูหน้าแรก: ไม่ส่งเฉลย
   assert.equal(showcaseRows(Array.from({ length: 30 }, (_, i) => row(i))).length, SHOWCASE_MAX);
 });
 
+t('คู่หูโตตามเวลาจริง: ปิดเว็บนอนได้ นาฬิกาย้อนไม่พัง ของหวานทำให้ตุ้ยนุ้ย ไม่ตัวเล็กลง', () => {
+  const H = 3600 * 1000;
+  const d = '2026-11-07';
+  const t0 = Date.UTC(2026, 10, 7);
+  const pet0 = { ...emptyPet(), hatched: true, at: t0, needs: { food: 100, fun: 100, clean: 100, energy: 20 } };
+  // นอนจาก 20 ถึง 100 ใช้ 6.4 ชม. ปิดเว็บแล้วกลับมาทีหลังก็ถือว่าตื่นแล้ว
+  const sl = sleepStart({ stars: 0, pet: pet0 }, t0, d);
+  assert.equal(wakeTime(sl.pet), t0 + 6.4 * H);
+  assert.ok(!sleepDone(sl.pet, t0 + 6 * H));
+  assert.ok(sleepDone(sl.pet, t0 + 7 * H));
+  assert.equal(needsAt(sl.pet, t0 + 6.4 * H).energy, 100);
+  assert.ok(needsAt(sl.pet, t0 + 8 * H).energy < 100, 'ตื่นแล้วแรงลดต่อ');
+  // นาฬิกาย้อนหลัง = ไม่เปลี่ยนอะไร
+  assert.deepEqual(needsAt(pet0, t0 - 5 * H), pet0.needs);
+  assert.deepEqual(bodyAt(pet0, t0 - 5 * H), pet0.body);
+  // โตเป็นเดือน: 30 วันยังไม่โตเต็มวัย ดูแลดีโตเร็วกว่าปล่อย
+  const fed = { ...pet0, needs: { food: 100, fun: 100, clean: 100, energy: 100 } };
+  let cared = fed;
+  for (let i = 1; i <= 30; i++) cared = { ...cared, body: bodyAt(cared, t0 + i * 24 * H), needs: fed.needs, at: t0 + i * 24 * H };
+  assert.ok(stageOfGrowth(cared.body.g) === 2 && cared.body.g < STAGE_DAYS[3], 'โต ' + cared.body.g);
+  assert.ok(bodyAt({ ...pet0, needs: { food: 15, fun: 15, clean: 15, energy: 15 } }, t0 + 240 * H).g < bodyAt(fed, t0 + 240 * H).g);
+  // ตั้งนาฬิกาล่วงหน้าไม่โตเกินเพดาน
+  assert.ok(bodyAt(fed, t0 + 3650 * 24 * H).g <= 14);
+  // ของหวาน 4 ชิ้นเริ่มตุ้ยนุ้ย ไม่กินต่อน้ำหนักค่อยๆ กลับ
+  let ps = { stars: 100, pet: { ...fed } };
+  for (let i = 0; i < 4; i++) ps = feed(ps, 'f-donut', t0, d).ps;
+  assert.equal(weightBand(ps.pet.body.w), 'chubby');
+  assert.equal(weightBand(bodyAt(ps.pet, t0 + 20 * 24 * H).w), 'fit');
+  // ขอบตาดำ
+  assert.equal(tiredLevel(90, 0), 0);
+  assert.equal(tiredLevel(30, 0), 1);
+  assert.equal(tiredLevel(20, 0), 2);
+  assert.equal(tiredLevel(90, 12), 2);
+  // ข้อมูลเก่าไม่ตัวเล็กลง
+  assert.equal(stageOfGrowth(cleanPet({ hatched: true }, undefined, 3).body.g), 3);
+  assert.equal(cleanPet({ body: { g: 'x', w: 999 } }).body.w, 100);
+  // อีกเครื่องไม่รีเซ็ตอายุ
+  const a = { ...emptyPet(), body: { born: 100, g: 5, w: 50, debt: 0 } };
+  const b = { ...emptyPet(), body: { born: 900, g: 2, w: 70, debt: 0 } };
+  const m = mergePet(a, b, false);
+  assert.equal(m.body.born, 100);
+  assert.equal(m.body.g, 5);
+  assert.equal(m.body.w, 70);
+});
+
 t('ดาวใช้จ่ายไม่ลดดาวสะสม เลเวลไม่ถอย ซื้อเกินไม่ได้', () => {
   let ps = { stars: 50, pet: { ...emptyPet(), hatched: true } };
   const before = petLevel(ps.stars).lv;
@@ -246,7 +291,7 @@ t('หลอดลดตามเวลาแต่ไม่ต่ำกว่�
   assert.equal(needsAt(pet, now + 1000 * 3600 * 24 * 30).food, NEED_FLOOR);
   assert.ok(needsAt(pet, now + 3600 * 1000).food < pet.needs.food);
   const sl = sleepStart({ stars: 0, pet: { ...pet, needs: { ...pet.needs, energy: 20 } } }, now, '2026-11-05').pet;
-  assert.equal(needsAt(sl, now + 5000).energy, 40);
+  assert.equal(needsAt(sl, now + 4 * 3600 * 1000).energy, 70);
   assert.equal(moodOf({ food: 20, fun: 90, clean: 90, energy: 90 }), 'hungry');
   assert.equal(moodOf({ food: 80, fun: 90, clean: 90, energy: 90 }), 'happy');
 });
@@ -471,7 +516,7 @@ t('โบนัสเกมประจำวันได้ครั้งเ�
   assert.equal(d.dailyBonus, true);
 });
 
-t('ตัวละครโตเมื่อครบ 12 ดาว และแจ้ง evolved', () => {
+t('ดาวไม่ทำให้ตัวละครโตแล้ว (โตตามเวลาจริง) ไม่แจ้ง evolved', () => {
   fresh();
   let now = Date.parse('2026-10-13T05:00:00Z');
   let evolved: string | undefined;
@@ -479,7 +524,7 @@ t('ตัวละครโตเมื่อครบ 12 ดาว และแ
     now += 11 * MIN;
     evolved = recordPlay(M(`g${i}`), { now }).evolved?.name; // เกมใหม่ทุกครั้ง +2 ดาว
   }
-  assert.equal(evolved, 'ลูกน้อยจอมซน');
+  assert.equal(evolved, undefined);
   assert.ok(getSnapshot().stars >= 12);
 });
 
