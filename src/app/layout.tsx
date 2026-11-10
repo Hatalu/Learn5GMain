@@ -3,6 +3,7 @@ import { Noto_Sans_Thai, Mitr } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
 import { GFX_BOOT } from '@/lib/gfx';
+import { UI_BOOT } from '@/lib/ui-look';
 
 const notoSansThai = Noto_Sans_Thai({
   subsets: ['thai', 'latin'],
@@ -54,7 +55,7 @@ export default function RootLayout({
       className={`${notoSansThai.variable} ${mitr.variable}`}
     >
       <head>
-        <script dangerouslySetInnerHTML={{ __html: GFX_BOOT }} />
+        <script dangerouslySetInnerHTML={{ __html: GFX_BOOT + UI_BOOT }} />
       </head>
       <body className="min-h-screen bg-background font-sans antialiased selection:bg-indigo-500 selection:text-white transition-colors duration-200">
         <Providers>{children}</Providers>

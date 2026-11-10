@@ -376,18 +376,19 @@ export default function HomePage() {
         onDaily={scrollToDaily}
       />
 
-      <div className={hp.dots} aria-hidden="true" />
+      <div className={hp.dots} aria-hidden="true" data-hide="clean minimal" />
       {[
         ['18%', '-10s', 1],
         ['41%', '-44s', 0.75],
         ['67%', '-26s', 0.9],
         ['88%', '-60s', 0.7],
       ].map(([top, delay, sc]) => (
-        <span key={String(top)} className={hp.cloud} style={{ top: String(top), animationDelay: String(delay), ['--s' as string]: sc }} aria-hidden="true" />
+        <span key={String(top)} data-hide="clean minimal" className={hp.cloud} style={{ top: String(top), animationDelay: String(delay), ['--s' as string]: sc }} aria-hidden="true" />
       ))}
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-2 pb-6">
         {/* เลือกกลุ่มก่อน: บล็อกด้านล่างแสดงตามกลุ่มที่เลือก (ยังไม่เลือก = แบบทั่วไป) */}
+        <div data-hide="minimal">
         <Reveal className="mt-4 sm:mt-6">
           <AudiencePaths audience={audience} onPick={setAudience} onLibrary={openGames} onDaily={scrollToDaily} />
         </Reveal>
@@ -399,19 +400,25 @@ export default function HomePage() {
             <TeacherGallery className="mt-6 sm:mt-8" />
           </>
         )}
+        </div>
 
-        {/* ป้ายโฆษณาระบบต่างๆ ในเว็บ (กดปิดได้ ซ่อน 1 วัน) */}
-        <PromoBanners className="mt-6" audience={audience} onLibrary={openGames} />
+        {/* ป้ายโฆษณา + ข้อเสนอสมาชิก + ตัวเลขผู้ใช้จริง: ซ่อนในธีมมินิมอล/คลีน (ตั้งค่า > ธีมหน้าเว็บ) */}
+        <div data-hide="clean minimal">
+          {/* ป้ายโฆษณาระบบต่างๆ ในเว็บ (กดปิดได้ ซ่อน 1 วัน) */}
+          <PromoBanners className="mt-6" audience={audience} onLibrary={openGames} />
 
-        {/* ข้อเสนอสมาชิก (ส่วนลดบัญชีใหม่ / โบนัสต่ออายุ) + ตัวเลขผู้ใช้จริง */}
-        <OfferBanner className="mt-6" />
-        <SocialProof className="mt-5" />
+          {/* ข้อเสนอสมาชิก (ส่วนลดบัญชีใหม่ / โบนัสต่ออายุ) + ตัวเลขผู้ใช้จริง */}
+          <OfferBanner className="mt-6" />
+          <SocialProof className="mt-5" />
+        </div>
 
         {/* ปริศนาวันนี้ + ห้องเลี้ยงปุ๋ง + ซีซัน */}
         {audience !== 'teacher' && (
-          <Reveal className="mt-6 sm:mt-8">
-            <HomeHub />
-          </Reveal>
+          <div data-hide="minimal">
+            <Reveal className="mt-6 sm:mt-8">
+              <HomeHub />
+            </Reveal>
+          </div>
         )}
 
         {/* เกมประจำวัน: เปลี่ยนทุกวัน แอดมินกำหนดได้ที่หน้า Dev */}
@@ -427,13 +434,14 @@ export default function HomePage() {
         </Reveal>
 
         {audience !== 'teacher' && (
-          <div className="mt-6 sm:mt-8">
+          <div className="mt-6 sm:mt-8" data-hide="minimal">
             <FeatureStrip />
           </div>
         )}
 
         {/* Netflix-style Rail: สื่อใหม่ล่าสุด */}
         {audience !== 'teacher' && latestMediaList.length > 0 && (
+          <div data-hide="minimal">
           <Reveal className="mb-8">
             <MediaRail
               title="สื่อใหม่ล่าสุด"
@@ -449,10 +457,13 @@ export default function HomePage() {
               }
             />
           </Reveal>
+          </div>
         )}
 
         {/* เกม AR ยังไม่ผ่านการทดสอบกล้องจริง: วางท้าย เล็ก และไม่อยู่ในส่วนหัว */}
-        <ArZone className="mt-8" />
+        <div data-hide="minimal">
+          <ArZone className="mt-8" />
+        </div>
 
         {/* ---------- คลังเกม: ซุ้มแบบหน้าสมาชิก + เลือกวิชาได้ทันที ---------- */}
         <section id="library" data-tour="library" className="relative mt-12 sm:mt-16 scroll-mt-24">

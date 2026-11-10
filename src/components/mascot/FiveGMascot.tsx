@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useSyncExternalStore } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { getServerUiLook, getUiLook, subscribeUiLook } from '@/lib/ui-look';
 
-/** น้องไฟว์จี มุมขวาล่าง เปิด/ปิดได้จากหน้า Dev > ตั้งค่าเว็บ (ถ้ายังไม่มีตารางตั้งค่า ถือว่าเปิด) */
+/** น้องไฟว์จี มุมขวาล่าง เปิด/ปิดได้จากหน้า Dev > ตั้งค่าเว็บ (ถ้ายังไม่มีตารางตั้งค่า ถือว่าเปิด) ไม่แสดงในธีมมินิมอล/คลีน */
 export function FiveGMascot() {
   const [on, setOn] = useState(true);
+  const look = useSyncExternalStore(subscribeUiLook, getUiLook, getServerUiLook);
 
   useEffect(() => {
     let off = false;
@@ -22,7 +24,7 @@ export function FiveGMascot() {
     };
   }, []);
 
-  if (!on) return null;
+  if (!on || look !== 'normal') return null;
   return (
     <div className="fixed bottom-0 right-0 z-40 pointer-events-none select-none w-[280px] sm:w-[420px]" aria-hidden="true">
       <video src="/mascot/welcome.webm" autoPlay loop muted playsInline preload="auto" className="block w-full h-auto" />

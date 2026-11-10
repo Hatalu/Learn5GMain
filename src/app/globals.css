@@ -386,3 +386,10 @@ html[data-gfx="hd"] .btn-jelly:hover { filter: drop-shadow(0 6px 14px rgb(124 92
   .fx-sparkle { display: none !important; }
   html[data-gfx="hd"] body::before { animation: none; }
 }
+
+/* ---------- ธีมหน้าเว็บ ปกติ/มินิมอล/คลีน (lib/ui-look.ts, ตั้งค่าในปุ่มเฟือง) ---------- */
+/* บล็อกที่ใส่ data-hide="clean minimal" จะถูกซ่อนตามธีมที่เลือก ปกติ = ไม่ซ่อนอะไร */
+html[data-ui="minimal"] [data-hide~="minimal"],
+html[data-ui="clean"] [data-hide~="clean"] { display: none !important; }
+/* ฉากฟ้าทั้งเว็บ: เหลือแค่สีพื้น ไม่มีเมฆ/ฝน/ใบไม้/ประกายลอย */
+html:is([data-ui="minimal"], [data-ui="clean"]) :is(.fx-fall, .fx-rain, .fx-rise, .fx-cloud, .fx-boat, .fx-firefly, .fx-sparkle) { display: none !important; }

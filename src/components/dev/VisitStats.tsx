@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Globe2, Loader2, UserCheck, UserRound } from 'lucide-react';
+import { VisitLog } from './VisitLog';
 
 interface Data {
   total: number;
@@ -19,7 +20,7 @@ const shortDay = (d: string) => {
   return `${day}/${m}`;
 };
 
-/** สถิติการเข้าเว็บไซต์ (1 IP นับ 1 ครั้งต่อ 30 นาที) */
+/** สถิติการเข้าเว็บไซต์ (บัญชีละ 1 ครั้ง / ไม่มีบัญชี IP ละ 1 ครั้ง ต่อ 30 นาที) + บันทึกใครเข้าบ้าง */
 export function VisitStats() {
   const [data, setData] = useState<Data | null>(null);
   const [missing, setMissing] = useState(false);
@@ -47,7 +48,7 @@ export function VisitStats() {
         </span>
         <div>
           <h2 className="font-bold text-gray-900 dark:text-white leading-tight">สถิติการเข้าเว็บไซต์</h2>
-          <p className="text-xs text-gray-500 dark:text-gray-400">นับทั้งผู้ที่มีบัญชีและไม่มีบัญชี 1 IP นับ 1 ครั้งต่อ 30 นาที (ไม่นับบอทและบัญชี Dev)</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">มีบัญชีนับบัญชีละ 1 ครั้ง ไม่มีบัญชีนับ IP ละ 1 ครั้ง ต่อ 30 นาที (ไม่นับบอทและบัญชี Dev)</p>
         </div>
       </div>
 
@@ -110,6 +111,8 @@ export function VisitStats() {
               <span className="inline-flex items-center gap-1.5"><UserRound className="w-4 h-4 text-sky-500" /> ไม่มีบัญชี {n(data.guests30)} ({data.d30 ? 100 - mPct : 0}%)</span>
             </div>
           </div>
+
+          <VisitLog />
         </div>
       )}
     </section>

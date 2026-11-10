@@ -2491,6 +2491,18 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
     passed++;
     console.log('  ok  ตรวจคำผิดไทย: กฎสะกด + พจนานุกรม + ฟอนต์ไม่ซ้ำ');
   }
+  {
+    const { deviceLabel, cleanVisitPath } = await import('../src/lib/visit-device');
+    assert.equal(deviceLabel('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit Version/17.0 Mobile/15E148 Safari/604.1'), 'มือถือ · Safari');
+    assert.equal(deviceLabel('Mozilla/5.0 (Linux; Android 13; SM-X200) AppleWebKit Chrome/120.0 Safari/537.36'), 'แท็บเล็ต · Chrome');
+    assert.equal(deviceLabel('Mozilla/5.0 (Windows NT 10.0) AppleWebKit Chrome/120.0 Safari/537.36 Edg/120.0'), 'คอม · Edge');
+    assert.equal(deviceLabel('Mozilla/5.0 (Linux; Android 13) Mobile Safari Line/13.1'), 'มือถือ · LINE');
+    assert.equal(cleanVisitPath('/play?code=123456'), '/play');
+    assert.equal(cleanVisitPath('//evil.com'), null);
+    assert.equal(cleanVisitPath('https://x'), null);
+    passed++;
+    console.log('  ok  บันทึกการเข้าเว็บ: ป้ายเครื่อง + path ไม่มี query');
+  }
   console.log(`\n${passed} tests passed`);
 })().catch((e) => {
   console.error(e);

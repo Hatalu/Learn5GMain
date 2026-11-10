@@ -94,7 +94,7 @@ export function HomeHero({
   return (
     <section ref={sec} className={s.world} style={{ ['--s1' as string]: season.c1, ['--s2' as string]: season.c2 }} data-off={off || undefined} data-tour="hero" aria-label="ยินดีต้อนรับสู่สื่อการสอน 5G">
       <NightSky />
-      <div className={s.sky} aria-hidden="true">
+      <div className={s.sky} aria-hidden="true" data-hide="clean minimal">
         <div className={s.dots} />
         <span className={s.cloud} style={{ top: '14%', animationDelay: '-18s' }} />
         <span className={s.cloud} style={{ top: '38%', animationDelay: '-52s', ['--s' as string]: 0.7 }} />
@@ -105,7 +105,7 @@ export function HomeHero({
           </span>
         ))}
       </div>
-      <div className={s.bunting} aria-hidden="true">
+      <div className={s.bunting} aria-hidden="true" data-hide="clean minimal">
         {Array.from({ length: 48 }).map((_, i) => (
           <i key={i} style={{ background: flags[i % flags.length], animationDelay: `${(i % 7) * 0.25}s` }} />
         ))}
@@ -114,7 +114,7 @@ export function HomeHero({
       <div className={s.inner}>
         {/* ---------- ข้อความ ---------- */}
         <div className={s.copy}>
-          <Link href="/buddy" className={s.seasonTag} style={{ background: `linear-gradient(100deg,${season.c1},${season.c2})` }}>
+          <Link href="/buddy" data-hide="minimal" className={s.seasonTag} style={{ background: `linear-gradient(100deg,${season.c1},${season.c2})` }}>
             <span className={s.seasonBuddy} aria-hidden="true">
               <Buddy stage={1} color="sun" size={46} animate={false} wear={{ [season.wear.slot]: season.wear.id }} />
             </span>
@@ -135,7 +135,7 @@ export function HomeHero({
               <Words text="ไปกับน้องไฟว์จี" from={3} />
             </span>
           </h1>
-          <p className={s.lead}>ภารกิจผจญภัยที่ซ่อนบทเรียนไว้ในทุกด่าน เด็กเล่นได้เองทุกจอ คุณครูสร้างเกมและสื่อการสอนของตัวเองได้ด้วย</p>
+          <p className={s.lead} data-hide="minimal">ภารกิจผจญภัยที่ซ่อนบทเรียนไว้ในทุกด่าน เด็กเล่นได้เองทุกจอ คุณครูสร้างเกมและสื่อการสอนของตัวเองได้ด้วย</p>
 
           <div className={s.ctas}>
             <button type="button" className={`${s.btn} ${s.btnGo}`} onClick={onBrowseAll}>
@@ -153,7 +153,7 @@ export function HomeHero({
 
           <RedeemBox />
 
-          <div className={s.subjects} aria-label="เลือกวิชา">
+          <div className={s.subjects} aria-label="เลือกวิชา" data-hide="minimal">
             {ALL_SUBJECTS.map((sub) => (
               <button key={sub} type="button" onClick={() => onPickSubject(sub)} className={s.subject} style={{ ['--c' as string]: SUBJECT_COLOR[sub] }}>
                 <span className={s.subjectDot} />
@@ -165,8 +165,9 @@ export function HomeHero({
         </div>
 
         {/* ---------- เวทีน้องไฟว์จี ---------- */}
-        <div className={s.stage} onClick={() => sfx.pop()}>
+        <div className={s.stage} onClick={() => sfx.pop()} data-hide="minimal">
           <span className={s.halo} aria-hidden="true" />
+          <span data-hide="clean" className="contents">
           {TOKENS.map((tk, k) => (
             <span key={k} className={s.token} style={{ left: tk.l, top: tk.t, background: choiceStyle(tk.i).color, animationDelay: tk.d }} aria-hidden="true">
               <ChoiceShape i={tk.i} size={22} />
@@ -174,6 +175,7 @@ export function HomeHero({
           ))}
           <Sparkles className={`${s.spark} left-[22%] top-[10%]`} aria-hidden="true" />
           <Sparkles className={`${s.spark} right-[16%] top-[34%] [animation-delay:-1.2s]`} aria-hidden="true" />
+          </span>
           <FiveG3D onPose={setPose} className={s.mascot} label="น้องไฟว์จี มาสคอตของเว็บ แตะเพื่อเปลี่ยนท่า" />
           <span key={pose} className={s.bubble} role="status">
             {SAY[pose]}
@@ -183,7 +185,7 @@ export function HomeHero({
       </div>
 
       {/* ---------- แถบภาพปกเกมเลื่อนผ่าน ---------- */}
-      <div className={s.marquee} aria-label="เกมในคลัง">
+      <div className={s.marquee} aria-label="เกมในคลัง" data-hide="minimal">
         <div className={s.track} style={{ ['--dur' as string]: `${Math.max(30, strip.length * 2.6)}s` }}>
           {isLoading && !strip.length
             ? Array.from({ length: 14 }).map((_, i) => <span key={i} className={`${s.card} ${s.skeleton}`} style={{ ['--r' as string]: `${i % 2 ? 4 : -3}deg` }} />)

@@ -122,7 +122,7 @@ export function CompanionWidget() {
   };
 
   return (
-    <div className="no-print fixed left-2 bottom-2 sm:left-4 sm:bottom-4 z-40 flex items-end gap-1 select-none">
+    <div data-hide="minimal" className="no-print fixed left-2 bottom-2 sm:left-4 sm:bottom-4 z-40 flex items-end gap-1 select-none">
       <div className="relative">
         {mode === 'asleep' && (
           <div className="absolute -top-2 right-0 text-indigo-500 dark:text-indigo-300 font-display text-lg pointer-events-none" aria-hidden="true">

@@ -557,6 +557,23 @@
 }
 
 /* ส่วนหัวพ้นจอ: หยุดแอนิเมชันวนทุกชิ้น */
+/* ธีมมินิมอล (lib/ui-look.ts): ไม่มีเวทีมาสคอต จัดข้อความกึ่งกลางคอลัมน์เดียว */
+:global(html[data-ui='minimal']) .inner {
+  grid-template-columns: 1fr;
+  padding-bottom: 36px;
+}
+:global(html[data-ui='minimal']) .copy {
+  display: contents;
+}
+:global(html[data-ui='minimal']) .copy > * {
+  text-align: center;
+}
+/* กล่องรับโค้ด (redeem.module.css) ชิดซ้ายบนจอใหญ่ ในมินิมอลให้อยู่กลาง */
+:global(html[data-ui='minimal']) .copy > form {
+  margin-left: auto;
+  margin-right: auto;
+}
+
 .world[data-off] *,
 .world[data-off] *::before,
 .world[data-off] *::after {
