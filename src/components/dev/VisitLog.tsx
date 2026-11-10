@@ -15,19 +15,11 @@ interface Row {
   path: string | null;
 }
 
-type Who = 'all' | 'member' | 'guest';
-const WHO: [Who, string][] = [
-  ['all', 'ทั้งหมด'],
-  ['member', 'มีบัญชี'],
-  ['guest', 'ไม่มีบัญชี'],
-];
-
 const time = (iso: string) =>
   new Date(iso).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
-/** รายการ "ใครเข้าเว็บบ้าง" ล่าสุดก่อน (บัญชี/ไม่มีบัญชี, เครื่อง, หน้าแรกที่เข้า) */
+/** รายการ "ใครเข้าเว็บบ้าง" เฉพาะผู้ที่มีบัญชี ล่าสุดก่อน (ชื่อ, เครื่อง, หน้าแรกที่เข้า) */
 export function VisitLog() {
-  const [who, setWho] = useState<Who>('all');
   const [rows, setRows] = useState<Row[]>([]);
   const [more, setMore] = useState(false);
   const [old, setOld] = useState(false);
@@ -39,7 +31,7 @@ export function VisitLog() {
       setBusy(true);
       setErr('');
       try {
-        const r = await fetch(`/api/dev/visits/log?who=${who}${before ? `&before=${before}` : ''}`, { cache: 'no-store' });
+        const r = await fetch(`/api/dev/visits/log${before ? `?before=${before}` : ''}`, { cache: 'no-store' });
         const j = await r.json();
         if (!r.ok) throw new Error(j.error || 'โหลดไม่สำเร็จ');
         if (j.missing) throw new Error('ยังไม่มีตารางสถิติ (migration 014)');
@@ -52,7 +44,7 @@ export function VisitLog() {
         setBusy(false);
       }
     },
-    [who]
+    []
   );
 
   useEffect(() => {
@@ -62,25 +54,7 @@ export function VisitLog() {
   return (
     <div>
       <div className="flex flex-wrap items-center gap-2 mb-2">
-        <p className="text-xs font-semibold text-gray-600 dark:text-gray-300 mr-auto">ใครเข้าเว็บบ้าง (ล่าสุดก่อน)</p>
-        <div role="group" aria-label="กรองผู้เข้าเว็บ" className="flex gap-1">
-          {WHO.map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setWho(id)}
-              aria-pressed={who === id}
-              className={cn(
-                'px-2.5 py-1 rounded-lg text-xs font-bold border transition-colors',
-                who === id
-                  ? 'bg-indigo-500 text-white border-indigo-500'
-                  : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <p className="text-xs font-semibold text-gray-600 dark:text-gray-300 mr-auto">ผู้มีบัญชีที่เข้าเว็บ (ล่าสุดก่อน)</p>
         <button type="button" onClick={() => load()} disabled={busy} aria-label="โหลดใหม่" title="โหลดใหม่" className="p-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-indigo-500">
           <RefreshCw className={cn('w-3.5 h-3.5', busy && 'animate-spin')} />
         </button>

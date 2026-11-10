@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 const PAGE = 50;
 
-/** บันทึกการเข้าเว็บรายครั้ง (เฉพาะ Dev): ?who=all|member|guest &before=<id> ใหม่สุดก่อน ทีละ 50 */
+/** บันทึกการเข้าเว็บรายครั้งของผู้ที่มีบัญชีเท่านั้น (เฉพาะ Dev): ?before=<id> ใหม่สุดก่อน ทีละ 50 */
 export async function GET(req: NextRequest) {
   const supabase = await createClient();
   const {
@@ -16,19 +16,16 @@ export async function GET(req: NextRequest) {
   const { data: me } = await supabase.from('profiles').select('role').eq('id', user.id).single();
   if (!me || me.role !== 'dev') return NextResponse.json({ error: 'สำหรับ Dev เท่านั้น' }, { status: 403 });
 
-  const sp = req.nextUrl.searchParams;
-  const who = sp.get('who');
-  const before = Number(sp.get('before'));
+  const before = Number(req.nextUrl.searchParams.get('before'));
 
   const run = (cols: string) => {
     let q = getAdminClient()
       .from('site_visits')
       .select(`${cols}, profiles(username, display_name, premium_until)`)
+      .not('user_id', 'is', null)
       .order('id', { ascending: false })
       .limit(PAGE);
     if (Number.isFinite(before) && before > 0) q = q.lt('id', before);
-    if (who === 'member') q = q.not('user_id', 'is', null);
-    if (who === 'guest') q = q.is('user_id', null);
     return q;
   };
 
