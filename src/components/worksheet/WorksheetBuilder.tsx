@@ -62,6 +62,25 @@ function readSaved(): Saved[] {
   }
 }
 
+/** คัดลอกทันทีในจังหวะคลิก (ไม่รอ Promise) คืน false ถ้าเบราว์เซอร์ไม่ยอม */
+function copyNow(text: string): boolean {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.setAttribute('readonly', '');
+  ta.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;';
+  document.body.appendChild(ta);
+  ta.select();
+  ta.setSelectionRange(0, text.length);
+  let ok = false;
+  try {
+    ok = document.execCommand('copy');
+  } catch {
+    ok = false;
+  }
+  ta.remove();
+  return ok;
+}
+
 function Chip({ on, onClick, children, color, title }: { on: boolean; onClick: () => void; children: React.ReactNode; color?: string; title?: string }) {
   return (
     <button type="button" className="ws-chip" aria-pressed={on} onClick={onClick} title={title} style={color ? ({ '--ws-on': color } as React.CSSProperties) : undefined}>
@@ -98,6 +117,7 @@ export function WorksheetBuilder() {
   const [contest, setContest] = useState<{ c: Contest; phase: Phase } | null>(null);
   const [send, setSend] = useState<null | 'studio' | 'contest'>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
+  const [geminiLink, setGeminiLink] = useState(false);
   const loaded = useRef(false);
   const signedIn = !!user && !!profile && !String(profile.username || '').startsWith('trial_');
 
@@ -170,15 +190,21 @@ export function WorksheetBuilder() {
 
   const copy = async (open: boolean) => {
     gsfx.tap();
-    // เรียก clipboard ก่อน (ยังโฟกัสหน้าเราอยู่) แล้วเปิดแท็บทันทีในจังหวะคลิกเดียวกัน (ไม่งั้นโดนบล็อกป๊อปอัป)
-    const wrote = navigator.clipboard?.writeText(prompt);
-    if (open) window.open(GEMINI, '_blank', 'noopener');
-    try {
-      if (!wrote) throw new Error('no clipboard');
-      await wrote;
+    // คัดลอกแบบทันที (execCommand) ก่อนเปิดแท็บใหม่: clipboard API ตรวจโฟกัสทีหลัง แท็บใหม่แย่งโฟกัสไปก่อนจะคัดลอกไม่ติด
+    if (copyNow(prompt)) {
+      if (open) window.open(GEMINI, '_blank', 'noopener');
       gsfx.correct();
       setToast(open ? 'คัดลอกแล้ว กด Ctrl+V (หรือแตะค้างแล้ววาง) ในช่องของ Gemini' : 'คัดลอก prompt แล้ว');
+      return;
+    }
+    try {
+      // เบราว์เซอร์ที่ไม่มี execCommand: ใช้ clipboard API แล้วให้กดเปิด Gemini เอง (ไม่เปิดอัตโนมัติ)
+      await navigator.clipboard.writeText(prompt);
+      gsfx.correct();
+      setToast('คัดลอกแล้ว กดลิงก์ "เปิด Gemini" ใต้ปุ่มได้เลย');
+      if (open) setGeminiLink(true);
     } catch {
+      if (open) setGeminiLink(true);
       setShowPrompt(true);
       setTimeout(() => {
         promptRef.current?.focus();
@@ -540,6 +566,11 @@ export function WorksheetBuilder() {
             <Bookmark className="w-5 h-5" /> บันทึกสูตรนี้
           </button>
         </div>
+        {geminiLink && (
+          <a href={GEMINI} target="_blank" rel="noopener noreferrer" className="mt-3 mr-4 inline-flex items-center gap-1 text-sm font-black underline">
+            <ExternalLink className="w-4 h-4" /> เปิด Gemini
+          </a>
+        )}
         <button type="button" onClick={() => setShowPrompt((s) => !s)} className="mt-3 text-sm font-bold underline">
           {showPrompt ? 'ซ่อน prompt' : 'ดู / แก้ prompt'}
         </button>

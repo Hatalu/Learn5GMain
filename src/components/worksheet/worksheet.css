@@ -135,10 +135,3 @@
   .ws-heart[data-on='true'] svg { animation: none; }
 }
 
-/* ใบประกาศ (พิมพ์) */
-@media print {
-  body * { visibility: hidden; }
-  .ws-cert, .ws-cert * { visibility: visible; }
-  .ws-cert { position: fixed; inset: 0; margin: 0; box-shadow: none; }
-  @page { size: A4 landscape; margin: 0; }
-}

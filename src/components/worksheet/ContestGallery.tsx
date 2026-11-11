@@ -1,10 +1,10 @@
 'use client';
 
 /* eslint-disable @next/next/no-img-element */
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Award, Clock, Crown, Heart, Loader2, Medal, Printer, Sparkles, Trash2, Trophy, Wand2, X } from 'lucide-react';
+import { Award, Clock, Crown, Download, Heart, Loader2, Medal, Sparkles, Trash2, Trophy, Wand2, X } from 'lucide-react';
 import { gsfx } from '@/lib/game-creator/gsound';
 import { SUBJECTS, subjectOf } from '@/lib/worksheet/options';
 import { encodeRecipe, recipeChips, type Recipe } from '@/lib/worksheet/recipe';
@@ -407,10 +407,7 @@ export function ContestGallery() {
 
       {cert && c && (
         <PaperModal title="เกียรติบัตร" icon={<Award className="w-5 h-5" />} onClose={() => setCert(null)} width={760}>
-          <Certificate name={cert.name} label={cert.label} work={cert.title} contest={c.title} date={fmtDay(c.ends_at)} />
-          <button type="button" onClick={() => window.print()} className="mt-4 w-full ws-btn bg-[#ffd166] text-[#2a2350]">
-            <Printer className="w-5 h-5" /> พิมพ์ / บันทึกเป็น PDF
-          </button>
+          <CertDownload cert={cert} contest={c} />
         </PaperModal>
       )}
 
@@ -423,7 +420,43 @@ export function ContestGallery() {
   );
 }
 
-/** เกียรติบัตร A4 แนวนอน (พิมพ์ด้วย window.print ซ่อนส่วนอื่นด้วย CSS @media print) */
+/** เกียรติบัตร + ปุ่มดาวน์โหลดเป็นรูป PNG (html-to-image ในเครื่อง ขนาด A4 แนวนอน 300dpi โดยประมาณ) */
+function CertDownload({ cert, contest }: { cert: { name: string; label: string; title: string }; contest: Contest }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const save = async () => {
+    if (!ref.current) return;
+    setBusy(true);
+    setErr('');
+    try {
+      const { toPng } = await import('html-to-image');
+      const w = ref.current.offsetWidth || 700;
+      const url = await toPng(ref.current, { pixelRatio: Math.min(5, 3508 / w), backgroundColor: '#ffffff', cacheBust: true });
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `เกียรติบัตร-${cert.name}.png`;
+      a.click();
+    } catch {
+      setErr('สร้างรูปไม่สำเร็จ ลองใหม่อีกครั้ง');
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <>
+      <div ref={ref}>
+        <Certificate name={cert.name} label={cert.label} work={cert.title} contest={contest.title} date={fmtDay(contest.ends_at)} />
+      </div>
+      {err && <p className="mt-2 text-sm font-bold text-rose-600">{err}</p>}
+      <button type="button" onClick={save} disabled={busy} className="mt-4 w-full ws-btn bg-[#ffd166] text-[#2a2350]">
+        {busy ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />} ดาวน์โหลดเกียรติบัตร (PNG)
+      </button>
+    </>
+  );
+}
+
+/** เกียรติบัตร A4 แนวนอน */
 function Certificate({ name, label, work, contest, date }: { name: string; label: string; work: string; contest: string; date: string }) {
   return (
     <div className="ws-cert relative aspect-[297/210] w-full bg-white text-[#2a2350] overflow-hidden" style={{ border: '10px solid #7c5cf0', outline: '4px solid #ffd166', outlineOffset: '-22px' }}>
