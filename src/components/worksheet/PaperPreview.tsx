@@ -5,8 +5,8 @@
  * (เป็นภาพประกอบให้ครูเห็นภาพ ไม่ใช่ใบงานจริง ใบงานจริง Gemini เป็นคนวาด)
  */
 import React from 'react';
-import { STYLES, THEMES, subjectOf } from '@/lib/worksheet/options';
-import { titleOf, type Recipe } from '@/lib/worksheet/recipe';
+import { STYLES, THEMES } from '@/lib/worksheet/options';
+import { itemCount, titleOf, type Recipe } from '@/lib/worksheet/recipe';
 
 type Pal = { a: string; b: string; bg: string; ink: string; soft: string };
 
@@ -118,7 +118,9 @@ function Motif({ kind, x, y, s, p }: { kind: string; x: number; y: number; s: nu
 function Body({ a, n, x, y, w, h, p, s }: { a: string; n: number; x: number; y: number; w: number; h: number; p: Pal; s: string }) {
   const line = { stroke: p.soft, strokeWidth: 1.2, strokeLinecap: 'round' as const };
   const ink = { stroke: p.ink, strokeWidth: 0.8, fill: '#fff' };
-  const rows = Math.min(n, 10);
+  // จำนวนชิ้นเท่ากับที่ prompt สั่ง Gemini (itemCount ใช้ร่วมกัน)
+  const k0 = itemCount(a, n);
+  const rows = k0;
   const rh = h / rows;
   const num = (i: number, cx: number, cy: number) => (
     <g key={`n${i}`}>
@@ -144,7 +146,7 @@ function Body({ a, n, x, y, w, h, p, s }: { a: string; n: number; x: number; y: 
 
   switch (a) {
     case 'match': {
-      const k = Math.min(n, 7);
+      const k = k0;
       const gap = h / k;
       return (
         <g>
@@ -231,8 +233,8 @@ function Body({ a, n, x, y, w, h, p, s }: { a: string; n: number; x: number; y: 
       return (
         <g>
           {out}
-          {Array.from({ length: Math.min(n, 8) }, (_, i) => (
-            <path key={i} d={`M${x + c * cw + 5} ${y + 4 + i * (h / 8)}h${w - c * cw - 6}`} {...line} />
+          {Array.from({ length: k0 }, (_, i) => (
+            <path key={i} d={`M${x + c * cw + 5} ${y + 4 + i * (h / k0)}h${w - c * cw - 6}`} {...line} />
           ))}
         </g>
       );
@@ -241,7 +243,7 @@ function Body({ a, n, x, y, w, h, p, s }: { a: string; n: number; x: number; y: 
     case 'tian':
     case 'kana': {
       const cols = a === 'trace' ? 6 : 7;
-      const rowsN = Math.min(Math.max(3, Math.ceil(n / 2)), 8);
+      const rowsN = k0;
       return (
         <g>
           {grid(cols, rowsN, 'sq', (cx, cy, cw, ch, i) => (
@@ -265,7 +267,7 @@ function Body({ a, n, x, y, w, h, p, s }: { a: string; n: number; x: number; y: 
     case 'comic':
     case 'draw': {
       const cols = a === 'comic' ? 2 : 3;
-      const k = a === 'comic' ? 4 : Math.min(n, 9);
+      const k = k0;
       const rowsN = Math.ceil(k / cols);
       const cw = w / cols;
       const ch = h / rowsN;
@@ -292,7 +294,7 @@ function Body({ a, n, x, y, w, h, p, s }: { a: string; n: number; x: number; y: 
     case 'mindmap': {
       const cx = x + w / 2;
       const cy = y + h / 2;
-      const k = Math.min(Math.max(n, 4), 8);
+      const k = k0;
       return (
         <g>
           {Array.from({ length: k }, (_, i) => {
@@ -317,7 +319,7 @@ function Body({ a, n, x, y, w, h, p, s }: { a: string; n: number; x: number; y: 
           {Array.from({ length: 6 }, (_, i) => (
             <path key={i} d={`M${x + 5} ${y + 7 + i * (h * 0.06)}h${w - (i === 5 ? w * 0.5 : 10)}`} {...line} />
           ))}
-          {Array.from({ length: Math.min(n, 5) }, (_, i) => {
+          {Array.from({ length: k0 }, (_, i) => {
             const cy = y + h * 0.5 + i * (h * 0.1);
             return (
               <g key={`q${i}`}>
@@ -332,7 +334,7 @@ function Body({ a, n, x, y, w, h, p, s }: { a: string; n: number; x: number; y: 
     case 'lablog':
     case 'exercise': {
       const cols = a === 'exercise' ? 8 : 4;
-      const rowsN = Math.min(n, 9) + 1;
+      const rowsN = k0 + 1;
       const cw = w / cols;
       const ch = h / rowsN;
       return (
@@ -374,8 +376,8 @@ function Body({ a, n, x, y, w, h, p, s }: { a: string; n: number; x: number; y: 
     case 'numline':
       return (
         <g>
-          {Array.from({ length: Math.min(n, 6) }, (_, i) => {
-            const cy = y + (h / Math.min(n, 6)) * (i + 0.6);
+          {Array.from({ length: k0 }, (_, i) => {
+            const cy = y + (h / k0) * (i + 0.6);
             return (
               <g key={i}>
                 {num(i, x + 3, cy - 4)}
@@ -392,11 +394,11 @@ function Body({ a, n, x, y, w, h, p, s }: { a: string; n: number; x: number; y: 
     case 'cutpaste':
       return (
         <g>
-          {Array.from({ length: Math.min(n, 4) }, (_, i) => (
+          {Array.from({ length: k0 }, (_, i) => (
             <g key={i}>
-              {num(i, x + 3, y + 6 + i * (h * 0.15))}
-              <rect x={x + w * 0.6} y={y + 1 + i * (h * 0.15)} width={w * 0.38} height={h * 0.12} rx="2" fill="#fff" stroke={p.soft} strokeWidth="0.8" strokeDasharray="2 1.5" />
-              <path d={`M${x + 9} ${y + 8 + i * (h * 0.15)}h${w * 0.45}`} {...line} />
+              {num(i, x + 3, y + 6 + i * ((h * 0.6) / k0))}
+              <rect x={x + w * 0.6} y={y + 1 + i * ((h * 0.6) / k0)} width={w * 0.38} height={h * 0.12} rx="2" fill="#fff" stroke={p.soft} strokeWidth="0.8" strokeDasharray="2 1.5" />
+              <path d={`M${x + 9} ${y + 8 + i * ((h * 0.6) / k0)}h${w * 0.45}`} {...line} />
             </g>
           ))}
           <path d={`M${x} ${y + h * 0.66}h${w}`} stroke={p.ink} strokeWidth="0.6" strokeDasharray="2 1.5" />
@@ -435,7 +437,6 @@ export function PaperPreview({ r, className = '' }: { r: Recipe; className?: str
   const H = r.o === 'l' ? 210 : 297;
   const m = 10;
   const motif = MOTIF[r.th] || '';
-  const subj = subjectOf(r.s);
   const headH = 26;
   let top = m + 6 + headH;
   const nameRow = r.name ? 10 : 0;
@@ -485,12 +486,7 @@ export function PaperPreview({ r, className = '' }: { r: Recipe; className?: str
           <text x={m + 30} y={top + headH / 2 + 3.4} fontSize={r.big ? 11 : 9.5} fill="#fff" fontWeight="800">
             {title.length > 26 ? title.slice(0, 25) + '...' : title}
           </text>
-        ) : (
-          <rect x={m + 30} y={top + headH / 2 - 3} width={(W - m * 2) * 0.42} height="6" rx="3" fill="#fff" opacity="0.75" />
-        )}
-        <text x={W - m - 10 - (r.score ? 28 : 0)} y={top + headH - 4} fontSize="4.4" textAnchor="end" fill="#fff" opacity="0.9">
-          {subj.th}
-        </text>
+        ) : null}
       </g>
       {r.score && (
         <g key="score" className="ws-pop">
@@ -526,7 +522,7 @@ export function PaperPreview({ r, className = '' }: { r: Recipe; className?: str
             <path d="M7 1l5 -2" stroke={p.ink} strokeWidth="1" strokeLinecap="round" />
           </g>
           <rect x={m + 30} y={top + headH + nameRow + 5} width={W - m * 2 - 40} height="12" rx="6" fill={p.bg} stroke={p.ink} strokeWidth="0.6" />
-          <rect x={m + 36} y={top + headH + nameRow + 9.6} width={(W - m * 2) * 0.4} height="2.8" rx="1.4" fill={p.soft} />
+          {r.txt === 'ai' && <rect x={m + 36} y={top + headH + nameRow + 9.6} width={(W - m * 2) * 0.4} height="2.8" rx="1.4" fill={p.soft} />}
         </g>
       )}
 

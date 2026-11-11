@@ -2540,7 +2540,12 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
     }
     for (const p of R.PRESETS) assert.equal(R.presetRecipe(p).a, p.r.a, p.id); // ชุดสำเร็จรูปไม่ถูกซ่อมทิ้ง
     assert.equal(R.decodeRecipe('***'), null);
-    assert.ok(R.buildPrompt({ ...R.defaultRecipe(), txt: 'blank' }).includes('Leave clean empty'));
+    assert.ok(R.buildPrompt({ ...R.defaultRecipe(), txt: 'blank' }).includes('Leave every box'));
+    // prompt บอกโครงหน้าตามกระดาษตัวอย่าง: จำนวนชิ้นเท่ากับ itemCount, ช่องที่ปิดไว้ไม่ถูกสั่ง
+    const lay = R.buildPrompt({ ...R.defaultRecipe(), a: 'match', n: 14, score: false, mascot: false });
+    assert.ok(lay.includes(`${R.itemCount('match', 14)} empty rounded boxes`) && lay.includes('exact page layout'));
+    assert.ok(!lay.includes('score circle') && !lay.includes('mascot'));
+    assert.equal(R.itemCount('fill', 17), 17);
     // อันดับ: ใจมากก่อน เท่ากัน = ส่งก่อนชนะ, 1 คน 1 รางวัล, 0 ใจไม่ได้รางวัล
     const rows = [
       { id: 'a', owner_id: 'u1', created_at: '2026-11-02', like_count: 5 },

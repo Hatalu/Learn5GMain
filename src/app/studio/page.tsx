@@ -453,7 +453,39 @@ function StudioHub() {
 
             {tab === 'new' ? (
               <section className="max-w-6xl mx-auto px-4 pt-6 pb-12">
-                <h2 className="l5g-sec-title">1. เลือกแบบการแก้ไข แล้วเลือกขนาดกระดาษ</h2>
+                {/* ทางเลือกหลัก: ทำเอง / ให้ AI วาด */}
+                <div className="grid sm:grid-cols-2 gap-4 mb-8">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      gsfx.tap();
+                      document.getElementById('studio-self')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }}
+                    className="group flex items-center gap-4 p-5 rounded-[1.6rem] border-[3px] border-[#2a2350] bg-gradient-to-br from-[#e3f6ff] to-[#c9b8ff] text-[#2a2350] text-left shadow-[0_6px_0_#2a2350] hover:-translate-y-1 active:translate-y-1 active:shadow-[0_2px_0_#2a2350] transition-transform"
+                  >
+                    <span className="grid place-items-center w-16 h-16 shrink-0 rounded-2xl border-[3px] border-[#2a2350] bg-[#7c5cf0] text-white group-hover:rotate-[-6deg] transition-transform">
+                      <Palette className="w-8 h-8" />
+                    </span>
+                    <span>
+                      <b className="block font-display text-2xl leading-tight">สร้างด้วยตัวเอง</b>
+                      <small className="block mt-1 text-sm font-semibold opacity-80">เริ่มจากหน้าว่าง แม่แบบ หรือนำเข้า Word / PDF</small>
+                    </span>
+                  </button>
+                  <Link
+                    href="/worksheet"
+                    onClick={() => gsfx.tap()}
+                    className="group flex items-center gap-4 p-5 rounded-[1.6rem] border-[3px] border-[#2a2350] bg-gradient-to-br from-[#ffe08a] to-[#ffb3cf] text-[#2a2350] text-left shadow-[0_6px_0_#2a2350] hover:-translate-y-1 active:translate-y-1 active:shadow-[0_2px_0_#2a2350] transition-transform"
+                  >
+                    <span className="grid place-items-center w-16 h-16 shrink-0 rounded-2xl border-[3px] border-[#2a2350] bg-[#e8456b] text-white group-hover:rotate-[6deg] transition-transform">
+                      <Wand2 className="w-8 h-8" />
+                    </span>
+                    <span>
+                      <b className="block font-display text-2xl leading-tight">สร้างจาก AI</b>
+                      <small className="block mt-1 text-sm font-semibold opacity-80">แต่งใบงานแบบแต่งตัวละคร ให้ Gemini วาดภาพ แล้วนำมาพิมพ์ต่อที่นี่</small>
+                    </span>
+                  </Link>
+                </div>
+                <h2 id="studio-self" className="l5g-sec-title scroll-mt-24">1. เลือกแบบการแก้ไข แล้วเลือกขนาดกระดาษ</h2>
                 <p className="l5g-sec-note">เริ่มจากหน้าว่าง ค่าเริ่มต้นคือ A4 แนวตั้ง สลับ Canva/Word และเปลี่ยนขนาดทีหลังได้ในตัวแก้ไข</p>
                 <div className="sh-modes mt-4" role="radiogroup" aria-label="แบบการแก้ไข">
                   {([
@@ -501,15 +533,6 @@ function StudioHub() {
                   </span>
                 </button>
 
-                <Link href="/worksheet" className="sh-import mt-3" onClick={() => gsfx.tap()}>
-                  <span className="sh-import-ic">
-                    <Wand2 className="w-7 h-7" />
-                  </span>
-                  <span className="sh-import-tx">
-                    <b>หรือให้ AI วาดใบงาน (ตู้แต่งตัวใบงาน)</b>
-                    <small>เลือกวิชา ธีม สไตล์ แล้วให้ Gemini วาดภาพ จากนั้นนำภาพมาพิมพ์ข้อความไทยทับที่นี่ · ร่วมประกวดลุ้นสมาชิกฟรี</small>
-                  </span>
-                </Link>
 
                 <h2 className="l5g-sec-title mt-10">2. หรือเริ่มจากแม่แบบ</h2>
                 <p className="l5g-sec-note">มีของจัดวางไว้ให้แล้ว แก้คำ เปลี่ยนสี ย้ายตำแหน่งได้ทุกชิ้น</p>

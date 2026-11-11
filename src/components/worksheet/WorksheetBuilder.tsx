@@ -224,7 +224,8 @@ export function WorksheetBuilder() {
       /* โหมดส่วนตัว */
     }
     gsfx.correct();
-    setToast('บันทึกสูตรไว้ในเครื่องนี้แล้ว');
+    setToast('บันทึกแล้ว ดูได้ที่ "สูตรของฉัน" ด้านบน');
+    document.getElementById('ws-saved')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
   const dropSaved = (id: string) => {
     const next = saved.filter((s) => s.id !== id);
@@ -253,6 +254,9 @@ export function WorksheetBuilder() {
           <button type="button" onClick={dice} data-roll={roll % 2 ? '1' : '0'} key={roll} className="ws-btn ws-dice bg-[#ffd166] text-[#2a2350]">
             <Dices className="w-5 h-5" /> สุ่มชุด
           </button>
+          <button type="button" onClick={saveRecipe} className="ws-btn bg-[#a8f0d4] text-[#2a2350]">
+            <Bookmark className="w-5 h-5" /> <span className="max-sm:hidden">บันทึกสูตร</span>
+          </button>
           <Link href="/contest" className="ws-btn bg-[#ff8fab] text-[#2a2350]">
             <Trophy className="w-5 h-5" /> <span className="max-sm:hidden">กิจกรรมประกวด</span>
           </Link>
@@ -268,6 +272,37 @@ export function WorksheetBuilder() {
           <span className="max-sm:hidden text-sm underline">ดูผลงาน</span>
         </Link>
       )}
+
+      {/* สูตรที่บันทึกไว้ในเครื่องนี้ */}
+      <div id="ws-saved" className="mb-4 scroll-mt-24">
+        <p className="mb-2 text-sm font-extrabold text-[#5b5280] dark:text-gray-300 flex items-center gap-1.5">
+          <Bookmark className="w-4 h-4" /> สูตรของฉัน ({saved.length})
+        </p>
+        {saved.length ? (
+          <div className="ws-tabs">
+            {saved.map((s) => (
+              <span key={s.id} className="ws-chip flex-none !pr-1.5 !bg-[#e8fff6]">
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1.5"
+                  onClick={() => {
+                    gsfx.pick();
+                    setR(s.r);
+                    setBump((b) => b + 1);
+                  }}
+                >
+                  {s.name}
+                </button>
+                <button type="button" onClick={() => dropSaved(s.id)} aria-label={`ลบสูตร ${s.name}`} className="ml-1 p-1 rounded-lg hover:bg-[#ffd6de]">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm font-semibold text-[#5b5280] dark:text-gray-400">ยังไม่มี กดปุ่ม &quot;บันทึกสูตร&quot; ด้านบนเพื่อเก็บชุดที่แต่งไว้ใช้ครั้งหน้า</p>
+        )}
+      </div>
 
       {/* ชุดสำเร็จรูป */}
       <div className="mb-5">
@@ -288,24 +323,6 @@ export function WorksheetBuilder() {
               {p.th}
             </button>
           ))}
-          {saved.map((s) => (
-            <span key={s.id} className="ws-chip flex-none !pr-1.5 bg-[#e8fff6]">
-              <button
-                type="button"
-                className="inline-flex items-center gap-1.5"
-                onClick={() => {
-                  gsfx.pick();
-                  setR(s.r);
-                  setBump((b) => b + 1);
-                }}
-              >
-                <Bookmark className="w-4 h-4" /> {s.name}
-              </button>
-              <button type="button" onClick={() => dropSaved(s.id)} aria-label={`ลบสูตร ${s.name}`} className="ml-1 p-1 rounded-lg hover:bg-[#ffd6de]">
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            </span>
-          ))}
         </div>
       </div>
 
@@ -320,8 +337,8 @@ export function WorksheetBuilder() {
               <span className="px-2.5 py-0.5 rounded-full border-2 border-[#2a2350] bg-white text-xs font-extrabold">{gradeLabel(r.g)}</span>
               <span className="ml-auto text-xs font-bold text-[#5b5280]">ภาพโครงคร่าวๆ</span>
             </div>
-            <div className={`mx-auto ${r.o === 'l' ? 'max-w-[34rem]' : 'max-w-[22rem] max-lg:max-w-[13rem]'}`}>
-              <PaperPreview key={`p${bump}`} r={r} className="ws-paper w-full h-auto" />
+            <div className="flex justify-center">
+              <PaperPreview key={`p${bump}`} r={r} className="ws-paper block w-auto max-w-full h-[min(62vh,40rem)] lg:h-[calc(100vh-15rem)] max-h-[44rem]" />
             </div>
             <p className="mt-3 text-center font-display text-lg leading-snug">{titleOf(r)}</p>
           </div>
@@ -400,7 +417,7 @@ export function WorksheetBuilder() {
                   onChange={(e) => setR((o) => ({ ...o, cu: e.target.value, tp: e.target.value.trim() ? 'custom' : o.tp === 'custom' ? subj.topics[0].id : o.tp }))}
                   onBlur={() => setR((o) => cleanRecipe(o))}
                   placeholder="เช่น การบวกเลขสองหลักแบบมีทด"
-                  className="w-full px-4 py-3 rounded-2xl border-[3px] border-[#2a2350] font-semibold outline-none focus:ring-4 ring-[#c9b8ff]"
+                  className="w-full px-4 py-3 rounded-2xl border-[3px] border-[#2a2350] font-semibold outline-none focus:ring-4 ring-[#c9b8ff] !bg-white !text-[#2a2350] placeholder:text-[#9a90c0]"
                 />
               </>
             )}
@@ -528,7 +545,7 @@ export function WorksheetBuilder() {
                   onChange={(e) => setR((o) => ({ ...o, title: e.target.value }))}
                   onBlur={() => setR((o) => cleanRecipe(o))}
                   placeholder={titleOf({ ...r, title: '' })}
-                  className="w-full px-4 py-3 rounded-2xl border-[3px] border-[#2a2350] font-semibold outline-none focus:ring-4 ring-[#c9b8ff]"
+                  className="w-full px-4 py-3 rounded-2xl border-[3px] border-[#2a2350] font-semibold outline-none focus:ring-4 ring-[#c9b8ff] !bg-white !text-[#2a2350] placeholder:text-[#9a90c0]"
                 />
                 <H>อยากบอก AI เพิ่ม ({r.note.length}/{NOTE_MAX})</H>
                 <textarea
@@ -538,7 +555,7 @@ export function WorksheetBuilder() {
                   onChange={(e) => setR((o) => ({ ...o, note: e.target.value }))}
                   onBlur={() => setR((o) => cleanRecipe(o))}
                   placeholder="เช่น ใส่แมวสีส้มเป็นตัวละครหลัก"
-                  className="w-full px-4 py-3 rounded-2xl border-[3px] border-[#2a2350] font-semibold outline-none focus:ring-4 ring-[#c9b8ff] resize-none"
+                  className="w-full px-4 py-3 rounded-2xl border-[3px] border-[#2a2350] font-semibold outline-none focus:ring-4 ring-[#c9b8ff] !bg-white !text-[#2a2350] placeholder:text-[#9a90c0] resize-none"
                 />
               </>
             )}
@@ -557,13 +574,13 @@ export function WorksheetBuilder() {
         </div>
         <div className="mt-4 grid sm:grid-cols-3 gap-2">
           <button type="button" onClick={() => copy(true)} className="ws-btn bg-[#2a2350] text-white sm:col-span-1 !shadow-[0_4px_0_#000]">
-            <ExternalLink className="w-5 h-5" /> คัดลอก + เปิด Gemini
+            <ExternalLink className="w-5 h-5" /> คัดลอกแล้วเข้า Gemini
           </button>
           <button type="button" onClick={() => copy(false)} className="ws-btn bg-white text-[#2a2350]">
-            <ClipboardCopy className="w-5 h-5" /> คัดลอก prompt
+            <ClipboardCopy className="w-5 h-5" /> คัดลอก
           </button>
-          <button type="button" onClick={saveRecipe} className="ws-btn bg-[#a8f0d4] text-[#2a2350]">
-            <Bookmark className="w-5 h-5" /> บันทึกสูตรนี้
+          <button type="button" onClick={() => setSend('studio')} className="ws-btn bg-[#a8f0d4] text-[#2a2350]">
+            <Type className="w-5 h-5" /> นำเข้า Studio
           </button>
         </div>
         {geminiLink && (
