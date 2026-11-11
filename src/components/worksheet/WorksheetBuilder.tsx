@@ -31,10 +31,11 @@ import { useAuth } from '@/context/AuthContext';
 import { gsfx } from '@/lib/game-creator/gsound';
 import { uploadImage } from '@/lib/game-creator/media';
 import { PaperModal } from '@/components/creator/PaperModal';
-import { COUNT_MAX, COUNT_MIN, FRAMES, GRADES, LANGS, LEVELS, NOTE_MAX, STYLES, SUBJECTS, THEMES, activitiesFor, gradeLabel, subjectOf } from '@/lib/worksheet/options';
-import { PRESETS, buildPrompt, cleanRecipe, decodeRecipe, defaultRecipe, presetRecipe, randomRecipe, titleOf, type Recipe } from '@/lib/worksheet/recipe';
+import { COUNT_MAX, COUNT_MIN, DECOS, DECO_PLACES, FRAMES, GRADES, LANGS, LEVELS, MAX_DECOS, NOTE_MAX, STYLES, SUBJECTS, THEMES, THEME_CATS, activitiesFor, gradeLabel, subjectOf, type DecoPlace, type ThemeCat } from '@/lib/worksheet/options';
+import { PRESETS, buildPrompt, cleanRecipe, decodeRecipe, defaultRecipe, presetRecipe, randomPart, titleOf, type Recipe } from '@/lib/worksheet/recipe';
+import { palOf } from '@/lib/worksheet/layout';
 import { MAX_ENTRIES, leftText, type Contest, type Phase } from '@/lib/worksheet/contest';
-import { PaperPreview } from './PaperPreview';
+import { Motif, PaperPreview } from './PaperPreview';
 import './worksheet.css';
 
 type TabId = 'subject' | 'topic' | 'act' | 'theme' | 'style' | 'page' | 'extra';
@@ -109,6 +110,10 @@ export function WorksheetBuilder() {
   const sp = useSearchParams();
   const [r, setR] = useState<Recipe>(defaultRecipe);
   const [tab, setTab] = useState<TabId>('subject');
+  const [themeCat, setThemeCat] = useState<ThemeCat | ''>('');
+  const [decoPlace, setDecoPlace] = useState<DecoPlace | ''>('');
+  const themeList = themeCat ? THEMES.filter((t) => t.cat === themeCat) : THEMES;
+  const decoList = decoPlace ? DECOS.filter((d) => d.place === decoPlace) : DECOS;
   const [bump, setBump] = useState(0);
   const [roll, setRoll] = useState(0);
   const [toast, setToast] = useState('');
@@ -184,7 +189,8 @@ export function WorksheetBuilder() {
   const dice = () => {
     gsfx.whoosh();
     setRoll((n) => n + 1);
-    setR(randomRecipe(Math.random));
+    // วิชา/ชั้นคงเดิมเสมอ สุ่มเฉพาะแท็บที่เปิดอยู่ (ธีม/ของตกแต่ง สุ่มในหมวดที่กรองไว้)
+    setR((old) => randomPart(old, tab, Math.random, tab === 'theme' ? themeList.map((t) => t.id) : tab === 'extra' ? decoList.map((d) => d.id) : undefined));
     setBump((b) => b + 1);
   };
 
@@ -252,7 +258,7 @@ export function WorksheetBuilder() {
         </div>
         <div className="flex gap-2">
           <button type="button" onClick={dice} data-roll={roll % 2 ? '1' : '0'} key={roll} className="ws-btn ws-dice bg-[#ffd166] text-[#2a2350]">
-            <Dices className="w-5 h-5" /> สุ่มชุด
+            <Dices className="w-5 h-5" /> สุ่ม{tab === 'subject' ? 'ทั้งชุด' : TABS.find((t) => t.id === tab)?.th}
           </button>
           <button type="button" onClick={saveRecipe} className="ws-btn bg-[#a8f0d4] text-[#2a2350]">
             <Bookmark className="w-5 h-5" /> <span className="max-sm:hidden">บันทึกสูตร</span>
@@ -448,9 +454,19 @@ export function WorksheetBuilder() {
 
             {tab === 'theme' && (
               <>
-                <H>ธีม (ชุดของใบงาน)</H>
+                <H>ธีม (ชุดของใบงาน) · {themeList.length} แบบ</H>
+                <div className="ws-tabs mb-2" role="group" aria-label="กรองหมวดธีม">
+                  <Chip on={!themeCat} onClick={() => setThemeCat('')}>
+                    ทั้งหมด
+                  </Chip>
+                  {THEME_CATS.map((c) => (
+                    <Chip key={c.id} on={themeCat === c.id} onClick={() => setThemeCat(c.id)}>
+                      {c.th}
+                    </Chip>
+                  ))}
+                </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {THEMES.map((t) => (
+                  {themeList.map((t) => (
                     <button key={t.id} type="button" className="ws-chip !flex-col !items-stretch !gap-1.5" aria-pressed={r.th === t.id} onClick={() => set({ th: t.id })}>
                       <span className="flex h-6 rounded-lg overflow-hidden border-2 border-[#2a2350]">
                         {t.pal.map((c) => (
@@ -537,6 +553,43 @@ export function WorksheetBuilder() {
                   <Toggle on={r.mascot} label="มาสคอตชี้คำสั่ง" onClick={() => set({ mascot: !r.mascot })} />
                   <Toggle on={r.sticker} label="มุมสติกเกอร์รางวัล" onClick={() => set({ sticker: !r.sticker })} />
                   <Toggle on={r.key} label="ทำหน้าเฉลยด้วย" onClick={() => set({ key: !r.key })} />
+                </div>
+                <H>
+                  ของตกแต่งเสริม ({r.dz.length}/{MAX_DECOS}) · {decoList.length} แบบ
+                </H>
+                <div className="ws-tabs mb-2" role="group" aria-label="กรองตำแหน่งของตกแต่ง">
+                  <Chip on={!decoPlace} onClick={() => setDecoPlace('')}>
+                    ทั้งหมด
+                  </Chip>
+                  {DECO_PLACES.map((p) => (
+                    <Chip key={p.id} on={decoPlace === p.id} onClick={() => setDecoPlace(p.id)}>
+                      {p.th}
+                    </Chip>
+                  ))}
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {decoList.map((d) => {
+                    const on = r.dz.includes(d.id);
+                    const full = !on && r.dz.length >= MAX_DECOS;
+                    const pal = palOf(r).pal;
+                    const col = d.color === 'a' ? pal.a : d.color === 'b' ? pal.b : d.color;
+                    return (
+                      <button
+                        key={d.id}
+                        type="button"
+                        className="ws-chip"
+                        aria-pressed={on}
+                        disabled={full}
+                        title={full ? `เลือกได้สูงสุด ${MAX_DECOS} ชิ้น` : undefined}
+                        onClick={() => set({ dz: on ? r.dz.filter((x) => x !== d.id) : [...r.dz, d.id] })}
+                      >
+                        <svg viewBox="-6.5 -6.5 13 13" className="w-6 h-6 shrink-0" aria-hidden="true">
+                          <Motif kind={d.motif} x={0} y={0} s={1} p={{ ...pal, a: col, b: col }} />
+                        </svg>
+                        {d.th}
+                      </button>
+                    );
+                  })}
                 </div>
                 <H>ชื่อใบงาน (ไม่ใส่ = ตั้งจากหัวข้อ)</H>
                 <input

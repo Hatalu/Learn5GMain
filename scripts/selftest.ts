@@ -2515,7 +2515,7 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
       for (const t of s.topics) assert.match(t.id, /^[a-z0-9-]+$/, t.id);
       assert.ok(O.activitiesFor(s.id).length >= 16, s.id);
     }
-    for (const list of [O.ACTIVITIES, O.THEMES, O.STYLES, O.FRAMES] as { id: string }[][]) assert.equal(new Set(list.map((x) => x.id)).size, list.length);
+    for (const list of [O.ACTIVITIES, O.THEMES, O.STYLES, O.FRAMES, O.DECOS] as { id: string }[][]) assert.equal(new Set(list.map((x) => x.id)).size, list.length);
     // ห้ามอิโมจิ/ลูกศรที่กลายเป็นอิโมจิ ในข้อความทุกตัวเลือกและ prompt
     const bad = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}↔️]/u;
     assert.ok(!bad.test(JSON.stringify([O.SUBJECTS, O.ACTIVITIES, O.THEMES, O.STYLES, O.FRAMES, R.PRESETS])));
@@ -2536,16 +2536,52 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
       assert.deepEqual(R.decodeRecipe(R.encodeRecipe(r)), r);
       const p = R.buildPrompt(r);
       assert.equal(p, R.buildPrompt(R.cleanRecipe(JSON.parse(JSON.stringify(r)))));
-      assert.ok(!bad.test(p) && p.includes('A4') && p.length < 3000);
+      assert.ok(!bad.test(p) && p.includes('A4') && p.length < 8000);
     }
     for (const p of R.PRESETS) assert.equal(R.presetRecipe(p).a, p.r.a, p.id); // ชุดสำเร็จรูปไม่ถูกซ่อมทิ้ง
     assert.equal(R.decodeRecipe('***'), null);
     assert.ok(R.buildPrompt({ ...R.defaultRecipe(), txt: 'blank' }).includes('Leave every box'));
     // prompt บอกโครงหน้าตามกระดาษตัวอย่าง: จำนวนชิ้นเท่ากับ itemCount, ช่องที่ปิดไว้ไม่ถูกสั่ง
     const lay = R.buildPrompt({ ...R.defaultRecipe(), a: 'match', n: 14, score: false, mascot: false });
-    assert.ok(lay.includes(`${R.itemCount('match', 14)} empty rounded boxes`) && lay.includes('exact page layout'));
+    assert.ok(lay.includes(`${R.itemCount('match', 14)} empty rounded boxes`) && lay.includes('EXACT LAYOUT'));
     assert.ok(!lay.includes('score circle') && !lay.includes('mascot'));
     assert.equal(R.itemCount('fill', 17), 17);
+    // ธีม+ของตกแต่งเพิ่ม 70+ แบบ (เดิม 16 ธีม) ทุกชิ้นมีหมวด/ไอคอนที่วาดได้
+    const L = await import('../src/lib/worksheet/layout');
+    assert.ok(O.THEMES.length - 16 + O.DECOS.length >= 70);
+    for (const t of O.THEMES) {
+      assert.ok(O.THEME_CATS.some((c) => c.id === t.cat), t.id);
+      assert.ok(t.motif === '' || (O.MOTIFS as readonly string[]).includes(t.motif), t.id);
+      for (const c of t.pal) assert.match(c, /^#[0-9a-f]{6}$/, t.id);
+    }
+    for (const d of O.DECOS) {
+      assert.ok((O.MOTIFS as readonly string[]).includes(d.motif) && O.DECO_PLACES.some((p) => p.id === d.place), d.id);
+      assert.ok(d.color === 'a' || d.color === 'b' || /^#[0-9a-f]{6}$/.test(d.color), d.id);
+    }
+    for (const m of O.MOTIFS) assert.ok(O.MOTIF_EN[m], m);
+    assert.deepEqual(R.cleanRecipe({ dz: ['d-heart-c', 'x', 'd-heart-c', 'd-star-c', 'd-bow-c', 'd-crown-c'] }).dz, ['d-heart-c', 'd-star-c', 'd-bow-c']);
+    // ลูกเต๋า: วิชา/ชั้นคงเดิม และแท็บอื่นเปลี่ยนเฉพาะช่องของแท็บนั้น
+    const base = R.cleanRecipe({ ...R.defaultRecipe(), s: 'sci', g: 5, tp: 'solar', a: 'lablog', th: 'robot', st: 'flat' });
+    for (let i = 0; i < 40; i++) {
+      let seed = i * 104729 + 3;
+      const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+      for (const part of ['subject', 'topic', 'act', 'theme', 'style', 'page', 'extra'] as const) {
+        const x = R.randomPart(base, part, rnd, part === 'theme' ? ['ocean', 'beach'] : undefined);
+        assert.equal(x.s, 'sci');
+        assert.equal(x.g, 5);
+        const changed = (Object.keys(base) as (keyof typeof base)[]).filter((k) => JSON.stringify(x[k]) !== JSON.stringify(base[k]));
+        const allow: Record<string, string[]> = { topic: ['tp', 'cu'], act: ['a', 'n', 'lv'], theme: ['th'], style: ['st', 'fr'], page: ['o', 'lang', 'big'], extra: ['name', 'score', 'mascot', 'sticker', 'key', 'dz'] };
+        if (part !== 'subject') for (const k of changed) assert.ok(allow[part].includes(k), `${part} changed ${k}`);
+        if (part === 'theme') assert.ok(['ocean', 'beach'].includes(x.th));
+      }
+    }
+    // prompt บอกตำแหน่งเป็นมิลลิเมตรจาก geometry ตัวเดียวกับกระดาษตัวอย่าง
+    const rr = R.cleanRecipe({ ...R.defaultRecipe(), dz: ['d-heart-c'] });
+    const gg = L.geometry(rr);
+    const pp = R.buildPrompt(rr);
+    assert.ok(pp.includes(`y ${gg.body.y} to ${Math.round((gg.body.y + gg.body.h) * 10) / 10} mm`));
+    assert.ok(pp.includes(`radius ${gg.score!.r} mm`) && pp.includes('heart') && pp.includes('EXACT LAYOUT'));
+    assert.equal(L.decoPoints('corners', 210, 297, 10).length, 4);
     // อันดับ: ใจมากก่อน เท่ากัน = ส่งก่อนชนะ, 1 คน 1 รางวัล, 0 ใจไม่ได้รางวัล
     const rows = [
       { id: 'a', owner_id: 'u1', created_at: '2026-11-02', like_count: 5 },

@@ -5,31 +5,12 @@
  * (เป็นภาพประกอบให้ครูเห็นภาพ ไม่ใช่ใบงานจริง ใบงานจริง Gemini เป็นคนวาด)
  */
 import React from 'react';
-import { STYLES, THEMES } from '@/lib/worksheet/options';
+import { geometry, type Pal } from '@/lib/worksheet/layout';
 import { itemCount, titleOf, type Recipe } from '@/lib/worksheet/recipe';
 
-type Pal = { a: string; b: string; bg: string; ink: string; soft: string };
 
-const MOTIF: Record<string, string> = {
-  space: 'star',
-  ocean: 'fish',
-  forest: 'tree',
-  dino: 'tri',
-  sweets: 'donut',
-  farm: 'flower',
-  city: 'block',
-  school: 'pencil',
-  songkran: 'drop',
-  loykrathong: 'moon',
-  thai: 'diamond',
-  robot: 'gear',
-  garden: 'flower',
-  winter: 'snow',
-  sports: 'flag',
-  plain: '',
-};
 
-function Motif({ kind, x, y, s, p }: { kind: string; x: number; y: number; s: number; p: Pal }) {
+export function Motif({ kind, x, y, s, p }: { kind: string; x: number; y: number; s: number; p: Pal }) {
   const tr = `translate(${x} ${y}) scale(${s})`;
   const st = { stroke: p.ink, strokeWidth: 0.8, strokeLinejoin: 'round' as const };
   switch (kind) {
@@ -107,6 +88,92 @@ function Motif({ kind, x, y, s, p }: { kind: string; x: number; y: number; s: nu
         <g transform={tr}>
           <path d="M-2-5V5" stroke={p.ink} strokeWidth="0.8" />
           <path d="M-2-5 4-3-2-1Z" fill={p.a} {...st} />
+        </g>
+      );
+    case 'heart':
+      return <path transform={tr} d="M0 4.2C-5 0.6-5.2-3.6-2.6-4.2-1.2-4.5 0-3.4 0-2.4 0-3.4 1.2-4.5 2.6-4.2 5.2-3.6 5 0.6 0 4.2Z" fill={p.a} {...st} />;
+    case 'cloud':
+      return <path transform={tr} d="M-4.6 3.2A2.4 2.4 0 0 1-4.2-1.4 3 3 0 0 1 1.2-2.6 2.6 2.6 0 0 1 5 0.4 1.6 1.6 0 0 1 4.4 3.2Z" fill={p.bg === '#ffffff' ? '#eef4ff' : p.bg} {...st} />;
+    case 'leaf':
+      return (
+        <g transform={tr}>
+          <path d="M-4 4C-4.6-1.6-0.6-4.8 4.4-4.4 4.6 0.8 1.6 4.6-4 4Z" fill={p.a} {...st} />
+          <path d="M-3.6 3.6 3.6-3.8" stroke={p.ink} strokeWidth="0.6" />
+        </g>
+      );
+    case 'sun':
+      return (
+        <g transform={tr}>
+          {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => (
+            <path key={a} d="M0-3.6V-5.4" transform={`rotate(${a})`} stroke={p.ink} strokeWidth="0.8" strokeLinecap="round" />
+          ))}
+          <circle r="2.8" fill={p.b} {...st} />
+        </g>
+      );
+    case 'balloon':
+      return (
+        <g transform={tr}>
+          <ellipse cy="-1.2" rx="3" ry="3.8" fill={p.a} {...st} />
+          <path d="M0 2.6q-1 1.2 0 2.6" fill="none" stroke={p.ink} strokeWidth="0.6" />
+        </g>
+      );
+    case 'note':
+      return (
+        <g transform={tr}>
+          <ellipse cx="-1.6" cy="3" rx="1.8" ry="1.4" fill={p.a} {...st} />
+          <path d="M0 3V-4.4L3.4-3.2V-1.4L0-2.6" fill={p.a} {...st} />
+        </g>
+      );
+    case 'crown':
+      return <path transform={tr} d="M-4.4 3V-2.4L-2.2-0.2 0-3.6 2.2-0.2 4.4-2.4V3Z" fill={p.b} {...st} />;
+    case 'bolt':
+      return <path transform={tr} d="M1.2-5-3 0.8H-0.4L-1.4 5 3-1H0.4Z" fill={p.b} {...st} />;
+    case 'paw':
+      return (
+        <g transform={tr} fill={p.a} {...st}>
+          <ellipse cy="1.8" rx="2.8" ry="2.2" />
+          <circle cx="-3" cy="-1.6" r="1.1" />
+          <circle cx="-1" cy="-3.2" r="1.1" />
+          <circle cx="1" cy="-3.2" r="1.1" />
+          <circle cx="3" cy="-1.6" r="1.1" />
+        </g>
+      );
+    case 'bow':
+      return (
+        <g transform={tr} fill={p.a} {...st}>
+          <path d="M0 0-4.6-3V3Z" />
+          <path d="M0 0 4.6-3V3Z" />
+          <circle r="1.2" />
+        </g>
+      );
+    case 'apple':
+      return (
+        <g transform={tr}>
+          <circle cy="0.6" r="3.6" fill={p.a} {...st} />
+          <path d="M0-3V-5" stroke={p.ink} strokeWidth="0.7" />
+          <path d="M0.4-4.2q2-1.4 3 0-1.6 1-3 0Z" fill="#22c55e" stroke={p.ink} strokeWidth="0.5" />
+        </g>
+      );
+    case 'planet':
+      return (
+        <g transform={tr}>
+          <circle r="2.8" fill={p.a} {...st} />
+          <ellipse rx="5" ry="1.4" transform="rotate(-20)" fill="none" stroke={p.b} strokeWidth="0.9" />
+        </g>
+      );
+    case 'shell':
+      return (
+        <g transform={tr}>
+          <path d="M-4.4 2.6Q0-6.4 4.4 2.6Z" fill={p.b} {...st} />
+          <path d="M0 2.6V-3M-2.2 2.6-1.2-2.4M2.2 2.6 1.2-2.4" stroke={p.ink} strokeWidth="0.5" />
+        </g>
+      );
+    case 'lantern':
+      return (
+        <g transform={tr}>
+          <path d="M0-5.4V-4" stroke={p.ink} strokeWidth="0.6" />
+          <rect x="-3.4" y="-4" width="6.8" height="7.6" rx="3" fill={p.a} {...st} />
+          <rect x="-1.6" y="3.6" width="3.2" height="1.2" fill={p.b} stroke={p.ink} strokeWidth="0.5" />
         </g>
       );
     default:
@@ -284,7 +351,7 @@ function Body({ a, n, x, y, w, h, p, s }: { a: string; n: number; x: number; y: 
                 ) : (
                   <rect x={cx + cw - 9} y={cy + ch - 9} width="6" height="6" rx="1" fill="#fff" stroke={p.a} strokeWidth="0.8" />
                 )}
-                <Motif kind={MOTIF[s] || 'star'} x={cx + cw / 2} y={cy + ch / 2} s={Math.min(cw, ch) / 22} p={p} />
+                <Motif kind={s} x={cx + cw / 2} y={cy + ch / 2} s={Math.min(cw, ch) / 22} p={p} />
               </g>
             );
           })}
@@ -405,7 +472,7 @@ function Body({ a, n, x, y, w, h, p, s }: { a: string; n: number; x: number; y: 
           {[0, 1, 2, 3].map((k) => (
             <g key={`c${k}`}>
               <rect x={x + k * (w / 4) + 1.5} y={y + h * 0.72} width={w / 4 - 3} height={h * 0.24} rx="2" fill="#fff" stroke={p.ink} strokeWidth="0.6" strokeDasharray="1.6 1.2" />
-              <Motif kind={MOTIF[s] || 'star'} x={x + k * (w / 4) + w / 8} y={y + h * 0.84} s={0.9} p={p} />
+              <Motif kind={s} x={x + k * (w / 4) + w / 8} y={y + h * 0.84} s={0.9} p={p} />
             </g>
           ))}
         </g>
@@ -430,18 +497,9 @@ function Body({ a, n, x, y, w, h, p, s }: { a: string; n: number; x: number; y: 
 }
 
 export function PaperPreview({ r, className = '' }: { r: Recipe; className?: string }) {
-  const theme = THEMES.find((x) => x.id === r.th) || THEMES[0];
-  const bw = !!STYLES.find((x) => x.id === r.st)?.bw;
-  const p: Pal = bw ? { a: '#3a3a3a', b: '#d9d9d9', bg: '#f6f6f6', ink: '#2a2a2a', soft: '#9a9a9a' } : { a: theme.pal[0], b: theme.pal[1], bg: theme.pal[2], ink: '#2a2350', soft: '#b7aed8' };
-  const W = r.o === 'l' ? 297 : 210;
-  const H = r.o === 'l' ? 210 : 297;
-  const m = 10;
-  const motif = MOTIF[r.th] || '';
-  const headH = 26;
-  let top = m + 6 + headH;
-  const nameRow = r.name ? 10 : 0;
-  const bodyTop = top + nameRow + (r.mascot ? 20 : 8);
-  const bodyBottom = H - m - (r.sticker ? 22 : 10);
+  const g = geometry(r);
+  const { W, H, m, pal: p, bw, motif, head } = g;
+  const title = titleOf(r);
 
   const border =
     r.fr === 'none' ? null : r.fr === 'dash' ? (
@@ -449,20 +507,6 @@ export function PaperPreview({ r, className = '' }: { r: Recipe; className?: str
     ) : (
       <rect x={m / 2} y={m / 2} width={W - m} height={H - m} rx={r.fr === 'round' ? 10 : 6} fill="none" stroke={p.a} strokeWidth={r.fr === 'theme' ? 3 : 1.6} />
     );
-  const deco: React.ReactNode[] = [];
-  if (r.fr === 'theme' && motif) {
-    const step = 26;
-    for (let x = 18; x < W - 10; x += step) {
-      deco.push(<Motif key={`t${x}`} kind={motif} x={x} y={m / 2} s={0.9} p={p} />);
-      deco.push(<Motif key={`b${x}`} kind={motif} x={x} y={H - m / 2} s={0.9} p={p} />);
-    }
-    for (let y = 30; y < H - 20; y += step) {
-      deco.push(<Motif key={`l${y}`} kind={motif} x={m / 2} y={y} s={0.9} p={p} />);
-      deco.push(<Motif key={`r${y}`} kind={motif} x={W - m / 2} y={y} s={0.9} p={p} />);
-    }
-  }
-  const title = titleOf(r);
-  top = m + 6;
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className={className} role="img" aria-label={`ตัวอย่างโครงใบงาน ${title}`}>
@@ -472,74 +516,77 @@ export function PaperPreview({ r, className = '' }: { r: Recipe; className?: str
         </filter>
       </defs>
       <rect width={W} height={H} rx="4" fill={bw ? '#fff' : p.bg} />
-      <rect x={m} y={m} width={W - m * 2} height={H - m * 2} rx="5" fill="#fff" opacity={bw ? 1 : 0.92} />
+      <rect x={m} y={m} width={W - m * 2} height={H - m * 2} rx="5" fill="#fff" />
       <g key={`${r.th}-${r.fr}-${r.st}`} className="ws-pop">
         {border}
-        {deco}
+        {motif && g.border.map((pt) => <Motif key={`${pt.x}-${pt.y}`} kind={motif} x={pt.x} y={pt.y} s={0.9} p={p} />)}
+      </g>
+      <g key={`dz-${(r.dz || []).join('-')}-${r.th}-${r.st}`} className="ws-pop">
+        {g.decos.map(({ d, color, pts }) => pts.map((pt, i) => <Motif key={`${d.id}${i}`} kind={d.motif} x={pt.x} y={pt.y} s={1} p={{ ...p, a: color, b: color }} />))}
       </g>
 
       {/* หัวกระดาษ */}
       <g key={`h-${r.th}-${r.txt}-${title}`} className="ws-pop">
-        <rect x={m + 8} y={top} width={W - m * 2 - 16 - (r.score ? 28 : 0)} height={headH} rx="7" fill={p.a} filter="url(#ws-shadow)" />
-        {motif && <Motif kind={motif} x={m + 18} y={top + headH / 2} s={1.6} p={{ ...p, b: '#fff' }} />}
+        <rect x={head.x} y={head.y} width={head.w} height={head.h} rx="7" fill={p.a} filter="url(#ws-shadow)" />
+        {motif && <Motif kind={motif} x={head.x + 10} y={head.y + head.h / 2} s={1.6} p={{ ...p, a: '#fff', b: '#fff' }} />}
         {r.txt === 'ai' ? (
-          <text x={m + 30} y={top + headH / 2 + 3.4} fontSize={r.big ? 11 : 9.5} fill="#fff" fontWeight="800">
+          <text x={head.x + 22} y={head.y + head.h / 2 + 3.4} fontSize={r.big ? 11 : 9.5} fill="#fff" fontWeight="800">
             {title.length > 26 ? title.slice(0, 25) + '...' : title}
           </text>
         ) : null}
       </g>
-      {r.score && (
+      {g.score && (
         <g key="score" className="ws-pop">
-          <circle cx={W - m - 18} cy={top + headH / 2} r="12" fill="#fff" stroke={p.b === '#d9d9d9' ? p.ink : p.b} strokeWidth="2.4" />
-          <path d={`M${W - m - 24} ${top + headH / 2 + 3}h12`} stroke={p.soft} strokeWidth="0.8" />
+          <circle cx={g.score.cx} cy={g.score.cy} r={g.score.r} fill="#fff" stroke={bw ? p.ink : p.b} strokeWidth="2.4" />
+          <path d={`M${g.score.cx - 6} ${g.score.cy + 3}h12`} stroke={p.soft} strokeWidth="0.8" />
         </g>
       )}
 
-      {r.name && (
+      {g.nameY !== null && (
         <g key="name" className="ws-pop">
           {[0, 1, 2].map((k) => {
             const cw = (W - m * 2 - 16) / 3;
             const x0 = m + 8 + k * cw;
             return (
               <g key={k}>
-                <text x={x0} y={top + headH + 9} fontSize="4.6" fill={p.ink} fontWeight="700">
+                <text x={x0} y={g.nameY!} fontSize="4.6" fill={p.ink} fontWeight="700">
                   {['ชื่อ', 'ชั้น', 'เลขที่'][k]}
                 </text>
-                <path d={`M${x0 + (k === 2 ? 11 : 8)} ${top + headH + 9.6}h${cw - (k === 2 ? 15 : 12)}`} stroke={p.soft} strokeWidth="0.7" strokeDasharray="1 1" />
+                <path d={`M${x0 + (k === 2 ? 11 : 8)} ${g.nameY! + 0.6}h${cw - (k === 2 ? 15 : 12)}`} stroke={p.soft} strokeWidth="0.7" strokeDasharray="1 1" />
               </g>
             );
           })}
         </g>
       )}
 
-      {r.mascot && (
+      {g.mascot && (
         <g key={`m-${r.th}`} className="ws-pop">
-          <g transform={`translate(${m + 18} ${top + headH + nameRow + 11})`}>
-            <ellipse rx="8" ry="7.4" fill={p.b} stroke={p.ink} strokeWidth="0.9" />
+          <g transform={`translate(${g.mascot.cx} ${g.mascot.cy})`}>
+            <ellipse rx={g.mascot.rx} ry={g.mascot.ry} fill={p.b} stroke={p.ink} strokeWidth="0.9" />
             <circle cx="-2.6" cy="-1" r="1" fill={p.ink} />
             <circle cx="2.6" cy="-1" r="1" fill={p.ink} />
             <path d="M-1.6 2q1.6 1.4 3.2 0" stroke={p.ink} strokeWidth="0.7" fill="none" strokeLinecap="round" />
             <path d="M7 1l5 -2" stroke={p.ink} strokeWidth="1" strokeLinecap="round" />
           </g>
-          <rect x={m + 30} y={top + headH + nameRow + 5} width={W - m * 2 - 40} height="12" rx="6" fill={p.bg} stroke={p.ink} strokeWidth="0.6" />
-          {r.txt === 'ai' && <rect x={m + 36} y={top + headH + nameRow + 9.6} width={(W - m * 2) * 0.4} height="2.8" rx="1.4" fill={p.soft} />}
+          <rect x={g.mascot.bubble.x} y={g.mascot.bubble.y} width={g.mascot.bubble.w} height={g.mascot.bubble.h} rx="6" fill={p.bg} stroke={p.ink} strokeWidth="0.6" />
+          {r.txt === 'ai' && <rect x={g.mascot.bubble.x + 6} y={g.mascot.bubble.y + 4.6} width={(W - m * 2) * 0.4} height="2.8" rx="1.4" fill={p.soft} />}
         </g>
       )}
 
       <g key={`b-${r.a}-${r.n}-${r.th}-${r.st}-${r.o}`} className="ws-pop">
-        <Body a={r.a} n={r.n} x={m + 10} y={bodyTop} w={W - m * 2 - 20} h={Math.max(30, bodyBottom - bodyTop)} p={p} s={r.th} />
+        <Body a={r.a} n={r.n} x={g.body.x} y={g.body.y} w={g.body.w} h={g.body.h} p={p} s={motif || 'star'} />
       </g>
 
-      {r.sticker && (
-        <g key="sticker" className="ws-pop" transform={`translate(${W - m - 16} ${H - m - 12})`}>
-          <circle r="9" fill={p.b} stroke={p.ink} strokeWidth="0.8" />
+      {g.sticker && (
+        <g key="sticker" className="ws-pop" transform={`translate(${g.sticker.cx} ${g.sticker.cy})`}>
+          <circle r={g.sticker.r} fill={p.b} stroke={p.ink} strokeWidth="0.8" />
           <path d="M0-5 1.5-1.6 5.2-1.5 2.3.9 3.3 4.6 0 2.5-3.3 4.6-2.3.9-5.2-1.5-1.5-1.6Z" fill="#fff" stroke={p.ink} strokeWidth="0.5" />
         </g>
       )}
-      {r.key && (
+      {g.keyTag && (
         <g key="key" className="ws-pop">
-          <rect x={m + 8} y={H - m - 18} width="34" height="11" rx="5.5" fill={p.ink} />
-          <text x={m + 25} y={H - m - 10.8} fontSize="5" fill="#fff" textAnchor="middle" fontWeight="700">
+          <rect x={g.keyTag.x} y={g.keyTag.y} width={g.keyTag.w} height={g.keyTag.h} rx="5.5" fill={p.ink} />
+          <text x={g.keyTag.x + g.keyTag.w / 2} y={g.keyTag.y + 7.2} fontSize="5" fill="#fff" textAnchor="middle" fontWeight="700">
             + เฉลย
           </text>
         </g>
