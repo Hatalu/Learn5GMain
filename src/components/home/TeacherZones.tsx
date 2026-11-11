@@ -118,6 +118,7 @@ const DESIGN_FREE = `รวม ${FREE_DESIGN_LIMIT} สื่อ`;
 const JOBS = [
   { job: 'สร้างข้อสอบ / ชุดคำถาม', how: 'เริ่มจากแม่แบบ ป.1 - ม.6 แล้วแก้ต่อ', href: '/create#templates', free: SET_FREE },
   { job: 'นำเข้าคำถามจาก Excel', how: 'ในตัวแก้ไขชุดคำถาม', href: '/create', free: SET_FREE },
+  { job: 'ให้ AI วาดใบงาน (Gemini)', how: 'ตู้แต่งตัวใบงาน: เลือกวิชา ธีม สไตล์ แล้วคัดลอก prompt', href: '/worksheet', free: 'ฟรี' },
   { job: 'นำเข้า Word / PDF', how: 'สมการ MathType แปลงมาแก้ต่อได้', href: '/studio', free: DESIGN_FREE },
   { job: 'พิมพ์สมการแบบ MathType + กราฟ', how: 'โหมด Word ในระบบสร้างสื่อ', href: '/studio', free: DESIGN_FREE },
   { job: 'เปลี่ยนชุดคำถามเป็นใบงาน', how: 'กดปุ่มใบงานที่การ์ดชุดคำถาม', href: '/create?tab=library', free: 'ชุดของตัวเอง' },

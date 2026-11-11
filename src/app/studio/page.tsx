@@ -15,7 +15,7 @@ import { mediaPrefix } from '@/lib/game-creator/prefix';
 import { quizPages } from '@/lib/studio/fromQuiz';
 import { removeMedia } from '@/lib/game-creator/media';
 import { gsfx } from '@/lib/game-creator/gsound';
-import { blankDesign, designMediaPaths, sanitizeDesign, SIZES, type Design } from '@/lib/studio/doc';
+import { blankDesign, cleanSrc, designMediaPaths, makeImage, sanitizeDesign, SIZES, type Design } from '@/lib/studio/doc';
 import { TEMPLATES, TEMPLATE_CATS, type Template, type TemplateCat } from '@/components/studio/templates';
 import { PageThumb } from '@/components/studio/render';
 import { PaperModal } from '@/components/creator/PaperModal';
@@ -225,6 +225,24 @@ function StudioHub() {
       if (!pages.length) return setErr('ชุดคำถามนี้ยังไม่มีข้อคำถาม');
       create('set', { ...d, pages }, `ใบงาน ${data.title}`);
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, user, mine]);
+
+  /* ---------------- ภาพใบงานจาก Gemini เป็นพื้นหลัง (/studio?fromImage=<url>&o=p|l จากตู้ใบงาน AI) ---------------- */
+  const fromImage = useRef(sp.get('fromImage'));
+  useEffect(() => {
+    const src = fromImage.current;
+    if (!src || isLoading || creating) return;
+    if (!user) return setGate('guest');
+    if (mine === null) return;
+    fromImage.current = null;
+    window.history.replaceState(null, '', '/studio');
+    // รับเฉพาะรูปในโฟลเดอร์ของตัวเองใน game-media (cleanSrc ตรวจซ้ำตอนโหลดสื่อ)
+    if (!cleanSrc(src) || !src.startsWith(mediaPrefix() + user.id + '/')) return setErr('เปิดภาพนี้ไม่ได้ ลองอัปโหลดใหม่จากตู้ใบงาน');
+    const size = SIZES.find((s) => s.id === (sp.get('o') === 'l' ? 'a4l' : 'a4p')) || SIZES[0];
+    const d = blankDesign(size);
+    const bg = { ...makeImage(src, size.w, size.h), locked: true };
+    create('image', { ...d, pages: [{ ...d.pages[0], items: [bg] }] }, 'ใบงานจาก AI');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoading, user, mine]);
 
@@ -482,6 +500,16 @@ function StudioHub() {
                     <small>สมการใน Word และ MathType กลายเป็นสมการของเว็บ แก้ต่อได้ทันที · รองรับ .docx .pdf .txt .md .html</small>
                   </span>
                 </button>
+
+                <Link href="/worksheet" className="sh-import mt-3" onClick={() => gsfx.tap()}>
+                  <span className="sh-import-ic">
+                    <Wand2 className="w-7 h-7" />
+                  </span>
+                  <span className="sh-import-tx">
+                    <b>หรือให้ AI วาดใบงาน (ตู้แต่งตัวใบงาน)</b>
+                    <small>เลือกวิชา ธีม สไตล์ แล้วให้ Gemini วาดภาพ จากนั้นนำภาพมาพิมพ์ข้อความไทยทับที่นี่ · ร่วมประกวดลุ้นสมาชิกฟรี</small>
+                  </span>
+                </Link>
 
                 <h2 className="l5g-sec-title mt-10">2. หรือเริ่มจากแม่แบบ</h2>
                 <p className="l5g-sec-note">มีของจัดวางไว้ให้แล้ว แก้คำ เปลี่ยนสี ย้ายตำแหน่งได้ทุกชิ้น</p>

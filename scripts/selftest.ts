@@ -2503,6 +2503,62 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
     passed++;
     console.log('  ok  บันทึกการเข้าเว็บ: ป้ายเครื่อง + path ไม่มี query');
   }
+  {
+    const O = await import('../src/lib/worksheet/options');
+    const R = await import('../src/lib/worksheet/recipe');
+    const C = await import('../src/lib/worksheet/contest');
+    // 9 วิชาตามที่ผู้ใช้สั่ง ทุกวิชามีหัวข้อ + กิจกรรม id ไม่ซ้ำ
+    assert.deepEqual(O.SUBJECTS.map((s) => s.id).sort(), ['chinese', 'eng', 'health', 'japanese', 'math', 'pe', 'sci', 'social', 'thai']);
+    for (const s of O.SUBJECTS) {
+      assert.ok(s.topics.length >= 8, s.id);
+      assert.equal(new Set(s.topics.map((t) => t.id)).size, s.topics.length, s.id);
+      for (const t of s.topics) assert.match(t.id, /^[a-z0-9-]+$/, t.id);
+      assert.ok(O.activitiesFor(s.id).length >= 16, s.id);
+    }
+    for (const list of [O.ACTIVITIES, O.THEMES, O.STYLES, O.FRAMES] as { id: string }[][]) assert.equal(new Set(list.map((x) => x.id)).size, list.length);
+    // ห้ามอิโมจิ/ลูกศรที่กลายเป็นอิโมจิ ในข้อความทุกตัวเลือกและ prompt
+    const bad = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}↔️]/u;
+    assert.ok(!bad.test(JSON.stringify([O.SUBJECTS, O.ACTIVITIES, O.THEMES, O.STYLES, O.FRAMES, R.PRESETS])));
+    // cleanRecipe: ค่าขยะได้สูตรที่ใช้ได้, ไปกลับผ่าน URL ได้ค่าเดิม, prompt คงที่
+    const junk = R.cleanRecipe({ s: 'x', g: 99, a: 'tian', n: 500, txt: 'evil', note: 'hi "there"\n<script>', cu: '' });
+    assert.equal(junk.s, 'math');
+    assert.equal(junk.g, 12);
+    assert.notEqual(junk.a, 'tian'); // กิจกรรมเฉพาะจีน ใช้กับคณิตไม่ได้
+    assert.equal(junk.n, O.COUNT_MAX);
+    assert.equal(junk.txt, 'blank');
+    assert.ok(!/["<>\n]/.test(junk.note));
+    assert.equal(R.cleanRecipe({ s: 'chinese', a: 'tian' }).a, 'tian');
+    assert.equal(R.cleanRecipe({ tp: 'custom', cu: '' }).tp, 'count'); // พิมพ์เองแต่ว่าง = กลับเป็นหัวข้อแรก
+    for (let i = 0; i < 60; i++) {
+      let seed = i * 7919 + 1;
+      const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+      const r = R.randomRecipe(rnd);
+      assert.deepEqual(R.decodeRecipe(R.encodeRecipe(r)), r);
+      const p = R.buildPrompt(r);
+      assert.equal(p, R.buildPrompt(R.cleanRecipe(JSON.parse(JSON.stringify(r)))));
+      assert.ok(!bad.test(p) && p.includes('A4') && p.length < 3000);
+    }
+    for (const p of R.PRESETS) assert.equal(R.presetRecipe(p).a, p.r.a, p.id); // ชุดสำเร็จรูปไม่ถูกซ่อมทิ้ง
+    assert.equal(R.decodeRecipe('***'), null);
+    assert.ok(R.buildPrompt({ ...R.defaultRecipe(), txt: 'blank' }).includes('Leave clean empty'));
+    // อันดับ: ใจมากก่อน เท่ากัน = ส่งก่อนชนะ, 1 คน 1 รางวัล, 0 ใจไม่ได้รางวัล
+    const rows = [
+      { id: 'a', owner_id: 'u1', created_at: '2026-11-02', like_count: 5 },
+      { id: 'b', owner_id: 'u2', created_at: '2026-11-01', like_count: 5 },
+      { id: 'c', owner_id: 'u1', created_at: '2026-11-01', like_count: 4 },
+      { id: 'd', owner_id: 'u3', created_at: '2026-11-03', like_count: 0 },
+    ];
+    assert.deepEqual(C.rankEntries(rows).map((r) => r.id), ['b', 'a', 'c', 'd']);
+    assert.deepEqual(C.pickWinners(rows, 3).map((r) => r.id), ['b', 'a']);
+    assert.deepEqual(C.cleanPrizes([90, '60', -5, 9]), [90, 60, 0]);
+    const ct = { starts_at: '2026-11-10T00:00:00Z', ends_at: '2026-11-20T00:00:00Z', awarded_at: null };
+    assert.equal(C.phaseOf(ct, Date.parse('2026-11-09T00:00:00Z')), 'soon');
+    assert.equal(C.phaseOf(ct, Date.parse('2026-11-15T00:00:00Z')), 'open');
+    assert.equal(C.phaseOf(ct, Date.parse('2026-11-20T00:00:00Z')), 'ended');
+    assert.equal(C.phaseOf({ ...ct, awarded_at: 'x' }), 'awarded');
+    passed++;
+    console.log('  ok  ตู้ใบงาน AI: 9 วิชา ตัวเลือก/prompt ไม่มีอิโมจิ สูตรไปกลับ URL + อันดับประกวด');
+  }
   console.log(`\n${passed} tests passed`);
 })().catch((e) => {
   console.error(e);

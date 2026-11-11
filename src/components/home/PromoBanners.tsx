@@ -14,6 +14,7 @@ import { Buddy } from '@/components/companion/Buddy';
 import { ChoiceShape } from '@/components/creator/ChoiceShape';
 import { useMembership } from '@/components/membership/MembershipProvider';
 import { hidePromo, promoHidden, type Audience } from './audience';
+import { leftText, type Contest, type Phase } from '@/lib/worksheet/contest';
 
 type Who = Audience | 'all';
 interface Slide {
@@ -58,6 +59,22 @@ function Spark({ className = '', c = '#fff' }: { className?: string; c?: string 
     </svg>
   );
 }
+
+/** ถ้วยรางวัล + ใบงาน (กิจกรรมประกวด) */
+const ArtContest = () => (
+  <div className="relative w-full h-full">
+    <Paper className="absolute right-[40%] top-[12%] w-[34%] rotate-[-10deg] drop-shadow-lg" tone="#e8456b" />
+    <svg viewBox="0 0 120 130" className="absolute right-[6%] top-[10%] w-[52%] animate-float-slow drop-shadow-lg" aria-hidden="true">
+      <path d="M30 14h60v26c0 22-14 38-30 38S30 62 30 40Z" fill="#ffd166" stroke="#2a2350" strokeWidth="5" strokeLinejoin="round" />
+      <path d="M30 24H14c0 18 8 26 18 28M90 24h16c0 18-8 26-18 28" fill="none" stroke="#2a2350" strokeWidth="5" strokeLinecap="round" />
+      <rect x="52" y="76" width="16" height="18" fill="#ffd166" stroke="#2a2350" strokeWidth="5" />
+      <rect x="34" y="94" width="52" height="16" rx="5" fill="#7c5cf0" stroke="#2a2350" strokeWidth="5" />
+      <path d="M60 28l4 9 10 1-7.5 6.5 2.5 10-9-5.5-9 5.5 2.5-10L46 38l10-1Z" fill="#fff" stroke="#2a2350" strokeWidth="3" strokeLinejoin="round" />
+    </svg>
+    <Spark className="absolute left-[14%] top-[12%] w-6 animate-pulse" />
+    <Spark className="absolute right-[4%] bottom-[16%] w-5 animate-pulse" c="#ffd166" />
+  </div>
+);
 
 const ArtStudio = () => (
   <div className="relative w-full h-full">
@@ -129,6 +146,15 @@ export function PromoBanners({ audience, onLibrary, className = '' }: { audience
 
   useEffect(() => setShown(!promoHidden()), []);
 
+  // กิจกรรมประกวดใบงาน (ถ้ามีและยังไม่จบ ขึ้นเป็นป้ายแรก)
+  const [contest, setContest] = useState<{ c: Contest; phase: Phase } | null>(null);
+  useEffect(() => {
+    fetch('/api/contest?brief=1')
+      .then((r) => r.json())
+      .then((j) => j.contest && (j.phase === 'open' || j.phase === 'soon') && setContest({ c: j.contest, phase: j.phase }))
+      .catch(() => {});
+  }, []);
+
   const grown = PLANS.find((p) => p.id === 'grown')!;
   const perDay = (grown.price / grown.days).toFixed(2).replace(/\.?0+$/, '');
   const welcome = !!offer.welcomeEndsAt && new Date(offer.welcomeEndsAt).getTime() > Date.now();
@@ -180,6 +206,32 @@ export function PromoBanners({ audience, onLibrary, className = '' }: { audience
         art: <ArtBuddy />,
       },
     ];
+    if (contest) {
+      const top = contest.c.prize_days[0];
+      const open = contest.phase === 'open';
+      all.unshift({
+        id: 'contest',
+        who: 'teacher',
+        tag: open ? `เหลือ ${leftText(new Date(contest.c.ends_at).getTime() - Date.now())}` : 'เร็วๆ นี้',
+        title: contest.c.title,
+        desc: `ให้ AI วาดใบงานตามที่ครูแต่ง แล้วส่งประกวด ใจมากสุด 3 อันดับรับสมาชิกฟรี${top ? ` สูงสุด ${top} วัน` : ''}`,
+        cta: open ? 'ร่วมสนุก' : 'ดูรายละเอียด',
+        href: '/contest',
+        bg: 'linear-gradient(115deg,#ffe08a 0%,#ffb3cf 60%,#c9b8ff 100%)',
+        art: <ArtContest />,
+      });
+    } else
+      all.unshift({
+        id: 'worksheet',
+        who: 'teacher',
+        tag: TAG.teacher,
+        title: 'ตู้แต่งตัวใบงาน AI',
+        desc: 'เลือกวิชา ธีม สไตล์ เหมือนแต่งตัวละคร แล้วให้ Gemini วาดใบงานสวยๆ ให้ฟรี',
+        cta: 'ลองแต่งใบงาน',
+        href: '/worksheet',
+        bg: 'linear-gradient(115deg,#a8f0d4 0%,#c9b8ff 100%)',
+        art: <ArtStudio />,
+      });
     if (!member && ready)
       all.push({
         id: 'offer',
@@ -195,7 +247,7 @@ export function PromoBanners({ audience, onLibrary, className = '' }: { audience
     // เลือกกลุ่มไว้แล้ว: โชว์เฉพาะเรื่องของกลุ่มนั้น + เรื่องที่ใช้ร่วมกัน
     if (!audience) return all;
     return [...all.filter((s) => s.who === audience), ...all.filter((s) => s.who === 'all')];
-  }, [audience, member, ready, welcome, perDay, grown, user, onLibrary]);
+  }, [audience, member, ready, welcome, perDay, grown, user, onLibrary, contest]);
 
   const n = slides.length;
   const go = useCallback((k: number) => setI(((k % n) + n) % n), [n]);

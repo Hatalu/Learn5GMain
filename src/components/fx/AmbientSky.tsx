@@ -147,7 +147,7 @@ interface Props {
  * วาดด้วย SVG/CSS ล้วน ไม่ใช้รูปภาพ จึงเบาและคมทุกหน้าจอ
  */
 /** หน้าที่ปิดฉากหลังทั้งจอ ไม่ต้องวาดท้องฟ้า */
-const COVERED = ['/studio/edit', '/create/edit', '/create/host', '/play', '/buddy', '/puzzle', '/report'];
+const COVERED = ['/studio/edit', '/create/edit', '/create/host', '/play', '/buddy', '/puzzle', '/report', '/worksheet', '/contest'];
 
 export function AmbientSky({ at }: Props) {
   const path = usePathname() || '';

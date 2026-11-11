@@ -14,6 +14,7 @@ import { DailyGamesAdmin } from '@/components/dev/DailyGamesAdmin';
 import { TrialAccountsAdmin } from '@/components/dev/TrialAccountsAdmin';
 import { PaymentsAdmin } from '@/components/dev/PaymentsAdmin';
 import { RedeemCodesAdmin } from '@/components/dev/RedeemCodesAdmin';
+import { ContestAdmin } from '@/components/dev/ContestAdmin';
 import { VisitStats } from '@/components/dev/VisitStats';
 import { MediaStatsModal } from '@/components/dev/MediaStatsModal';
 import { IdeasInbox } from '@/components/dev/IdeasInbox';
@@ -30,6 +31,7 @@ import {
   Inbox,
   Wallet,
   Ticket,
+  Trophy,
   Plus,
   Edit2,
   Trash2,
@@ -51,7 +53,7 @@ export default function DevDashboardPage() {
   const supabase = createClient();
 
   const [unreadIdeas, setUnreadIdeas] = useState(0);
-  const [activeTab, setActiveTab] = useState<'media' | 'members' | 'trial' | 'daily' | 'ideas' | 'payments' | 'codes' | 'settings'>('media');
+  const [activeTab, setActiveTab] = useState<'media' | 'members' | 'trial' | 'daily' | 'ideas' | 'payments' | 'codes' | 'contest' | 'settings'>('media');
   const [stats, setStats] = useState<SystemStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
 
@@ -324,6 +326,19 @@ export default function DevDashboardPage() {
           </button>
 
           <button
+            onClick={() => setActiveTab('contest')}
+            className={cn(
+              'flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 transition-all',
+              activeTab === 'contest'
+                ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
+                : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'
+            )}
+          >
+            <Trophy className="w-4 h-4" />
+            <span>ประกวดใบงาน</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('settings')}
             className={cn(
               'flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 transition-all',
@@ -591,6 +606,7 @@ export default function DevDashboardPage() {
         {activeTab === 'ideas' && <IdeasInbox onUnread={setUnreadIdeas} />}
         {activeTab === 'payments' && <PaymentsAdmin />}
         {activeTab === 'codes' && <RedeemCodesAdmin />}
+        {activeTab === 'contest' && <ContestAdmin />}
         {activeTab === 'settings' && <SiteSettingsAdmin />}
         {activeTab === 'daily' && <DailyGamesAdmin library={dailyLibrary} onMediaChanged={handleMediaChanged} />}
       </main>

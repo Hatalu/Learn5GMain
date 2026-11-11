@@ -131,8 +131,8 @@ function SignupInner() {
           writeStore(CODE_DONE_KEY, String(r.days));
         }
       }
-      // มาจากตัวแก้ไขชุดคำถาม (ลองสร้างก่อนสมัคร): กลับไปกู้งานต่อเลย ไม่เริ่มทัวร์
-      if (redirectTarget().startsWith('/create/edit')) {
+      // มาจากตัวแก้ไขชุดคำถาม / ตู้ใบงาน AI / กิจกรรมประกวด: กลับไปทำต่อเลย ไม่เริ่มทัวร์
+      if (/^\/(create\/edit|worksheet|contest)/.test(redirectTarget())) {
         setTimeout(() => router.replace(redirectTarget()), 900);
         return;
       }
