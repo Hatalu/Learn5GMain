@@ -221,3 +221,20 @@
     animation: none;
   }
 }
+
+/* ---------- ธีมมินิมอล ---------- */
+:global(html[data-ui='minimal']) .box {
+  --ink: var(--min-ink);
+  border: 1px solid var(--min-line);
+  background: transparent;
+}
+:global(html[data-ui='minimal']) .icon {
+  border: 0;
+  background: transparent;
+  color: var(--min-mute);
+}
+:global(html[data-ui='minimal']) .go {
+  border: 1px solid var(--min-line);
+  background: transparent;
+  color: var(--min-ink);
+}

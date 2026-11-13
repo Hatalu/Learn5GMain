@@ -55,5 +55,9 @@ export function setUiLook(next: UiLook) {
   listeners.forEach((l) => l());
 }
 
-/** สคริปต์เล็กใน <head>: ตั้ง data-ui ก่อนหน้าแรกวาด */
-export const UI_BOOT = `try{var u=localStorage.getItem('${UI_KEY}');document.documentElement.dataset.ui=(u==='minimal'||u==='clean')?u:'normal'}catch(e){document.documentElement.dataset.ui='normal'}`;
+/** หน้าที่เป็นเครื่องมือ/เกมเต็มจอ: ธีมมินิมอลไม่แตะ (ตัวแก้ไขมีสี/เงาที่มีความหมาย) ตั้ง <html data-tool> โดย UiLookScope */
+export const TOOL_ROUTES = ['/studio/edit', '/create/edit', '/create/host', '/play'];
+export const isToolRoute = (path: string) => TOOL_ROUTES.some((p) => path === p || path.startsWith(p + '/'));
+
+/** สคริปต์เล็กใน <head>: ตั้ง data-ui (และ data-tool) ก่อนหน้าแรกวาด */
+export const UI_BOOT = `try{var u=localStorage.getItem('${UI_KEY}');document.documentElement.dataset.ui=(u==='minimal'||u==='clean')?u:'normal'}catch(e){document.documentElement.dataset.ui='normal'}try{var p=location.pathname;if(${JSON.stringify(TOOL_ROUTES)}.some(function(r){return p===r||p.indexOf(r+'/')===0}))document.documentElement.dataset.tool='1'}catch(e){}`;

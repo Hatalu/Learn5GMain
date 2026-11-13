@@ -180,6 +180,8 @@ export function StudioEditor({ id }: { id: string }) {
   zoomRef.current = zoom;
   const [autoFit, setAutoFit] = useState(true);
   const [panel, setPanel] = useState<PanelId | null>('template');
+  /** มาโหมด Canva จากโหมด Word (คลัง Canva / แก้ชิ้นงาน): แสดงปุ่ม "กลับไปพิมพ์ต่อ" */
+  const [backWord, setBackWord] = useState(false);
   const [save, setSave] = useState<'saved' | 'dirty' | 'saving' | 'error'>('saved');
   const [guides, setGuides] = useState<{ x: number[]; y: number[] }>({ x: [], y: [] });
   const [uploading, setUploading] = useState(false);
@@ -1063,6 +1065,7 @@ export function StudioEditor({ id }: { id: string }) {
       // กราฟจากโหมด Word (แตะครั้งแรกถูกยกออกมาแล้ว กรณีนี้คือยังไม่ถูกยก)
       const lifted = liftFlowGraph(pi, e);
       if (lifted?.item.type === 'graph') setGraphDlg({ spec: lifted.item.spec, itemId: lifted.item.id });
+      else if (!lifted && !flowIsEmpty(doc.flow)) setMode('word');
       return;
     }
     if (!it || it.locked) return;
@@ -1438,7 +1441,10 @@ export function StudioEditor({ id }: { id: string }) {
       return figs.length ? { ...doc, mode: m, pages, flow: cleanFlowHtml((doc.flow || '<p><br></p>') + figs.join(''), cleanSrc) } : { ...doc, mode: m };
     };
     setDoc((d) => d && toMode(d));
-    if (m === 'word') say('โหมดเอกสาร: พิมพ์ต่อเนื่องได้เลย ขึ้นหน้าใหม่ให้เอง ชิ้นงานแบบ Canva แสดงอยู่แต่แก้ได้ในโหมด Canva');
+    if (m === 'word') {
+      setBackWord(false);
+      say('โหมดเอกสาร: พิมพ์ต่อเนื่องได้เลย ชี้ที่ชิ้นงานแบบ Canva แล้วกด "แก้ใน Canva" เพื่อย้ายหรือแก้');
+    }
   };
   const needPages = (n: number) =>
     setDoc((d) => {
@@ -1669,6 +1675,11 @@ export function StudioEditor({ id }: { id: string }) {
 
         <div className="st-work">
           {!readOnly && mode === 'canvas' && <Inspector ctl={ctl} />}
+          {!readOnly && mode === 'canvas' && (backWord || !flowIsEmpty(doc.flow)) && (
+            <button type="button" className="st-backword" data-strong={backWord || undefined} onClick={() => setMode('word')} title="กลับไปพิมพ์ข้อความต่อในโหมด Word (ดับเบิลคลิกที่ว่างบนกระดาษก็ได้)">
+              <FileText className="w-4 h-4" /> {backWord ? 'เสร็จแล้ว กลับไปพิมพ์ต่อ' : 'พิมพ์ข้อความต่อ (Word)'}
+            </button>
+          )}
           <div
             ref={wrapEl}
             className="st-canvas"
@@ -1709,6 +1720,17 @@ export function StudioEditor({ id }: { id: string }) {
                   openMath={(tex, done, insert) => setMathDlg({ tex, done, insert })}
                   openGraph={(spec, done) => setGraphDlg({ spec: spec ?? newSpec('book', { axes: true, grid: true, numbers: true, origin: false }), done })}
                   upload={wordUpload}
+                  onCanva={(p) => {
+                    setMode('canvas');
+                    setPanel(p as PanelId);
+                    setBackWord(true);
+                  }}
+                  onEditItem={(pi, id) => {
+                    setMode('canvas');
+                    setPageIdx(pi);
+                    setSelIds([id]);
+                    setBackWord(true);
+                  }}
                 />
               </div>
             ) : (

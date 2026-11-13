@@ -274,3 +274,75 @@
     animation: none;
   }
 }
+
+/* ---------- ธีมมินิมอล: ไม่มีซุ้ม/กันสาด/ธง เหลือหัวข้อกับปุ่มเส้นบาง ---------- */
+:global(html[data-ui='minimal']) .world {
+  --ink: var(--min-ink);
+  --paper: var(--min-bg);
+  background: var(--min-bg);
+}
+:global(html[data-ui='minimal']) .booth {
+  margin-top: 0;
+  padding: 28px 0 4px;
+  border: 0;
+  border-top: 1px solid var(--min-line);
+  border-radius: 0;
+  background: transparent;
+  color: var(--min-ink);
+}
+:global(html[data-ui='minimal']) .awning,
+:global(html[data-ui='minimal']) .boothArt,
+:global(html[data-ui='minimal']) .footerFlags,
+:global(html[data-ui='minimal']) .pick i {
+  display: none;
+}
+:global(html[data-ui='minimal']) .boothTitle {
+  font-weight: 500;
+  font-size: clamp(1.4rem, 2.6vw, 1.9rem);
+}
+:global(html[data-ui='minimal']) .count {
+  padding: 0;
+  background: transparent;
+  color: var(--min-mute);
+  font-weight: 500;
+}
+:global(html[data-ui='minimal']) .pick {
+  padding: 6px 14px;
+  border: 1px solid var(--min-line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--min-ink);
+  font-weight: 600;
+}
+:global(html[data-ui='minimal']) .pick:hover,
+:global(html[data-ui='minimal']) .pick:active {
+  transform: none;
+  background: var(--min-soft);
+}
+:global(html[data-ui='minimal']) .pick[data-on='true'] {
+  background: var(--min-ink);
+  border-color: var(--min-ink);
+  color: var(--min-bg);
+}
+:global(html[data-ui='minimal']) .chip {
+  width: auto;
+  border: 0;
+  background: transparent !important;
+  color: var(--min-ink) !important;
+}
+:global(html[data-ui='minimal']) .footer {
+  border: 0;
+  border-top: 1px solid var(--min-line);
+  border-radius: 0;
+  background: transparent;
+  color: var(--min-ink);
+}
+:global(html[data-ui='minimal']) .footBtn {
+  border: 1px solid var(--min-line);
+  color: var(--min-ink);
+  font-weight: 600;
+}
+:global(html[data-ui='minimal']) .footBtn:hover {
+  background: var(--min-soft);
+  color: var(--min-ink);
+}

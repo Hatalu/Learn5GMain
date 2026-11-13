@@ -1,0 +1,294 @@
+/* ============================================================================
+ * ธีมมินิมอล (ตั้งค่า > ธีม > มินิมอล, lib/ui-look.ts)
+ * หลัก: พื้นขาว ตัวหนังสือหมึก สีเน้นสีเดียว เส้นบาง 1px ไม่มีเงา ไม่มีไล่สี ไม่มีของลอย ไม่มีแอนิเมชันวน
+ * ใช้กับทุกหน้า ยกเว้นหน้าที่เป็นเครื่องมือ/เกมเต็มจอ (<html data-tool> ตั้งโดย UiLookScope: ตัวแก้ไข Studio, ตัวแก้ไขชุดคำถาม, จอครู, จอเล่น)
+ * ธีม "ปกติ" และ "คลีน" ไม่ถูกแตะ: ทุกกฎในไฟล์นี้ขึ้นต้นด้วย html[data-ui="minimal"]
+ * ========================================================================== */
+
+html[data-ui="minimal"] {
+  --background: 0 0% 100%;
+  --foreground: 240 10% 9%;
+  --card: 0 0% 100%;
+  --card-foreground: 240 10% 9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 10% 9%;
+  --muted: 240 5% 96%;
+  --muted-foreground: 240 4% 40%;
+  --accent: 240 5% 96%;
+  --border: 240 6% 90%;
+  --input: 240 6% 90%;
+  --radius: 0.75rem;
+  --min-bg: #ffffff;
+  --min-ink: #17171c;
+  --min-mute: #6b6b76;
+  --min-line: #e4e4ea;
+  --min-soft: #f5f5f7;
+  --min-accent: #6d4df2;
+}
+html.dark[data-ui="minimal"] {
+  --background: 240 6% 7%;
+  --foreground: 240 6% 96%;
+  --card: 240 5% 10%;
+  --card-foreground: 240 6% 96%;
+  --popover: 240 5% 10%;
+  --popover-foreground: 240 6% 96%;
+  --muted: 240 5% 14%;
+  --muted-foreground: 240 5% 66%;
+  --accent: 240 5% 14%;
+  --border: 240 5% 20%;
+  --input: 240 5% 20%;
+  --min-bg: #111114;
+  --min-ink: #f4f4f6;
+  --min-mute: #a3a3ad;
+  --min-line: #2c2c33;
+  --min-soft: #19191d;
+  --min-accent: #a892ff;
+}
+
+/* ---------- พื้นหลัง ---------- */
+html[data-ui="minimal"]:not([data-tool]) body {
+  background: var(--min-bg);
+  color: var(--min-ink);
+}
+html[data-ui="minimal"]:not([data-tool]) body::before {
+  display: none;
+}
+
+/* ---------- ไม่มีเงา (วงโฟกัส/วงเลือกของ Tailwind ยังอยู่) ---------- */
+html[data-ui="minimal"]:not([data-tool]) *,
+html[data-ui="minimal"]:not([data-tool]) *::before,
+html[data-ui="minimal"]:not([data-tool]) *::after {
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+html[data-ui="minimal"]:not([data-tool]) [class*="ring-"] {
+  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000) !important;
+}
+
+/* ---------- ไม่มีแอนิเมชันวน (ตัวหมุนโหลดยังหมุน) ---------- */
+html[data-ui="minimal"]:not([data-tool]) *:not(.animate-spin),
+html[data-ui="minimal"]:not([data-tool]) *::before,
+html[data-ui="minimal"]:not([data-tool]) *::after {
+  animation-iteration-count: 1 !important;
+}
+html[data-ui="minimal"]:not([data-tool]) :is(.btn-jelly, .media-card-hover):hover {
+  transform: none;
+}
+
+/* ---------- ไล่สีของ Tailwind กลายเป็นสีเรียบสีแรก (ตัวหนังสือยังอ่านออกเหมือนเดิม) ---------- */
+html[data-ui="minimal"]:not([data-tool]) [class*="bg-gradient-to-"] {
+  background-image: none !important;
+  background-color: var(--tw-gradient-from, transparent) !important;
+}
+
+/* ---------- เส้นขอบหนาของ Tailwind เหลือ 1px ---------- */
+html[data-ui="minimal"]:not([data-tool]) :is(.border-2, .border-4, [class*="border-[3px]"]) {
+  border-width: 1px !important;
+}
+html[data-ui="minimal"]:not([data-tool]) .border-b-2 {
+  border-bottom-width: 1px !important;
+}
+html[data-ui="minimal"]:not([data-tool]) .border-t-2 {
+  border-top-width: 1px !important;
+}
+
+/* ---------- ปุ่มหลัก: หมึกทึบ ---------- */
+html[data-ui="minimal"]:not([data-tool]) .btn-primary-grad {
+  background: var(--min-ink) !important;
+  color: var(--min-bg) !important;
+  border: 1px solid var(--min-ink) !important;
+}
+
+/* ---------- แถบเมนู: ไอคอนเปล่าๆ บนพื้นขาว ---------- */
+html[data-ui="minimal"] .site-nav {
+  background: var(--min-bg) !important;
+  border-bottom: 1px solid var(--min-line) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+html[data-ui="minimal"] .site-nav [class*="ring-"] {
+  box-shadow: none !important;
+}
+html[data-ui="minimal"] .site-nav :is(a, button)[class*="bg-gradient-to-"] {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  color: var(--min-ink) !important;
+  font-weight: 600;
+  padding-left: 0.375rem;
+  padding-right: 0.375rem;
+}
+html[data-ui="minimal"] .site-nav :is(a, button)[class*="bg-gradient-to-"]:hover {
+  background-color: var(--min-soft) !important;
+}
+/* ป้ายไอคอนสีขาวในปุ่มเมนู: เหลือแค่เส้นไอคอน */
+html[data-ui="minimal"] .site-nav :is(a, button)[class*="bg-gradient-to-"] > span:first-child {
+  background: transparent !important;
+  color: inherit !important;
+}
+html[data-ui="minimal"] .site-nav :is(a, button)[class*="bg-gradient-to-"] svg {
+  color: inherit !important;
+}
+html[data-ui="minimal"] .site-nav span[class*="text-shadow"] {
+  color: inherit !important;
+}
+/* ปุ่มสมัครสมาชิก: เส้นบาง */
+html[data-ui="minimal"] .site-nav [data-tour="nav-join"] {
+  border: 1px solid var(--min-line) !important;
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+}
+html[data-ui="minimal"] .site-nav .btn-primary-grad {
+  background: var(--min-ink) !important;
+  color: var(--min-bg) !important;
+  border: 1px solid var(--min-ink) !important;
+  font-weight: 600;
+}
+
+/* ---------- การ์ดสื่อ / ตัวกรอง / กล่องทั่วไปของ Tailwind ---------- */
+html[data-ui="minimal"]:not([data-tool]) .media-card-hover {
+  border-color: var(--min-line) !important;
+  border-radius: 0.875rem;
+}
+html[data-ui="minimal"]:not([data-tool]) .card-shine {
+  display: none;
+}
+
+/* ---------- ตู้แต่งตัวใบงาน AI / ประกวด (คลาส ws-) ---------- */
+html[data-ui="minimal"] :is(.ws-card, .ws-btn, .ws-chip, .ws-look, .ws-char) {
+  border-width: 1px;
+  border-color: var(--min-line);
+}
+html[data-ui="minimal"] .ws-card {
+  border-radius: 1rem;
+}
+html[data-ui="minimal"] :is(.ws-chip, .ws-look, .ws-char)[aria-pressed="true"],
+html[data-ui="minimal"] .ws-tab[aria-selected="true"] {
+  background: var(--min-ink);
+  border-color: var(--min-ink);
+  color: var(--min-bg);
+}
+html[data-ui="minimal"] .ws-look[aria-pressed="true"] .ws-look-sub {
+  color: #d6d6dc;
+}
+html[data-ui="minimal"] .ws-tab[aria-selected="true"] {
+  border-width: 1px;
+}
+html[data-ui="minimal"] .ws-card[class*="bg-[linear-gradient"],
+html[data-ui="minimal"] section.ws-card {
+  background-image: none !important;
+  background-color: var(--min-soft) !important;
+}
+html[data-ui="minimal"] .ws-paper {
+  filter: none;
+  border: 1px solid var(--min-line);
+}
+
+/* ---------- สีอ่อนโทนม่วง/ชมพู/ฟ้าของ Tailwind กลายเป็นเทากลาง ---------- */
+html[data-ui="minimal"]:not([data-tool]) :is(.bg-indigo-50, .bg-indigo-100, .bg-violet-50, .bg-violet-100, .bg-purple-50, .bg-purple-100, .bg-pink-50, .bg-pink-100, .bg-sky-50, .bg-sky-100, .bg-fuchsia-50, .bg-fuchsia-100) {
+  background-color: var(--min-soft) !important;
+}
+html[data-ui="minimal"]:not([data-tool]) :is([class*="border-indigo-"], [class*="border-violet-"], [class*="border-purple-"], [class*="border-pink-"], [class*="border-fuchsia-"]) {
+  border-color: var(--min-line) !important;
+}
+
+/* ---------- หน้าหลัก: เกมประจำวัน ---------- */
+html[data-ui="minimal"] #daily section {
+  background-color: var(--min-soft) !important;
+  color: var(--min-ink) !important;
+  border-color: var(--min-line) !important;
+  border-radius: 1rem;
+}
+html[data-ui="minimal"] #daily section :is([class*="text-white"], [class*="text-indigo-"], [class*="text-violet-"], [class*="text-sun-"], [class*="text-amber-"], [class*="text-fuchsia-"], [class*="text-sky-"]) {
+  color: inherit !important;
+}
+html[data-ui="minimal"] #daily section [class*="blur-"] {
+  display: none;
+}
+html[data-ui="minimal"] #daily section :is([class*="bg-black/"], [class*="bg-white/"]) {
+  background-color: var(--min-bg) !important;
+}
+
+/* ---------- หน้าหลัก: แบนเนอร์เข้าห้องด้วยเลข 6 หลัก (ไม่มีฉาก/ตัวการ์ตูน เหลือช่องกรอก) ---------- */
+html[data-ui="minimal"] .l5g-jb {
+  min-height: 0;
+  padding: 20px;
+  border: 1px solid var(--min-line);
+  border-radius: 1rem;
+  background: var(--min-soft);
+  color: var(--min-ink);
+}
+html[data-ui="minimal"] .l5g-jb :is(.l5g-jb-rays, .l5g-jb-dots, .l5g-jb-cloud, .l5g-jb-spark, .l5g-jb-stage, .l5g-jb-notch, .l5g-jb-line) {
+  display: none;
+}
+html[data-ui="minimal"] .l5g-jb-ticket {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  transform: none !important;
+  padding: 0;
+}
+html[data-ui="minimal"] .l5g-jb-tag {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--min-mute);
+}
+html[data-ui="minimal"] .l5g-jb-title span {
+  color: var(--min-mute);
+}
+html[data-ui="minimal"] .l5g-jb .l5g-code-box {
+  border-width: 1px;
+  border-color: var(--min-line);
+  background: var(--min-bg);
+}
+html[data-ui="minimal"] .l5g-jb .l5g-btn-go {
+  border: 1px solid var(--min-ink);
+  background: var(--min-ink);
+  color: var(--min-bg);
+}
+
+/* ---------- หน้าตระกูล l5g- / sh- (สร้างเกม, Studio, ใบงาน, ประกวด, สมาชิก): พื้นขาว เส้น 1px ---------- */
+html[data-ui="minimal"]:not([data-tool]) {
+  --l5g-paper: var(--min-bg);
+  --l5g-paper2: var(--min-soft);
+}
+html[data-ui="minimal"]:not([data-tool]) :is(.l5g-world, .l5g-world-edit) {
+  background: var(--min-bg) !important;
+  color: var(--min-ink);
+}
+html[data-ui="minimal"]:not([data-tool]) .l5g-world::before,
+html[data-ui="minimal"]:not([data-tool]) .l5g-bg-cloud {
+  display: none !important;
+}
+/* รายการนี้สร้างจากกฎที่มีเส้นขอบ 2.5-4px ใน creator.css / creator-pages.css / studio-hub.css (เพิ่มคลาสใหม่ที่มีขอบหนา ต้องเพิ่มที่นี่ด้วย) */
+html[data-ui="minimal"]:not([data-tool]) :is(.l5g-bg-swatch, .l5g-bg-tick, .l5g-board-done, .l5g-board-last, .l5g-board-row, .l5g-btn, .l5g-bubble, .l5g-cadd, .l5g-card, .l5g-cedit, .l5g-cedit-media, .l5g-chip-head, .l5g-chipbtn, .l5g-choice, .l5g-choice-check, .l5g-choice-mark, .l5g-choice-mine, .l5g-color-custom, .l5g-color-dot, .l5g-correct, .l5g-coverpick-prev, .l5g-ebar-cover, .l5g-feedback-card, .l5g-feedback-icon, .l5g-fx-badge, .l5g-gcard, .l5g-gcover-count, .l5g-gcover-live, .l5g-guestnote, .l5g-icon-btn, .l5g-input, .l5g-jb, .l5g-jb-bubble, .l5g-jb-notch, .l5g-jb-platform, .l5g-jb-tag, .l5g-jb-ticket, .l5g-join-room, .l5g-key, .l5g-look-grid, .l5g-look-label, .l5g-look-stage, .l5g-mates, .l5g-math-sheet, .l5g-mcard, .l5g-media-x, .l5g-menu, .l5g-mf, .l5g-mf-loading, .l5g-mk-clash, .l5g-mk-search, .l5g-mode, .l5g-mode-icon, .l5g-mode-tick, .l5g-note, .l5g-owner-dot, .l5g-pill, .l5g-ribbon, .l5g-rich, .l5g-search, .l5g-sec-sub, .l5g-seg, .l5g-show-block, .l5g-speak, .l5g-stpl, .l5g-stpl-empty, .l5g-stpl-filter, .l5g-stpl-loading, .l5g-stpl-search, .l5g-switch-light, .l5g-switch-ui, .l5g-tab, .l5g-tart-block, .l5g-tart-q, .l5g-tcard, .l5g-tierbar, .l5g-timer, .l5g-tool, .l5g-trim-bar, .l5g-trim-stage, .l5g-usage, .l5g-video-sound, .l5g-viewseg, .l5g-vis-badge, .sh-empty-ic, .sh-feat, .sh-import, .sh-import-ic, .sh-mode, .sh-paper, .sh-size, .sh-tpl) {
+  border-width: 1px;
+}
+html[data-ui="minimal"]:not([data-tool]) .l5g-hero-title {
+  color: var(--min-ink);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+html[data-ui="minimal"]:not([data-tool]) .l5g-hero-title span {
+  color: var(--min-accent);
+}
+html[data-ui="minimal"]:not([data-tool]) .l5g-hero-sub {
+  color: var(--min-mute);
+  font-weight: 500;
+}
+html[data-ui="minimal"]:not([data-tool]) .l5g-tab[data-on='true'] {
+  background: var(--min-ink);
+  color: var(--min-bg);
+}
+
+/* ---------- ใบงาน AI: ปุ่มสีสด -> เส้นบาง ปุ่มหลักหมึกทึบ ---------- */
+html[data-ui="minimal"] .ws-btn {
+  background: transparent !important;
+  color: var(--min-ink) !important;
+  font-weight: 700;
+}
+html[data-ui="minimal"] .ws-btn[class*="bg-[#2a2350]"] {
+  background: var(--min-ink) !important;
+  border-color: var(--min-ink);
+  color: var(--min-bg) !important;
+}

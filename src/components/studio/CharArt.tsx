@@ -9,15 +9,17 @@ const O = '#2a2350';
 const rad = (d: number) => (d * Math.PI) / 180;
 type P = [number, number];
 
+const r2 = (v: number) => Math.round(v * 100) / 100;
 function limb(s: P, side: -1 | 1, a: Arm, l1: number, l2: number) {
   const dir = (deg: number): P => [side * Math.sin(rad(deg)), Math.cos(rad(deg))];
   const u = dir(a.sh);
-  const e: P = [s[0] + u[0] * l1, s[1] + u[1] * l1];
+  // ปัดทศนิยม 2 ตำแหน่ง: sin/cos ของ Node กับเบราว์เซอร์ต่างกันที่หลักท้ายๆ ทำให้ hydration ไม่ตรงเมื่อวาดฝั่งเซิร์ฟเวอร์
+  const e: P = [r2(s[0] + u[0] * l1), r2(s[1] + u[1] * l1)];
   const f = dir(a.sh + a.el);
-  const h: P = [e[0] + f[0] * l2, e[1] + f[1] * l2];
+  const h: P = [r2(e[0] + f[0] * l2), r2(e[1] + f[1] * l2)];
   return { s, e, h };
 }
-const lerp = (a: P, b: P, t: number): P => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+const lerp = (a: P, b: P, t: number): P => [r2(a[0] + (b[0] - a[0]) * t), r2(a[1] + (b[1] - a[1]) * t)];
 const line = (...pts: P[]) => 'M' + pts.map((p) => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' L');
 const stroke = (w: number, c: string) => ({ fill: 'none', stroke: c, strokeWidth: w, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const });
 

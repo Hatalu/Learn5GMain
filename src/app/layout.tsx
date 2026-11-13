@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Noto_Sans_Thai, Mitr } from 'next/font/google';
 import './globals.css';
+import './ui-minimal.css';
 import { Providers } from './providers';
 import { GFX_BOOT } from '@/lib/gfx';
 import { UI_BOOT } from '@/lib/ui-look';

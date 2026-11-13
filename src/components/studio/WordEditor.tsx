@@ -89,8 +89,14 @@ export const WordEditor = forwardRef<
     openMath: (tex: string, done: (tex: string) => void, insert?: string) => void;
     openGraph: (spec: GraphSpec | null, done: (s: GraphSpec) => void) => void;
     upload: (file: File) => Promise<string | null>;
+    /** เปิดคลังของโหมด Canva (แท็บแทรก > คลัง Canva) */
+    onCanva: (panel: string) => void;
+    /** ไปแก้ชิ้นงานแบบ Canva ชิ้นนี้ (หน้า, id) */
+    onEditItem: (pi: number, id: string) => void;
   }
->(function WordEditor({ html, pages, wopt, onWopt, W, H, zoom, readOnly, topEl, railEl, layoutExtra, onChange, onNeedPages, openMath, openGraph, upload }, ref) {
+>(function WordEditor({ html, pages, wopt, onWopt, W, H, zoom, readOnly, topEl, railEl, layoutExtra, onChange, onNeedPages, openMath, openGraph, upload, onCanva, onEditItem }, ref) {
+  /** ชิ้นงานแบบ Canva ที่เมาส์/นิ้วชี้อยู่ (โหมดนี้แก้ไม่ได้ แสดงปุ่มพาไปแก้ในโหมด Canva) */
+  const [hot, setHot] = useState<{ pi: number; id: string } | null>(null);
   const ed = useRef<HTMLDivElement>(null);
   /** หัว/ท้ายกระดาษที่กำลังแก้ (ดับเบิลคลิกขอบบน/ล่างของกระดาษแบบ Word) */
   const hfRef = useRef<HTMLDivElement>(null);
@@ -1101,6 +1107,7 @@ export const WordEditor = forwardRef<
     cellShade,
     inTable: () => !!curCell(),
     root: () => ed.current,
+    canva: onCanva,
     changed,
     pages: n,
     opt: wopt,
@@ -1275,6 +1282,20 @@ export const WordEditor = forwardRef<
       drawing={draw}
     />
   );
+  /** หาชิ้นงานแบบ Canva (ไม่ล็อก) ใต้ตัวชี้: ตัวที่อยู่บนสุดชนะ */
+  const findHot = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (readOnly || draw) return;
+    if ((e.target as HTMLElement).closest('.st-word-edit')) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    const x = (e.clientX - r.left) / zoom;
+    const y = (e.clientY - r.top) / zoom;
+    const pi = Math.floor(y / P);
+    const ly = y - pi * P;
+    let hit: Item | undefined;
+    for (const it of pages[pi]?.items ?? []) if (!it.locked && x >= it.x && x <= it.x + it.w && ly >= it.y && ly <= it.y + it.h) hit = it;
+    const id = hit?.id;
+    setHot((h) => (id ? (h && h.id === id ? h : { pi, id }) : null));
+  };
   const side = !readOnly && (
     <>
       {panel && <WordPanel id={panel} api={api} onClose={() => setPanel(null)} findFocus={findFocus} />}
@@ -1286,7 +1307,15 @@ export const WordEditor = forwardRef<
     <>
       {side && railEl && createPortal(side, railEl)}
       {top && topEl && createPortal(top, topEl)}
-      <div className="st-word" data-draw={draw ? '1' : undefined} data-hf={hf ? '1' : undefined} style={{ width: W * zoom, height: totalH * zoom }}>
+      <div
+        className="st-word"
+        data-draw={draw ? '1' : undefined}
+        data-hf={hf ? '1' : undefined}
+        style={{ width: W * zoom, height: totalH * zoom }}
+        onPointerMove={(e) => !e.buttons && findHot(e)}
+        onPointerDown={findHot}
+        onPointerLeave={() => setHot(null)}
+      >
         <div style={{ width: W, height: totalH, transform: `scale(${zoom})`, transformOrigin: '0 0', position: 'relative' }}>
           {pages.map((p, i) => (
             <div key={p.id} className="st-sheet" style={{ top: i * P, width: W, height: H }}>
@@ -1328,6 +1357,25 @@ export const WordEditor = forwardRef<
                 {p.items.map((it: Item) => (
                   <ItemView key={it.id} it={it} />
                 ))}
+                {hot && hot.pi === i &&
+                  p.items
+                    .filter((it) => it.id === hot.id)
+                    .map((it) => (
+                      <React.Fragment key="hot">
+                        <span className="st-word-hot" style={{ left: it.x, top: it.y, width: it.w, height: it.h }} />
+                        <button
+                          type="button"
+                          className="st-word-edit"
+                          style={{ left: Math.max(4, Math.min(W - 118, it.x + it.w - 110)), top: Math.max(4, it.y - 16) }}
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => onEditItem(i, it.id)}
+                          title="ชิ้นงานนี้สร้างในโหมด Canva กดเพื่อไปย้าย/แก้"
+                        >
+                          <Pencil className="w-3.5 h-3.5" /> แก้ใน Canva
+                        </button>
+                      </React.Fragment>
+                    ))}
               </div>
             ) : null
           )}

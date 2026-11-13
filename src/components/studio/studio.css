@@ -3697,3 +3697,84 @@ html.dark .st-top[data-word] {
   font-size: 17px;
   font-weight: 800;
 }
+
+/* ---------- เชื่อมโหมด Canva กับ Word (13 พ.ย. 2026) ---------- */
+/* โหมด Word: ชี้ชิ้นงานแบบ Canva แล้วมีกรอบประ + ปุ่มพาไปแก้ */
+.st-word-hot {
+  position: absolute;
+  border: 2px dashed #8b3dff;
+  border-radius: 4px;
+  pointer-events: none;
+}
+.st-word-edit {
+  position: absolute;
+  z-index: 3;
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: #8b3dff;
+  color: #fff;
+  font: 700 12px/1 var(--font-noto-sans-thai), sans-serif;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(53, 71, 90, 0.3);
+  cursor: pointer;
+}
+.st-word-edit:hover {
+  background: #7a2fe8;
+}
+/* โหมด Canva: ปุ่มกลับไปพิมพ์ต่อ ลอยกลางล่างของพื้นที่ทำงาน */
+.st-backword {
+  position: absolute;
+  z-index: 8;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(64, 87, 109, 0.18);
+  background: var(--st-card, #fff);
+  color: #1f1b36;
+  font: 700 13px/1 var(--font-noto-sans-thai), sans-serif;
+  white-space: nowrap;
+  box-shadow: 0 4px 16px rgba(53, 71, 90, 0.22);
+}
+.st-backword[data-strong] {
+  border-color: #2b579a;
+  background: #2b579a;
+  color: #fff;
+}
+.st-backword:hover {
+  filter: brightness(1.06);
+}
+/* รายการคลัง Canva ในริบบอนโหมด Word */
+.st-wcanva {
+  display: grid;
+  gap: 4px;
+}
+.st-wcanva button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 13px;
+  text-align: left;
+}
+.st-wcanva button:hover {
+  background: rgba(139, 61, 255, 0.1);
+}
+.st-wcanva small {
+  font-weight: 500;
+  font-size: 11px;
+  opacity: 0.7;
+}

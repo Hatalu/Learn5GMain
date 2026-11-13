@@ -10,6 +10,7 @@ import { RewardModal } from '@/components/companion/RewardModal';
 import { AmbientSky } from '@/components/fx/AmbientSky';
 import { RouteCurtain } from '@/components/fx/RouteCurtain';
 import { VisitTracker } from '@/components/analytics/VisitTracker';
+import { UiLookScope } from '@/components/ui/UiLookScope';
 import { IdeaButton } from '@/components/ideas/IdeaButton';
 import { TrialProvider } from '@/components/trial/TrialProvider';
 import { MembershipProvider } from '@/components/membership/MembershipProvider';
@@ -31,6 +32,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
                   <RouteCurtain />
                   <IdeaButton />
                   <VisitTracker />
+                  <UiLookScope />
                 </TourProvider>
               </TrialProvider>
             </CompanionProvider>

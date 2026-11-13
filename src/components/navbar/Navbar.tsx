@@ -8,7 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import { ThemeToggle } from './ThemeToggle';
 import { SoundToggle } from './SoundToggle';
 import { UserMenu } from './UserMenu';
-import { ShieldCheck, Home, LogIn, UserX, Sparkles, Crown, Wand2, Palette } from 'lucide-react';
+import { ShieldCheck, Home, LogIn, Sparkles, Crown, Wand2, Palette } from 'lucide-react';
 import { FacebookIcon } from '@/components/icons/FacebookIcon';
 import { cn } from '@/lib/utils/cn';
 import fx from '@/components/ui/fancy.module.css';
@@ -40,7 +40,7 @@ export function Navbar() {
               className="object-cover"
             />
           </div>
-          <div className="hidden min-[470px]:block">
+          <div className={user ? 'hidden min-[470px]:block' : 'hidden lg:block'}>
             <div className="flex items-center gap-2">
               <span className="font-display font-medium whitespace-nowrap text-lg sm:text-xl text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                 สื่อการสอน 5G
@@ -92,7 +92,7 @@ export function Navbar() {
               <span className="w-7 h-7 rounded-xl bg-white/95 text-indigo-600 flex items-center justify-center">
                 <Home className="w-4 h-4" />
               </span>
-              <span className="hidden xl:inline">หน้าหลัก</span>
+              <span className={user ? 'hidden xl:inline' : 'hidden'}>หน้าหลัก</span>
             </Link>
           )}
 
@@ -107,7 +107,7 @@ export function Navbar() {
             <span className="w-7 h-7 rounded-xl bg-white flex items-center justify-center shrink-0 group-hover:rotate-[-8deg] transition-transform">
               <FacebookIcon className="w-4 h-4 text-[#1877f2]" />
             </span>
-            <span className="hidden xl:inline text-sm font-bold [text-shadow:0_1px_1px_rgba(0,0,0,0.25)]">เพจ Facebook</span>
+            <span className={cn(user ? 'hidden xl:inline' : 'hidden', 'text-sm font-bold [text-shadow:0_1px_1px_rgba(0,0,0,0.25)]')}>เพจ Facebook</span>
           </a>
 
           {/* Dev Button - ONLY rendered if user has dev role! */}
@@ -188,13 +188,9 @@ export function Navbar() {
             <UserMenu />
           ) : (
             <div className="flex items-center gap-2">
-              <span className="hidden 2xl:inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs sm:text-xs font-medium bg-gray-100 dark:bg-gray-800/80 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
-                <UserX className="w-3.5 h-3.5 text-gray-400" />
-                <span>ยังไม่ได้เข้าสู่ระบบ</span>
-              </span>
               <Link
                 href="/signup"
-                className="btn-jelly hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-bold rounded-2xl whitespace-nowrap bg-white dark:bg-gray-800 border-2 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-200"
+                className="btn-jelly hidden xl:inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-bold rounded-2xl whitespace-nowrap bg-white dark:bg-gray-800 border-2 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-200"
               >
                 <span>สมัครบัญชีฟรี</span>
               </Link>

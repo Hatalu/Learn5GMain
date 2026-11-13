@@ -658,3 +658,56 @@
     display: none;
   }
 }
+
+/* ---------- ธีมมินิมอล: พื้นขาว ตัวหนังสือหมึก ปุ่มเส้นบาง (ดูหลักใน app/ui-minimal.css) ---------- */
+:global(html[data-ui='minimal']) .world {
+  --ink: var(--min-ink);
+  --paper: var(--min-bg);
+  --ground: var(--min-bg);
+  background: var(--min-bg);
+  color: var(--min-ink);
+  padding-bottom: 0;
+}
+:global(html[data-ui='minimal']) .ground {
+  display: none;
+}
+:global(html[data-ui='minimal']) .tagline {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--min-mute);
+  font-weight: 600;
+}
+:global(html[data-ui='minimal']) .title {
+  color: var(--min-ink);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+:global(html[data-ui='minimal']) .lineHi {
+  color: var(--min-accent);
+}
+:global(html[data-ui='minimal']) .btn {
+  border: 1px solid var(--min-line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--min-ink);
+  font-size: 15px;
+  padding: 10px 20px;
+}
+:global(html[data-ui='minimal']) .btn:hover,
+:global(html[data-ui='minimal']) .btn:active {
+  transform: none;
+  background: var(--min-soft);
+}
+:global(html[data-ui='minimal']) .btn :global(svg) {
+  color: inherit;
+}
+:global(html[data-ui='minimal']) .btnGo,
+:global(html[data-ui='minimal']) .btnGo:hover {
+  background: var(--min-ink);
+  border-color: var(--min-ink);
+  color: var(--min-bg);
+}
+:global(html[data-ui='minimal']) .btnGo:hover {
+  opacity: 0.86;
+}

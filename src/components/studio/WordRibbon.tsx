@@ -35,6 +35,7 @@ import {
   IndentIncrease,
   Italic,
   Keyboard,
+  LayoutDashboard,
   LineChart,
   List,
   ListOrdered,
@@ -94,6 +95,16 @@ const TABS: { id: RibbonTab; label: string }[] = [
 const noFocus = (e: React.MouseEvent) => e.preventDefault();
 
 /** กลุ่มบนริบบอน (ชื่อกลุ่มอยู่ด้านล่างแบบ Word) */
+/** คลังของโหมด Canva ที่เปิดได้จากโหมด Word (id = PanelId ใน Panels.tsx) */
+const CANVA_LIBS = [
+  { id: 'sticker', label: 'สติกเกอร์', note: 'ภาพการ์ตูนตามวิชา' },
+  { id: 'char', label: 'ตัวละคร', note: 'คน สัตว์ แต่งเองได้' },
+  { id: 'edu', label: 'สื่อการสอน', note: 'นาฬิกา เส้นจำนวน เศษส่วน' },
+  { id: 'shape', label: 'องค์ประกอบ', note: 'รูปทรง กรอบ เส้นคั่น' },
+  { id: 'bg', label: 'พื้นหลังและกรอบหน้า', note: 'สี ลาย กรอบกระดาษ' },
+  { id: 'template', label: 'แม่แบบ', note: 'ใบงานสำเร็จรูป' },
+];
+
 const G = ({ label, children }: { label: string; children: React.ReactNode }) => (
   <div className="st-rgroup" role="group" aria-label={label}>
     <div className="st-rgroup-body">{children}</div>
@@ -446,6 +457,23 @@ export function WordRibbon({
                 )}
               </Drop>
               <Big label="กราฟ/รูปคณิต" icon={<LineChart />} onClick={api.addGraph} title="สร้างรูปกราฟ (เพิ่มจาก Word)" />
+            </G>
+            <G label="คลัง Canva">
+              <Drop big title="เพิ่มชิ้นงานจากคลังของโหมด Canva ลงหน้านี้" label="คลัง Canva" icon={<LayoutDashboard />} width={250}>
+                {(close) => (
+                  <>
+                    <p className="st-rpop-h">เลือกคลัง แล้ววางชิ้นงานลงหน้ากระดาษ กด &quot;กลับไปพิมพ์ต่อ&quot; เมื่อเสร็จ</p>
+                    <div className="st-wcanva">
+                      {CANVA_LIBS.map((l) => (
+                        <button key={l.id} type="button" onMouseDown={noFocus} onClick={() => (close(), api.canva(l.id))}>
+                          {l.label}
+                          <small>{l.note}</small>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </Drop>
             </G>
             <G label="หัวกระดาษและท้ายกระดาษ">
               <Big label="หัวกระดาษ" icon={<PanelTop />} onClick={() => api.editHf('head')} title="แก้หัวกระดาษ (ดับเบิลคลิกขอบบนของกระดาษก็ได้)" />
