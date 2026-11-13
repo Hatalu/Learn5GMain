@@ -28,6 +28,8 @@ export interface WordHandle {
   undo: () => void;
   redo: () => void;
   focus: () => void;
+  /** ส่งข้อความที่ยังรอหน่วงเวลาออกไปทันที (ก่อนบันทึก Ctrl+S / ปิดแอป) */
+  flush: () => void;
 }
 
 /** ตำแหน่งเคอร์เซอร์เป็นจำนวนตัวอักษรนับจากต้นเอกสาร (-1 = ไม่อยู่ในเอกสาร) */
@@ -174,17 +176,22 @@ export const WordEditor = forwardRef<
     document.fonts?.ready.then(relayout);
   }, [relayout]);
 
+  const pending = useRef(false);
+  const push = useCallback(() => {
+    window.clearTimeout(timer.current);
+    pending.current = false;
+    const el = ed.current;
+    if (!el) return;
+    const clean = cleanFlowHtml(el.innerHTML, cleanSrc);
+    emitted.current = clean;
+    hist.current.last = { html: clean, caret: caretOffset(el) };
+    onChange(clean);
+  }, [onChange]);
   const emit = useCallback(() => {
     window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => {
-      const el = ed.current;
-      if (!el) return;
-      const clean = cleanFlowHtml(el.innerHTML, cleanSrc);
-      emitted.current = clean;
-      hist.current.last = { html: clean, caret: caretOffset(el) };
-      onChange(clean);
-    }, 450);
-  }, [onChange]);
+    pending.current = true;
+    timer.current = window.setTimeout(push, 450);
+  }, [push]);
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
   const changed = () => {
@@ -569,6 +576,11 @@ export const WordEditor = forwardRef<
     undo: () => undoRedo(true),
     redo: () => undoRedo(false),
     focus: () => restore(),
+    flush: () => {
+      // เทียบเนื้อหาจริง ไม่พึ่งแค่ตัวจับ input (บางทางแก้ DOM ตรงโดยไม่มี input event)
+      if (pending.current || (ed.current && cleanFlowHtml(ed.current.innerHTML, cleanSrc) !== (emitted.current ?? html))) push();
+      if (hfOn.current) flushHf();
+    },
   }));
 
   /* ---------------- แทรกของ ---------------- */

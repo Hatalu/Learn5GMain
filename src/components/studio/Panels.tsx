@@ -861,7 +861,8 @@ function EduPanel({ ctl }: { ctl: Ctl }) {
           </button>
         ))}
       </div>
-      <QuizImport ctl={ctl} />
+      {/* แอปออฟไลน์ Learn5GTeacher ไม่มีชุดคำถาม (ระบบสร้างเกมอยู่บนเว็บ) */}
+      {!process.env.NEXT_PUBLIC_L5G_APP && <QuizImport ctl={ctl} />}
       {edu.length > 0 && (
         <Sec title={sub === 'math' ? 'สื่อคณิตศาสตร์' : 'สื่อวิทยาศาสตร์'} note="กดใส่ แล้วปรับตัวเลขได้ที่แถบด้านบน">
           <div className="grid grid-cols-3 gap-2">

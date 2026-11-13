@@ -719,6 +719,32 @@ export function StudioEditor({ id }: { id: string }) {
   }, [readOnly, title, isPublic, supabase, id]);
   doSaveRef.current = doSave;
 
+  /** บันทึกทันที: ส่งข้อความโหมด Word ที่ค้างหน่วงเวลาก่อน รอ React วาดใหม่ แล้วรอจนบันทึกเสร็จจริง */
+  const flushSave = useCallback(async () => {
+    word.current?.flush();
+    await new Promise((r) => setTimeout(r, 30));
+    await doSaveRef.current();
+    while (saving.current) await new Promise((r) => setTimeout(r, 50));
+  }, []);
+  // Ctrl+S ใช้ได้ทุกที่ รวมตอนพิมพ์ในโหมด Word/กล่องข้อความ (จับก่อนตัวจัดแป้นอื่นๆ)
+  useEffect(() => {
+    if (readOnly) return;
+    const key = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey || e.code !== 'KeyS') return;
+      e.preventDefault();
+      e.stopPropagation();
+      void flushSave().then(() => say('บันทึกแล้ว'));
+    };
+    window.addEventListener('keydown', key, true);
+    // แอป Learn5GTeacher: ให้โปรแกรมสั่งบันทึกแล้วรอผล (ก่อนปิดหน้าต่าง / บันทึกเป็น)
+    const w = window as unknown as { __l5gFlush?: () => Promise<void> };
+    w.__l5gFlush = flushSave;
+    return () => {
+      window.removeEventListener('keydown', key, true);
+      if (w.__l5gFlush === flushSave) delete w.__l5gFlush;
+    };
+  }, [readOnly, flushSave, say]);
+
   useEffect(() => {
     if (status !== 'ready' || readOnly || !doc) return;
     if (!loaded.current) {
@@ -1087,11 +1113,6 @@ export function StudioEditor({ id }: { id: string }) {
         e.preventDefault();
         if (mode === 'word') return word.current?.redo();
         redo();
-        return;
-      }
-      if (mod && k === 's') {
-        e.preventDefault();
-        doSave().then(() => say('บันทึกแล้ว'));
         return;
       }
       if (mod && (e.key === '=' || e.key === '+' || e.key === '-' || e.key === '0')) {
