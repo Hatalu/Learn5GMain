@@ -57,7 +57,7 @@
 .ws-tabs::-webkit-scrollbar { display: none; }
 .ws-tabs > .ws-chip { flex: none; }
 .ws-tabs-wrap { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); overflow: visible; }
-@media (min-width: 640px) { .ws-tabs-wrap { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
+@media (min-width: 640px) { .ws-tabs-wrap { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
 .ws-tabs-wrap .ws-tab { min-width: 0; padding: 0.45rem 0.15rem; text-align: center; }
 .ws-tab {
   flex: none;
@@ -127,6 +127,60 @@
   60% { transform: scale(1.35); }
   100% { transform: scale(1); }
 }
+
+/* แกลเลอรีแบบสำเร็จรูป + ตัวการ์ตูน */
+.ws-looks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+@media (min-width: 480px) { .ws-looks { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1280px) { .ws-looks { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.ws-look {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 0.4rem 0.4rem 0.45rem;
+  border-radius: 1rem;
+  border: 3px solid #d9d2f2;
+  background: #faf8ff;
+  color: #2a2350;
+  text-align: left;
+  transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+  contain: layout paint;
+}
+.ws-look:hover { transform: translateY(-3px); border-color: #2a2350; box-shadow: 0 4px 0 #2a2350; }
+.ws-look:active { transform: translateY(1px) scale(0.98, 1.02); box-shadow: none; }
+.ws-look[aria-pressed='true'] { border-color: #2a2350; background: #ffe08a; box-shadow: 0 4px 0 #2a2350; }
+.ws-look .ws-pop { animation: none; }
+.ws-look-name { display: flex; align-items: center; gap: 0.2rem; min-width: 0; margin-top: 0.35rem; font-weight: 800; font-size: 0.8rem; line-height: 1.2; }
+.ws-look-sub { font-weight: 700; font-size: 0.68rem; color: #5b5280; }
+
+.ws-chars {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4.6rem, 1fr));
+  gap: 0.5rem;
+}
+.ws-char {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  min-width: 0;
+  padding: 0.4rem 0.25rem;
+  border-radius: 1rem;
+  border: 3px solid #d9d2f2;
+  background: #fff;
+  color: #2a2350;
+  font-weight: 800;
+  font-size: 0.66rem;
+  line-height: 1.15;
+  text-align: center;
+  transition: transform 0.15s, border-color 0.15s;
+}
+.ws-char svg { width: 2.6rem; height: 3.9rem; overflow: visible; }
+.ws-char:hover { transform: translateY(-2px); border-color: #2a2350; }
+.ws-char[aria-pressed='true'] { border-color: #2a2350; background: #ffe08a; box-shadow: 0 3px 0 #2a2350; }
 
 @media (prefers-reduced-motion: reduce) {
   .ws-pop,

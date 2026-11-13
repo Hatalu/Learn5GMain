@@ -4,17 +4,22 @@
  */
 import {
   ACTIVITIES,
+  CHARS,
   COUNT_MAX,
   COUNT_MIN,
   CUSTOM_MAX,
   DECOS,
   DECO_PLACES,
   FRAMES,
+  HEADS,
+  LOOKS,
   MAX_DECOS,
   MOTIF_EN,
   LANGS,
   LEVELS,
   NOTE_MAX,
+  PATTERNS,
+  SCENES,
   STYLES,
   SUBJECTS,
   THEMES,
@@ -23,6 +28,7 @@ import {
   gradeLabel,
   subjectOf,
   type SubjectId,
+  type WsLook,
 } from './options';
 import { geometry } from './layout';
 
@@ -62,6 +68,14 @@ export interface Recipe {
   note: string;
   /** ของตกแต่งเสริม (id ใน DECOS ไม่เกิน MAX_DECOS) */
   dz: string[];
+  /** ทรงหัวกระดาษ (HEADS) สูตรเก่าไม่มีช่องนี้ = 'bar' */
+  hd: string;
+  /** ฉากตกแต่ง (SCENES) สูตรเก่า = 'none' */
+  sc: string;
+  /** ลายแถบขอบ (PATTERNS) สูตรเก่า = 'plain' */
+  pt: string;
+  /** ตัวการ์ตูนเต็มตัว (CHARS) '' = หน้ากลมแบบเดิม · แสดงเมื่อเปิด mascot */
+  ch: string;
 }
 
 export const defaultRecipe = (): Recipe => ({
@@ -73,7 +87,7 @@ export const defaultRecipe = (): Recipe => ({
   a: 'color',
   th: 'space',
   st: 'cartoon',
-  fr: 'theme',
+  fr: 'none',
   o: 'p',
   n: 8,
   lv: 'easy',
@@ -88,6 +102,11 @@ export const defaultRecipe = (): Recipe => ({
   title: '',
   note: '',
   dz: [],
+  // ใบงานใหม่เริ่มที่แบบ "อวกาศ · ท้องฟ้าก้อนเมฆ" (สูตรเก่าที่ไม่มีช่องเหล่านี้ได้ค่าเดิมใน cleanRecipe)
+  hd: 'cloud',
+  sc: 'clouds',
+  pt: 'dots',
+  ch: 'catStudent',
 });
 
 /** ข้อความที่ครูพิมพ์: เก็บไทย อังกฤษ จีน ญี่ปุ่น ตัวเลข เครื่องหมายพื้นฐาน (ตัดอิโมจิ เครื่องหมายคำพูด ขึ้นบรรทัด) */
@@ -138,8 +157,24 @@ export function cleanRecipe(raw: unknown): Recipe {
     title: cleanText(r.title, 40),
     note: cleanText(r.note, NOTE_MAX),
     dz: Array.isArray(r.dz) ? [...new Set(r.dz.filter((x): x is string => typeof x === 'string' && DECOS.some((d) => d.id === x)))].slice(0, MAX_DECOS) : [],
+    // ช่องที่เพิ่ม 13 พ.ย. 2026: ไม่มีค่า = หน้าตาเดิม (ไม่ใช้ค่าเริ่มต้นของใบงานใหม่) สูตร/ลิงก์/ผลงานประกวดเก่าจึงไม่เปลี่ยน
+    hd: pickId(r.hd, HEADS.map((x) => x.id), 'bar'),
+    sc: pickId(r.sc, SCENES.map((x) => x.id), 'none'),
+    pt: pickId(r.pt, PATTERNS.map((x) => x.id), 'plain'),
+    ch: pickId(r.ch, CHARS.map((x) => x.id), ''),
   };
 }
+
+/* ---------------------------------------------------------------- แบบสำเร็จรูป (ธีม x ทรง) */
+
+/** ใส่แบบสำเร็จรูปให้สูตร: เปลี่ยนเฉพาะหน้าตา วิชา/หัวข้อ/กิจกรรมคงเดิม */
+export function applyLook(r: Recipe, look: WsLook): Recipe {
+  const y = look.layout;
+  return cleanRecipe({ ...r, th: look.theme.id, hd: y.hd, fr: y.fr, sc: y.sc, pt: y.pt, ch: look.ch, mascot: true });
+}
+
+/** แบบสำเร็จรูปที่ตรงกับสูตรตอนนี้ (ไม่ตรงแบบใด = undefined) */
+export const lookOf = (r: Recipe) => LOOKS.find((l) => l.theme.id === r.th && l.layout.hd === r.hd && l.layout.fr === r.fr && l.layout.sc === r.sc && l.layout.pt === r.pt);
 
 export const topicOf = (r: Recipe) => {
   if (r.tp === 'custom') return { th: r.cu, en: r.cu };
@@ -266,6 +301,7 @@ export function buildPrompt(raw: Recipe): string {
   const yr = (a: number, b: number) => `y ${mm(a)} to ${mm(b)} mm`;
   const pct = (v: number) => `${Math.round((v / H) * 100)}%`;
   const icon = g.motif ? MOTIF_EN[g.motif] : '';
+  const pattern = find(PATTERNS, r.pt);
 
   const L: string[] = [];
   L.push(
@@ -274,10 +310,13 @@ export function buildPrompt(raw: Recipe): string {
     langLine(r),
     `Theme: ${theme.en}. Art style: ${style.en}.`,
     '',
-    `EXACT LAYOUT. The page is ${W} x ${H} mm. Every position below is in millimetres from the top-left corner of the page. Place each element at these positions and sizes, keep the proportions, and do not add, remove or move anything.`,
-    g.bw
+    g.rich
+      ? `EXACT LAYOUT. The page is ${W} x ${H} mm. Every position below is in millimetres from the top-left corner of the page. Place each element at these positions and sizes and keep the proportions. The content zones (every numbered item below except the decorations) must stay exactly as described. The decoration zones (title banner, character, scene strips, page margin) should be drawn richly and charmingly, like a page from a lovely children's activity book.`
+      : `EXACT LAYOUT. The page is ${W} x ${H} mm. Every position below is in millimetres from the top-left corner of the page. Place each element at these positions and sizes, keep the proportions, and do not add, remove or move anything.`,
+    (g.bw
       ? `1. Background: plain white page. A white content panel ${xr(m, W - m)}, ${yr(m, H - m)} with 5 mm rounded corners.`
-      : `1. Background: the outer ${m} mm margin band is tinted ${pal.bg}. A white content panel covers ${xr(m, W - m)}, ${yr(m, H - m)} with 5 mm rounded corners.`
+      : `1. Background: the outer ${m} mm margin band is tinted ${pal.bg}. A white content panel covers ${xr(m, W - m)}, ${yr(m, H - m)} with 5 mm rounded corners.`) +
+      (pattern.en ? ` The margin band is covered with ${pattern.en}${pattern.id === 'icons' ? ` (tiny ${icon || 'star'}s)` : ''} in ${g.bw ? 'light gray' : pal.a} at about 25% strength.` : '')
   );
 
   // กรอบ
@@ -290,7 +329,15 @@ export function buildPrompt(raw: Recipe): string {
         ? `a ${pal.a} dashed line 1.4 mm thick (4 mm dashes, 3 mm gaps), a rectangle inset 5 mm from the page edge with 6 mm rounded corners.`
         : r.fr === 'round'
           ? `a solid ${pal.a} line 1.6 mm thick, a rectangle inset 5 mm from the page edge with 10 mm rounded corners.`
-          : `a solid ${pal.a} line 3 mm thick, a rectangle inset 5 mm from the page edge with 6 mm rounded corners${
+          : r.fr === 'scallop'
+            ? `a scalloped lace line in ${pal.a} 1.2 mm thick: a chain of half circles about 5 mm wide bulging outward, following a rectangle inset 5 mm from the page edge.`
+            : r.fr === 'wavy'
+              ? `a hand-drawn wavy ${pal.a} line 1.4 mm thick (waves about 8 mm long and 2 mm high), following a rectangle inset 5 mm from the page edge.`
+              : r.fr === 'double'
+                ? `a double line in ${pal.a}: a solid line 1.6 mm thick inset 5 mm from the page edge with 8 mm rounded corners, and a thin 0.6 mm line 2.2 mm inside it.`
+                : r.fr === 'beads'
+                  ? `a chain of round beads 3 mm wide, alternating ${pal.a} and ${pal.b}, one every 5 mm along a rectangle inset 5 mm from the page edge.`
+                  : `a solid ${pal.a} line 3 mm thick, a rectangle inset 5 mm from the page edge with 6 mm rounded corners${
               g.border.length ? `, with small ${icon} icons about 9 mm wide sitting centred on the line: ${top} evenly spaced along the top edge, ${top} along the bottom edge and ${side} on each side (first one 18 mm from the left)` : ''
             }.`;
   L.push(`2. Border: ${borderLine}`);
@@ -298,9 +345,13 @@ export function buildPrompt(raw: Recipe): string {
   // หัว
   const h = g.head;
   L.push(
-    `3. Title banner: a rounded rectangle ${xr(h.x, h.x + h.w)}, ${yr(h.y, h.y + h.h)} (${pct(h.h)} of the page height), 7 mm corner radius, solid fill ${pal.a}, with a soft shadow below.${
-      icon ? ` A white ${icon} icon about 16 mm wide centred at x ${mm(h.x + 10)}, y ${mm(h.y + h.h / 2)} mm.` : ''
-    } ${blank ? 'The rest of the banner stays empty: no words.' : `The title "${title}" in bold white letters about ${r.big ? 11 : 9.5} mm tall starting at x ${mm(h.x + 22)} mm, vertically centred.`}`
+    `3. Title banner: ${
+      r.hd === 'bar'
+        ? `a rounded rectangle ${xr(h.x, h.x + h.w)}, ${yr(h.y, h.y + h.h)} (${pct(h.h)} of the page height), 7 mm corner radius, solid fill ${pal.a}, with a soft shadow below.`
+        : `${find(HEADS, r.hd).en}, fitting inside ${xr(h.x, h.x + h.w)}, ${yr(h.y, h.y + h.h)} (${pct(h.h)} of the page height), solid fill ${pal.a}, with a soft shadow below.`
+    }${
+      icon ? ` A white ${icon} icon about 16 mm wide centred at x ${mm(h.x + 10 + g.headPad)}, y ${mm(h.y + h.h / 2)} mm.` : ''
+    } ${blank ? 'The rest of the banner stays empty: no words.' : `The title "${title}" in bold white letters about ${r.big ? 11 : 9.5} mm tall starting at x ${mm(h.x + 22 + g.headPad)} mm, vertically centred.`}`
   );
   let n = 4;
   if (g.score)
@@ -315,14 +366,35 @@ export function buildPrompt(raw: Recipe): string {
       `${n++}. Instruction row: one original mascot face centred at x ${mm(g.mascot.cx)}, y ${mm(g.mascot.cy)} mm: an oval ${mm(g.mascot.rx * 2)} x ${mm(g.mascot.ry * 2)} mm filled ${pal.b} with a dark outline, two dot eyes, a small smile and one short arm pointing right. To its right a pill-shaped bubble ${xr(b.x, b.x + b.w)}, ${yr(b.y, b.y + b.h)} filled ${pal.bg} with a thin dark outline${blank ? ', left empty' : ' holding one very short instruction'}.`
     );
   }
+  if (g.char) {
+    const c = g.char.box;
+    const b = g.char.bubble;
+    L.push(
+      `${n++}. Instruction row: one original cartoon character, ${g.char.en}, drawn full-body in the art style above with a big friendly face, standing inside ${xr(c.x, c.x + c.w)}, ${yr(c.y, c.y + c.h)} (about ${mm(c.w)} mm wide and ${mm(c.h)} mm tall). To its right a rounded speech bubble ${xr(b.x, b.x + b.w)}, ${yr(b.y, b.y + b.h)} with 8 mm corners and a small tail pointing at the character, filled ${pal.bg} with a thin dark outline${blank ? ', left empty' : ' holding one very short instruction'}.`
+    );
+  }
   const k = itemCount(r.a, r.n);
   const rowH = g.body.h / k;
   const rowBased = !['color', 'maze', 'plate', 'comic', 'mindmap', 'match', 'wordsearch', 'crossword', 'sequence', 'draw', 'reading', 'cutpaste'].includes(r.a);
   L.push(
     `${n++}. Main area: ${xr(g.body.x, g.body.x + g.body.w)}, ${yr(g.body.y, g.body.y + g.body.h)} (${pct(g.body.h)} of the page height). Inside it: ${bodySpec(r.a, r.n, r.big, icon)}.${
       rowBased ? ` Each row or grid row is about ${mm(rowH)} mm tall.` : ''
-    } Item numbers are white digits inside 6 mm circles filled ${pal.a}. Writing lines are ${pal.soft}, 1.2 mm thick with rounded ends. Boxes are white with a 0.8 mm ${pal.ink} outline and 2 mm rounded corners.`
+    } Item numbers are white digits inside 6 mm circles filled ${pal.a}. Writing lines are ${pal.soft}, 1.2 mm thick with rounded ends. Boxes are white with a 0.8 mm ${pal.ink} outline and ${g.rich ? '3.5' : '2'} mm rounded corners.`
   );
+  // ฉากตกแต่ง: แถบบน/ล่างของแผ่นขาว (คอนเฟตตีอยู่ในแถบขอบกระดาษ)
+  const sceneIcons = /theme pictures/.test(g.scene.en) ? ` The small theme pictures are ${icon || 'five-point star'}s.` : '';
+  const sceneCols = g.bw ? 'Outline only, no fill.' : `Use ${pal.a} and ${pal.b} with a few cheerful matching colors.`;
+  if (g.scene.top && g.scene.bottom) {
+    const a = g.scene.top;
+    const b = g.scene.bottom;
+    L.push(`${n++}. Decoration strips: ${g.scene.en}. Top strip: ${xr(a.x, a.x + a.w)}, ${yr(a.y, a.y + a.h)}. Bottom strip: ${xr(b.x, b.x + b.w)}, ${yr(b.y, b.y + b.h)}.${sceneIcons} ${sceneCols}`);
+  } else if (g.scene.top || g.scene.bottom) {
+    const b = (g.scene.top || g.scene.bottom)!;
+    L.push(`${n++}. ${g.scene.top ? 'Top' : 'Bottom'} decoration strip, ${xr(b.x, b.x + b.w)}, ${yr(b.y, b.y + b.h)}: ${g.scene.en}.${sceneIcons} ${sceneCols}`);
+  } else if (g.scene.en) {
+    L.push(`${n++}. Decoration: ${g.scene.en}. Keep every piece inside the outer ${m} mm margin band. ${sceneCols}`);
+  }
+  if (g.rich) L.push(`${n++}. Theme touches: a few small illustrations from the theme (${theme.en}) peeking out from behind the title banner and tucked into the corners of the page margin. Never inside the main area.`);
   if (g.sticker) L.push(`${n++}. Reward sticker: a circle centred at x ${mm(g.sticker.cx)}, y ${mm(g.sticker.cy)} mm, radius ${g.sticker.r} mm, filled ${pal.b}, dark outline, a white five-point star inside.`);
   if (g.keyTag) L.push(`${n++}. Answer key tag: a pill ${xr(g.keyTag.x, g.keyTag.x + g.keyTag.w)}, ${yr(g.keyTag.y, g.keyTag.y + g.keyTag.h)} filled ${pal.ink} with the white text "+ เฉลย".`);
   for (const d of g.decos) {
@@ -332,7 +404,9 @@ export function buildPrompt(raw: Recipe): string {
   L.push(
     '',
     `Colors: main ${pal.a}, accent ${pal.b}, margin ${pal.bg}, outlines ${pal.ink}, light lines ${pal.soft}.${g.bw ? ' Black, white and gray only, ready to color.' : ''}`,
-    'Line work: clean, even dark outlines about 0.8 mm, flat shapes, no texture behind the content panel, nothing overlapping the main area.',
+    g.rich
+      ? 'Line work: clean dark outlines about 0.8 mm with a friendly hand-drawn feel. Use soft rounded shapes everywhere and avoid hard square corners. The character and the decorations are fully drawn with small details (rosy cheeks, highlights, tiny sparkles), but nothing may overlap the main area or the writing spaces, and the area behind the content stays plain white.'
+      : 'Line work: clean, even dark outlines about 0.8 mm, flat shapes, no texture behind the content panel, nothing overlapping the main area.',
     r.big ? 'Use extra large numbers and big answer spaces for young children.' : 'Use large, clear numbers and plenty of answer space.',
     blank
       ? 'Text: write no words anywhere except the three name labels, the item numbers and the answer key tag. Leave every box, bubble, banner and line empty so the teacher can type the Thai text later.'
@@ -341,7 +415,9 @@ export function buildPrompt(raw: Recipe): string {
   if (r.key) L.push('Also make a matching answer key version of the same page with the same layout.');
   if (r.note) L.push(`Teacher request: ${r.note}.`);
   L.push(
-    'Avoid: copyrighted or famous characters, brand logos, watermarks, signatures, photo-realism, scary images, tiny text, clutter, extra sections or extra decorations.',
+    g.rich
+      ? 'Avoid: copyrighted or famous characters, brand logos, watermarks, signatures, photo-realism, scary images, tiny text, extra sections, and any decoration inside the main area.'
+      : 'Avoid: copyrighted or famous characters, brand logos, watermarks, signatures, photo-realism, scary images, tiny text, clutter, extra sections or extra decorations.',
     `Output: one high resolution image with an exact A4 ${orient} aspect ratio (${W} x ${H}).`
   );
   return L.join('\n');
@@ -364,15 +440,14 @@ export function randomRecipe(rnd: Rng = Math.random, keep?: Partial<Pick<Recipe,
   const subj = subjectOf(s);
   const g = keep?.g || 1 + Math.floor(rnd() * 6);
   const fit = subj.topics.filter((x) => g >= x.g[0] && g <= x.g[1]);
+  const look = one(LOOKS, rnd);
   return cleanRecipe({
-    ...defaultRecipe(),
+    ...applyLook(defaultRecipe(), look),
     s,
     g,
     tp: one(fit.length ? fit : subj.topics, rnd).id,
     a: one(activitiesFor(s), rnd).id,
-    th: one(THEMES, rnd).id,
     st: one(STYLES, rnd).id,
-    fr: one(FRAMES, rnd).id,
     n: 5 + Math.floor(rnd() * 8),
     lv: one(LEVELS, rnd).id,
     big: g <= 2,
@@ -382,7 +457,7 @@ export function randomRecipe(rnd: Rng = Math.random, keep?: Partial<Pick<Recipe,
   });
 }
 
-export type Part = 'subject' | 'topic' | 'act' | 'theme' | 'style' | 'page' | 'extra';
+export type Part = 'subject' | 'topic' | 'act' | 'look' | 'theme' | 'style' | 'page' | 'extra';
 
 /**
  * สุ่มเฉพาะแท็บที่เปิดอยู่ วิชา/ชั้นไม่เปลี่ยนเลย
@@ -404,10 +479,15 @@ export function randomPart(r: Recipe, part: Part, rnd: Rng = Math.random, pool?:
     }
     case 'act':
       return cleanRecipe({ ...r, a: one(activitiesFor(r.s), rnd).id, n: 5 + Math.floor(rnd() * 8), lv: one(LEVELS, rnd).id });
+    case 'look': {
+      // แบบสำเร็จรูป: สุ่มในรายการที่กรองไว้ (pool = id ของแบบ)
+      const inPool = pool?.length ? LOOKS.filter((x) => pool.includes(x.id)) : LOOKS;
+      return applyLook(r, one(inPool.length ? inPool : LOOKS, rnd));
+    }
     case 'theme':
       return cleanRecipe({ ...r, th: pick(THEMES) });
     case 'style':
-      return cleanRecipe({ ...r, st: one(STYLES, rnd).id, fr: one(FRAMES, rnd).id });
+      return cleanRecipe({ ...r, st: one(STYLES, rnd).id, fr: one(FRAMES, rnd).id, hd: one(HEADS, rnd).id, sc: one(SCENES, rnd).id, pt: one(PATTERNS, rnd).id });
     case 'page':
       return cleanRecipe({ ...r, o: rnd() > 0.75 ? 'l' : 'p', lang: one(LANGS, rnd).id, big: rnd() > 0.5 });
     default: {
@@ -417,7 +497,7 @@ export function randomPart(r: Recipe, part: Part, rnd: Rng = Math.random, pool?:
         const id = pick(DECOS);
         if (!dz.includes(id)) dz.push(id);
       }
-      return cleanRecipe({ ...r, name: rnd() > 0.2, score: rnd() > 0.3, mascot: rnd() > 0.3, sticker: rnd() > 0.4, key: rnd() > 0.7, dz });
+      return cleanRecipe({ ...r, name: rnd() > 0.2, score: rnd() > 0.3, mascot: rnd() > 0.2, sticker: rnd() > 0.4, key: rnd() > 0.7, dz, ch: one(CHARS, rnd).id });
     }
   }
 }

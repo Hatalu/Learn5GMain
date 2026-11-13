@@ -16,6 +16,7 @@ import {
   GraduationCap,
   Heart,
   ImagePlus,
+  Images,
   LayoutTemplate,
   Loader2,
   Palette,
@@ -31,15 +32,19 @@ import { useAuth } from '@/context/AuthContext';
 import { gsfx } from '@/lib/game-creator/gsound';
 import { uploadImage } from '@/lib/game-creator/media';
 import { PaperModal } from '@/components/creator/PaperModal';
-import { COUNT_MAX, COUNT_MIN, DECOS, DECO_PLACES, FRAMES, GRADES, LANGS, LEVELS, MAX_DECOS, NOTE_MAX, STYLES, SUBJECTS, THEMES, THEME_CATS, activitiesFor, gradeLabel, subjectOf, type DecoPlace, type ThemeCat } from '@/lib/worksheet/options';
-import { PRESETS, buildPrompt, cleanRecipe, decodeRecipe, defaultRecipe, presetRecipe, randomPart, titleOf, type Recipe } from '@/lib/worksheet/recipe';
+import { CHARS, COUNT_MAX, COUNT_MIN, DECOS, DECO_PLACES, FRAMES, GRADES, HEADS, LANGS, LAYOUTS, LEVELS, LOOKS, MAX_DECOS, NOTE_MAX, PATTERNS, SCENES, STYLES, SUBJECTS, THEMES, THEME_CATS, activitiesFor, gradeLabel, subjectOf, type DecoPlace, type ThemeCat } from '@/lib/worksheet/options';
+import { PRESETS, applyLook, buildPrompt, cleanRecipe, decodeRecipe, defaultRecipe, lookOf, presetRecipe, randomPart, titleOf, type Recipe } from '@/lib/worksheet/recipe';
 import { palOf } from '@/lib/worksheet/layout';
 import { MAX_ENTRIES, leftText, type Contest, type Phase } from '@/lib/worksheet/contest';
 import { Motif, PaperPreview } from './PaperPreview';
+import { CharFigure } from './PaperArt';
 import './worksheet.css';
 
-type TabId = 'subject' | 'topic' | 'act' | 'theme' | 'style' | 'page' | 'extra';
+type TabId = 'look' | 'subject' | 'topic' | 'act' | 'theme' | 'style' | 'page' | 'extra';
+/** จำนวนแบบที่วาดต่อครั้งในแกลเลอรี (แต่ละแผ่นเป็น SVG เต็ม วาดทีละน้อยให้ลื่น) */
+const LOOK_PAGE = 12;
 const TABS: { id: TabId; th: string; icon: React.ReactNode }[] = [
+  { id: 'look', th: 'แบบ', icon: <Images className="w-5 h-5" /> },
   { id: 'subject', th: 'วิชา/ชั้น', icon: <GraduationCap className="w-5 h-5" /> },
   { id: 'topic', th: 'หัวข้อ', icon: <BookOpen className="w-5 h-5" /> },
   { id: 'act', th: 'กิจกรรม', icon: <PenLine className="w-5 h-5" /> },
@@ -109,11 +114,16 @@ export function WorksheetBuilder() {
   const router = useRouter();
   const sp = useSearchParams();
   const [r, setR] = useState<Recipe>(defaultRecipe);
-  const [tab, setTab] = useState<TabId>('subject');
+  const [tab, setTab] = useState<TabId>('look');
   const [themeCat, setThemeCat] = useState<ThemeCat | ''>('');
   const [decoPlace, setDecoPlace] = useState<DecoPlace | ''>('');
   const themeList = themeCat ? THEMES.filter((t) => t.cat === themeCat) : THEMES;
   const decoList = decoPlace ? DECOS.filter((d) => d.place === decoPlace) : DECOS;
+  // แกลเลอรีแบบสำเร็จรูป: กรองตามทรง + หมวดธีม แสดงทีละ LOOK_PAGE แผ่น
+  const [lookLayout, setLookLayout] = useState('');
+  const [lookCat, setLookCat] = useState<ThemeCat | ''>('');
+  const [lookShown, setLookShown] = useState(LOOK_PAGE);
+  const lookList = useMemo(() => LOOKS.filter((l) => (!lookLayout || l.layout.id === lookLayout) && (!lookCat || l.theme.cat === lookCat)), [lookLayout, lookCat]);
   const [bump, setBump] = useState(0);
   const [roll, setRoll] = useState(0);
   const [toast, setToast] = useState('');
@@ -179,6 +189,13 @@ export function WorksheetBuilder() {
     setBump((b) => b + 1);
   };
 
+  /** ใส่สูตรทั้งก้อน (แบบสำเร็จรูป) */
+  const apply = (next: Recipe) => {
+    gsfx.pick();
+    setR(next);
+    setBump((b) => b + 1);
+  };
+
   const pickSubject = (s: Recipe['s']) => {
     const sj = subjectOf(s);
     const fit = sj.topics.find((t) => r.g >= t.g[0] && r.g <= t.g[1]) || sj.topics[0];
@@ -190,7 +207,7 @@ export function WorksheetBuilder() {
     gsfx.whoosh();
     setRoll((n) => n + 1);
     // วิชา/ชั้นคงเดิมเสมอ สุ่มเฉพาะแท็บที่เปิดอยู่ (ธีม/ของตกแต่ง สุ่มในหมวดที่กรองไว้)
-    setR((old) => randomPart(old, tab, Math.random, tab === 'theme' ? themeList.map((t) => t.id) : tab === 'extra' ? decoList.map((d) => d.id) : undefined));
+    setR((old) => randomPart(old, tab, Math.random, tab === 'look' ? lookList.map((l) => l.id) : tab === 'theme' ? themeList.map((t) => t.id) : tab === 'extra' ? decoList.map((d) => d.id) : undefined));
     setBump((b) => b + 1);
   };
 
@@ -372,6 +389,81 @@ export function WorksheetBuilder() {
           </div>
 
           <div role="tabpanel" className="pt-2 min-h-[16rem]">
+            {tab === 'look' && (
+              <>
+                <H>
+                  แบบสำเร็จรูป {LOOKS.length} แบบ{lookList.length !== LOOKS.length ? ` · ตรงตัวกรอง ${lookList.length} แบบ` : ''}
+                </H>
+                <p className="-mt-1 mb-2 text-xs font-semibold text-[#5b5280]">กดแบบที่ชอบ เนื้อหาใบงานของคุณยังอยู่ครบ เปลี่ยนแค่หน้าตา</p>
+                <div className="ws-tabs" role="group" aria-label="กรองทรงของแบบ">
+                  <Chip
+                    on={!lookLayout}
+                    onClick={() => {
+                      setLookLayout('');
+                      setLookShown(LOOK_PAGE);
+                    }}
+                  >
+                    ทุกทรง
+                  </Chip>
+                  {LAYOUTS.map((y) => (
+                    <Chip
+                      key={y.id}
+                      on={lookLayout === y.id}
+                      onClick={() => {
+                        setLookLayout(y.id);
+                        setLookShown(LOOK_PAGE);
+                      }}
+                    >
+                      {y.th}
+                    </Chip>
+                  ))}
+                </div>
+                <div className="ws-tabs mb-1" role="group" aria-label="กรองหมวดธีมของแบบ">
+                  <Chip
+                    on={!lookCat}
+                    onClick={() => {
+                      setLookCat('');
+                      setLookShown(LOOK_PAGE);
+                    }}
+                  >
+                    ทุกหมวด
+                  </Chip>
+                  {THEME_CATS.map((c) => (
+                    <Chip
+                      key={c.id}
+                      on={lookCat === c.id}
+                      onClick={() => {
+                        setLookCat(c.id);
+                        setLookShown(LOOK_PAGE);
+                      }}
+                    >
+                      {c.th}
+                    </Chip>
+                  ))}
+                </div>
+                <div className="ws-looks">
+                  {lookList.slice(0, lookShown).map((l) => {
+                    const on = lookOf(r)?.id === l.id;
+                    return (
+                      <button key={l.id} type="button" className="ws-look" aria-pressed={on} onClick={() => apply(applyLook(r, l))}>
+                        <PaperPreview r={applyLook(r, l)} className="block w-full h-auto rounded-md" />
+                        <span className="ws-look-name">
+                          {on && <Check className="w-3.5 h-3.5 shrink-0" strokeWidth={3.5} />}
+                          <span className="truncate">{l.theme.th}</span>
+                        </span>
+                        <span className="ws-look-sub truncate">{l.layout.th}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {lookShown < lookList.length && (
+                  <button type="button" className="ws-btn mt-3 w-full bg-white text-[#2a2350]" onClick={() => setLookShown((n) => n + LOOK_PAGE)}>
+                    ดูเพิ่มอีก {Math.min(LOOK_PAGE, lookList.length - lookShown)} แบบ (เหลือ {lookList.length - lookShown})
+                  </button>
+                )}
+              </>
+            )}
+
             {tab === 'subject' && (
               <>
                 <H>วิชา</H>
@@ -494,10 +586,34 @@ export function WorksheetBuilder() {
                     </Chip>
                   ))}
                 </div>
+                <H>ทรงหัวกระดาษ</H>
+                <div className="flex flex-wrap gap-2">
+                  {HEADS.map((f) => (
+                    <Chip key={f.id} on={r.hd === f.id} onClick={() => set({ hd: f.id })}>
+                      {f.th}
+                    </Chip>
+                  ))}
+                </div>
+                <H>ฉากตกแต่ง</H>
+                <div className="flex flex-wrap gap-2">
+                  {SCENES.map((f) => (
+                    <Chip key={f.id} on={r.sc === f.id} onClick={() => set({ sc: f.id })}>
+                      {f.th}
+                    </Chip>
+                  ))}
+                </div>
                 <H>กรอบกระดาษ</H>
                 <div className="flex flex-wrap gap-2">
                   {FRAMES.map((f) => (
                     <Chip key={f.id} on={r.fr === f.id} onClick={() => set({ fr: f.id })}>
+                      {f.th}
+                    </Chip>
+                  ))}
+                </div>
+                <H>ลายขอบกระดาษ</H>
+                <div className="flex flex-wrap gap-2">
+                  {PATTERNS.map((f) => (
+                    <Chip key={f.id} on={r.pt === f.id} onClick={() => set({ pt: f.id })}>
                       {f.th}
                     </Chip>
                   ))}
@@ -553,6 +669,26 @@ export function WorksheetBuilder() {
                   <Toggle on={r.mascot} label="มาสคอตชี้คำสั่ง" onClick={() => set({ mascot: !r.mascot })} />
                   <Toggle on={r.sticker} label="มุมสติกเกอร์รางวัล" onClick={() => set({ sticker: !r.sticker })} />
                   <Toggle on={r.key} label="ทำหน้าเฉลยด้วย" onClick={() => set({ key: !r.key })} />
+                </div>
+                <H>ตัวการ์ตูนชี้คำสั่ง · {CHARS.length} ตัว</H>
+                <div className="ws-chars">
+                  <button type="button" className="ws-char" aria-pressed={r.mascot && !r.ch} onClick={() => set({ ch: '', mascot: true })}>
+                    <svg viewBox="-11 -16.5 22 33" aria-hidden="true">
+                      <ellipse rx="8" ry="7.4" fill={palOf(r).pal.b} stroke="#2a2350" strokeWidth="0.9" />
+                      <circle cx="-2.6" cy="-1" r="1" fill="#2a2350" />
+                      <circle cx="2.6" cy="-1" r="1" fill="#2a2350" />
+                      <path d="M-1.6 2q1.6 1.4 3.2 0" stroke="#2a2350" strokeWidth="0.7" fill="none" strokeLinecap="round" />
+                    </svg>
+                    <span>หน้ากลม</span>
+                  </button>
+                  {CHARS.map((c) => (
+                    <button key={c.id} type="button" className="ws-char" aria-pressed={r.mascot && r.ch === c.id} onClick={() => set({ ch: c.id, mascot: true })}>
+                      <svg viewBox="0 0 22 33" aria-hidden="true">
+                        <CharFigure id={c.id} box={{ x: 0, y: 0, w: 22, h: 33 }} />
+                      </svg>
+                      <span>{c.th}</span>
+                    </button>
+                  ))}
                 </div>
                 <H>
                   ของตกแต่งเสริม ({r.dz.length}/{MAX_DECOS}) · {decoList.length} แบบ

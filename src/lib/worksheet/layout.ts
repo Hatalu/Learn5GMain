@@ -2,7 +2,7 @@
  * โครงหน้าใบงาน (หน่วยมิลลิเมตรบนกระดาษ A4) ใช้ร่วมกันทั้งกระดาษตัวอย่าง (PaperPreview) และ prompt
  * ตัวเลขทุกตัวที่ prompt บอก Gemini มาจากที่นี่ ภาพตัวอย่างจึงตรงกับสิ่งที่สั่งเสมอ
  */
-import { DECOS, STYLES, THEMES, type Deco, type DecoPlace, type Motif } from './options';
+import { CHARS, DECOS, SCENES, STYLES, THEMES, type Deco, type DecoPlace, type Motif } from './options';
 import type { Recipe } from './recipe';
 
 export interface Pal {
@@ -43,6 +43,18 @@ export interface Geo {
   /** จุดวางไอคอนบนเส้นกรอบ (กรอบลายตามธีม) */
   border: { x: number; y: number }[];
   decos: { d: Deco; color: string; pts: { x: number; y: number }[] }[];
+  /** ทรงหัวกระดาษ (id ใน HEADS) วาดในกรอบ head */
+  headShape: string;
+  /** ระยะที่ไอคอน/ชื่อบนหัวกระดาษขยับเข้าใน (ทรงที่มีปลายพับ/ม้วน) */
+  headPad: number;
+  /** ฉากตกแต่ง: แถบบน/ล่างของแผ่นขาว (null = ฉากนี้ไม่ใช้แถบนั้น) */
+  scene: { id: string; en: string; top: Box | null; bottom: Box | null };
+  /** ลายของแถบขอบกระดาษ (id ใน PATTERNS) */
+  pattern: string;
+  /** ตัวการ์ตูนเต็มตัว + กรอบคำพูด (แทน mascot หน้ากลม) */
+  char: { id: string; en: string; box: Box; bubble: Box } | null;
+  /** ใช้ของตกแต่งชุดใหม่อย่างน้อยหนึ่งอย่าง: กล่องมนขึ้น และ prompt สั่งให้ตกแต่งเต็มที่ */
+  rich: boolean;
 }
 
 const r1 = (v: number) => Math.round(v * 10) / 10;
@@ -96,13 +108,18 @@ export function geometry(r: Recipe): Geo {
   const H = r.o === 'l' ? 210 : 297;
   const m = 10;
   const headH = 26;
-  const top = m + 6;
+  // ฉากตกแต่งกินแถบบน/ล่างของแผ่นขาว เนื้อหาทั้งหมดขยับเข้าใน (ไม่มีฉาก = ตำแหน่งเดิมทุกจุด)
+  const scene = SCENES.find((x) => x.id === r.sc) || SCENES[0];
+  const top = m + 6 + scene.top;
+  const foot = H - m - scene.bot;
   const scoreR = 12;
   const head: Box = { x: m + 8, y: top, w: W - m * 2 - 16 - (r.score ? 28 : 0), h: headH };
   const nameRow = r.name ? 10 : 0;
   const after = top + headH + nameRow;
-  const bodyTop = after + (r.mascot ? 20 : 8);
-  const bodyBottom = H - m - (r.sticker ? 22 : 10);
+  // ตัวการ์ตูนเต็มตัวสูงกว่าหน้ากลมแบบเดิม แถวคำสั่งจึงสูงขึ้น
+  const ch = r.mascot && r.ch ? CHARS.find((c) => c.id === r.ch) : undefined;
+  const bodyTop = after + (ch ? 43 : r.mascot ? 20 : 8);
+  const bodyBottom = foot - (r.sticker ? 22 : 10);
 
   const border: { x: number; y: number }[] = [];
   if (r.fr === 'theme' && theme.motif) {
@@ -125,11 +142,22 @@ export function geometry(r: Recipe): Geo {
     head,
     score: r.score ? { cx: W - m - 18, cy: top + headH / 2, r: scoreR } : null,
     nameY: r.name ? top + headH + 9 : null,
-    mascot: r.mascot ? { cx: m + 18, cy: after + 11, rx: 8, ry: 7.4, bubble: { x: m + 30, y: after + 5, w: W - m * 2 - 40, h: 12 } } : null,
+    mascot: r.mascot && !ch ? { cx: m + 18, cy: after + 11, rx: 8, ry: 7.4, bubble: { x: m + 30, y: after + 5, w: W - m * 2 - 40, h: 12 } } : null,
     body: { x: m + 10, y: bodyTop, w: W - m * 2 - 20, h: Math.max(30, bodyBottom - bodyTop) },
-    sticker: r.sticker ? { cx: W - m - 16, cy: H - m - 12, r: 9 } : null,
-    keyTag: r.key ? { x: m + 8, y: H - m - 18, w: 34, h: 11 } : null,
+    sticker: r.sticker ? { cx: W - m - 16, cy: foot - 12, r: 9 } : null,
+    keyTag: r.key ? { x: m + 8, y: foot - 18, w: 34, h: 11 } : null,
     border,
     decos,
+    headShape: r.hd,
+    headPad: r.hd === 'ribbon' || r.hd === 'scroll' ? 9 : r.hd === 'ticket' ? 5 : 0,
+    scene: {
+      id: scene.id,
+      en: scene.en,
+      top: scene.top ? { x: m + 4, y: m + 2, w: W - m * 2 - 8, h: scene.top + 2 } : null,
+      bottom: scene.bot ? { x: m, y: foot, w: W - m * 2, h: scene.bot } : null,
+    },
+    pattern: r.pt,
+    char: ch ? { id: ch.id, en: ch.en, box: { x: m + 6, y: after + 2, w: 26, h: 39 }, bubble: { x: m + 38, y: after + 11, w: W - m * 2 - 48, h: 19 } } : null,
+    rich: r.hd !== 'bar' || scene.id !== 'none' || r.pt !== 'plain' || !!ch,
   };
 }

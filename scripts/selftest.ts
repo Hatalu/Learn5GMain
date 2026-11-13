@@ -2515,10 +2515,10 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
       for (const t of s.topics) assert.match(t.id, /^[a-z0-9-]+$/, t.id);
       assert.ok(O.activitiesFor(s.id).length >= 16, s.id);
     }
-    for (const list of [O.ACTIVITIES, O.THEMES, O.STYLES, O.FRAMES, O.DECOS] as { id: string }[][]) assert.equal(new Set(list.map((x) => x.id)).size, list.length);
+    for (const list of [O.ACTIVITIES, O.THEMES, O.STYLES, O.FRAMES, O.DECOS, O.HEADS, O.SCENES, O.PATTERNS, O.CHARS, O.LAYOUTS, O.LOOKS] as unknown as { id: string }[][]) assert.equal(new Set(list.map((x) => x.id)).size, list.length);
     // ห้ามอิโมจิ/ลูกศรที่กลายเป็นอิโมจิ ในข้อความทุกตัวเลือกและ prompt
     const bad = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}↔️]/u;
-    assert.ok(!bad.test(JSON.stringify([O.SUBJECTS, O.ACTIVITIES, O.THEMES, O.STYLES, O.FRAMES, R.PRESETS])));
+    assert.ok(!bad.test(JSON.stringify([O.SUBJECTS, O.ACTIVITIES, O.THEMES, O.STYLES, O.FRAMES, R.PRESETS, O.HEADS, O.SCENES, O.PATTERNS, O.CHARS, O.LAYOUTS])));
     // cleanRecipe: ค่าขยะได้สูตรที่ใช้ได้, ไปกลับผ่าน URL ได้ค่าเดิม, prompt คงที่
     const junk = R.cleanRecipe({ s: 'x', g: 99, a: 'tian', n: 500, txt: 'evil', note: 'hi "there"\n<script>', cu: '' });
     assert.equal(junk.s, 'math');
@@ -2565,12 +2565,12 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
     for (let i = 0; i < 40; i++) {
       let seed = i * 104729 + 3;
       const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-      for (const part of ['subject', 'topic', 'act', 'theme', 'style', 'page', 'extra'] as const) {
+      for (const part of ['subject', 'topic', 'act', 'look', 'theme', 'style', 'page', 'extra'] as const) {
         const x = R.randomPart(base, part, rnd, part === 'theme' ? ['ocean', 'beach'] : undefined);
         assert.equal(x.s, 'sci');
         assert.equal(x.g, 5);
         const changed = (Object.keys(base) as (keyof typeof base)[]).filter((k) => JSON.stringify(x[k]) !== JSON.stringify(base[k]));
-        const allow: Record<string, string[]> = { topic: ['tp', 'cu'], act: ['a', 'n', 'lv'], theme: ['th'], style: ['st', 'fr'], page: ['o', 'lang', 'big'], extra: ['name', 'score', 'mascot', 'sticker', 'key', 'dz'] };
+        const allow: Record<string, string[]> = { topic: ['tp', 'cu'], act: ['a', 'n', 'lv'], look: ['th', 'hd', 'fr', 'sc', 'pt', 'ch', 'mascot'], theme: ['th'], style: ['st', 'fr', 'hd', 'sc', 'pt'], page: ['o', 'lang', 'big'], extra: ['name', 'score', 'mascot', 'sticker', 'key', 'dz', 'ch'] };
         if (part !== 'subject') for (const k of changed) assert.ok(allow[part].includes(k), `${part} changed ${k}`);
         if (part === 'theme') assert.ok(['ocean', 'beach'].includes(x.th));
       }
@@ -2582,6 +2582,47 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
     assert.ok(pp.includes(`y ${gg.body.y} to ${Math.round((gg.body.y + gg.body.h) * 10) / 10} mm`));
     assert.ok(pp.includes(`radius ${gg.score!.r} mm`) && pp.includes('heart') && pp.includes('EXACT LAYOUT'));
     assert.equal(L.decoPoints('corners', 210, 297, 10).length, 4);
+    // แบบสำเร็จรูป 500+ (ผู้ใช้สั่ง 13 พ.ย. 2026): นับจากรายการจริง ทุกแบบต่างกันจริง ผ่าน cleanRecipe และส่งผ่านลิงก์ได้
+    assert.ok(O.LOOKS.length >= 500, `looks ${O.LOOKS.length}`);
+    assert.equal(O.LOOKS.length, O.THEMES.length * O.LAYOUTS.length);
+    const lookSig = new Set<string>();
+    const artIds = new Set([...(await import('../src/lib/studio/char')).ANIMAL_PRESETS, ...(await import('../src/lib/studio/char')).CHAR_PRESETS].map((x) => x.id));
+    for (const c of O.CHARS) assert.ok(artIds.has(c.id) && c.en.length > 20, c.id); // ทุกตัวมีภาพให้วาด + คำบรรยาย
+    for (const y of O.LAYOUTS) {
+      assert.ok(O.HEADS.some((x) => x.id === y.hd) && O.FRAMES.some((x) => x.id === y.fr) && O.SCENES.some((x) => x.id === y.sc) && O.PATTERNS.some((x) => x.id === y.pt), y.id);
+    }
+    assert.equal(new Set(O.LAYOUTS.map((y) => [y.hd, y.fr, y.sc, y.pt].join())).size, O.LAYOUTS.length);
+    for (const l of O.LOOKS) {
+      const x = R.applyLook(R.defaultRecipe(), l);
+      assert.equal(x.th, l.theme.id);
+      assert.equal(x.hd, l.layout.hd);
+      assert.equal(x.ch, l.ch);
+      assert.deepEqual(R.cleanRecipe(JSON.parse(JSON.stringify(x))), x);
+      assert.equal(R.lookOf(x)?.id, l.id);
+      const enc = R.encodeRecipe(x);
+      assert.ok(enc.length <= 2000 && R.decodeRecipe(enc)?.hd === x.hd, l.id);
+      lookSig.add([x.th, x.hd, x.fr, x.sc, x.pt].join());
+      const gl = L.geometry(x);
+      assert.ok(gl.body.h >= 120 && gl.body.y + gl.body.h <= gl.H - gl.m, l.id); // เนื้อหายังมีที่พอ ไม่ล้นแผ่น
+      if (gl.char) assert.ok(gl.char.box.y + gl.char.box.h <= gl.body.y && gl.char.bubble.x >= gl.char.box.x + gl.char.box.w, l.id);
+      if (gl.scene.top) assert.ok(gl.scene.top.y + gl.scene.top.h <= gl.head.y, l.id);
+      if (gl.scene.bottom) assert.ok(gl.scene.bottom.y >= gl.body.y + gl.body.h, l.id);
+    }
+    assert.equal(lookSig.size, O.LOOKS.length);
+    // สูตรเก่า (ก่อนมีช่อง hd/sc/pt/ch) ได้หน้าตาเดิม: ไม่มีฉาก ไม่มีตัวการ์ตูน prompt แบบเดิม
+    const old = R.cleanRecipe({ v: 1, s: 'math', g: 3, tp: 'frac', a: 'color', th: 'space', st: 'cartoon', fr: 'theme', mascot: true });
+    assert.deepEqual([old.hd, old.sc, old.pt, old.ch], ['bar', 'none', 'plain', '']);
+    const og = L.geometry(old);
+    assert.ok(!og.rich && og.mascot && !og.char && og.head.y === 16 && og.body.y === 72);
+    const op = R.buildPrompt(old);
+    assert.ok(op.includes('do not add, remove or move anything') && op.includes('7 mm corner radius') && op.includes('one original mascot face') && !op.includes('decoration strip'));
+    // แบบใหม่: prompt บอกทรงหัว ตัวการ์ตูน ฉาก ตามตำแหน่งเดียวกับกระดาษตัวอย่าง และไม่ห้ามตกแต่ง
+    const nw = R.applyLook(R.defaultRecipe(), O.lookById('ocean.hill')!);
+    const ng = L.geometry(nw);
+    const np = R.buildPrompt(nw);
+    assert.ok(ng.rich && ng.char && ng.scene.bottom);
+    assert.ok(np.includes('paint-blob') && np.includes(ng.char!.en) && np.includes('Bottom decoration strip') && np.includes(`y ${ng.scene.bottom!.y} to`));
+    assert.ok(!np.includes('do not add, remove or move anything') && !np.includes('extra decorations') && np.includes('EXACT LAYOUT'));
     // อันดับ: ใจมากก่อน เท่ากัน = ส่งก่อนชนะ, 1 คน 1 รางวัล, 0 ใจไม่ได้รางวัล
     const rows = [
       { id: 'a', owner_id: 'u1', created_at: '2026-11-02', like_count: 5 },

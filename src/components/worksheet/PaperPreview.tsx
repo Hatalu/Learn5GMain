@@ -4,9 +4,10 @@
  * กระดาษตัวอย่างของตู้แต่งตัวใบงาน: วาดโครงคร่าวๆ ด้วย SVG เปลี่ยนตามตัวเลือกทันที
  * (เป็นภาพประกอบให้ครูเห็นภาพ ไม่ใช่ใบงานจริง ใบงานจริง Gemini เป็นคนวาด)
  */
-import React from 'react';
+import React, { useId } from 'react';
 import { geometry, type Pal } from '@/lib/worksheet/layout';
 import { itemCount, titleOf, type Recipe } from '@/lib/worksheet/recipe';
+import { CharFigure, FrameArt, HeadShape, PatternDef, SceneArt, SpeechBubble } from './PaperArt';
 
 
 
@@ -182,7 +183,7 @@ export function Motif({ kind, x, y, s, p }: { kind: string; x: number; y: number
 }
 
 /** เนื้อหาตามกิจกรรม วาดในกรอบ (x,y,w,h) */
-function Body({ a, n, x, y, w, h, p, s }: { a: string; n: number; x: number; y: number; w: number; h: number; p: Pal; s: string }) {
+function Body({ a, n, x, y, w, h, p, s, R = 2 }: { a: string; n: number; x: number; y: number; w: number; h: number; p: Pal; s: string; R?: number }) {
   const line = { stroke: p.soft, strokeWidth: 1.2, strokeLinecap: 'round' as const };
   const ink = { stroke: p.ink, strokeWidth: 0.8, fill: '#fff' };
   // จำนวนชิ้นเท่ากับที่ prompt สั่ง Gemini (itemCount ใช้ร่วมกัน)
@@ -205,7 +206,7 @@ function Body({ a, n, x, y, w, h, p, s }: { a: string; n: number; x: number; y: 
       for (let c = 0; c < cols; c++) {
         const cx = x + c * cw;
         const cy = y + r * ch;
-        out.push(<rect key={`${r}-${c}`} x={cx + 0.6} y={cy + 0.6} width={cw - 1.2} height={ch - 1.2} rx={cell === 'round' ? 2 : 0.6} {...ink} />);
+        out.push(<rect key={`${r}-${c}`} x={cx + 0.6} y={cy + 0.6} width={cw - 1.2} height={ch - 1.2} rx={cell === 'round' ? R : 0.6} {...ink} />);
         if (extra) out.push(<g key={`e${r}-${c}`}>{extra(cx, cy, cw, ch, r * cols + c)}</g>);
       }
     return out;
@@ -223,8 +224,8 @@ function Body({ a, n, x, y, w, h, p, s }: { a: string; n: number; x: number; y: 
             const cy2 = y + gap * (j + 0.5);
             return (
               <g key={i}>
-                <rect x={x} y={cy - gap * 0.32} width={w * 0.3} height={gap * 0.64} rx="2" {...ink} />
-                <rect x={x + w * 0.7} y={cy - gap * 0.32} width={w * 0.3} height={gap * 0.64} rx="2" {...ink} />
+                <rect x={x} y={cy - gap * 0.32} width={w * 0.3} height={gap * 0.64} rx={R} {...ink} />
+                <rect x={x + w * 0.7} y={cy - gap * 0.32} width={w * 0.3} height={gap * 0.64} rx={R} {...ink} />
                 <circle cx={x + w * 0.33} cy={cy} r="1.3" fill={p.a} />
                 <circle cx={x + w * 0.67} cy={cy} r="1.3" fill={p.b} stroke={p.ink} strokeWidth="0.5" />
                 {i < 2 && <path d={`M${x + w * 0.33} ${cy}L${x + w * 0.67} ${cy2}`} stroke={p.a} strokeWidth="0.8" strokeDasharray="1.5 1.5" />}
@@ -260,7 +261,7 @@ function Body({ a, n, x, y, w, h, p, s }: { a: string; n: number; x: number; y: 
           <path d={`M${x + w * 0.5} ${y + h * 0.06}A${w * 0.36} ${h * 0.36} 0 0 1 ${x + w * 0.86} ${y + h * 0.42}H${x + w * 0.5}Z`} fill={p.b} opacity="0.85" />
           {[0, 1, 2, 3].map((k) => (
             <g key={k}>
-              <rect x={x + k * (w / 4) + 2} y={y + h * 0.84} width={w / 4 - 4} height={h * 0.12} rx="2" {...ink} />
+              <rect x={x + k * (w / 4) + 2} y={y + h * 0.84} width={w / 4 - 4} height={h * 0.12} rx={R} {...ink} />
               <circle cx={x + k * (w / 4) + 6} cy={y + h * 0.9} r="2" fill={[p.a, p.b, '#3fd6a8', '#ff8fab'][k]} stroke={p.ink} strokeWidth="0.5" />
             </g>
           ))}
@@ -500,9 +501,15 @@ export function PaperPreview({ r, className = '' }: { r: Recipe; className?: str
   const g = geometry(r);
   const { W, H, m, pal: p, bw, motif, head } = g;
   const title = titleOf(r);
+  // id ไม่ซ้ำต่อกระดาษ (หน้าแกลเลอรีวาดหลายแผ่นพร้อมกัน)
+  const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
+  const shadow = `url(#ws-shadow-${uid})`;
+  const padX = head.x + g.headPad;
 
   const border =
-    r.fr === 'none' ? null : r.fr === 'dash' ? (
+    r.fr === 'none' ? null : ['scallop', 'wavy', 'double', 'beads'].includes(r.fr) ? (
+      <FrameArt kind={r.fr} W={W} H={H} m={m} p={p} />
+    ) : r.fr === 'dash' ? (
       <rect x={m / 2} y={m / 2} width={W - m} height={H - m} rx="6" fill="none" stroke={p.a} strokeWidth="1.4" strokeDasharray="4 3" />
     ) : (
       <rect x={m / 2} y={m / 2} width={W - m} height={H - m} rx={r.fr === 'round' ? 10 : 6} fill="none" stroke={p.a} strokeWidth={r.fr === 'theme' ? 3 : 1.6} />
@@ -511,12 +518,22 @@ export function PaperPreview({ r, className = '' }: { r: Recipe; className?: str
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className={className} role="img" aria-label={`ตัวอย่างโครงใบงาน ${title}`}>
       <defs>
-        <filter id="ws-shadow" x="-10%" y="-10%" width="120%" height="120%">
+        <filter id={`ws-shadow-${uid}`} x="-10%" y="-10%" width="120%" height="120%">
           <feDropShadow dx="0" dy="2" stdDeviation="2.5" floodColor="#2a2350" floodOpacity="0.18" />
         </filter>
+        <clipPath id={`ws-panel-${uid}`}>
+          <rect x={m} y={m} width={W - m * 2} height={H - m * 2} rx="5" />
+        </clipPath>
+        <PatternDef kind={g.pattern} id={`ws-pat-${uid}`} p={p} motif={motif} Motif={Motif} />
       </defs>
       <rect width={W} height={H} rx="4" fill={bw ? '#fff' : p.bg} />
+      {g.pattern !== 'plain' && <rect width={W} height={H} rx="4" fill={`url(#ws-pat-${uid})`} />}
       <rect x={m} y={m} width={W - m * 2} height={H - m * 2} rx="5" fill="#fff" />
+      {g.scene.id !== 'none' && (
+        <g key={`sc-${g.scene.id}-${r.th}-${r.st}-${r.o}`} className="ws-pop">
+          <SceneArt id={g.scene.id} top={g.scene.top} bottom={g.scene.bottom} W={W} H={H} m={m} p={p} bw={bw} motif={motif} Motif={Motif} clip={`url(#ws-panel-${uid})`} />
+        </g>
+      )}
       <g key={`${r.th}-${r.fr}-${r.st}`} className="ws-pop">
         {border}
         {motif && g.border.map((pt) => <Motif key={`${pt.x}-${pt.y}`} kind={motif} x={pt.x} y={pt.y} s={0.9} p={p} />)}
@@ -526,11 +543,11 @@ export function PaperPreview({ r, className = '' }: { r: Recipe; className?: str
       </g>
 
       {/* หัวกระดาษ */}
-      <g key={`h-${r.th}-${r.txt}-${title}`} className="ws-pop">
-        <rect x={head.x} y={head.y} width={head.w} height={head.h} rx="7" fill={p.a} filter="url(#ws-shadow)" />
-        {motif && <Motif kind={motif} x={head.x + 10} y={head.y + head.h / 2} s={1.6} p={{ ...p, a: '#fff', b: '#fff' }} />}
+      <g key={`h-${r.th}-${r.hd}-${r.txt}-${title}`} className="ws-pop">
+        <HeadShape shape={g.headShape} box={head} p={p} shadow={shadow} />
+        {motif && <Motif kind={motif} x={padX + 10} y={head.y + head.h / 2} s={1.6} p={{ ...p, a: '#fff', b: '#fff' }} />}
         {r.txt === 'ai' ? (
-          <text x={head.x + 22} y={head.y + head.h / 2 + 3.4} fontSize={r.big ? 11 : 9.5} fill="#fff" fontWeight="800">
+          <text x={padX + 22} y={head.y + head.h / 2 + 3.4} fontSize={r.big ? 11 : 9.5} fill="#fff" fontWeight="800">
             {title.length > 26 ? title.slice(0, 25) + '...' : title}
           </text>
         ) : null}
@@ -573,8 +590,15 @@ export function PaperPreview({ r, className = '' }: { r: Recipe; className?: str
         </g>
       )}
 
-      <g key={`b-${r.a}-${r.n}-${r.th}-${r.st}-${r.o}`} className="ws-pop">
-        <Body a={r.a} n={r.n} x={g.body.x} y={g.body.y} w={g.body.w} h={g.body.h} p={p} s={motif || 'star'} />
+      {g.char && (
+        <g key={`c-${g.char.id}-${r.th}-${r.st}`} className="ws-pop">
+          <CharFigure id={g.char.id} box={g.char.box} bw={bw} />
+          <SpeechBubble b={g.char.bubble} p={p} filled={r.txt === 'ai'} />
+        </g>
+      )}
+
+      <g key={`b-${r.a}-${r.n}-${r.th}-${r.st}-${r.o}-${r.sc}-${r.ch}`} className="ws-pop">
+        <Body a={r.a} n={r.n} x={g.body.x} y={g.body.y} w={g.body.w} h={g.body.h} p={p} s={motif || 'star'} R={g.rich ? 3.4 : 2} />
       </g>
 
       {g.sticker && (

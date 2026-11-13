@@ -551,7 +551,7 @@ function Tail({ sp, c, c2 }: { sp: string; c: string; c2: string }) {
 }
 
 /* ------------------------------------------------------------------ ตัวละคร */
-export function CharArt({ look, viewBox = '0 0 200 300', className, title }: { look: CharLook; viewBox?: string; className?: string; title?: string }) {
+export function CharArt({ look, viewBox = '0 0 200 300', className, title, box }: { look: CharLook; viewBox?: string; className?: string; title?: string; /** วางซ้อนใน SVG อื่น (หน่วยของ SVG แม่) */ box?: { x: number; y: number; width: number; height: number } }) {
   const L = look;
   const skin = L.skin;
   const sp = L.species;
@@ -621,7 +621,7 @@ export function CharArt({ look, viewBox = '0 0 200 300', className, title }: { l
   const face = L.face === 'oval' ? { rx: 50, ry: 57 } : L.face === 'chubby' ? { rx: 58, ry: 52 } : { rx: 54, ry: 54 };
 
   return (
-    <svg viewBox={viewBox} className={className} preserveAspectRatio="xMidYMid meet" aria-hidden={title ? undefined : true} style={{ overflow: viewBox === '0 0 200 300' ? 'visible' : 'hidden' }}>
+    <svg {...box} viewBox={viewBox} className={className} preserveAspectRatio="xMidYMid meet" aria-hidden={title ? undefined : true} style={{ overflow: viewBox === '0 0 200 300' ? 'visible' : 'hidden' }}>
       {title && <title>{title}</title>}
       {animal && <Tail sp={sp} c={skin} c2={L.fur2} />}
       {hairBack(L.hair, L.hairColor)}

@@ -495,6 +495,11 @@ export const FRAMES = [
   { id: 'theme', th: 'ลายตามธีม', en: 'a decorative border made of small theme illustrations' },
   { id: 'dash', th: 'เส้นประ', en: 'a dashed line border' },
   { id: 'none', th: 'ไม่มีกรอบ', en: 'no page border' },
+  // ---- เพิ่ม 13 พ.ย. 2026 (ต่อท้ายเท่านั้น)
+  { id: 'scallop', th: 'ขอบหยักลูกไม้', en: 'a scalloped lace border made of a chain of small half circles bulging outward' },
+  { id: 'wavy', th: 'เส้นคลื่น', en: 'a hand-drawn wavy line border' },
+  { id: 'double', th: 'เส้นคู่', en: 'a double line border: one thick line with a thin line just inside it' },
+  { id: 'beads', th: 'ลูกปัด', en: 'a border made of a chain of small round beads alternating the main and accent colors' },
 ] as const;
 
 /* ---------------------------------------------------------------- ค่าอื่นๆ */
@@ -519,3 +524,106 @@ export const COUNT_MIN = 3;
 export const COUNT_MAX = 20;
 export const NOTE_MAX = 120;
 export const CUSTOM_MAX = 60;
+
+/* ---------------------------------------------------------------- ทรงหัวกระดาษ / ฉาก / ลายขอบ / ตัวการ์ตูน (13 พ.ย. 2026)
+ * ทำให้ใบงานไม่เป็นเหลี่ยม: ทุกตัวเลือกมีรูปที่ PaperPreview วาด + คำบรรยายอังกฤษที่ prompt ใช้ (แก้ที่หนึ่งต้องแก้อีกที่)
+ * ค่าแรกของแต่ละรายการ = หน้าตาเดิม สูตรเก่าที่ไม่มีช่องใหม่จึงได้ภาพเดิมเสมอ */
+
+export const HEADS = [
+  { id: 'bar', th: 'แถบมน', en: 'a rounded rectangle banner with 7 mm corners' },
+  { id: 'cloud', th: 'ก้อนเมฆ', en: 'a puffy cloud-shaped banner: one wide cloud with a bumpy scalloped outline all the way around, no straight edges' },
+  { id: 'ribbon', th: 'ริบบิ้น', en: 'a ribbon banner: a wide band with a darker folded swallow-tail end sticking out on the left and on the right' },
+  { id: 'scroll', th: 'ม้วนกระดาษ', en: 'an unrolled scroll: a wide band with a rounded rolled-up curl at the left end and at the right end' },
+  { id: 'blob', th: 'หยดสี', en: 'a soft organic paint-blob shape with gently wavy edges, no straight lines and no corners' },
+  { id: 'wave', th: 'คลื่น', en: 'a banner with rounded top corners whose bottom edge is a rolling wave' },
+  { id: 'sign', th: 'ป้ายแขวน', en: 'a hanging signboard with rounded corners, held by two short ropes that go up from its top edge' },
+  { id: 'ticket', th: 'ตั๋ว', en: 'a ticket shape: a rounded band with a half-circle notch cut into the middle of its left and right edges and a thin dashed line just inside the outline' },
+] as const;
+
+/** ฉากตกแต่ง: top/bot = ความสูงแถบ (มม.) ที่ฉากกินที่ด้านบน/ล่างของแผ่นขาว */
+export const SCENES = [
+  { id: 'none', th: 'ไม่มีฉาก', top: 0, bot: 0, en: '' },
+  { id: 'clouds', th: 'ท้องฟ้าก้อนเมฆ', top: 13, bot: 0, en: 'a sky strip: 4 fluffy white clouds of different sizes with a smiling sun in the right corner' },
+  { id: 'bunting', th: 'ธงราวปาร์ตี้', top: 12, bot: 0, en: 'a party bunting: a string hanging in two gentle swags with about 14 small triangle flags in alternating bright colors' },
+  { id: 'rainbow', th: 'สายรุ้งคู่', top: 13, bot: 0, en: 'two small half rainbows, one near the left end and one near the right end, each with a tiny cloud at both feet, and little sparkles between them' },
+  { id: 'hills', th: 'เนินเขา', top: 0, bot: 18, en: 'a landscape strip: two layers of soft rolling hills with small theme pictures standing on top of them' },
+  { id: 'waves', th: 'คลื่นน้ำ', top: 0, bot: 16, en: 'a water strip: three layers of rolling waves with small theme pictures bobbing on them' },
+  { id: 'grass', th: 'สนามหญ้าดอกไม้', top: 0, bot: 14, en: 'a meadow strip: a band of grass with tufts and a row of little flowers of different heights' },
+  { id: 'garland', th: 'พวงไอคอน', top: 11, bot: 12, en: 'a garland of small theme pictures hanging from a curved string at the top, and a row of the same pictures in two alternating sizes at the bottom' },
+  { id: 'confetti', th: 'คอนเฟตตี', top: 0, bot: 0, en: 'confetti: about 50 tiny dots, stars, triangles and curly streamers in bright colors sprinkled all around the page margin, denser in the four corners' },
+] as const;
+
+export const PATTERNS = [
+  { id: 'plain', th: 'พื้นเรียบ', en: '' },
+  { id: 'dots', th: 'ลายจุด', en: 'a soft polka-dot pattern' },
+  { id: 'stripes', th: 'ลายทางเฉียง', en: 'soft diagonal candy stripes' },
+  { id: 'check', th: 'ลายตาราง', en: 'a soft gingham check pattern' },
+  { id: 'icons', th: 'ลายไอคอนจิ๋ว', en: 'a repeating pattern of tiny theme pictures' },
+] as const;
+
+/** ตัวการ์ตูนเต็มตัว: id ตรงกับชุดสำเร็จรูปของตัวสร้างตัวละคร (lib/studio/char.ts) ที่ PaperPreview ใช้วาด */
+export interface WsChar {
+  id: string;
+  th: string;
+  en: string;
+}
+export const CHARS: WsChar[] = [
+  { id: 'catStudent', th: 'น้องแมวนักเรียน', en: 'a cute orange kitten in a school uniform with a red bow, waving one paw' },
+  { id: 'rabbitReader', th: 'กระต่ายนักอ่าน', en: 'a white bunny in a pink sweater and a purple skirt, holding a book' },
+  { id: 'bearScientist', th: 'หมีนักวิทยาศาสตร์', en: 'a brown bear scientist in a white lab coat and glasses, holding a green flask' },
+  { id: 'chickKid', th: 'ลูกเจี๊ยบตัวน้อย', en: 'a little yellow chick in a light blue t-shirt with a purple backpack, both wings up saying hello' },
+  { id: 'pandaSport', th: 'แพนด้านักกีฬา', en: 'a sporty panda in a green t-shirt with a red headband, running with a ball' },
+  { id: 'foxGrad', th: 'จิ้งจอกบัณฑิต', en: 'an orange fox in a navy graduation gown and cap, jumping with both arms up' },
+  { id: 'frogExplorer', th: 'กบนักสำรวจ', en: 'a green frog explorer in blue overalls and orange boots, waving' },
+  { id: 'dogTeacher', th: 'คุณครูหมา', en: 'a friendly brown dog teacher in a light blue shirt with square glasses, holding a book and explaining' },
+  { id: 'lionKing', th: 'สิงโตจ้าวป่า', en: 'a lion cub in a red hoodie with a small gold crown, hands on hips' },
+  { id: 'elephantArtist', th: 'ช้างนักวาด', en: 'a gray baby elephant in purple overalls and a beanie, pointing with a pencil' },
+  { id: 'monkeyFun', th: 'ลิงจอมซน', en: 'a playful brown monkey in a yellow t-shirt and a cap, jumping and holding a star' },
+  { id: 'penguinCool', th: 'เพนกวินเท่ๆ', en: 'a penguin in a light blue hoodie with sunglasses and headphones' },
+  { id: 'boy', th: 'นักเรียนชาย', en: 'a cheerful schoolboy with short hair in a white shirt and navy shorts uniform' },
+  { id: 'girl', th: 'นักเรียนหญิง', en: 'a cheerful schoolgirl with twin tails in a white shirt and navy pleated skirt uniform, waving' },
+  { id: 'teacherF', th: 'คุณครู (หญิง)', en: 'a kind female teacher with bobbed hair and glasses, explaining with one hand raised' },
+  { id: 'teacherM', th: 'คุณครู (ชาย)', en: 'a kind male teacher in a light blue shirt with square glasses, holding a book' },
+  { id: 'scientist', th: 'นักวิทยาศาสตร์', en: 'a kid scientist with curly hair in a white lab coat and glasses, pointing and holding a flask' },
+  { id: 'grad', th: 'บัณฑิต', en: 'a kid graduate with long hair in a navy gown and cap, jumping with both arms up' },
+  { id: 'sport', th: 'นักกีฬา', en: 'a sporty kid with spiky hair in a red t-shirt and a cap, running with a ball' },
+];
+
+/* ---------------------------------------------------------------- แบบสำเร็จรูป = ธีม x ทรง (นับจากรายการจริง) */
+
+export interface WsLayout {
+  id: string;
+  th: string;
+  hd: (typeof HEADS)[number]['id'];
+  fr: (typeof FRAMES)[number]['id'];
+  sc: (typeof SCENES)[number]['id'];
+  pt: (typeof PATTERNS)[number]['id'];
+  /** มีตัวการ์ตูนเต็มตัว (false = หน้ากลมแบบเดิม) */
+  ch: boolean;
+}
+export const LAYOUTS: WsLayout[] = [
+  { id: 'sky', th: 'ท้องฟ้าก้อนเมฆ', hd: 'cloud', fr: 'none', sc: 'clouds', pt: 'dots', ch: true },
+  { id: 'party', th: 'ปาร์ตี้ธงราว', hd: 'ribbon', fr: 'scallop', sc: 'bunting', pt: 'plain', ch: true },
+  { id: 'hill', th: 'เนินเขาสดใส', hd: 'blob', fr: 'none', sc: 'hills', pt: 'plain', ch: true },
+  { id: 'sea', th: 'คลื่นน้ำ', hd: 'wave', fr: 'wavy', sc: 'waves', pt: 'plain', ch: true },
+  { id: 'tale', th: 'ม้วนกระดาษนิทาน', hd: 'scroll', fr: 'double', sc: 'garland', pt: 'plain', ch: true },
+  { id: 'garden', th: 'สวนหลังบ้าน', hd: 'sign', fr: 'round', sc: 'grass', pt: 'check', ch: true },
+  { id: 'rainbow', th: 'สายรุ้งพาสเทล', hd: 'cloud', fr: 'beads', sc: 'rainbow', pt: 'plain', ch: true },
+  { id: 'fun', th: 'คอนเฟตตีสนุกสนาน', hd: 'ticket', fr: 'dash', sc: 'confetti', pt: 'stripes', ch: true },
+  { id: 'cute', th: 'ลายไอคอนน่ารัก', hd: 'blob', fr: 'scallop', sc: 'garland', pt: 'icons', ch: true },
+  { id: 'classic', th: 'คลาสสิก', hd: 'bar', fr: 'theme', sc: 'none', pt: 'plain', ch: false },
+];
+
+export interface WsLook {
+  /** `${ธีม}.${ทรง}` */
+  id: string;
+  th: string;
+  theme: Theme;
+  layout: WsLayout;
+  /** ตัวการ์ตูนประจำแบบ ('' = หน้ากลมแบบเดิม) หมุนเวียนให้แบบข้างเคียงไม่ซ้ำตัว */
+  ch: string;
+}
+export const LOOKS: WsLook[] = THEMES.flatMap((theme, ti) =>
+  LAYOUTS.map((layout, li) => ({ id: `${theme.id}.${layout.id}`, th: `${theme.th} · ${layout.th}`, theme, layout, ch: layout.ch ? CHARS[(ti * 7 + li * 3) % CHARS.length].id : '' }))
+);
+export const lookById = (id: string) => LOOKS.find((l) => l.id === id);
