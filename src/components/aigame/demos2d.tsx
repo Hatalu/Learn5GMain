@@ -11,31 +11,88 @@ export function BalloonDemo({ items }: DemoProps) {
   const { item, n, score, combo, fb, wrong, answer } = useLoop(items);
   const [popped, setPopped] = useState<number | null>(null);
   const [round, setRound] = useState(0);
+  // ลูกดอก: ตัวละครเป่าไปที่ลูกโป่งที่แตะ ตัดสินตอนโดน
+  const [dart, setDart] = useState<{ i: number; x: number; y: number; k: number } | null>(null);
+  const [wind, setWind] = useState(0);
+  const stage = useRef<HTMLDivElement>(null);
   useEffect(() => setPopped(null), [n]);
-  const hit = (i: number) => {
-    if (wrong.has(i) || popped !== null) return;
-    if (answer(i)) setPopped(i);
+  useEffect(() => {
+    let off = 0;
+    const t = window.setInterval(() => {
+      setWind(Math.random() < 0.5 ? -1 : 1);
+      off = window.setTimeout(() => setWind(0), 1900);
+    }, 5200);
+    return () => {
+      clearInterval(t);
+      clearTimeout(off);
+    };
+  }, []);
+  const hit = (i: number, el?: HTMLElement | null) => {
+    if (wrong.has(i) || popped !== null || dart) return;
+    const box = stage.current?.getBoundingClientRect();
+    const b = (el || stage.current?.querySelector<HTMLElement>(`[data-bi="${i}"]`))?.getBoundingClientRect();
+    if (!box || !b) return;
+    gsfx.tap();
+    setDart({ i, x: ((b.left + b.width / 2 - box.left) / box.width) * 100, y: ((b.top + b.height * 0.3 - box.top) / box.height) * 100, k: Date.now() });
   };
-  useNumKeys(hit);
+  const land = () => {
+    if (!dart) return;
+    const ok = answer(dart.i);
+    if (ok) setPopped(dart.i);
+    setDart(null);
+  };
+  useNumKeys((i) => hit(i));
   if (!item) return <Empty />;
   const cnt = item.choices.length;
   return (
-    <div className="ag-stage ag-sky">
+    <div ref={stage} className="ag-stage ag-sky" data-wind={wind || undefined}>
       <span className="ag-cloud" style={{ top: '18%', animationDelay: '-6s' }} />
       <span className="ag-cloud" style={{ top: '42%', animationDelay: '-19s', ['--s' as string]: 0.7 }} />
+      {wind !== 0 && (
+        <span key={wind} className="ag-gust" style={{ ['--w' as string]: wind }} aria-hidden="true">
+          <i />
+          <i />
+          <i />
+        </span>
+      )}
       <svg className="ag-hills" viewBox="0 0 400 60" preserveAspectRatio="none" aria-hidden="true">
         <path d="M0 30 Q100 0 200 26 T400 20 V60 H0Z" fill="#7bd389" />
         <path d="M0 44 Q120 24 240 42 T400 38 V60 H0Z" fill="#3fae5a" />
       </svg>
       <Hud q={item.q} score={score} combo={combo} />
+      <span className="ag-blower" data-aim={dart ? (dart.x < 50 ? 'l' : 'r') : undefined} aria-hidden="true">
+        <svg viewBox="0 0 60 60">
+          <ellipse cx="30" cy="56" rx="16" ry="3.5" fill="rgba(42,35,80,.25)" />
+          <rect x="14" y="30" width="32" height="24" rx="12" fill="#ffb3cf" stroke="#2a2350" strokeWidth="3" />
+          <circle cx="30" cy="24" r="16" fill="#ffd9b8" stroke="#2a2350" strokeWidth="3" />
+          <circle cx="24" cy="22" r="2.6" fill="#2a2350" />
+          <circle cx="36" cy="22" r="2.6" fill="#2a2350" />
+          <circle cx="24.8" cy="21" r="0.9" fill="#fff" />
+          <circle cx="36.8" cy="21" r="0.9" fill="#fff" />
+          <ellipse cx="20" cy="28" rx="3" ry="1.8" fill="#ff8fa8" opacity=".7" />
+          <ellipse cx="40" cy="28" rx="3" ry="1.8" fill="#ff8fa8" opacity=".7" />
+          <rect className="ag-pipe" x="27" y="2" width="6" height="22" rx="3" fill="#9b6cf0" stroke="#2a2350" strokeWidth="2.5" />
+        </svg>
+      </span>
+      {dart && (
+        <span key={dart.k} className="ag-dart" style={{ ['--tx' as string]: `${dart.x}%`, ['--ty' as string]: `${dart.y}%` }} onAnimationEnd={land} aria-hidden="true">
+          <svg viewBox="0 0 12 30">
+            <path d="M6 0l4 8H2Z" fill="#ff6b7a" stroke="#2a2350" strokeWidth="1.5" />
+            <rect x="4.5" y="7" width="3" height="16" rx="1.5" fill="#fff" stroke="#2a2350" strokeWidth="1.5" />
+            <path d="M6 22l5 7H1Z" fill="#4fb3ff" stroke="#2a2350" strokeWidth="1.5" />
+          </svg>
+        </span>
+      )}
+      <div className="ag-windlayer">
       {item.choices.map((c, i) => (
         <button
           key={`${n}-${round}-${i}`}
           type="button"
           className="ag-balloon"
+          data-bi={i}
           data-state={popped === i ? 'pop' : wrong.has(i) ? 'flat' : undefined}
           style={{ left: `${((i + 0.5) / cnt) * 100}%`, ['--c' as string]: COLORS[i % COLORS.length], animationDelay: `${i * -1.3}s` }}
-          onClick={() => hit(i)}
+          onClick={(e) => hit(i, e.currentTarget)}
           onAnimationIteration={i === 0 ? () => setRound((r) => r + 1) : undefined}
           aria-label={`ตัวเลือก ${i + 1}: ${c}`}
         >
@@ -50,6 +107,7 @@ export function BalloonDemo({ items }: DemoProps) {
           {popped === i && <Spark className="ag-burst" c="#ffd166" />}
         </button>
       ))}
+      </div>
       <Stamp fb={fb} />
     </div>
   );
@@ -200,63 +258,65 @@ export function FishingDemo({ items }: DemoProps) {
 export function MemoryDemo({ items }: DemoProps) {
   const pool = useMemo(() => toDemo(items), [items]);
   const [round, setRound] = useState(0);
-  const deck = useMemo(() => {
+  // การ์ดคำตอบคว่ำ 1 ใบต่อ 1 ข้อ · คำถามขึ้นทีละข้อด้านบน · เปิดใบที่เป็นคำตอบของข้อนั้น
+  const stage = useMemo(() => {
     const r = seeded(round + 7);
-    const pick = pool.length ? Array.from({ length: Math.min(4, pool.length) }, (_, k) => pool[(round * 4 + k) % pool.length]) : [];
-    const cards = pick.flatMap((p, k) => [
-      { id: `q${k}`, pair: k, text: p.q, kind: 'q' as const },
-      { id: `a${k}`, pair: k, text: p.choices[[...p.correct][0]], kind: 'a' as const },
-    ]);
-    return cards.sort(() => r() - 0.5);
+    const qs = pool.length ? Array.from({ length: Math.min(4, pool.length) }, (_, k) => pool[(round * 4 + k) % pool.length]) : [];
+    const ans = (p: (typeof qs)[number]) => p.choices[[...p.correct][0]];
+    const cards = qs.map((p, k) => ({ id: k, text: ans(p) })).sort(() => r() - 0.5);
+    return { qs, cards, ans };
   }, [pool, round]);
-  const [open, setOpen] = useState<number[]>([]);
+  const [turn, setTurn] = useState(0);
+  const [open, setOpen] = useState<number | null>(null);
   const [done, setDone] = useState<Set<number>>(new Set());
   const [peek, setPeek] = useState(true);
-  const [moves, setMoves] = useState(0);
+  const [score, setScore] = useState(0);
+  const [fb, setFb] = useState<{ ok: boolean; key: number } | null>(null);
+  const lock = useRef(false);
   useEffect(() => {
-    setOpen([]);
+    setTurn(0);
+    setOpen(null);
     setDone(new Set());
-    setMoves(0);
     setPeek(true);
-    const t = setTimeout(() => setPeek(false), 1800);
+    lock.current = false;
+    const t = setTimeout(() => setPeek(false), 2600);
     return () => clearTimeout(t);
-  }, [deck]);
+  }, [stage]);
+  const target = stage.qs[turn];
   const flip = (k: number) => {
-    if (peek || open.length === 2 || open.includes(k) || done.has(deck[k].pair)) return;
+    const c = stage.cards[k];
+    if (peek || lock.current || !target || done.has(c.id)) return;
     gsfx.tap();
-    const nx = [...open, k];
-    setOpen(nx);
-    if (nx.length === 2) {
-      setMoves((m) => m + 1);
-      const [a, b] = nx.map((i) => deck[i]);
-      const ok = a.pair === b.pair;
-      window.setTimeout(() => {
+    lock.current = true;
+    setOpen(k);
+    const ok = c.text === stage.ans(target);
+    setFb({ ok, key: Date.now() });
+    window.setTimeout(
+      () => {
         if (ok) {
           gsfx.correct();
-          const d = new Set(done).add(a.pair);
+          setScore((s) => s + 100);
+          const d = new Set(done).add(c.id);
           setDone(d);
-          if (d.size * 2 === deck.length) window.setTimeout(() => setRound((r) => r + 1), 1200);
+          if (turn + 1 >= stage.qs.length) window.setTimeout(() => setRound((r) => r + 1), 1200);
+          else setTurn((t) => t + 1);
         } else gsfx.wrong();
-        setOpen([]);
-      }, ok ? 350 : 900);
-    }
+        setOpen(null);
+        lock.current = false;
+      },
+      ok ? 450 : 1000,
+    );
   };
-  if (!deck.length) return <Empty />;
-  const all = done.size * 2 === deck.length;
+  if (!stage.cards.length) return <Empty />;
+  const all = done.size === stage.cards.length;
   return (
     <div className="ag-stage ag-library">
-      <div className="ag-hud">
-        <div className="ag-q">{all ? 'ครบทุกคู่แล้ว!' : peek ? 'จำตำแหน่งการ์ดไว้นะ...' : 'เปิดการ์ด 2 ใบ ให้คำถามคู่กับคำตอบ'}</div>
-        <div className="ag-score">
-          <b>{moves}</b>
-          <small>ครั้ง</small>
-        </div>
-      </div>
-      <div className="ag-cards" style={{ ['--cols' as string]: deck.length > 6 ? 4 : 3 }}>
-        {deck.map((c, k) => {
-          const face = peek || open.includes(k) || done.has(c.pair);
+      <Hud q={all ? 'ครบทุกข้อแล้ว!' : peek ? 'จำตำแหน่งการ์ดคำตอบไว้นะ...' : target.q} score={score} combo={0} />
+      <div className="ag-cards" style={{ ['--cols' as string]: 2 }}>
+        {stage.cards.map((c, k) => {
+          const face = peek || open === k || done.has(c.id);
           return (
-            <button key={`${round}-${c.id}`} type="button" className="ag-card" data-face={face || undefined} data-done={done.has(c.pair) || undefined} data-kind={c.kind} onClick={() => flip(k)} aria-label={face ? c.text : `การ์ดใบที่ ${k + 1}`}>
+            <button key={`${round}-${c.id}`} type="button" className="ag-card" data-face={face || undefined} data-done={done.has(c.id) || undefined} data-kind="a" onClick={() => flip(k)} aria-label={face ? c.text : `การ์ดใบที่ ${k + 1}`}>
               <span className="ag-card-in">
                 <span className="ag-card-back">
                   <Spark className="w-1/3" c="#ffd166" />
@@ -267,6 +327,7 @@ export function MemoryDemo({ items }: DemoProps) {
           );
         })}
       </div>
+      <Stamp fb={fb} />
     </div>
   );
 }

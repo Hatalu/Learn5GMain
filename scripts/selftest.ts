@@ -2168,7 +2168,10 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
     const full = P.buildGamePrompt(P.cleanGameRecipe({ game: 'runner', timer: 20, lives: 'on', count: 20, extras: P.EXTRAS.map((e) => e.id) }));
     assert.equal(full.match(/timerSec: /g)!.length, 1);
     assert.ok(full.includes('timerSec: 20,') && full.includes('lives: 3,'));
-    assert.ok(full.length < 20000, String(full.length));
+    assert.ok(full.length < 32000, String(full.length));
+    const E = await import('../src/lib/aigame/engine');
+    assert.ok(full.includes(E.ENGINE_JS) && full.includes(E.HOOKS_JS) && full.includes('const WORDS = {'));
+    assert.ok(!/\$\{|\x60/.test(E.ENGINE_JS + E.ENGINE_HTML + E.ENGINE_CSS + E.HOOKS_JS), 'engine must not contain template syntax');
     assert.equal(P.cleanGameRecipe({ extras: ['tts', 'tts', 'zzz', 'boss', 'map', 'cert', 'best'] }).extras.join(), 'tts,boss,map,cert');
     for (const x of P.FIXES) assert.ok(!P.hasEmoji(x.en + x.th));
     // ค่าแปลกปลอมกลับเป็นค่าเริ่มต้น และตัดอิโมจิจากข้อความครู

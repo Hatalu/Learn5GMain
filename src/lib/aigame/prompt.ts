@@ -10,6 +10,7 @@ import { cleanText } from '@/lib/worksheet/recipe';
 import { richToPlain } from '@/lib/game-creator/quiz';
 import type { QuizContent } from '@/lib/game-creator/types';
 import { AI_GAMES, gameById, type AiGame } from './games';
+import { ENGINE_CSS, ENGINE_HTML, ENGINE_JS, HOOKS_JS } from './engine';
 
 /** คำถามแบบเรียบที่ใช้ทั้ง prompt และเกมตัวอย่าง */
 export interface GItem {
@@ -271,11 +272,26 @@ const bullets = (a: string[]) => a.map((x) => `- ${x}`).join('\n');
 const num = (a: string[]) => a.map((x, i) => `${i + 1}. ${x}`).join('\n');
 const r1 = (n: number) => Math.round(n * 10) / 10;
 
-/** ข้อความบนจอที่สั่งให้ใช้ตรงตัว (กัน Gemini ทำ UI เป็นภาษาอังกฤษ) */
-const UI_WORDS = {
-  th: ['เริ่มเล่น', 'วิธีเล่น', 'พร้อมแล้ว!', 'หยุดพัก', 'เล่นต่อ', 'เริ่มใหม่', 'เสียง', 'ความเร็ว', 'คะแนน', 'คำใบ้', 'ถูกต้อง! เก่งมาก', 'เกือบแล้ว ลองอีกครั้งนะ', 'เล่นอีกครั้ง'],
-  en: ['Start', 'How to play', 'Ready!', 'Pause', 'Resume', 'Restart', 'Sound', 'Speed', 'Score', 'Hint', 'Correct! Great job!', 'So close, try again!', 'Play again'],
-} as const;
+/** ข้อความบนจอ (ส่งเป็น const WORDS ในโค้ด กัน Gemini ทำ UI เป็นภาษาอังกฤษ) */
+const UI_WORDS: Record<string, [string, string]> = {
+  start: ['เริ่มเล่น', 'Start'],
+  ready: ['พร้อมแล้ว!', 'Ready!'],
+  pause: ['หยุดพัก', 'Pause'],
+  resume: ['เล่นต่อ', 'Resume'],
+  restart: ['เริ่มใหม่', 'Restart'],
+  sound: ['เสียง', 'Sound'],
+  speed: ['ความเร็ว', 'Speed'],
+  score: ['คะแนน', 'Score'],
+  correct: ['ถูกต้อง! เก่งมาก', 'Correct! Great job!'],
+  wrong: ['เกือบแล้ว ลองอีกครั้งนะ', 'So close, try again!'],
+  reveal: ['คำตอบคือ', 'The answer is'],
+  again: ['เล่นอีกครั้ง', 'Play again'],
+};
+
+export function wordsBlock(lang: GameRecipe['lang']): string {
+  const pick = ([th, en]: [string, string]) => (lang === 'en' ? en : lang === 'th' ? th : th + ' / ' + en);
+  return ['const WORDS = {', ...Object.entries(UI_WORDS).map(([k, v]) => '  ' + k + ': ' + JSON.stringify(pick(v)) + ','), '};'].join('\n');
+}
 
 /** ชื่อ CONFIG ทั้งหมดที่ข้อความของเกมอ้างถึง */
 export const configRefs = (g: AiGame) => [...new Set(JSON.stringify(g).match(/CONFIG\.\w+/g) || [])].map((x) => x.slice(7));
@@ -334,7 +350,6 @@ export function buildGamePrompt(raw: GameRecipe, extra: PromptExtra = {}): strin
       : r.lang === 'en'
         ? 'All on-screen text is in simple English that fits the grade.'
         : 'Buttons and instructions are bilingual: Thai first, with English below in smaller text. Each question stays in its own language.';
-  const words = r.lang === 'en' ? UI_WORDS.en : r.lang === 'th' ? UI_WORDS.th : UI_WORDS.th.map((w, i) => `${w} / ${UI_WORDS.en[i]}`);
   const qLang = r.lang === 'en' ? 'simple English' : r.lang === 'th' ? 'Thai' : 'the language that fits the content (English for English lessons, otherwise Thai)';
   const fields = `"hint"${explain ? ' and "explain"' : ''}`;
 
@@ -342,11 +357,11 @@ export function buildGamePrompt(raw: GameRecipe, extra: PromptExtra = {}): strin
     ? [
         `Use ALL ${items.length} questions below${extra.setTitle ? ` (from the teacher's set "${stripEmoji(extra.setTitle)}")` : ''}. Do not change any question, choice or answer, and do not drop any question.`,
         '- "answer" is the index of the correct choice (starting at 0).' + (hasMulti ? ' "answers" lists several correct choices: the player must pick every one of them to pass (one at a time is fine).' : ''),
-        ...(hasText ? ['- type "text" was a typed-answer question: in this game, invent 2-3 believable wrong choices yourself and use the first "accept" value as the correct choice.'] : []),
+        ...(hasText ? ['- type "text" was a typed-answer question: rewrite each of these items in QUESTIONS as a normal choice item (keep q, put the first "accept" value plus 2-3 believable wrong choices in "choices", and set "answer"), because the engine needs choices.'] : []),
         ...(hasMedia ? ['- Some questions had a picture in the original that is not included; text only is fine.'] : []),
         `- Add a ${fields} field to every question yourself: the hint guides the thinking in one short sentence and never gives the answer away${explain ? '; the explanation says why the answer is right in one line' : ''}.`,
         '- Write fractions as a/b in the data but render them nicely (stacked fractions if possible); render powers as superscripts.',
-        '- Shuffle the question order and the choice order every new game, and always check answers against the original data.',
+        '- The engine shuffles the question order and the choice order every game; keep the data order as given.',
         '',
         'const QUESTIONS = [',
         ...items.map(itemLine),
@@ -363,43 +378,39 @@ export function buildGamePrompt(raw: GameRecipe, extra: PromptExtra = {}): strin
         `Data format: const QUESTIONS = [ { "q": "...", "choices": ["...", "..."], "answer": 0, "hint": "..."${explain ? ', "explain": "..."' : ''} }, ... ];`,
       ].join('\n');
 
-  const flow = game.noRead
-    ? 'START -> HOWTO -> PLAY -> FEEDBACK -> (PLAY | RESULT), plus PAUSED'
-    : 'START -> HOWTO -> READ -> PLAY -> FEEDBACK -> (READ of the next question | RESULT), plus PAUSED';
-
-  const pacing = [
-    'Put the CONFIG object below at the very top of the script, exactly as written, and read EVERY timing from it. Never hard-code another duration or speed anywhere.',
-    `Use one explicit state machine: ${flow}. Keep it in one variable and change it only through a setState() function that also cancels every timer and timeout of the previous state.`,
-    game.noRead
-      ? 'This game has no READ phase because the questions are printed on the cards; nothing moves on its own, so the player can take as long as needed.'
-      : 'READ: the question appears big in the center of the screen. No answer objects exist yet and nothing moves. READ lasts max(CONFIG.readMinSec, number of characters x CONFIG.readPerCharSec) seconds; after 1 second the player may tap a "ready" button to skip the rest. Then the question shrinks into the top HUD, where it stays visible for the whole PLAY phase, and PLAY starts.',
-    'PLAY never ends on its own. A question ends ONLY when the correct answer is given. Answer objects that leave the screen or pass the player come back (loop or respawn); never auto-skip a question and never count a "miss" as an answer.',
-    'FEEDBACK: correct = celebrate for CONFIG.feedbackCorrectSec seconds, then go to the next question. Wrong = soft feedback for CONFIG.feedbackWrongSec seconds, then the same question continues. Input is ignored during FEEDBACK and for CONFIG.inputLockSec seconds after a question becomes playable.',
-    'Movement uses delta time in SECONDS: dt = Math.min((now - last) / 1000, 0.05). Speeds come from CONFIG as "seconds to cross a distance" (speed = distance / CONFIG.xxxSec), so the pace is identical on every screen size and on 60, 120 or 144 Hz displays. Never move objects by a fixed number of pixels per frame.',
-    'Exactly ONE requestAnimationFrame loop for the whole page: start it once on load and guard it with a flag. Restarting the game only resets the game state; it never starts a second loop (a second loop doubles the speed, the most common bug in these games). Pause updates while PAUSED or when the tab is hidden (visibilitychange), and reset the last timestamp when resuming.',
-    'Each question is answered exactly once. Give every question a unique token and ignore any timer, animation end or collision that belongs to an old token. Never check collisions or answers on the frame an object is created.',
-    'Use Pointer Events (pointerdown) only, never touch and click together (that causes double taps). Every hit area is at least 48 x 48 px, larger than the drawing if needed.',
-    'Size the canvas from its container after the page and fonts load and again on every resize (devicePixelRatio, capped at 2). The game starts only after the player taps the start button.',
-    'The pause menu has a speed slider from 0.5x to 1.5x (default 1x) that live-scales every CONFIG duration (slower = longer), plus a sound on/off switch.',
-    'Adaptive difficulty only as written in the game rules, always capped by the CONFIG limits. After 2 wrong answers in a row, go back to the base speed and make the next hint clearer.',
+  const rules = [
+    'Build the game ON the starter engine below. Copy the engine code exactly; only fill in the Hooks object, the scene, the art and the CSS. Do not rewrite the engine, do not add a second game loop, do not add setTimeout/setInterval for game logic (use after(sec, fn) and tween() from the engine).',
+    'Copy the WHOLE engine, from the STARTER ENGINE line to the END OF STARTER ENGINE line. Check before answering that your file defines every one of these: safe, txt, attr, store, ease, shuffle, G, boot, after, tween, setState, pause, prepare, readTime, startGame, nextQuestion, beginPlay, answer, endGame, say, hud, frame, Sound, on. A missing boot gives "boot is not defined" and the Start button does nothing.',
+    'Never put onclick="..." attributes in the HTML. The engine wires every button with addEventListener, which also works inside <script type="module"> (inline onclick handlers fail there, which is why "Start" did nothing in earlier attempts).',
+    'Anything that is hidden must use display: none (or pointer-events: none). An invisible layer with opacity 0 that covers the screen blocks every tap. #fx, decorations and speech bubbles must have pointer-events: none.',
+    'The question text lives in the HTML element #qtext (the engine fills it). Do not draw the question on a canvas. Answer labels are real HTML/SVG text too.',
+    'A question ends ONLY when answer(i) returns true for its last correct choice; the engine then moves to the next question by itself. Call answer(i) exactly once per hit (on impact for things that fly), never every frame.',
+    'All movement uses the dt passed to Hooks.update (game seconds, already 0 while paused and scaled by the speed slider). Speeds come from CONFIG as "seconds to cross a distance" (speed = distance / CONFIG.xxxSec), so the pace is the same on every screen and on 60, 120 or 144 Hz displays.',
+    'Nothing is spawned during READ: spawn(q) is called when PLAY starts. From then on every answer must be on screen and tappable within 1 second (enter with a quick eased pop-in, then move at the CONFIG pace); no empty waiting time. Answer objects that leave the screen or pass the player come back (loop or respawn).',
+    'Use pointerdown for taps on game objects (no separate touchstart + click). Every tap target is at least 48 x 48 px, larger than the drawing if needed.',
+    'Wrap anything optional (fonts, audio, localStorage, speechSynthesis, vibration) in safe(() => ...) so a blocked feature can never stop the game. Never await fonts or audio before the game can start.',
+    'Adaptive difficulty only as written in the game rules, always capped by the CONFIG limits. Read G.combo and G.wrongRow from the engine.',
   ];
 
   const settings = [
     `Players: ${mode}`,
     r.timer
-      ? 'Time limit: show a time bar for each question (CONFIG.timerSec). Answering before it empties gives a speed bonus. When it empties nothing is lost: the bar turns gray, the hint appears, and the question stays until it is answered correctly. The bar is frozen during READ, FEEDBACK and PAUSED.'
+      ? 'Time limit: the engine runs a time bar (CONFIG.timerSec) and gives a speed bonus. When it empties nothing is lost: the hint appears and the question stays until answered. Style the bar nicely.'
       : 'Time limit: none. Do not add any timer.',
     r.lives === 'on'
-      ? 'Hearts: show CONFIG.lives hearts in the HUD. A wrong answer costs one heart. At 0 hearts the game does NOT end: the mascot cheers the player on, and 2 correct answers in a row refill all hearts.'
+      ? 'Hearts: the engine counts G.hearts (CONFIG.lives); draw them in #hearts. At 0 hearts the game does NOT end; the mascot cheers the player on and 2 correct answers in a row refill them (the engine does this).'
       : 'Hearts: none. A mistake only resets the combo.',
     extras.length
       ? `Extra features (build them only after the core game works and looks finished; keep each one small and simple):\n${extras.map((e) => `  - ${e.en}`).join('\n')}`
       : 'Extra features: none. Do not add extra systems; spend the effort on gameplay and visuals.',
   ];
 
-  return `You are a senior HTML5 game developer and an illustrator of children's games. Build a complete, polished and truly playable learning game for Thai school children as ONE self-contained HTML file that runs immediately in Gemini Canvas.
+  const fence = '```';
+  return `You are a senior HTML5 game developer and an illustrator of children's games. Build a complete, polished, truly playable learning game for Thai school children as ONE self-contained HTML file that runs immediately in Gemini Canvas.
 
-Priorities, in this order: (1) the game is playable and fair at a child's pace, (2) it looks beautiful, like a finished commercial kids' game, (3) extra features. Never sacrifice (1) or (2) for (3).
+Output: a CODE canvas holding one complete HTML file that starts with <!DOCTYPE html>, so Canvas runs it as an app with a preview. Never a text document.
+
+Priorities, in this order: (1) it works and is fun at a child's pace, (2) it looks cute, soft and smooth like a finished commercial kids' game, (3) extra features. Never sacrifice (1) or (2) for (3).
 
 # 1. Lesson
 - Subject: ${subj.en} (${subj.th})
@@ -409,18 +420,16 @@ Priorities, in this order: (1) the game is playable and fair at a child's pace, 
 - Game speed chosen by the teacher: ${PACES.find((p) => p.id === r.pace)!.en}
 - On-screen language: ${langLine}${r.note ? `\n- Teacher's note (written in Thai; follow it when it is safe and fits the game): ${r.note}` : ''}
 
-# 2. Pacing and playability (MOST IMPORTANT)
-Games generated from short prompts often run far too fast: questions flash past in a fraction of a second and nobody can play. Prevent that with these rules:
-${num(pacing)}
-
-${configBlock(r, game)}
+# 2. Rules that make it work (MOST IMPORTANT)
+Earlier games made from prompts like this had a Start button that did nothing, no question on screen, questions that never moved on, and questions that flashed past too fast. These rules prevent all of that:
+${num(rules)}
 
 # 3. The game: "${game.en}" (Thai name: "${game.name}"), ${game.dim}
 Scene: ${game.scene}
 ${
   is3d
-    ? 'Technology: a real 3D game built with three.js r160, loaded as an ES module through an importmap from https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js. Build every model from primitives (box, sphere, cylinder, cone, torus, capsule); no external model or texture files. Lighting: HemisphereLight plus a DirectionalLight with soft shadows (1024 shadow map), and fog for depth. Answer labels must be crisp: draw them on a CanvasTexture at 2x resolution after the Thai font has loaded (document.fonts.load), on planes or sprites that face the camera, or use HTML labels positioned by projecting 3D points. renderer.setPixelRatio(Math.min(devicePixelRatio, 2)). If WebGL is unavailable, show one friendly message instead of crashing.'
-    : 'Technology: a 2D game drawn with Canvas 2D (or inline SVG). Every picture is drawn in code; no image files.'
+    ? 'Technology: a real 3D game built with three.js r160, loaded with an importmap ({"imports": {"three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}) and <script type="module">. Put the three.js renderer canvas inside #world; keep the HUD, question card, answer labels and screens as HTML on top (labels are HTML elements positioned each frame by projecting 3D points with vector.project(camera)). Build every model from primitives (box, sphere, cylinder, cone, torus, capsule) with rounded, chunky proportions; no external model or texture files. Lighting: HemisphereLight plus a DirectionalLight with soft shadows (1024 shadow map), fog for depth, renderer.setPixelRatio(Math.min(devicePixelRatio, 2)), resize with the window. Camera framing: a third-person camera behind and above the player, looking ahead down the track, so the player character fills only about 15% of the screen height near the bottom and the oncoming answers are clearly visible in the middle of the screen; nothing may block the view of the answers. Answer labels: HTML plates projected onto the objects, scaled with distance; labels of far objects fade in only when they are close enough to read, and labels must never overlap each other. Keep the scene light (low-poly, at most a few hundred meshes, reuse geometries and materials) so it stays smooth on school tablets. Load three.js with a dynamic import inside try/catch (const THREE = await import("three")); if it or WebGL fails, show a friendly message in #world instead of a blank page.'
+    : 'Technology: 2D built with HTML + inline SVG sprites inside #world, moved every frame with transform: translate3d(...) rotate(...) scale(...) (GPU-smooth, crisp vector art, perfect Thai text, and each sprite gets its own pointerdown listener). Use the #fx canvas only for particles. No image files.'
 }
 
 ## Core mechanics
@@ -432,59 +441,91 @@ ${bullets(game.controls)}
 ## Difficulty curve
 ${bullets(game.progression)}
 
-# 4. Visual direction (make it gorgeous)
+## Make every answer feel fun (4 beats)
+- Anticipation: the mascot or object winds up (lean back, squash, puff cheeks, aim) for about 0.15 s.
+- Action: the throw/swing/flight moves along an eased curve (never a straight teleport).
+- Impact: a hit stop of 60 ms, a burst of particles, a sound and a small screen shake (skipped for prefers-reduced-motion).
+- Reaction: the target and the mascot react with personality (dizzy stars, happy jump, giggle, wobble).
+- The world is alive between answers: idle animations, ambient creatures, light wind, and the small surprise events listed in the mechanics.
+
+# 4. Visual direction: cute, soft and smooth
 - Art style: ${is3d ? art.en3d : art.en}
-- Mascot: ${hero.en}. It appears on the start screen, reacts to every answer (cheers when correct, an encouraging face when wrong) and is the player character if the game has one.
-- Build the scene in layers: far background, middle layer with gentle parallax or idle motion, the play layer, a few foreground details, then the UI. No flat empty backgrounds.
-- Draw every character and object with care: outlines, 2-3 tones (base, shadow, highlight), a soft ground shadow and an idle animation (bob, blink, sway). Never use plain rectangles or bare circles as placeholder art.
-- One consistent palette of 5-6 colors that suits the style; different answers get clearly different colors.
-- Readability first: question text at least 24 px on phones and 30 px on desktop, answer labels at least 20 px and 26 px, strong contrast (dark text on light panels or the reverse). Long answers wrap or shrink to fit inside their object. Thai text is never clipped: leave room above and below for Thai vowel and tone marks.
-- Font: load "Mali" from Google Fonts (fallback sans-serif) and wait for document.fonts.ready before the first draw.
-- Game feel:
+- Mascot: ${hero.en}. Cute proportions: a big round head (about 60% of the height), large round eyes with two white highlight dots, small smile, pink blush ovals, short rounded limbs. It appears on the start screen, cheers on correct answers, makes an encouraging face on wrong ones, and speaks the hints through #bubble.
+- Shapes: everything rounded (rounded rects, circles, blobs, stroke-linejoin round). Outlines use a darker shade of the fill color, not pure black. Every object has 3 tones (base, shadow, highlight), a soft oval ground shadow and a gentle gradient on large shapes.
+- Smooth motion: nothing ever teleports or snaps. Use tween() with ease.outBack for pop-ins, ease.inOutSine for floating, ease.outElastic for bouncy rewards. Every visible object has an idle animation (bob, breathe, blink every 3-5 s, sway) with different phases so the scene never looks frozen.
+- Scene in layers: sky/background gradient, far shapes with slow parallax, the play layer, a few foreground details, then the UI.
+- One pastel palette of 5-6 colors; answers get clearly different colors.
+- Readability: question text at least 24 px on phones and 30 px on desktop on a solid rounded card; answer labels at least 20 px on solid label plates; strong contrast. Long text wraps or shrinks to fit. Thai text is never clipped: line-height at least 1.5 and padding above and below for vowel and tone marks.
+- Font: load "Mali" from Google Fonts with a <link> tag, font-family: 'Mali', sans-serif. Do not wait for it.
+- UI: thick, squishy buttons (big radius, 4-6 px bottom shadow) that squash on press and spring back. Screens slide or fade in over 0.3 s.
+- Game feel for this game:
 ${game.juice.map((j) => `  - ${j}`).join('\n')}
-  - Thick, squishy buttons that squash and stretch when pressed.
-  - Sparkles on correct answers, a small smoke puff on wrong ones, "+points" text that floats up.
-  - Smooth screen transitions (0.3 s fade or slide).
 - Respect prefers-reduced-motion: reduce shaking and flashing.
 
 # 5. Questions
 ${qBlock}
 
-The game reads questions only from QUESTIONS, placed near the top of the script so the teacher can edit them.
-
 # 6. Learning inside the game
-- Answering IS the game action described above, never a quiz pop-up on top of the game.
-- A wrong answer is never game over: the mascot encourages the player and shows the one-line hint.
-- A second wrong answer on the same question gently highlights the correct answer with a one-line reason.
-- The result screen lists every missed question with its correct answer.
+- Answering IS the game action above, never a quiz pop-up on top of the game.
+- A wrong answer is never game over: the engine shows the hint in #bubble; the mascot looks encouraging.
+- On the second wrong answer the engine reveals the answer in #bubble; also make the correct object glow.
+- The result screen lists every missed question with its correct answer (the engine fills #missed; style it).
 
 # 7. Teacher's settings
 ${bullets(settings)}
 
-# 8. Screens
-1. Start: the English title "${game.en}" and the Thai name "${game.name}" in big letters, the animated scene and mascot, a big start button and a sound switch.
-2. How to play, shown not told: the first question is played for real with a pointing hand or arrow and one short line per step. No long instruction pages.
-3. Game HUD: score, question number / total, combo and a pause button${r.timer ? ', the time bar' : ''}${r.lives === 'on' ? ', hearts' : ''}.
-4. Pause: resume, restart, sound, speed slider.
-5. Result: 1-3 stars by accuracy, score, number correct, the missed questions with their correct answers, and a play-again button.
-- One idea per text bubble, at most 2 short lines.
-- Use these exact words for the UI: ${words.map((w) => `"${w}"`).join(', ')}.
+# 8. Screens (the engine shows and hides them; you design them)
+1. #screen-start: the title "${game.en}" and the Thai name "${game.name}" in big letters, the animated mascot and scene, the big #btn-start button, and #btn-sound.
+2. How to play, shown not told: during the first question, a pointing hand animates over the correct kind of action with one short line in #bubble. No instruction pages.
+3. #hud: score, question number / total, combo and #btn-pause${r.timer ? ', the time bar' : ''}${r.lives === 'on' ? ', hearts' : ''}. #qcard holds the question (big in the middle during READ, near the top during PLAY) and #btn-ready.
+4. #screen-pause: #btn-resume, #btn-restart, #btn-sound2 and the #speed slider (0.5x to 1.5x).
+5. #screen-result: 1-3 stars from #stars[data-stars], #result-score, #result-count, the #missed list and #btn-again.
+- One idea per text bubble, at most 2 short lines. Every button label comes from WORDS.
 
 # 9. Sound
-- Every sound is synthesized with the Web Audio API: soft pops, glass chimes, gentle correct/wrong tones, and a short looping background tune at low volume.
-- Start audio only after the first tap. If Web Audio is unavailable, the game keeps working silently.
+- The engine's Sound object plays tap, pop, correct, wrong and win sounds. Add a soft looping background tune (a few Web Audio notes, low volume) and game-specific sounds the same way, all inside safe().
 
 # 10. Hard rules
-- NO EMOJI anywhere: not in text, buttons, characters, scores or rewards. Draw every icon with SVG, Canvas or CSS.
+- NO EMOJI anywhere: not in text, buttons, characters, scores or rewards. Draw every icon with SVG or CSS.
 - No external image or audio files. Allowed from CDNs: Google Fonts${is3d ? ' and three.js' : ''} only. No ads, logins, chat, loot boxes or random prizes.
 - Child-friendly: nothing scary or violent.
-- Responsive: phone portrait, phone landscape, iPad and desktop. It fits the window with no scrolling and nothing cut off. Set touch-action: none on the game area and prevent pinch-zoom and page scrolling while playing.
+- Responsive: phone portrait, phone landscape, iPad and desktop. Lay out from the window size on load and on resize; nothing scrolls and nothing is cut off.
 - Smooth 60 fps on an average phone; keep particle counts modest.
 
-# 11. Delivery
-- One complete HTML file (HTML + CSS + JavaScript). No TODOs, no placeholders, nothing left out.
-- At the top of the script: a short comment on how to edit QUESTIONS and CONFIG, then CONFIG, then QUESTIONS.
-- Before you answer, play-test it in your head with timestamps: a 7-year-old taps Start, plays question 1 (one wrong answer, then the right one), then question 2. Check that each question stays on screen and readable until it is answered, that nothing moves before the child could read the question, that only the correct answer ends a question, that only one game loop runs, that there are no console errors, and that everything fits a 375 x 667 phone screen. Fix anything that fails, then output the file.`;
+# 11. Starter engine (use exactly; fill in the Hooks)
+File order: <head> with the Mali font link${is3d ? ' and the three.js importmap' : ''}, then <style> (the engine CSS below + your styles), then the body HTML below with every screen filled in, then ONE <script${is3d ? ' type="module"' : ''}> that contains, in order: CONFIG, QUESTIONS, WORDS, the engine, your game code, and the Hooks object followed by boot().
+
+${fence}js
+${configBlock(r, game)}
+
+${wordsBlock(r.lang)}
+${fence}
+
+Engine CSS:
+${fence}css
+${ENGINE_CSS}
+${fence}
+
+Body HTML (fill in the screens; keep every id):
+${fence}html
+${ENGINE_HTML}
+${fence}
+
+Engine JavaScript (copy exactly):
+${fence}js
+${ENGINE_JS}
+${fence}
+
+Hooks to fill in (keep the names; the engine calls them):
+${fence}js
+${HOOKS_JS}
+${fence}
+
+# 12. Delivery
+- Output format: create the game as a CODE canvas containing the raw HTML source, starting with <!DOCTYPE html> and ending with </html>, so Gemini Canvas can run and preview it as an app. Do NOT create a text document, do not explain the code in the canvas, and do not split it into several files.
+- One complete HTML file. No TODOs, no placeholders, no "add more here", nothing left out.
+- A short comment at the top of the script explains how to edit QUESTIONS and CONFIG.
+- Before answering, test it in your head step by step: the page loads with no error; tapping Start leaves the start screen; question 1 appears big, then moves up while the answers appear and move at the CONFIG pace; a wrong hit shows the hint and the game continues; a correct hit celebrates and question 2 appears; after the last question the result screen appears and Play again works; everything fits a 375 x 667 phone. Fix anything that fails, then output the whole file.`;
 }
 
 /* ---------------------------------------------------------------- prompt แก้เกมต่อ (วางต่อในแชตเดิมของ Gemini) */
@@ -509,6 +550,26 @@ export const FIXES: { id: string; th: string; en: string }[] = [
     id: 'phone',
     th: 'มือถือเล่นไม่สะดวก',
     en: 'Make it play well on a phone in portrait and landscape: everything fits the screen with no scrolling or cut-off text, the play area resizes on rotation, buttons are at least 48 px, text at least 20 px, touch-action: none on the game area, and no accidental zoom. Send the full updated file.',
+  },
+  {
+    id: 'start',
+    th: 'กด Start ไม่ได้',
+    en: 'The Start button does nothing. Fix it: remove every onclick="..." attribute and wire buttons with addEventListener in the script (inline handlers do not work inside <script type="module">); make sure no invisible layer covers the button (hidden layers must use display: none, decorations and particle canvases pointer-events: none); wrap fonts, audio and localStorage in try/catch so an error cannot stop startGame(); check the browser console and fix every error. Send the full updated file.',
+  },
+  {
+    id: 'noq',
+    th: 'ไม่มีโจทย์ขึ้น',
+    en: 'No question appears on screen. Show the current question as HTML text in a big rounded card (#qtext), not drawn on a canvas: big in the center during the reading phase, then near the top while playing, always above the game layer (higher z-index) with dark text on a light card. Make sure QUESTIONS is defined before the game starts and each question is read from it. Send the full updated file.',
+  },
+  {
+    id: 'next',
+    th: 'ตอบแล้วไม่ไปข้อต่อไป',
+    en: 'After answering, the game does not go to the next question. Make one function answer(i) that is called exactly once per hit; when it is correct, celebrate for 1.5 seconds and then call nextQuestion(), which clears the old answer objects, loads the next item from QUESTIONS, shows it, and spawns new answer objects; after the last question show the result screen. Use timers that run inside the game loop (not setTimeout that can be lost) and remember the question number so old timers cannot interfere. Send the full updated file.',
+  },
+  {
+    id: 'fun',
+    th: 'เกมยังไม่สนุก ลูกเล่นน้อย',
+    en: 'The game feels stiff and plain. Without changing QUESTIONS or the pacing, add life: make every answer an action with anticipation, an eased flight, impact particles and a funny reaction; add idle animations to everything (bob, blink, sway); add an ambient event every few seconds (wind gust, a passing creature, a bonus item that is never an answer); make the mascot react to every answer. Send the full updated file.',
   },
   {
     id: 'blank',

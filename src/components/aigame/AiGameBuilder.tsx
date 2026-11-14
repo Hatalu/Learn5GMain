@@ -570,7 +570,8 @@ export function AiGameBuilder() {
             {show && prompt && <textarea ref={promptRef} className="ag-prompt" readOnly value={prompt} rows={14} />}
             <p className="ag-hint">prompt เป็นภาษาอังกฤษเพื่อให้ Gemini ทำตามได้แม่นที่สุด ส่วนข้อความในเกมจะเป็นภาษาที่เลือกในขั้นที่ 5</p>
             <ol className="ag-tips">
-              <li>ใน Gemini เลือกเครื่องมือ Canvas ก่อนวาง prompt (เกมจะเปิดเล่นได้ในหน้าเดียวกัน)</li>
+              <li>ใน Gemini กดปุ่ม + แล้วเลือก Canvas ก่อนวาง prompt (ต้องเห็นปุ่ม &quot;โค้ด / แสดงตัวอย่าง&quot; ถ้าได้เป็นเอกสารตัวหนังสือ แปลว่ายังไม่ได้เลือก Canvas)</li>
+              <li>ถ้า Gemini ขึ้นกล่อง &quot;เกิดข้อผิดพลาด&quot; ให้กด &quot;แก้ไขข้อผิดพลาด&quot; ของ Gemini ได้เลย</li>
               <li>ได้เกมแล้วลองเล่นในหน้าตัวอย่างของ Canvas ถ้าต้องการให้นักเรียนเล่น ใช้ปุ่มแชร์ของ Gemini</li>
               <li>อยากปรับความเร็วเอง ให้แก้ตัวเลขใน CONFIG บนสุดของโค้ด (ตัวเลขมาก = ช้าลง) หรือใช้แถบความเร็วในเมนูหยุดพักของเกม</li>
             </ol>
