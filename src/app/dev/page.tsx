@@ -10,7 +10,6 @@ import { createClient } from '@/lib/supabase/client';
 import { Navbar } from '@/components/navbar/Navbar';
 import { StatCards } from '@/components/dev/StatCards';
 import { MemberManagement } from '@/components/dev/MemberManagement';
-import { DailyGamesAdmin } from '@/components/dev/DailyGamesAdmin';
 import { TrialAccountsAdmin } from '@/components/dev/TrialAccountsAdmin';
 import { PaymentsAdmin } from '@/components/dev/PaymentsAdmin';
 import { RedeemCodesAdmin } from '@/components/dev/RedeemCodesAdmin';
@@ -42,8 +41,7 @@ import {
   Sparkles,
   Globe,
   Lock,
-  CalendarCheck2,
-} from 'lucide-react';
+  } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
 export default function DevDashboardPage() {
@@ -53,12 +51,11 @@ export default function DevDashboardPage() {
   const supabase = createClient();
 
   const [unreadIdeas, setUnreadIdeas] = useState(0);
-  const [activeTab, setActiveTab] = useState<'media' | 'members' | 'trial' | 'daily' | 'ideas' | 'payments' | 'codes' | 'contest' | 'settings'>('media');
+  const [activeTab, setActiveTab] = useState<'media' | 'members' | 'trial' | 'ideas' | 'payments' | 'codes' | 'contest' | 'settings'>('media');
   const [stats, setStats] = useState<SystemStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
 
   const [mediaList, setMediaList] = useState<MediaItem[]>([]);
-  const [dailyLibrary, setDailyLibrary] = useState<MediaItem[]>([]);
   const [mediaLoading, setMediaLoading] = useState(true);
   const [visibilityFilter, setVisibilityFilter] = useState<'all' | 'public' | 'private'>('all');
   const [updatingVisibilityId, setUpdatingVisibilityId] = useState<string | null>(null);
@@ -118,7 +115,6 @@ export default function DevDashboardPage() {
         is_public: m.is_public !== false,
       }));
       setMediaList((mapped as MediaItem[]).filter((m) => !m.is_daily));
-      setDailyLibrary((mapped as MediaItem[]).filter((m) => m.is_daily));
     } catch (err) {
       console.error('Error fetching media:', err);
     } finally {
@@ -270,19 +266,6 @@ export default function DevDashboardPage() {
           >
             <FlaskConical className="w-4 h-4" />
             <span>บัญชีทดลองเล่น</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('daily')}
-            className={cn(
-              'flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 transition-all',
-              activeTab === 'daily'
-                ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
-                : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'
-            )}
-          >
-            <CalendarCheck2 className="w-4 h-4" />
-            <span>เกมประจำวัน</span>
           </button>
 
           <button
@@ -608,7 +591,6 @@ export default function DevDashboardPage() {
         {activeTab === 'codes' && <RedeemCodesAdmin />}
         {activeTab === 'contest' && <ContestAdmin />}
         {activeTab === 'settings' && <SiteSettingsAdmin />}
-        {activeTab === 'daily' && <DailyGamesAdmin library={dailyLibrary} onMediaChanged={handleMediaChanged} />}
       </main>
 
       {/* Modals */}

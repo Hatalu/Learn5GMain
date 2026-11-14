@@ -4,10 +4,9 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
 import { MediaItem } from '@/types/database';
-import { Heart, Play, Eye, Layers, Unlock, Lock, PlayCircle } from 'lucide-react';
+import { Heart, Play, Eye, Layers, Lock, PlayCircle } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { SubjectTag } from '@/components/media/SubjectTag';
-import { useCompanionOptional } from '@/components/companion/CompanionProvider';
 import { useTrial } from '@/components/trial/TrialProvider';
 import { hasMembership } from '@/lib/membership';
 
@@ -31,9 +30,8 @@ export function MediaCard({
   const [imgError, setImgError] = useState(false);
   const localViews = media.view_count;
 
-  // ทุกสื่อสำหรับสมาชิก: ล็อกถ้ายังไม่ใช่สมาชิก (เกมประจำวันที่แอดมินเปิดให้ทุกคนเล่นเฉพาะวันนั้นไม่ล็อก)
-  const dailyFree = useCompanionOptional()?.dailyUnlockedId === media.id;
-  const isLocked = !dailyFree && !(user && hasMembership(profile));
+  // ทุกสื่อสำหรับสมาชิก: ล็อกถ้ายังไม่ใช่สมาชิก
+  const isLocked = !(user && hasMembership(profile));
 
   const openDetail = () => onSelectMedia?.(media);
 
@@ -53,19 +51,12 @@ export function MediaCard({
       {/* 1:1 Thumbnail */}
       <div className="relative aspect-square w-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
         {/* ป้ายสถานะ */}
-        {(dailyFree || isLocked) && (
+        {isLocked && (
           <div className="absolute top-3 left-3 z-10 pointer-events-none">
-            {dailyFree ? (
-              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-mint-500 text-white shadow-md shadow-mint-500/40 ring-2 ring-white/70">
-                <Unlock className="w-3 h-3" />
-                <span>ฟรีวันนี้</span>
-              </span>
-            ) : (
               <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-sun-500 to-orange-500 text-white shadow-md shadow-amber-500/40 ring-2 ring-white/70">
                 <Lock className="w-3 h-3" />
                 <span>สำหรับสมาชิก</span>
               </span>
-            )}
           </div>
         )}
 

@@ -4,9 +4,6 @@ import React from 'react';
 import { ThemeProvider } from 'next-themes';
 import { AuthProvider } from '@/context/AuthContext';
 import { ToastProvider } from '@/components/ui/Toast';
-import { CompanionProvider } from '@/components/companion/CompanionProvider';
-import { CompanionWidget } from '@/components/companion/CompanionWidget';
-import { RewardModal } from '@/components/companion/RewardModal';
 import { AmbientSky } from '@/components/fx/AmbientSky';
 import { RouteCurtain } from '@/components/fx/RouteCurtain';
 import { VisitTracker } from '@/components/analytics/VisitTracker';
@@ -22,20 +19,16 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <AuthProvider>
         <ToastProvider>
           <MembershipProvider>
-            <CompanionProvider>
               <TrialProvider>
                 <TourProvider>
                   <AmbientSky />
                   {children}
-                  <CompanionWidget />
-                  <RewardModal />
                   <RouteCurtain />
                   <IdeaButton />
                   <VisitTracker />
                   <UiLookScope />
                 </TourProvider>
               </TrialProvider>
-            </CompanionProvider>
           </MembershipProvider>
         </ToastProvider>
       </AuthProvider>

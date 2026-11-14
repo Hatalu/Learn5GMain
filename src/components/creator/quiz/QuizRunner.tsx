@@ -9,7 +9,6 @@ import { MediaView } from '../MediaView';
 import { ChoiceShape, choiceStyle } from '../ChoiceShape';
 import { gsfx } from '@/lib/game-creator/gsound';
 import { quickCheck, richLength } from '@/lib/game-creator/quiz';
-import { recordAnswer } from '@/lib/companion-store';
 import { MineTag, TextAnswer, choiceState } from '../games/QuestionPad';
 import { CoachArrow, useCoach } from '../games/Coach';
 
@@ -181,7 +180,6 @@ export function QuizRunner({
           await load();
           return;
         }
-        recordAnswer(r.correct);
         setRes(r);
         setScore(r.score);
         setStreak(r.streak);

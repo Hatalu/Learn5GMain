@@ -23,11 +23,9 @@ interface AddMediaModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  /** เพิ่มเข้าคลังเกมประจำวัน (แยกจากสื่อปกติ) */
-  isDaily?: boolean;
 }
 
-export function AddMediaModal({ isOpen, onClose, onSuccess, isDaily = false }: AddMediaModalProps) {
+export function AddMediaModal({ isOpen, onClose, onSuccess }: AddMediaModalProps) {
   const { user } = useAuth();
   const { success, error } = useToast();
   const supabase = createClient();
@@ -127,7 +125,6 @@ export function AddMediaModal({ isOpen, onClose, onSuccess, isDaily = false }: A
         is_public: isPublic,
         game_url: gameUrl.trim(),
         created_by: user?.id || null,
-        ...(isDaily ? { is_daily: true } : {}),
       };
 
       let { error: insertError } = await supabase.from('media').insert(insertPayload);
@@ -143,7 +140,7 @@ export function AddMediaModal({ isOpen, onClose, onSuccess, isDaily = false }: A
         throw new Error(insertError.message);
       }
 
-      success(isDaily ? 'เพิ่มเกมเข้าคลังเกมประจำวันแล้ว' : 'เพิ่มสื่อการสอนใหม่เรียบร้อยแล้ว');
+      success('เพิ่มสื่อการสอนใหม่เรียบร้อยแล้ว');
       onSuccess();
       onClose();
     } catch (err: unknown) {
@@ -165,7 +162,7 @@ export function AddMediaModal({ isOpen, onClose, onSuccess, isDaily = false }: A
                 <Plus className="w-4 h-4" />
               </div>
               <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white">
-                {isDaily ? 'เพิ่มเกมประจำวันใหม่' : 'เพิ่มสื่อการสอนใหม่'}
+                เพิ่มสื่อการสอนใหม่
               </h3>
             </div>
             <button

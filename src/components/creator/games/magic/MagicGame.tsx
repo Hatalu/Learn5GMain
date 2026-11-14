@@ -10,7 +10,6 @@
  * - ข้อมูลสะสม (เหรียญ เวท สัตว์เลี้ยง ดาว) เก็บในเครื่อง magic/save.ts
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { recordAnswer } from '@/lib/companion-store';
 import { createPortal } from 'react-dom';
 import { ArrowBigLeft, ArrowBigRight, BookOpen, Camera, Check, Coins, Crown, Download, Gem, Hand, Heart, Lock as LockIcon, LogOut, Map as MapIcon, Pause, Play, ScanFace, Settings2, Shield, Sparkles, Star, Timer, Users, Wand2, Wind, X, Zap } from 'lucide-react';
 import type { QuizQuestion } from '@/lib/game-creator/types';
@@ -622,7 +621,6 @@ export function MagicGame({ questions, settings, title, onExit, persist = true }
       const choice = g.q.choices.find((c) => c.id === cid);
       const s = g.scores[g.team];
       const h = hero();
-      recordAnswer(!!choice?.correct);
       if (choice?.correct) {
         g.got = true;
         s.streak++;

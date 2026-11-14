@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState, useSyncExternalStore } from 'react
 import { usePathname } from 'next/navigation';
 import { getGfx, getServerGfx, subscribeGfx } from '@/lib/gfx';
 import { StarTrail } from './StarTrail';
-import { BkkParts, EventKey, Phase, Season, bkkParts, eventOf, phaseOf, seasonOf } from '@/lib/companion';
+import { BkkParts, EventKey, Phase, Season, bkkParts, eventOf, phaseOf, seasonOf } from '@/lib/bkk-time';
 
 const SKY: Record<Phase, string> = {
   dawn: 'linear-gradient(180deg, #ffb59a 0%, #ffd7bd 38%, #cfc3ff 78%, transparent 100%)',
@@ -147,7 +147,7 @@ interface Props {
  * วาดด้วย SVG/CSS ล้วน ไม่ใช้รูปภาพ จึงเบาและคมทุกหน้าจอ
  */
 /** หน้าที่ปิดฉากหลังทั้งจอ ไม่ต้องวาดท้องฟ้า */
-const COVERED = ['/studio/edit', '/create/edit', '/create/host', '/play', '/buddy', '/puzzle', '/report', '/worksheet', '/contest'];
+const COVERED = ['/studio/edit', '/create/edit', '/create/host', '/play', '/worksheet', '/ai-game', '/contest'];
 
 export function AmbientSky({ at }: Props) {
   const path = usePathname() || '';

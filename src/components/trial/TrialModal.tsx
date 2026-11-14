@@ -4,9 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Crown, Loader2, Maximize2, Minimize2, Play, Timer, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { useCompanion } from '@/components/companion/CompanionProvider';
 import { FacebookIcon } from '@/components/icons/FacebookIcon';
-import { Buddy } from '@/components/companion/Buddy';
 import { CONTACT_PAGE_URL, hasMembership } from '@/lib/membership';
 import { getTurnstileToken } from '@/lib/turnstile';
 import { MediaItem } from '@/types/database';
@@ -35,7 +33,6 @@ export function TrialModal({ media, onClose, mode = 'trial' }: { media: MediaIte
   const full = mode === 'play';
   const { user, profile } = useAuth();
   const { fromPrice } = useMembership();
-  const { recordPlay } = useCompanion();
   const member = !!user && hasMembership(profile);
 
   const [phase, setPhase] = useState<Phase>('loading');
@@ -263,7 +260,6 @@ export function TrialModal({ media, onClose, mode = 'trial' }: { media: MediaIte
   const urgent = left !== null && left < 15000 && !ended;
 
   const playFull = () => {
-    recordPlay(media);
     window.open(media.game_url, '_blank', 'noopener,noreferrer');
     close();
   };
@@ -370,7 +366,8 @@ export function TrialModal({ media, onClose, mode = 'trial' }: { media: MediaIte
           {/* กำลังเตรียมเกม */}
           {phase === 'loading' && (
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 text-white bg-gray-950">
-              <Buddy stage={1} size={84} animate={false} />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/plans/fiveg-kid.webp" alt="" width={84} height={84} className="w-[84px] h-[84px] object-contain" draggable={false} />
               <p className="inline-flex items-center gap-2 font-display">
                 <Loader2 className="w-5 h-5 animate-spin" /> {full ? 'กำลังเปิดเกม...' : 'กำลังเตรียมเกมให้ลองเล่น...'}
               </p>

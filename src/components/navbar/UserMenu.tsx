@@ -3,14 +3,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { useCompanionOptional } from '@/components/companion/CompanionProvider';
-import { Buddy } from '@/components/companion/Buddy';
-import { StarIcon } from '@/components/companion/Stars';
 import { CountUp } from '@/components/fx/CountUp';
-import { bodyLook, stageOfGrowth, STAGE_DAYS, STAGE_LABEL, bodyAt } from '@/lib/pet/logic';
 import { hasMembership } from '@/lib/membership';
 import { cn } from '@/lib/utils/cn';
-import { CalendarDays, ChevronDown, ChevronRight, Compass, Crown, Gamepad2, Heart, LogOut, Palette, ShieldCheck, Sticker, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronRight, Compass, Crown, FileText, Gamepad2, LogOut, Palette, ShieldCheck, Sparkles, Wand2 } from 'lucide-react';
 import s from './userMenu.module.css';
 import { JoinButton } from '@/components/membership/JoinButton';
 import { useMembership } from '@/components/membership/MembershipProvider';
@@ -21,7 +17,6 @@ const DAY = 86400000;
 export function UserMenu() {
   const { profile, signOut, isDev } = useAuth();
   const { fromPrice } = useMembership();
-  const companion = useCompanionOptional();
   const tour = useTour();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -52,23 +47,14 @@ export function UserMenu() {
   const pct = Math.max(4, Math.min(100, (daysLeft / 30) * 100));
   const soon = !isDev && member && daysLeft <= 3;
 
-  // สถิติจากคู่หู (ดาว/สติกเกอร์/จำนวนครั้งที่เล่น/วันที่เข้าเล่น)
-  const st = companion?.state;
-  const stars = st?.stars ?? 0;
-  const stickers = st ? Object.keys(st.plays).length : 0;
-  const plays = st ? Object.values(st.plays).reduce((a, p) => a + (p.c || 0), 0) : 0;
-  const days = st?.visitDays.length ?? 0;
-  const grownDays = st ? bodyAt(st.pet, Date.now()).g : 0;
-  const stageNow = stageOfGrowth(grownDays);
-  const nextDays = STAGE_DAYS[stageNow + 1];
-
   const roleLabel = isDev ? 'ผู้พัฒนา' : member ? 'สมาชิก' : 'ยังไม่เป็นสมาชิก';
 
-  const stats = [
-    { icon: StarIcon, label: 'ดาวสะสม', value: stars, tone: 'from-amber-400/25 to-orange-400/10 text-amber-600 dark:text-amber-300' },
-    { icon: Sticker, label: 'สติกเกอร์', value: stickers, tone: 'from-pink-400/25 to-rose-400/10 text-pink-600 dark:text-pink-300' },
-    { icon: Gamepad2, label: 'เล่นเกม (ครั้ง)', value: plays, tone: 'from-indigo-400/25 to-violet-400/10 text-indigo-600 dark:text-indigo-300' },
-    { icon: CalendarDays, label: 'วันที่มาเล่น', value: days, tone: 'from-emerald-400/25 to-teal-400/10 text-emerald-600 dark:text-emerald-300' },
+  // ทางลัดเครื่องมือครู
+  const tools = [
+    { icon: Wand2, label: 'สร้างเกมด้วย AI', href: '/ai-game', tone: 'from-amber-400/25 to-orange-400/10 text-amber-600 dark:text-amber-300' },
+    { icon: Gamepad2, label: 'ชุดคำถาม/ห้องเกม', href: '/create', tone: 'from-indigo-400/25 to-violet-400/10 text-indigo-600 dark:text-indigo-300' },
+    { icon: Palette, label: 'สร้างสื่อ', href: '/studio', tone: 'from-pink-400/25 to-rose-400/10 text-pink-600 dark:text-pink-300' },
+    { icon: FileText, label: 'ใบงาน AI', href: '/worksheet', tone: 'from-emerald-400/25 to-teal-400/10 text-emerald-600 dark:text-emerald-300' },
   ];
 
   return (
@@ -133,11 +119,6 @@ export function UserMenu() {
                   {isDev ? <ShieldCheck className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />} {roleLabel}
                 </span>
               </div>
-              {st && (
-                <div className={cn(s.float, 'shrink-0 -mr-1 drop-shadow-lg')} aria-hidden="true">
-                  <Buddy {...bodyLook(st.pet, st.pet.hatched, Date.now())} color={st.color} wear={st.pet.wear} species={st.pet.species} size={58} animate={false} />
-                </div>
-              )}
             </div>
           </div>
 
@@ -197,42 +178,26 @@ export function UserMenu() {
               )}
             </div>
 
-            {/* สถิติ */}
+            {/* ทางลัดเครื่องมือครู */}
             <div className="grid grid-cols-2 gap-2">
-              {stats.map((x, i) => (
-                <div
+              {tools.map((x, i) => (
+                <Link
                   key={x.label}
-                  className={cn(s.row, 'rounded-2xl p-2.5 bg-gradient-to-br border border-gray-100 dark:border-gray-800', x.tone)}
+                  href={x.href}
+                  onClick={() => setIsOpen(false)}
+                  className={cn(s.row, 'block rounded-2xl p-2.5 hover:-translate-y-0.5 transition-transform bg-gradient-to-br border border-gray-100 dark:border-gray-800', x.tone)}
                   style={{ animationDelay: `${120 + i * 50}ms` }}
                 >
                   <div className="flex items-center gap-1.5">
                     <x.icon className="w-4 h-4" />
                     <span className="text-[11px] font-semibold text-gray-600 dark:text-gray-300">{x.label}</span>
                   </div>
-                  <p className="mt-0.5 font-display text-xl text-gray-900 dark:text-white">
-                    <CountUp value={x.value} duration={800} />
-                  </p>
-                </div>
+                </Link>
               ))}
             </div>
-            {st && (
-              <p className={cn(s.row, 'text-[11px] text-center text-gray-500 dark:text-gray-400')} style={{ animationDelay: '320ms' }}>
-                คู่หูอยู่ขั้น <b className="text-gray-700 dark:text-gray-200">{st.pet.hatched ? STAGE_LABEL[stageNow] : STAGE_LABEL[0]}</b>
-                {nextDays != null ? ` · อีกราว ${Math.ceil(nextDays - grownDays)} วันจะโตขึ้น` : ' · โตเต็มที่แล้ว'}
-              </p>
-            )}
 
             {/* ลิงก์ */}
             <div className={cn(s.row, 'pt-1 border-t border-gray-100 dark:border-gray-800 space-y-0.5')} style={{ animationDelay: '360ms' }}>
-              <Link
-                href="/buddy"
-                onClick={() => setIsOpen(false)}
-                className="group/item flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-colors"
-              >
-                <Heart className="w-4 h-4 text-pink-500" />
-                <span className="flex-1">คู่หูและสมุดสติกเกอร์</span>
-                <ChevronRight className="w-4 h-4 text-gray-400 transition-transform group-hover/item:translate-x-0.5" />
-              </Link>
               <Link
                 href="/studio"
                 onClick={() => setIsOpen(false)}

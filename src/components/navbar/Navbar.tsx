@@ -165,17 +165,18 @@ export function Navbar() {
             </Link>
           )}
 
-          {/* คู่หู + สมุดสะสม */}
-          {!isDevPage && !pathname.startsWith('/buddy') && (
+          {/* สร้างเกมด้วย AI (Gemini Canvas) */}
+          {!isDevPage && !pathname.startsWith('/ai-game') && (
             <Link
-              href="/buddy"
+              href="/ai-game"
+              data-tour="nav-ai"
               className={cn(fx.shine, 'btn-jelly hidden min-[440px]:inline-flex items-center gap-2 pl-1.5 pr-3 py-1.5 text-sm font-bold rounded-2xl text-white bg-gradient-to-r from-violet-600 via-fuchsia-500 to-pink-500 border-2 border-white/40 dark:border-white/15 shadow-[0_3px_0_0_rgba(126,34,206,0.5)] whitespace-nowrap')}
-              title="ห้องเลี้ยงปุ๋ง"
+              title="สร้างเกมด้วย AI"
             >
               <span className="w-7 h-7 rounded-xl bg-white/95 flex items-center justify-center shrink-0 text-fuchsia-600">
-                <Sparkles className={cn('w-4 h-4', fx.twinkle)} />
+                <Wand2 className={cn('w-4 h-4', fx.twinkle)} />
               </span>
-              <span className="hidden xl:inline [text-shadow:0_1px_1px_rgba(0,0,0,0.25)]">คู่หูของฉัน</span>
+              <span className="hidden xl:inline [text-shadow:0_1px_1px_rgba(0,0,0,0.25)]">เกม AI</span>
             </Link>
           )}
 

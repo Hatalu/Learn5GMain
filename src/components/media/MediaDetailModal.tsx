@@ -14,7 +14,6 @@ import {
   Crown,
   Sparkles,
   Lock,
-  Unlock,
   LogIn,
   Layers,
   Calendar,
@@ -26,7 +25,6 @@ import {
 import { FacebookIcon } from '@/components/icons/FacebookIcon';
 import { cn } from '@/lib/utils/cn';
 import { SubjectTag } from '@/components/media/SubjectTag';
-import { useCompanion } from '@/components/companion/CompanionProvider';
 import { useTrial } from '@/components/trial/TrialProvider';
 import { CONTACT_PAGE_URL, hasMembership } from '@/lib/membership';
 import { JoinButton } from '@/components/membership/JoinButton';
@@ -51,7 +49,6 @@ export function MediaDetailModal({
 }: MediaDetailModalProps) {
   const { user, profile, isDev } = useAuth();
   const { fromPrice, openCheckout } = useMembership();
-  const { dailyUnlockedId } = useCompanion();
   const { openTrial, openPlay } = useTrial();
   const { success, error } = useToast();
   const [copiedPage, setCopiedPage] = useState(false);
@@ -83,12 +80,9 @@ export function MediaDetailModal({
 
   if (!isOpen || !media) return null;
 
-  // เกมประจำวันที่แอดมินตั้งให้ "เปิดให้ทุกคนเล่นเฉพาะวันนั้น" (โปรโมต) ทุกคนเล่นได้
-  const isDailyFree = dailyUnlockedId === media.id;
-
   // ทุกสื่อสำหรับสมาชิก: ต้องล็อกอิน + สิทธิ์สมาชิกยังไม่หมดอายุ (Dev เล่นได้เสมอ)
   const isMemberActive = Boolean(user) && hasMembership(profile);
-  const canAccess = isDailyFree || isMemberActive;
+  const canAccess = isMemberActive;
 
   const handleOpenMedia = async () => {
     if (!canAccess) {
@@ -167,19 +161,12 @@ export function MediaDetailModal({
               />
 
               {/* ป้ายสถานะ */}
-              {(isDailyFree || !canAccess) && (
+              {!canAccess && (
                 <div className="absolute top-3 left-3">
-                  {isDailyFree ? (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500 text-white shadow-md shadow-emerald-500/30">
-                      <Unlock className="w-3.5 h-3.5" />
-                      <span>ฟรีวันนี้</span>
-                    </span>
-                  ) : (
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/30">
                       <Lock className="w-3.5 h-3.5" />
                       <span>สำหรับสมาชิก</span>
                     </span>
-                  )}
                 </div>
               )}
 
@@ -257,20 +244,7 @@ export function MediaDetailModal({
 
             {/* Access Permission & Action Button Area */}
             <div className="pt-2 border-t border-gray-100 dark:border-gray-800 space-y-3">
-              {/* Case 1: เกมประจำวันที่เปิดให้ทุกคน */}
-              {isDailyFree ? (
-                <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 flex items-start gap-2.5">
-                  <Unlock className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
-                  <div>
-                    <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-300">
-                      แจกเล่นฟรีวันนี้ (เกมประจำวัน)
-                    </p>
-                    <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-0.5">
-                      วันนี้เล่นได้เลยไม่ต้องเข้าสู่ระบบ พรุ่งนี้กลับเป็นสื่อสำหรับสมาชิกตามเดิม
-                    </p>
-                  </div>
-                </div>
-              ) : !user ? null /* ยังไม่ได้ล็อกอิน: ไม่มีกล่องข้อความ ใช้ปุ่มด้านล่างแทน */ : !isMemberActive ? (
+              {!user ? null /* ยังไม่ได้ล็อกอิน: ไม่มีกล่องข้อความ ใช้ปุ่มด้านล่างแทน */ : !isMemberActive ? (
                 /* Case 3: ล็อกอินแล้วแต่ยังไม่มีสิทธิ์/สิทธิ์หมดอายุ */
                 <div>
                   <div className="flex flex-wrap items-center gap-2">

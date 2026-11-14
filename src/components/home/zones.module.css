@@ -351,69 +351,6 @@
   color: #2a2350;
 }
 
-/* ---------- ตารางงานครู ---------- */
-.jobs {
-  margin-top: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.jobHead,
-.job {
-  display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.3fr) 90px 18px;
-  gap: 10px;
-  align-items: center;
-  padding: 8px 12px;
-}
-.jobHead {
-  font-size: 12px;
-  font-weight: 800;
-  opacity: 0.65;
-}
-.job {
-  border: 2px solid rgb(42 35 80 / 0.22);
-  border-radius: 14px;
-  font-size: 14px;
-  transition: background 0.15s;
-}
-:global(.dark) .job {
-  border-color: rgb(165 150 255 / 0.35);
-}
-.job:hover {
-  background: rgb(255 207 63 / 0.25);
-}
-.job span {
-  font-size: 13px;
-  opacity: 0.78;
-}
-.job em {
-  font-style: normal;
-  font-size: 12.5px;
-  font-weight: 800;
-}
-@media (max-width: 639px) {
-  .jobHead {
-    display: none;
-  }
-  .job {
-    grid-template-columns: minmax(0, 1fr) auto 18px;
-    gap: 2px 8px;
-  }
-  .job span {
-    grid-column: 1;
-    grid-row: 2;
-  }
-  .job em {
-    grid-column: 2;
-    grid-row: 1 / span 2;
-  }
-  .job svg {
-    grid-column: 3;
-    grid-row: 1 / span 2;
-  }
-}
-
 /* ---------- แกลเลอรี ---------- */
 .gallery {
   margin-top: 14px;

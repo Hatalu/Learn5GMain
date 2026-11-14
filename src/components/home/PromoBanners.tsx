@@ -3,23 +3,36 @@
 /* eslint-disable @next/next/no-img-element */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Star, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { hasMembership } from '@/lib/membership';
 import { PLANS, WELCOME_HOURS, WELCOME_PCT } from '@/lib/plans';
 import { FREE_DESIGN_LIMIT } from '@/lib/game-creator/quota';
 import { ANIMAL_PRESETS } from '@/lib/studio/char';
 import { CharArt } from '@/components/studio/CharArt';
-import { Buddy } from '@/components/companion/Buddy';
 import { ChoiceShape } from '@/components/creator/ChoiceShape';
 import { useMembership } from '@/components/membership/MembershipProvider';
-import { hidePromo, promoHidden, type Audience } from './audience';
 import { leftText, type Contest, type Phase } from '@/lib/worksheet/contest';
 
-type Who = Audience | 'all';
+/** ป้ายที่ปิดไว้: ซ่อน 24 ชั่วโมงแล้วกลับมาใหม่ */
+const PROMO = 'l5g-promo-hidden';
+const promoHidden = () => {
+  try {
+    return Number(localStorage.getItem(PROMO) || 0) > Date.now();
+  } catch {
+    return false;
+  }
+};
+const hidePromo = () => {
+  try {
+    localStorage.setItem(PROMO, String(Date.now() + 24 * 3600 * 1000));
+  } catch {
+    /* โหมดส่วนตัว: ซ่อนแค่หน้านี้ */
+  }
+};
+
 interface Slide {
   id: string;
-  who: Who;
   tag: string;
   title: string;
   desc: string;
@@ -33,7 +46,7 @@ interface Slide {
 const CTA =
   'mt-1 self-start inline-flex items-center gap-1.5 px-4 sm:px-5 py-2 rounded-2xl border-[3px] border-[#2a2350] bg-white font-display text-sm sm:text-base shadow-[0_4px_0_#2a2350] hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none transition-transform';
 const preset = (id: string) => ANIMAL_PRESETS.find((p) => p.id === id)?.look ?? ANIMAL_PRESETS[0].look;
-const TAG: Record<Who, string> = { teacher: 'สำหรับคุณครู', parent: 'สำหรับผู้ปกครอง', all: 'ทุกคนใช้ได้' };
+const TEACHER = 'สำหรับคุณครู';
 
 /* ---------------------------------------------------------------- ภาพประกอบ (SVG/ตัวละครของเว็บ ไม่ใช้อิโมจิ) */
 
@@ -103,22 +116,28 @@ const ArtQuiz = () => (
   </div>
 );
 
-const ArtGames = () => (
-  <div className="relative w-full h-full flex items-end justify-center">
-    <Buddy stage={3} color="sky" size={150} className="relative z-10 max-sm:w-[110px] max-sm:h-[121px]" />
-    <Star className="absolute left-[16%] top-[14%] w-8 h-8 fill-[#ffcf3f] text-[#2a2350] animate-wiggle" />
-    <Star className="absolute right-[14%] top-[26%] w-6 h-6 fill-white text-[#2a2350] animate-pulse" />
-    <Spark className="absolute right-[26%] top-[6%] w-5" c="#fff7c2" />
-  </div>
-);
-
-const ArtBuddy = () => (
-  <div className="relative w-full h-full flex items-end justify-center gap-1">
-    <Buddy stage={1} color="pink" size={110} className="max-sm:w-[84px] max-sm:h-[92px]" />
-    <Buddy stage={2} color="mint" size={135} className="max-sm:w-[100px] max-sm:h-[110px]" />
-    {[18, 50, 80].map((l, i) => (
-      <Star key={l} className="absolute w-6 h-6 fill-[#ffcf3f] text-[#2a2350] animate-float-slow" style={{ left: `${l}%`, top: `${8 + (i % 2) * 14}%`, animationDelay: `${i * 0.5}s` }} />
-    ))}
+/** จอเกมที่ AI สร้าง + ตัวเลือกคำตอบ */
+const ArtAiGame = () => (
+  <div className="relative w-full h-full">
+    <svg viewBox="0 0 160 120" className="absolute right-[8%] top-[12%] w-[78%] rotate-[-4deg] drop-shadow-lg" aria-hidden="true">
+      <rect x="4" y="4" width="152" height="104" rx="14" fill="#2a2350" />
+      <rect x="12" y="12" width="136" height="80" rx="8" fill="#8fd8ff" />
+      <path d="M12 74 Q50 56 84 70 T148 64 V92 H12Z" fill="#3fd6a8" />
+      <circle cx="122" cy="30" r="10" fill="#ffd166" />
+      <rect x="30" y="46" width="22" height="22" rx="6" fill="#ff6b7a" stroke="#2a2350" strokeWidth="3" />
+      <circle cx="37" cy="54" r="2.5" fill="#2a2350" /><circle cx="46" cy="54" r="2.5" fill="#2a2350" />
+      <rect x="70" y="24" width="38" height="14" rx="7" fill="#fff" stroke="#2a2350" strokeWidth="3" />
+      <rect x="66" y="96" width="28" height="8" rx="4" fill="#9b6cf0" />
+    </svg>
+    <div className="absolute left-[4%] bottom-[10%] flex gap-1.5 w-[60%] rotate-[3deg]">
+      {['#ff6b7a', '#4fb3ff', '#ffcf3f'].map((c, i) => (
+        <span key={c} className="flex-1 aspect-square rounded-xl border-[3px] border-[#2a2350] shadow-[0_3px_0_#2a2350] flex items-center justify-center" style={{ background: c }}>
+          <ChoiceShape i={i} size={20} />
+        </span>
+      ))}
+    </div>
+    <Spark className="absolute left-[10%] top-[8%] w-6 animate-pulse" />
+    <Spark className="absolute right-[2%] bottom-[30%] w-5 animate-pulse" c="#ffd166" />
   </div>
 );
 
@@ -135,7 +154,7 @@ function ArtOffer({ perDay }: { perDay: string }) {
 
 /* ---------------------------------------------------------------- ป้าย */
 
-export function PromoBanners({ audience, onLibrary, className = '' }: { audience: Audience | null; onLibrary: () => void; className?: string }) {
+export function PromoBanners({ className = '' }: { className?: string }) {
   const { user, profile } = useAuth();
   const { ready, offer } = useMembership();
   const member = hasMembership(profile);
@@ -162,9 +181,18 @@ export function PromoBanners({ audience, onLibrary, className = '' }: { audience
   const slides = useMemo(() => {
     const all: Slide[] = [
       {
+        id: 'aigame',
+        tag: 'ใหม่',
+        title: 'สร้างเกมของตัวเองด้วย AI',
+        desc: 'เลือกเกมที่ชอบ ปรับวิชา ชั้น เนื้อหา หรือใช้ชุดคำถามของคุณครู แล้วคัดลอก prompt ไปให้ Gemini สร้างเกม',
+        cta: 'เลือกเกม',
+        href: '/ai-game',
+        bg: 'linear-gradient(115deg,#9fe3ff 0%,#c9b8ff 100%)',
+        art: <ArtAiGame />,
+      },
+      {
         id: 'studio',
-        who: 'teacher',
-        tag: TAG.teacher,
+        tag: TEACHER,
         title: 'สร้างสื่อการสอนเอง ง่ายแบบ Canva',
         desc: `ใบงาน บัตรคำ ป้ายห้องเรียน 33 ตัวช่วยแยกวิชา ลากวาง พร้อมแป้นลัด บัญชีฟรีสร้างได้ ${FREE_DESIGN_LIMIT} ชิ้น`,
         cta: 'ลองสร้างสื่อ',
@@ -174,8 +202,7 @@ export function PromoBanners({ audience, onLibrary, className = '' }: { audience
       },
       {
         id: 'quiz',
-        who: 'teacher',
-        tag: TAG.teacher,
+        tag: TEACHER,
         title: 'ข้อสอบชุดเดียว ใช้ได้ทั้งเกมและใบงาน',
         desc: 'สร้างชุดคำถาม เปิดเป็นเกมเล่นสดทั้งห้อง แล้วกดปุ่มเดียวเปลี่ยนเป็นใบงานพร้อมเฉลย',
         cta: 'สร้างชุดคำถาม',
@@ -183,35 +210,12 @@ export function PromoBanners({ audience, onLibrary, className = '' }: { audience
         bg: 'linear-gradient(115deg,#ffe08a 0%,#ffb27a 100%)',
         art: <ArtQuiz />,
       },
-      {
-        id: 'games',
-        who: 'parent',
-        tag: TAG.parent,
-        title: 'เกมการเรียนรู้ ป.1 - ป.6 ที่ลูกอยากเล่นเอง',
-        desc: 'เนื้อหาซ่อนอยู่ในภารกิจผจญภัย ไม่มีโฆษณา ไม่มีแชท ปลอดภัยสำหรับเด็ก',
-        cta: 'ดูเกมทั้งหมด',
-        act: onLibrary,
-        bg: 'linear-gradient(115deg,#9fe3ff 0%,#a8f0d4 100%)',
-        art: <ArtGames />,
-      },
-      {
-        id: 'buddy',
-        who: 'parent',
-        tag: TAG.parent,
-        title: 'คู่หูที่โตขึ้นทุกวันที่ลูกเรียน',
-        desc: 'เล่นเกมประจำวัน สะสมดาว แต่งตัวคู่หู สร้างนิสัยรักการเรียนทีละวัน',
-        cta: 'พบคู่หู',
-        href: '/buddy',
-        bg: 'linear-gradient(115deg,#ffc2e2 0%,#ffe9a8 100%)',
-        art: <ArtBuddy />,
-      },
     ];
     if (contest) {
       const top = contest.c.prize_days[0];
       const open = contest.phase === 'open';
       all.unshift({
         id: 'contest',
-        who: 'teacher',
         tag: open ? `เหลือ ${leftText(new Date(contest.c.ends_at).getTime() - Date.now())}` : 'เร็วๆ นี้',
         title: contest.c.title,
         desc: `ให้ AI วาดใบงานตามที่ครูแต่ง แล้วส่งประกวด ใจมากสุด 3 อันดับรับสมาชิกฟรี${top ? ` สูงสุด ${top} วัน` : ''}`,
@@ -223,8 +227,7 @@ export function PromoBanners({ audience, onLibrary, className = '' }: { audience
     } else
       all.unshift({
         id: 'worksheet',
-        who: 'teacher',
-        tag: TAG.teacher,
+        tag: TEACHER,
         title: 'ตู้แต่งตัวใบงาน AI',
         desc: 'เลือกวิชา ธีม สไตล์ เหมือนแต่งตัวละคร แล้วให้ Gemini วาดใบงานสวยๆ ให้ฟรี',
         cta: 'ลองแต่งใบงาน',
@@ -235,24 +238,20 @@ export function PromoBanners({ audience, onLibrary, className = '' }: { audience
     if (!member && ready)
       all.push({
         id: 'offer',
-        who: 'all',
         tag: welcome ? `ลด ${WELCOME_PCT}% บัญชีใหม่` : 'สมาชิก',
         title: `ใช้ได้ทุกระบบ เริ่มวันละ ${perDay} บาท`,
-        desc: `แพลน ${grown.days} วัน ${grown.price} บาท เล่นเกมเต็ม สร้างชุดคำถามและสื่อการสอนได้ไม่จำกัด${user ? '' : ` สมัครฟรีวันนี้ รับส่วนลด ${WELCOME_PCT}% ใน ${WELCOME_HOURS} ชั่วโมงแรก`}`,
+        desc: `แพลน ${grown.days} วัน ${grown.price} บาท ใช้เกมในคลังได้เต็ม สร้างชุดคำถามและสื่อการสอนได้ไม่จำกัด${user ? '' : ` สมัครฟรีวันนี้ รับส่วนลด ${WELCOME_PCT}% ใน ${WELCOME_HOURS} ชั่วโมงแรก`}`,
         cta: user ? 'ดูแพลนสมาชิก' : 'สมัครบัญชีฟรี',
         href: user ? '/membership' : '/signup',
         bg: 'linear-gradient(115deg,#fff3c4 0%,#ffd75e 100%)',
         art: <ArtOffer perDay={perDay} />,
       });
-    // เลือกกลุ่มไว้แล้ว: โชว์เฉพาะเรื่องของกลุ่มนั้น + เรื่องที่ใช้ร่วมกัน
-    if (!audience) return all;
-    return [...all.filter((s) => s.who === audience), ...all.filter((s) => s.who === 'all')];
-  }, [audience, member, ready, welcome, perDay, grown, user, onLibrary, contest]);
+    return all;
+  }, [member, ready, welcome, perDay, grown, user, contest]);
 
   const n = slides.length;
   const go = useCallback((k: number) => setI(((k % n) + n) % n), [n]);
 
-  useEffect(() => setI(0), [audience]);
   useEffect(() => {
     if (!shown || paused || n < 2) return;
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;

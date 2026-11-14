@@ -3,29 +3,30 @@
 /* eslint-disable @next/next/no-img-element */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ChevronRight, Gamepad2, ShieldCheck, Sparkles, Star } from 'lucide-react';
+import { ChevronRight, Gamepad2, Radio, ShieldCheck, Sparkles, Wand2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { ALL_SUBJECTS, type MediaItem, type Subject } from '@/types/database';
 import { NightSky } from '@/components/fx/NightSky';
 import { ChoiceShape, choiceStyle } from '@/components/creator/ChoiceShape';
 import { FiveG3D, type ShowPose } from '@/components/mascot/FiveG3D';
 import { sfx } from '@/lib/sound';
-import { bkkParts } from '@/lib/companion';
-import { SEASON_SKY, seasonOfMonth } from '@/lib/pet/catalog';
-import { Buddy } from '@/components/companion/Buddy';
 import { StickerArt } from '@/components/studio/stickers';
 import { RedeemBox } from './RedeemBox';
 import s from './home-hero.module.css';
 
 const SAY: Record<ShowPose, string> = {
-  wave: 'สวัสดี! ไฟว์จีเองนะ',
-  jump: 'มาเล่นเกมกันเถอะ!',
-  groove: 'ฟังเพลงไป เรียนไป',
-  dance: 'เรียนสนุกเหมือนเล่นเกม',
-  spin: 'หมุนติ้ว ว้าว!',
-  cheer: 'เก่งมาก ทำได้แล้ว!',
-  tablet: 'วันนี้เล่นเกมอะไรดีนะ',
+  wave: 'สวัสดีครับคุณครู!',
+  jump: 'วันนี้สร้างเกมอะไรดี',
+  groove: 'ให้ AI ช่วยทำเกมได้นะ',
+  dance: 'เปิดห้องเกมเล่นทั้งห้องเลย',
+  spin: 'สื่อสวย ทำเสร็จไว',
+  cheer: 'นักเรียนต้องชอบแน่!',
+  tablet: 'ลองเลือกเกมจากคลังดูสิ',
 };
+/** สีฉากและสติกเกอร์ลอยบนฟ้า (คงที่ ไม่เปลี่ยนตามเดือนแล้ว) */
+const C1 = '#7c5cf0';
+const C2 = '#3fb8ff';
+const SKY = ['h-school', 'sp-rocket', 'w-rainbow'];
 const SUBJECT_COLOR: Record<Subject, string> = { คณิตศาสตร์: '#3fd6a8', วิทยาศาสตร์: '#4fb3ff', ภาษาอังกฤษ: '#ffcf3f' };
 const TOKENS = [
   { l: '6%', t: '22%', i: 0, d: '0s' },
@@ -57,18 +58,15 @@ export function HomeHero({
   onPickSubject,
   onSelectMedia,
   onBrowseAll,
-  onDaily,
 }: {
   media: MediaItem[];
   isLoading: boolean;
   onPickSubject: (s: Subject) => void;
   onSelectMedia: (m: MediaItem) => void;
   onBrowseAll: () => void;
-  onDaily: () => void;
 }) {
   const { user } = useAuth();
-  const season = useMemo(() => seasonOfMonth(bkkParts().month), []);
-  const flags = [season.c1, '#fff8ec', season.c2, '#ffcf3f'];
+  const flags = [C1, '#fff8ec', C2, '#ffcf3f'];
   const [pose, setPose] = useState<ShowPose>('wave');
   // เลื่อนพ้นส่วนหัวแล้ว: หยุดแอนิเมชันตกแต่งทั้งหมดในส่วนนี้ (ธง ดาว เมฆ แถบภาพ) ไม่ให้กิน CPU/GPU
   const sec = useRef<HTMLElement>(null);
@@ -92,14 +90,14 @@ export function HomeHero({
   const gameCount = media.filter((m) => m.media_type !== 'วิดีโอ').length;
 
   return (
-    <section ref={sec} className={s.world} style={{ ['--s1' as string]: season.c1, ['--s2' as string]: season.c2 }} data-off={off || undefined} data-tour="hero" aria-label="ยินดีต้อนรับสู่สื่อการสอน 5G">
+    <section ref={sec} className={s.world} style={{ ['--s1' as string]: C1, ['--s2' as string]: C2 }} data-off={off || undefined} data-tour="hero" aria-label="สื่อการสอน 5G สำหรับคุณครู">
       <NightSky />
       <div className={s.sky} aria-hidden="true" data-hide="clean minimal">
         <div className={s.dots} />
         <span className={s.cloud} style={{ top: '14%', animationDelay: '-18s' }} />
         <span className={s.cloud} style={{ top: '38%', animationDelay: '-52s', ['--s' as string]: 0.7 }} />
         <span className={s.cloud} style={{ top: '6%', animationDelay: '-80s', ['--s' as string]: 0.55 }} />
-        {SEASON_SKY[season.month - 1].map((id, i) => (
+        {SKY.map((id, i) => (
           <span key={id} className={s.seasonFloat} data-i={i} style={{ animationDelay: `${i * -1.6}s` }}>
             <StickerArt id={id} />
           </span>
@@ -114,35 +112,28 @@ export function HomeHero({
       <div className={s.inner}>
         {/* ---------- ข้อความ ---------- */}
         <div className={s.copy}>
-          <Link href="/buddy" data-hide="minimal" className={s.seasonTag} style={{ background: `linear-gradient(100deg,${season.c1},${season.c2})` }}>
-            <span className={s.seasonBuddy} aria-hidden="true">
-              <Buddy stage={1} color="sun" size={46} animate={false} wear={{ [season.wear.slot]: season.wear.id }} />
-            </span>
-            <span>
-              <b>{season.name}</b>
-              <small>เก็บแต้มรับ{season.wear.label} เฉพาะเดือนนี้</small>
-            </span>
-            <ChevronRight className="w-4 h-4 shrink-0" strokeWidth={3} />
-          </Link>
           <span className={s.tagline}>
-            <ShieldCheck className="w-4 h-4 text-emerald-600" /> เกมการเรียนรู้ ป.1 - ป.6 · ไม่มีโฆษณา ไม่มีแชท
+            <ShieldCheck className="w-4 h-4 text-emerald-600" /> เว็บสำหรับคุณครู · สร้างเกม สื่อ ใบงาน ในที่เดียว
           </span>
           <h1 className={s.title}>
             <span className={s.line}>
-              <Words text="เรียนสนุก เหมือนได้เล่นเกม" />
+              <Words text="ทุกเครื่องมือของครู" />
             </span>
             <span className={`${s.line} ${s.lineHi}`}>
-              <Words text="ไปกับน้องไฟว์จี" from={3} />
+              <Words text="ให้ AI ช่วยสร้างเกม" from={2} />
             </span>
           </h1>
-          <p className={s.lead} data-hide="minimal">ภารกิจผจญภัยที่ซ่อนบทเรียนไว้ในทุกด่าน เด็กเล่นได้เองทุกจอ คุณครูสร้างเกมและสื่อการสอนของตัวเองได้ด้วย</p>
+          <p className={s.lead} data-hide="minimal">ให้ AI สร้างเกมตามวิชาและเนื้อหาของครู เปิดห้องเกมเล่นสดทั้งห้อง ทำสื่อและใบงาน พร้อมคลังเกมใช้สอนได้ทันที</p>
 
           <div className={s.ctas}>
-            <button type="button" className={`${s.btn} ${s.btnGo}`} onClick={onBrowseAll}>
-              <Gamepad2 className="w-5 h-5" /> เริ่มเล่นเกม
-            </button>
-            <button type="button" className={s.btn} onClick={onDaily}>
-              <Star className="w-5 h-5 text-amber-500" fill="currentColor" /> เกมประจำวัน
+            <Link href="/ai-game" className={`${s.btn} ${s.btnGo}`}>
+              <Wand2 className="w-5 h-5" /> สร้างเกมด้วย AI
+            </Link>
+            <Link href="/create" className={s.btn}>
+              <Radio className="w-5 h-5 text-rose-500" /> เปิดห้องเกมเล่นสด
+            </Link>
+            <button type="button" className={s.btn} onClick={onBrowseAll}>
+              <Gamepad2 className="w-5 h-5 text-indigo-500" /> คลังเกม
             </button>
             {!user && (
               <Link href="/signup" className={`${s.btn} ${s.btnSoft}`}>
@@ -160,7 +151,7 @@ export function HomeHero({
                 {sub}
               </button>
             ))}
-            {gameCount > 0 && <span className={s.count}>มีเกมให้เล่น {gameCount} เกม</span>}
+            {gameCount > 0 && <span className={s.count}>คลังเกม {gameCount} เกม</span>}
           </div>
         </div>
 

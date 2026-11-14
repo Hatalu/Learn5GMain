@@ -9,7 +9,6 @@ import { SetCoverArt } from '@/components/creator/CoverPicker';
 import { getGfx } from '@/lib/gfx';
 import { parseCover, COVER_COLORS } from '@/lib/game-creator/cover';
 import { mediaPrefix } from '@/lib/game-creator/media';
-import { FREE_DESIGN_LIMIT, FREE_SET_LIMIT } from '@/lib/game-creator/quota';
 import type { ShowcaseItem } from '@/lib/game-creator/showcase';
 import { useOffscreen } from './useOffscreen';
 import z from './zones.module.css';
@@ -108,48 +107,6 @@ export function LiveDemo({ className = '' }: { className?: string }) {
           <li key={t} data-on={i === step || undefined}>{t}</li>
         ))}
       </ol>
-    </section>
-  );
-}
-
-/* ---------- ตารางรวมงานครู (ทุกแถวเป็นฟีเจอร์ที่มีจริง) ---------- */
-const SET_FREE = `รวม ${FREE_SET_LIMIT} ชุด`;
-const DESIGN_FREE = `รวม ${FREE_DESIGN_LIMIT} สื่อ`;
-const JOBS = [
-  { job: 'สร้างข้อสอบ / ชุดคำถาม', how: 'เริ่มจากแม่แบบ ป.1 - ม.6 แล้วแก้ต่อ', href: '/create#templates', free: SET_FREE },
-  { job: 'นำเข้าคำถามจาก Excel', how: 'ในตัวแก้ไขชุดคำถาม', href: '/create', free: SET_FREE },
-  { job: 'ให้ AI วาดใบงาน (Gemini)', how: 'ตู้แต่งตัวใบงาน: เลือกวิชา ธีม สไตล์ แล้วคัดลอก prompt', href: '/worksheet', free: 'ฟรี' },
-  { job: 'นำเข้า Word / PDF', how: 'สมการ MathType แปลงมาแก้ต่อได้', href: '/studio', free: DESIGN_FREE },
-  { job: 'พิมพ์สมการแบบ MathType + กราฟ', how: 'โหมด Word ในระบบสร้างสื่อ', href: '/studio', free: DESIGN_FREE },
-  { job: 'เปลี่ยนชุดคำถามเป็นใบงาน', how: 'กดปุ่มใบงานที่การ์ดชุดคำถาม', href: '/create?tab=library', free: 'ชุดของตัวเอง' },
-  { job: 'เปิดเกมเล่นสดทั้งห้อง', how: 'เลขห้อง 6 หลัก + QR', href: '/create?tab=library', free: 'ชุดของตัวเอง' },
-  { job: 'ออกรายงานผล PDF / Excel', how: 'หลังจบห้อง ดูรายข้อและรายคน', href: '/create?tab=library', free: 'ชุดของตัวเอง' },
-];
-
-export function TeacherJobs({ className = '' }: { className?: string }) {
-  return (
-    <section className={`${z.panel} ${className}`} aria-labelledby="jobs-title">
-      <div className={z.head}>
-        <div>
-          <h2 id="jobs-title" className="font-display">งานครูทั้งหมด จบในเว็บเดียว</h2>
-          <p>สมาชิกใช้ได้ไม่จำกัด บัญชีฟรีเริ่มตามโควตาในตาราง</p>
-        </div>
-      </div>
-      <div className={z.jobs} role="table" aria-label="งานครูและเครื่องมือ">
-        <div className={z.jobHead} role="row">
-          <span role="columnheader">งาน</span>
-          <span role="columnheader">ทำอย่างไร</span>
-          <span role="columnheader">บัญชีฟรี</span>
-        </div>
-        {JOBS.map((j) => (
-          <Link key={j.job} href={j.href} className={z.job} role="row">
-            <b role="cell">{j.job}</b>
-            <span role="cell">{j.how}</span>
-            <em role="cell">{j.free}</em>
-            <ChevronRight className="w-4 h-4" strokeWidth={3} aria-hidden="true" />
-          </Link>
-        ))}
-      </div>
     </section>
   );
 }

@@ -14,22 +14,17 @@ import {
   SortOption,
 } from '@/types/database';
 import { Navbar } from '@/components/navbar/Navbar';
-import { MediaRail } from '@/components/media/MediaRail';
 import { MediaCard } from '@/components/media/MediaCard';
 import { FilterSidebar } from '@/components/media/FilterSidebar';
 import { MobileFilterDrawer } from '@/components/media/MobileFilterDrawer';
 import { SortDropdown } from '@/components/media/SortDropdown';
 import { EmptyState } from '@/components/media/EmptyState';
 import { HomeHero } from '@/components/home/HomeHero';
-import { FeatureStrip } from '@/components/media/FeatureStrip';
-import { DailyGameCard } from '@/components/media/DailyGameCard';
 import { JoinRoomBanner } from '@/components/media/JoinRoomBanner';
-import { HomeHub } from '@/components/pet/HomeHub';
 import { BuddyLoader } from '@/components/fx/BuddyLoader';
 import { Reveal } from '@/components/ui/Reveal';
 import {
   Filter,
-  Sparkles,
   LayoutGrid,
   Gamepad2,
   Loader2,
@@ -40,14 +35,12 @@ import { FacebookIcon } from '@/components/icons/FacebookIcon';
 import { OfferBanner } from '@/components/membership/Pricing';
 import { SocialProof } from '@/components/membership/SocialProof';
 import { PromoBanners } from '@/components/home/PromoBanners';
-import { AudiencePaths } from '@/components/home/AudiencePaths';
-import { useAudience } from '@/components/home/audience';
+import { TeacherTools } from '@/components/home/TeacherTools';
 import { ArZone } from '@/components/home/ArZone';
 import hp from '@/components/home/home-page.module.css';
 
 // หน้าต่างที่เปิดเมื่อกดเท่านั้น: แยกไฟล์ โหลดตอนใช้ ไม่ถ่วงการเปิดหน้าแรก
 const LiveDemo = dynamic(() => import('@/components/home/TeacherZones').then((m) => m.LiveDemo), { ssr: false });
-const TeacherJobs = dynamic(() => import('@/components/home/TeacherZones').then((m) => m.TeacherJobs), { ssr: false });
 const TeacherGallery = dynamic(() => import('@/components/home/TeacherZones').then((m) => m.TeacherGallery), { ssr: false });
 const AddMediaModal = dynamic(() => import('@/components/dev/AddMediaModal').then((m) => m.AddMediaModal), { ssr: false });
 const MediaDetailModal = dynamic(() => import('@/components/media/MediaDetailModal').then((m) => m.MediaDetailModal), { ssr: false });
@@ -269,10 +262,6 @@ export default function HomePage() {
   const scrollToLibrary = () => {
     document.getElementById('library')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
-  // ปุ่มจากป้ายโฆษณา/ภารกิจลองใช้
-  const [audience, setAudience] = useAudience();
-  const openGames = scrollToLibrary;
-  const scrollToDaily = () => document.getElementById('daily')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
   // เลือกวิชาจากป้ายหน้าแรก: กรองเฉพาะวิชานั้น แล้วเลื่อนลงไปที่คลังสื่อ
   const handlePickSubject = (subject: FilterState['subjects'][number]) => {
@@ -342,16 +331,6 @@ export default function HomePage() {
   const shownCount = filteredAndSortedMedia.length;
   const typeOptions = GAME_FILTER_TYPES;
 
-  // Netflix Rail items: latest items
-  const latestMediaList = useMemo(() => {
-    return allMedia
-      .filter((m) => m.is_public !== false)
-      .sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      )
-      .slice(0, 10);
-  }, [allMedia]);
-
   const hasActiveFilters =
     filters.subjects.length > 0 ||
     filters.grades.length > 0 ||
@@ -373,7 +352,6 @@ export default function HomePage() {
         onPickSubject={handlePickSubject}
         onSelectMedia={handleSelectMedia}
         onBrowseAll={scrollToLibrary}
-        onDaily={scrollToDaily}
       />
 
       <div className={hp.dots} aria-hidden="true" data-hide="clean minimal" />
@@ -387,78 +365,28 @@ export default function HomePage() {
       ))}
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-2 pb-6">
-        {/* เลือกกลุ่มก่อน: บล็อกด้านล่างแสดงตามกลุ่มที่เลือก (ยังไม่เลือก = แบบทั่วไป) */}
-        <div data-hide="minimal">
-        <Reveal className="mt-4 sm:mt-6">
-          <AudiencePaths audience={audience} onPick={setAudience} onLibrary={openGames} onDaily={scrollToDaily} />
+        {/* เครื่องมือครู: สร้างเกมด้วย AI + ทุกระบบ (เว็บนี้สำหรับคุณครูโดยเฉพาะ) */}
+        <Reveal className="mt-6 sm:mt-8">
+          <TeacherTools onLibrary={scrollToLibrary} />
         </Reveal>
-
-        {audience === 'teacher' && (
-          <>
-            <LiveDemo className="mt-6 sm:mt-8" />
-            <TeacherJobs className="mt-6 sm:mt-8" />
-            <TeacherGallery className="mt-6 sm:mt-8" />
-          </>
-        )}
-        </div>
 
         {/* ป้ายโฆษณา + ข้อเสนอสมาชิก + ตัวเลขผู้ใช้จริง: ซ่อนในธีมมินิมอล/คลีน (ตั้งค่า > ธีมหน้าเว็บ) */}
         <div data-hide="clean minimal">
-          {/* ป้ายโฆษณาระบบต่างๆ ในเว็บ (กดปิดได้ ซ่อน 1 วัน) */}
-          <PromoBanners className="mt-6" audience={audience} onLibrary={openGames} />
-
-          {/* ข้อเสนอสมาชิก (ส่วนลดบัญชีใหม่ / โบนัสต่ออายุ) + ตัวเลขผู้ใช้จริง */}
+          <PromoBanners className="mt-8" />
           <OfferBanner className="mt-6" />
           <SocialProof className="mt-5" />
         </div>
 
-        {/* ปริศนาวันนี้ + ห้องเลี้ยงปุ๋ง + ซีซัน */}
-        {audience !== 'teacher' && (
-          <div data-hide="minimal">
-            <Reveal className="mt-6 sm:mt-8">
-              <HomeHub />
-            </Reveal>
-          </div>
-        )}
+        {/* ตัวอย่างห้องเล่นสด + ผลงานครู */}
+        <div data-hide="minimal">
+          <LiveDemo className="mt-8 sm:mt-10" />
+          <TeacherGallery className="mt-6 sm:mt-8" />
+        </div>
 
-        {/* เกมประจำวัน: เปลี่ยนทุกวัน แอดมินกำหนดได้ที่หน้า Dev */}
-        <Reveal className="mt-6 sm:mt-8">
-          <div id="daily" className="scroll-mt-24">
-            <DailyGameCard onSelect={handleSelectMedia} />
-          </div>
-        </Reveal>
-
-        {/* เข้าร่วมเกมที่สมาชิกสร้างด้วยเลขห้อง 6 หลัก */}
+        {/* นักเรียนเข้าห้องเกมที่ครูเปิดด้วยเลข 6 หลัก */}
         <Reveal className="mt-6 sm:mt-8">
           <JoinRoomBanner />
         </Reveal>
-
-        {audience !== 'teacher' && (
-          <div className="mt-6 sm:mt-8" data-hide="minimal">
-            <FeatureStrip />
-          </div>
-        )}
-
-        {/* Netflix-style Rail: สื่อใหม่ล่าสุด */}
-        {audience !== 'teacher' && latestMediaList.length > 0 && (
-          <div data-hide="minimal">
-          <Reveal className="mb-8">
-            <MediaRail
-              title="สื่อใหม่ล่าสุด"
-              subtitle="คลังสื่อการสอนและเกมการศึกษาที่เพิ่มเข้ามาใหม่ล่าสุด"
-              items={latestMediaList}
-              favoriteIds={favoriteIds}
-              onToggleFavorite={handleToggleFavorite}
-              onSelectMedia={handleSelectMedia}
-              icon={
-                <span className={hp.chip} style={{ background: '#ffcf3f' }}>
-                  <Sparkles className="w-5 h-5" />
-                </span>
-              }
-            />
-          </Reveal>
-          </div>
-        )}
 
         {/* เกม AR ยังไม่ผ่านการทดสอบกล้องจริง: วางท้าย เล็ก และไม่อยู่ในส่วนหัว */}
         <div data-hide="minimal">
@@ -480,10 +408,10 @@ export default function HomePage() {
               </span>
               <div className="min-w-0 text-left">
                 <h2 className={`${hp.boothTitle} font-display`}>
-                  คลังเกมการเรียนรู้
+                  คลังเกมการเรียนรู้สำหรับใช้สอน
                   {!isLoadingMedia && <span className={hp.count}>{allMedia.length} เกม</span>}
                 </h2>
-                <p className={hp.boothSub}>ป.1 - ป.6 เล่นได้ทุกจอ เลือกวิชาแล้วเริ่มเล่นได้เลย</p>
+                <p className={hp.boothSub}>เกมผจญภัย ป.1 - ป.6 เปิดบนจอหน้าห้องหรือให้นักเรียนเล่นเอง ได้ทุกจอ</p>
               </div>
             </div>
             <div className={hp.picks} role="group" aria-label="เลือกวิชา">
@@ -635,7 +563,7 @@ export default function HomePage() {
               <img src="/logo.png" alt="สื่อการสอน 5G" className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl border-[3px] border-[#fff8ec] shrink-0" />
               <div>
                 <p className="font-display text-2xl leading-tight">สื่อการสอน 5G</p>
-                <p className="mt-1 text-sm opacity-80">เกมการเรียนรู้และระบบสร้างสื่อการสอน สำหรับเด็กประถม ป.1 - ป.6</p>
+                <p className="mt-1 text-sm opacity-80">เครื่องมือสร้างเกม สื่อ และใบงาน สำหรับคุณครูโดยเฉพาะ</p>
                 <a
                   href="https://www.facebook.com/profile.php?id=61594556657667"
                   target="_blank"
@@ -650,11 +578,13 @@ export default function HomePage() {
 
             <nav aria-label="ลิงก์ด่วน" className="grid grid-cols-2 gap-2 content-start">
               <button type="button" onClick={scrollToLibrary} className={hp.footBtn}>
-                เกมการเรียนรู้
+                คลังเกม
               </button>
               {[
-                { label: 'สร้างเกมของฉัน', href: '/create' },
+                { label: 'สร้างเกมด้วย AI', href: '/ai-game' },
+                { label: 'ชุดคำถาม / ห้องเกม', href: '/create' },
                 { label: 'สร้างสื่อการสอน', href: '/studio' },
+                { label: 'ใบงาน AI', href: '/worksheet' },
                 { label: 'สมัครสมาชิก', href: '/membership' },
               ].map((l) => (
                 <a key={l.label} href={l.href} className={hp.footBtn}>
@@ -663,7 +593,7 @@ export default function HomePage() {
               ))}
             </nav>
           </div>
-          <div className="border-t-2 border-dashed border-white/20 px-6 sm:px-8 py-3 text-xs opacity-70 text-center sm:text-left">สื่อการสอน 5G · เกมการเรียนรู้ออนไลน์ระดับประถมศึกษา</div>
+          <div className="border-t-2 border-dashed border-white/20 px-6 sm:px-8 py-3 text-xs opacity-70 text-center sm:text-left">สื่อการสอน 5G · เครื่องมือสำหรับคุณครู</div>
         </div>
       </footer>
 

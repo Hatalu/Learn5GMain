@@ -1,0 +1,58 @@
+/* เครื่องมือครูหน้าแรก */
+.wrap { position: relative; color: #2a2350; }
+.head { text-align: center; margin-bottom: 1.1rem; }
+.head h2 { font-size: clamp(1.6rem, 4vw, 2.3rem); line-height: 1.2; }
+.head p { font-weight: 700; opacity: 0.75; margin-top: 0.25rem; }
+:global(.dark) .head { color: #fff8ec; }
+
+.grid { display: grid; gap: 0.85rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 900px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; } }
+
+.hero {
+  grid-column: 1 / -1;
+  display: grid; gap: 1rem; padding: 1.2rem;
+  border: 3px solid #2a2350; border-radius: 1.8rem; box-shadow: 0 6px 0 #2a2350;
+  background: linear-gradient(115deg, #c9b8ff 0%, #9fe3ff 55%, #a8f0d4 100%);
+  overflow: hidden;
+}
+@media (min-width: 768px) { .hero { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); align-items: center; padding: 1.6rem 1.8rem; } }
+.heroCopy h3 { display: flex; align-items: center; gap: 0.45rem; font-size: clamp(1.5rem, 3.6vw, 2.2rem); line-height: 1.15; margin-top: 0.5rem; }
+.heroCopy p { margin-top: 0.4rem; font-weight: 700; line-height: 1.45; opacity: 0.85; }
+.new { display: inline-block; padding: 0.15rem 0.7rem; border: 2.5px solid #2a2350; border-radius: 999px; background: #ff6b7a; color: #fff; font-weight: 900; font-size: 0.8rem; }
+.go {
+  margin-top: 0.9rem; display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.7rem 1.3rem;
+  border: 3px solid #2a2350; border-radius: 1.2rem; background: #fff; font-family: var(--font-display, inherit); font-size: 1.1rem;
+  box-shadow: 0 5px 0 #2a2350; transition: transform 0.15s;
+}
+.go:hover { transform: translateY(-2px); }
+.go:active { transform: translateY(3px) scale(0.98, 1.02); box-shadow: 0 2px 0 #2a2350; }
+.picks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
+@media (min-width: 640px) { .picks { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.pick {
+  display: flex; flex-direction: column; overflow: hidden; background: #fff;
+  border: 3px solid #2a2350; border-radius: 1rem; box-shadow: 0 4px 0 #2a2350; transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.pick:hover { transform: translateY(-4px) rotate(-1deg); }
+.pickArt { position: relative; display: block; aspect-ratio: 16 / 10; background: var(--c); border-bottom: 3px solid #2a2350; }
+.pickArt i { position: absolute; right: 0.3rem; top: 0.3rem; font-style: normal; font-weight: 900; font-size: 0.68rem; padding: 0 0.4rem; background: #fff; border: 2px solid #2a2350; border-radius: 999px; }
+.pickArt svg { width: 100%; height: 100%; display: block; }
+.pick b { padding: 0.4rem 0.5rem; font-size: 0.85rem; line-height: 1.2; }
+
+.card {
+  position: relative; display: flex; flex-direction: column; gap: 0.3rem; text-align: left; padding: 1rem;
+  border: 3px solid #2a2350; border-radius: 1.4rem; background: #fff; box-shadow: 0 5px 0 #2a2350; color: #2a2350;
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.card:hover { transform: translateY(-4px); }
+.card:active { transform: translateY(2px) scale(0.98, 1.02); box-shadow: 0 2px 0 #2a2350; }
+.card b { font-family: var(--font-display, inherit); font-size: 1.08rem; line-height: 1.2; margin-top: 0.3rem; }
+.card em { margin-top: auto; padding-top: 0.4rem; font-style: normal; font-size: 0.75rem; font-weight: 900; color: var(--c); filter: brightness(0.75); }
+.desc { font-size: 0.84rem; font-weight: 600; line-height: 1.4; opacity: 0.8; }
+.icon { width: 2.8rem; height: 2.8rem; border-radius: 0.9rem; border: 3px solid #2a2350; background: var(--c); color: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 3px 0 #2a2350; }
+@media (max-width: 420px) {
+  .card { padding: 0.8rem; }
+  .desc { font-size: 0.78rem; }
+}
+
+:global(html[data-ui='minimal']) :is(.hero, .go, .pick, .card, .icon) { border-width: 1px; box-shadow: none; }
+:global(html[data-ui='minimal']) .hero { background: #f3efff; }

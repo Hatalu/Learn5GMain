@@ -12,7 +12,6 @@
  * - ไม่มีกล้อง = แตะจอ/คีย์บอร์ดแทนทุกท่า ภาพกล้องไม่ถูกบันทึกหรือส่งออกจากเครื่อง
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { recordAnswer } from '@/lib/companion-store';
 import { createPortal } from 'react-dom';
 import { ArrowBigLeft, ArrowBigRight, BookOpen, Camera, Check, Coins, Crown, Download, Hand, Heart, Lock as LockIcon, LogOut, Map as MapIcon, Pause, Play, ScanFace, Settings2, Shield, Sparkles, Star, Timer, Trash2, Users, Waves, Wind, X, Zap } from 'lucide-react';
 import type { QuizQuestion } from '@/lib/game-creator/types';
@@ -639,7 +638,6 @@ export function OceanGame({ questions, settings, title, onExit, persist = true }
       const choice = g.q.choices.find((c) => c.id === cid);
       const s = g.scores[g.team];
       const h = hero();
-      recordAnswer(!!choice?.correct);
       if (choice?.correct) {
         g.got = true;
         s.streak++;
