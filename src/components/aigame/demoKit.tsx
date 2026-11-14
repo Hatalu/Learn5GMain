@@ -129,6 +129,12 @@ export function seeded(seed: number) {
   };
 }
 
+/** กำลังพิมพ์ในช่องกรอกของหน้า: ปุ่มลัดของเกมตัวอย่างต้องไม่แย่ง */
+export function typing(e: KeyboardEvent): boolean {
+  const t = e.target as HTMLElement | null;
+  return !!t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
+}
+
 /** ฟังปุ่มตัวเลข 1-9 */
 export function useNumKeys(on: (i: number) => void, enabled = true) {
   const ref = useRef(on);
@@ -136,8 +142,7 @@ export function useNumKeys(on: (i: number) => void, enabled = true) {
   useEffect(() => {
     if (!enabled) return;
     const h = (e: KeyboardEvent) => {
-      const t = e.target as HTMLElement | null;
-      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+      if (typing(e)) return;
       const d = /^Digit([1-9])$/.exec(e.code) || /^Numpad([1-9])$/.exec(e.code);
       if (d) ref.current(Number(d[1]) - 1);
     };

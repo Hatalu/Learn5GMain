@@ -6,7 +6,7 @@
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { gsfx } from '@/lib/game-creator/gsound';
-import { COLORS, Empty, Hud, Spark, Stamp, useLoop, type DemoProps } from './demoKit';
+import { COLORS, Empty, Hud, Spark, Stamp, typing, useLoop, type DemoProps } from './demoKit';
 
 /* ---------------------------------------------------------------- วิ่งผ่านประตู */
 
@@ -25,6 +25,7 @@ export function RunnerDemo({ items }: DemoProps) {
   };
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
+      if (typing(e)) return;
       if (e.code === 'ArrowLeft' || e.code === 'KeyA') move(-1);
       if (e.code === 'ArrowRight' || e.code === 'KeyD') move(1);
     };
@@ -55,7 +56,7 @@ export function RunnerDemo({ items }: DemoProps) {
         const dx = sx.current === null ? 0 : e.clientX - sx.current;
         sx.current = null;
         if (Math.abs(dx) > 30) move(dx > 0 ? 1 : -1);
-        else if (!(e.target as HTMLElement).closest('.ag-hud')) move(e.clientX - r.left < r.width / 2 ? -1 : 1);
+        else if (!(e.target as HTMLElement).closest('.ag-hud, .ag-lanebtns')) move(e.clientX - r.left < r.width / 2 ? -1 : 1);
       }}
     >
       <div className="ag-run-sky" />
@@ -118,6 +119,7 @@ export function SpaceDemo({ items }: DemoProps) {
   const stage = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
+      if (typing(e)) return;
       const d = { ArrowLeft: [-6, 0], KeyA: [-6, 0], ArrowRight: [6, 0], KeyD: [6, 0], ArrowUp: [0, -6], KeyW: [0, -6], ArrowDown: [0, 6], KeyS: [0, 6] }[e.code];
       if (!d) return;
       e.preventDefault();

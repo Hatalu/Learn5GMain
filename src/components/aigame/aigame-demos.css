@@ -292,10 +292,13 @@
   .ag-cloud, .ag-water, .ag-stars, .ag-kid, .ag-runner svg, .ag-slime svg, .ag-balloon svg { animation: none; }
 }
 
-/* ระบบลดการเคลื่อนไหวของเว็บตัดแอนิเมชันทั้งหมด: การเคลื่อนที่ที่เป็นกติกาเกมต้องคงไว้ (ไม่งั้นประตู/วงแหวนถึงตัวทันทีและตอบรัว) */
+/* ระบบลดการเคลื่อนไหว / กราฟิก "ลื่น" ของเว็บตัดแอนิเมชันวนหรือย่อเวลาทุกตัว: การเคลื่อนที่ที่เป็นกติกาเกมต้องคงไว้
+   (ไม่งั้นลูกโป่ง/ปลาหายหลังรอบแรก และประตู/วงแหวนถึงตัวทันทีจนตอบรัว) · html body นำหน้าให้ชนะ html[data-gfx] *:not(...) */
+html body .ag-stage .ag-balloon:not([data-state]),
+html body .ag-stage .ag-fish:not([data-state]) { animation-iteration-count: infinite !important; }
 @media (prefers-reduced-motion: reduce) {
-  .ag-stage .ag-balloon { animation-duration: 9s !important; animation-iteration-count: infinite !important; }
-  .ag-stage .ag-fish { animation-duration: var(--d, 8s) !important; animation-iteration-count: infinite !important; }
-  .ag-stage .ag-gates { animation-duration: 4.6s !important; }
-  .ag-stage .ag-ring { animation-duration: 5s !important; }
+  html body .ag-stage .ag-balloon { animation-duration: 9s !important; }
+  html body .ag-stage .ag-fish:not([data-state]) { animation-duration: var(--d, 8s) !important; }
+  html body .ag-stage .ag-gates { animation-duration: 4.6s !important; }
+  html body .ag-stage .ag-ring { animation-duration: 5s !important; }
 }

@@ -140,17 +140,30 @@ export function AiGameBuilder() {
     const s = buildSet(m.id);
     setLoadingSet(false);
     if (!s) return;
-    const { items, skipped } = quizToItems(s.content);
-    setPicked({ id: m.id, title: s.title, items, skipped });
+    takeSet(m.id, s.title, quizToItems(s.content));
+  };
+
+  // ชุดที่ไม่มีข้อใช้ได้เลย (รูปอย่างเดียว/โหลดไม่สำเร็จ) ไม่นับว่าเลือก: กันไม่ให้ prompt แอบเปลี่ยนเป็นให้ AI แต่งเอง
+  const takeSet = (id: string, title: string, r: { items: GItem[]; skipped: number }) => {
+    if (!r.items.length) {
+      setPicked(null);
+      setToast('ชุดนี้ไม่มีข้อที่ใช้ได้ (เป็นรูปอย่างเดียวหรือไม่มีคำตอบ) ลองเลือกชุดอื่นนะ');
+      return;
+    }
+    setPicked({ id, title, ...r });
   };
 
   const pickMine = async (m: MySet) => {
     gsfx.pick();
     setLoadingSet(true);
-    const { data } = await createClient().from('user_games').select('content').eq('id', m.id).eq('owner_id', user!.id).maybeSingle();
+    const { data, error } = await createClient().from('user_games').select('content').eq('id', m.id).eq('owner_id', user!.id).maybeSingle();
     setLoadingSet(false);
-    const { items, skipped } = quizToItems(sanitizeQuiz(data?.content, mediaPrefix()));
-    setPicked({ id: m.id, title: m.title, items, skipped });
+    if (error || !data) {
+      setPicked(null);
+      setToast('โหลดชุดคำถามไม่สำเร็จ ลองใหม่อีกครั้ง');
+      return;
+    }
+    takeSet(m.id, m.title, quizToItems(sanitizeQuiz(data.content, mediaPrefix())));
   };
 
   /* ---------- prompt ---------- */
@@ -474,8 +487,8 @@ export function AiGameBuilder() {
             {needSet && <p className="ag-hint">เลือกชุดคำถามในขั้นที่ 3 ก่อน</p>}
             {show && prompt && <textarea ref={promptRef} className="ag-prompt" readOnly value={prompt} rows={14} />}
             <ol className="ag-tips">
-              <li>ใน Gemini กดปุ่ม Canvas (เครื่องมือ) ก่อนวาง prompt</li>
-              <li>เกมออกมาแล้วกด Preview เพื่อเล่น และกดแชร์ให้นักเรียนเล่นได้</li>
+              <li>ใน Gemini เลือกเครื่องมือ Canvas ก่อนวาง prompt (เกมจะเปิดเล่นได้ในหน้าเดียวกัน)</li>
+              <li>ได้เกมแล้วลองเล่นในหน้าตัวอย่างของ Canvas ถ้าต้องการให้นักเรียนเล่น ใช้ปุ่มแชร์ของ Gemini</li>
               <li>อยากแก้ ให้พิมพ์บอก Gemini ต่อได้เลย เช่น &quot;ให้ลูกโป่งลอยช้าลง&quot;</li>
             </ol>
             <p className="ag-hint">
