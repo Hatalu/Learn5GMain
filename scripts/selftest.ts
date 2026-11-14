@@ -2119,7 +2119,10 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
         const p = P.buildGamePrompt(r);
         assert.ok(!P.hasEmoji(p), `${g.id}/${s.id} emoji`);
         assert.ok(p.includes(g.name) && p.includes(s.th) && p.includes('ป.4') && p.includes(P.topicLabel(r)), `${g.id}/${s.id}`);
-        assert.ok(p.includes('const QUESTIONS') && p.includes('ห้ามใช้อิโมจิ'));
+        assert.ok(p.includes('const QUESTIONS') && p.includes('NO EMOJI') && p.includes('const CONFIG') && p.includes('Write 10 questions'));
+        // ทุกชื่อ CONFIG ที่ข้อความเกมอ้างถึง ต้องมีค่าในบล็อก CONFIG
+        for (const k of P.configRefs(g)) assert.ok(new RegExp('\n  ' + k + ': [0-9.]+,').test(p), `${g.id} CONFIG.${k}`);
+        assert.equal(p.includes('readMinSec:'), !g.noRead, g.id);
         assert.equal(p.includes('three.js'), g.dim === '3D');
       }
       for (const items of Object.values(S.SAMPLES)) for (const it of items) assert.ok(it.choices[it.correct[0]] !== undefined && !P.hasEmoji(it.q));
@@ -2141,16 +2144,43 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
     assert.deepEqual(items[2].accept, ['cat']);
     const p = P.buildGamePrompt(P.cleanGameRecipe({ game: 'balloon', s: 'math', g: 3, source: 'mine' }), { items, setTitle: 'ชุดทดสอบ' });
     for (const it of items) assert.ok(p.includes(JSON.stringify(it.q)), it.q);
-    assert.ok(p.includes('"answers":[0,2]') && p.includes('"type":"text"') && p.includes('ชุดทดสอบ') && p.includes('ทั้งหมด 3 ข้อ'));
-    assert.ok(!p.includes('ให้แต่งคำถามเอง'));
+    assert.ok(p.includes('"answers":[0,2]') && p.includes('"type":"text"') && p.includes('ชุดทดสอบ') && p.includes('Use ALL 3 questions'));
+    assert.ok(!p.includes('Write 10 questions'));
+    // ลูกเล่น: ความเร็วช้า = เวลายาวขึ้น, ทุกตัวเลือกเปลี่ยน prompt, เวลา/หัวใจโผล่ครั้งเดียว, ยาวไม่เกินเพดาน
+    const cfgOf = (pace: string) => Number(/riseSec: ([0-9.]+)/.exec(P.buildGamePrompt(P.cleanGameRecipe({ game: 'balloon', pace: pace as never })))![1]);
+    assert.ok(cfgOf('calm') > cfgOf('normal') && cfgOf('normal') > cfgOf('fast'));
+    const base = P.buildGamePrompt(P.defaultGameRecipe());
+    const variants: Partial<import('../src/lib/aigame/prompt').GameRecipe>[] = [
+      ...P.PACES.map((x) => ({ pace: x.id })),
+      ...P.TIMERS.map((x) => ({ timer: x.id })),
+      ...P.LIVES.map((x) => ({ lives: x.id as 'on' | 'off' })),
+      ...P.MODES.map((x) => ({ mode: x.id })),
+      ...P.ARTS.map((x) => ({ art: x.id })),
+      ...P.HEROES.map((x) => ({ hero: x.id })),
+      ...P.EXTRAS.map((x) => ({ extras: [x.id] })),
+    ];
+    const d0 = P.defaultGameRecipe();
+    for (const v of variants) {
+      const k = Object.keys(v)[0] as keyof typeof d0;
+      if (JSON.stringify(d0[k]) === JSON.stringify(v[k])) continue;
+      assert.notEqual(P.buildGamePrompt(P.cleanGameRecipe({ ...d0, ...v })), base, JSON.stringify(v));
+    }
+    const full = P.buildGamePrompt(P.cleanGameRecipe({ game: 'runner', timer: 20, lives: 'on', count: 20, extras: P.EXTRAS.map((e) => e.id) }));
+    assert.equal(full.match(/timerSec: /g)!.length, 1);
+    assert.ok(full.includes('timerSec: 20,') && full.includes('lives: 3,'));
+    assert.ok(full.length < 20000, String(full.length));
+    assert.equal(P.cleanGameRecipe({ extras: ['tts', 'tts', 'zzz', 'boss', 'map', 'cert', 'best'] }).extras.join(), 'tts,boss,map,cert');
+    for (const x of P.FIXES) assert.ok(!P.hasEmoji(x.en + x.th));
     // ค่าแปลกปลอมกลับเป็นค่าเริ่มต้น และตัดอิโมจิจากข้อความครู
     const bad = P.cleanGameRecipe({ game: 'zzz', s: 'xx' as never, g: 99, count: 7, note: 'สนุก\u{1F600}มาก' });
     assert.equal(bad.game, G.AI_GAMES[0].id);
     assert.equal(bad.s, 'math');
     assert.equal(bad.count, 10);
+    const bad2 = P.cleanGameRecipe({ pace: 'zz' as never, timer: 7, lives: 'x' as never, mode: 'x' as never, art: 'x', hero: 'x', extras: 'tts' as never });
+    assert.deepEqual([bad2.pace, bad2.timer, bad2.lives, bad2.mode, bad2.art, bad2.hero, bad2.extras.length], ['normal', 0, 'off', 'solo', 'cartoon', 'auto', 0]);
     assert.ok(!P.hasEmoji(bad.note) && bad.note.includes('สนุก'));
     passed++;
-    console.log('  ok  สร้างเกมด้วย AI: 8 เกม x 9 วิชา prompt ครบ ไม่มีอิโมจิ ชุดคำถามเข้าครบทุกข้อ');
+    console.log('  ok  สร้างเกมด้วย AI: 8 เกม x 9 วิชา prompt ครบ ไม่มีอิโมจิ ชุดคำถามเข้าครบทุกข้อ + CONFIG/ลูกเล่นครบ');
   }
   console.log(`\n${passed} tests passed`);
 })().catch((e) => {

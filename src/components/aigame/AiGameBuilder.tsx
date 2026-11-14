@@ -17,7 +17,28 @@ import { mediaPrefix } from '@/lib/game-creator/prefix';
 import type { SetMeta } from '@/lib/game-creator/setBank';
 import { GRADES, LANGS, LEVELS, SUBJECTS, gradeLabel, subjectOf } from '@/lib/worksheet/options';
 import { AI_GAMES, gameById, type Dim } from '@/lib/aigame/games';
-import { COUNT_OPTIONS, NOTE_MAX, buildGamePrompt, cleanGameRecipe, defaultGameRecipe, quizToItems, topicLabel, topicsFor, type GItem, type GameRecipe, type Source } from '@/lib/aigame/prompt';
+import {
+  ARTS,
+  COUNT_OPTIONS,
+  EXTRAS,
+  EXTRA_MAX,
+  FIXES,
+  HEROES,
+  LIVES,
+  MODES,
+  NOTE_MAX,
+  PACES,
+  TIMERS,
+  buildGamePrompt,
+  cleanGameRecipe,
+  defaultGameRecipe,
+  quizToItems,
+  topicLabel,
+  topicsFor,
+  type GItem,
+  type GameRecipe,
+  type Source,
+} from '@/lib/aigame/prompt';
 import { SAMPLES } from '@/lib/aigame/samples';
 import { copyNow } from '@/lib/utils/copyNow';
 import { GameArt } from './GameArt';
@@ -47,6 +68,23 @@ function Chip({ on, onClick, children, color }: { on: boolean; onClick: () => vo
       {on && <Check className="w-4 h-4 shrink-0" strokeWidth={3.5} />}
       {children}
     </button>
+  );
+}
+
+/** แถวตัวเลือกแบบเลือกได้ 1 อย่าง (มีคำอธิบายเล็กใต้ชื่อได้) */
+function Pick<T extends string | number>({ label, list, value, onPick }: { label: string; list: readonly { id: T; th: string; sub?: string }[]; value: T; onPick: (v: T) => void }) {
+  return (
+    <div className="ag-optrow">
+      <p className="ag-flabel">{label}</p>
+      <div className="ag-chips">
+        {list.map((o) => (
+          <Chip key={o.id} on={value === o.id} onClick={() => onPick(o.id)}>
+            {o.th}
+            {o.sub && <small className="ag-csub">{o.sub}</small>}
+          </Chip>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -207,6 +245,17 @@ export function AiGameBuilder() {
     }
   };
 
+  const copyText = async (text: string, ok: string) => {
+    gsfx.tap();
+    try {
+      if (!copyNow(text)) await navigator.clipboard.writeText(text);
+      gsfx.correct();
+      setToast(ok);
+    } catch {
+      setToast('คัดลอกอัตโนมัติไม่ได้ ลองกดอีกครั้ง');
+    }
+  };
+
   const games = AI_GAMES.filter((g) => dim === 'all' || g.dim === dim);
   const subj = subjectOf(r.s);
 
@@ -224,7 +273,7 @@ export function AiGameBuilder() {
             <b>1</b> เลือกเกม
           </li>
           <li>
-            <b>2</b> ปรับวิชา ชั้น เนื้อหา
+            <b>2</b> ปรับวิชา ชั้น เนื้อหา ลูกเล่น
           </li>
           <li>
             <b>3</b> คัดลอก prompt ไป Gemini Canvas
@@ -449,7 +498,40 @@ export function AiGameBuilder() {
             )}
           </Step>
 
-          <Step n={4} title="ภาษาและสิ่งที่อยากเพิ่ม" hint="ไม่บังคับ">
+          <Step n={4} title="ลูกเล่นเกม" hint="ปรับให้เข้ากับห้องเรียนของคุณครู ค่าเริ่มต้นใช้ได้เลย">
+            <Pick label="ความเร็วเกม" list={PACES} value={r.pace} onPick={(pace) => set({ pace })} />
+            <div className="ag-two">
+              {!game.noRead && <Pick label="เวลาต่อข้อ" list={TIMERS} value={r.timer} onPick={(timer) => set({ timer })} />}
+              <Pick label="หัวใจ" list={LIVES} value={r.lives} onPick={(lives) => set({ lives: lives as GameRecipe['lives'] })} />
+            </div>
+            <Pick label="ผู้เล่น" list={MODES} value={r.mode} onPick={(mode) => set({ mode })} />
+            <Pick label="สไตล์ภาพ" list={ARTS} value={r.art} onPick={(art) => set({ art })} />
+            <Pick label="ตัวละครหลัก" list={HEROES} value={r.hero} onPick={(hero) => set({ hero })} />
+            <div className="ag-optrow">
+              <p className="ag-flabel">
+                ลูกเล่นเสริม <small>เลือกได้ไม่เกิน {EXTRA_MAX} อย่าง ({r.extras.length}/{EXTRA_MAX}) · ยิ่งน้อย เกมยิ่งเสถียร</small>
+              </p>
+              <div className="ag-chips">
+                {EXTRAS.map((x) => {
+                  const on = r.extras.includes(x.id);
+                  return (
+                    <Chip
+                      key={x.id}
+                      on={on}
+                      onClick={() => {
+                        if (!on && r.extras.length >= EXTRA_MAX) return setToast(`เลือกลูกเล่นเสริมได้ไม่เกิน ${EXTRA_MAX} อย่าง เอาอันเดิมออกก่อนนะ`);
+                        set({ extras: on ? r.extras.filter((e) => e !== x.id) : [...r.extras, x.id] });
+                      }}
+                    >
+                      {x.th}
+                    </Chip>
+                  );
+                })}
+              </div>
+            </div>
+          </Step>
+
+          <Step n={5} title="ภาษาในเกมและสิ่งที่อยากเพิ่ม" hint="ไม่บังคับ">
             <div className="ag-chips">
               {LANGS.map((l) => (
                 <Chip key={l.id} on={r.lang === l.id} onClick={() => set({ lang: l.id })}>
@@ -486,11 +568,24 @@ export function AiGameBuilder() {
             )}
             {needSet && <p className="ag-hint">เลือกชุดคำถามในขั้นที่ 3 ก่อน</p>}
             {show && prompt && <textarea ref={promptRef} className="ag-prompt" readOnly value={prompt} rows={14} />}
+            <p className="ag-hint">prompt เป็นภาษาอังกฤษเพื่อให้ Gemini ทำตามได้แม่นที่สุด ส่วนข้อความในเกมจะเป็นภาษาที่เลือกในขั้นที่ 5</p>
             <ol className="ag-tips">
               <li>ใน Gemini เลือกเครื่องมือ Canvas ก่อนวาง prompt (เกมจะเปิดเล่นได้ในหน้าเดียวกัน)</li>
               <li>ได้เกมแล้วลองเล่นในหน้าตัวอย่างของ Canvas ถ้าต้องการให้นักเรียนเล่น ใช้ปุ่มแชร์ของ Gemini</li>
-              <li>อยากแก้ ให้พิมพ์บอก Gemini ต่อได้เลย เช่น &quot;ให้ลูกโป่งลอยช้าลง&quot;</li>
+              <li>อยากปรับความเร็วเอง ให้แก้ตัวเลขใน CONFIG บนสุดของโค้ด (ตัวเลขมาก = ช้าลง) หรือใช้แถบความเร็วในเมนูหยุดพักของเกม</li>
             </ol>
+            <div className="ag-fixes">
+              <p className="ag-flabel">
+                เกมที่ได้ยังมีปัญหา? <small>กดคัดลอกคำสั่งแก้ แล้ววางต่อในแชต Gemini เดิม</small>
+              </p>
+              <div className="ag-chips">
+                {FIXES.map((f) => (
+                  <button key={f.id} type="button" className="ws-chip" onClick={() => copyText(f.en, `คัดลอกคำสั่ง "${f.th}" แล้ว วางต่อในแชต Gemini เดิมได้เลย`)}>
+                    <ClipboardCopy className="w-4 h-4 shrink-0" /> {f.th}
+                  </button>
+                ))}
+              </div>
+            </div>
             <p className="ag-hint">
               อยากเปิดเป็นห้องเกมเล่นสดทั้งห้องแทน?{' '}
               <Link href="/create" className="ag-link">

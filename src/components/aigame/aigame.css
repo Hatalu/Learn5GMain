@@ -121,3 +121,9 @@ html[data-ui='minimal'] .ag-go { background: #7c5cf0; }
   70% { transform: scale(1.2); }
   100% { transform: scale(1); }
 }
+
+/* ลูกเล่นเกม + คำสั่งแก้เกม */
+.ag-optrow .ag-flabel small, .ag-fixes .ag-flabel small { font-weight: 700; opacity: 0.8; margin-left: 0.3rem; }
+.ag-csub { font-size: 0.68rem; font-weight: 700; opacity: 0.75; }
+.ag-fixes { margin-top: 0.2rem; }
+.ag-fixes .ag-flabel { margin-top: 0.2rem; }
