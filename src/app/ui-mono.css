@@ -57,7 +57,7 @@ html:not([data-tool])
     .l5g-card, .l5g-gcard, .l5g-tcard, .l5g-newset, .l5g-quick, .l5g-tierbar, .l5g-usage, .l5g-stpl, .l5g-gate, .l5g-empty, .l5g-join-card,
     .l5g-modecard, .l5g-mode, .l5g-ptype, .l5g-seg, .l5g-menu, .l5g-math-sheet, .l5g-stage, .l5g-search, .l5g-input,
     .sh-card, .sh-tpl, .sh-mode, .sh-size, .sh-feat, .sh-import, .sh-paper, .sh-chip,
-    .ws-card, .ws-chip, .ws-look, .ws-char, .ws-tab, .ws-paper,
+    .ws-card, .ws-chip, .ws-look, .ws-char, .ws-tab,
     .ag-gcard, .ag-step, .ag-set, .ag-src, .ag-input, .ag-search, .ag-out, .ag-prompt, .ag-tips, .ag-note, .ag-how
   ) {
   background-color: hsl(var(--card)) !important;
@@ -96,17 +96,17 @@ html:not([data-tool]) .l5g-hero-sub {
 }
 
 /* ---------- สีที่เขียนตรงในคลาส Tailwind (bg-[#...], text-[#...]) ในหน้าเหล่านี้ ---------- */
-html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) :is([class*='bg-[#'], [class*='from-[#'], [class*='bg-gradient-to-']):not(img):not(svg *) {
+html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) :is([class*='bg-[#'], [class*='from-[#'], [class*='bg-gradient-to-']):not(img):not(svg *):not(.l5g-gcover *):not(.sh-cover *):not(.sh-tpl-art *):not(.sh-tpl-page *):not(.ag-stage *):not(.ag-gart *):not(.ws-paper *):not(.l5g-bg-swatch):not(.l5g-bg-swatch *):not(.l5g-color-dot):not(.l5g-color-custom) {
   background-color: hsl(var(--muted)) !important;
   background-image: none !important;
 }
-html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) [class*='text-[#'] {
+html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) [class*='text-[#']:not(.l5g-gcover *):not(.sh-cover *):not(.sh-tpl-art *):not(.sh-tpl-page *):not(.ag-stage *):not(.ag-gart *):not(.ws-paper *):not(.l5g-bg-swatch):not(.l5g-bg-swatch *):not(.l5g-color-dot):not(.l5g-color-custom) {
   color: hsl(var(--foreground)) !important;
 }
-html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) [class*='border-[#'] {
+html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) [class*='border-[#']:not(.l5g-gcover *):not(.sh-cover *):not(.sh-tpl-art *):not(.sh-tpl-page *):not(.ag-stage *):not(.ag-gart *):not(.ws-paper *):not(.l5g-bg-swatch):not(.l5g-bg-swatch *):not(.l5g-color-dot):not(.l5g-color-custom) {
   border-color: hsl(var(--border)) !important;
 }
-html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) [class*='shadow-['] {
+html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) [class*='shadow-[']:not(.l5g-gcover *):not(.sh-cover *):not(.sh-tpl-art *):not(.sh-tpl-page *):not(.ag-stage *):not(.ag-gart *):not(.ws-paper *):not(.l5g-bg-swatch):not(.l5g-bg-swatch *):not(.l5g-color-dot):not(.l5g-color-custom) {
   box-shadow: none !important;
 }
 
@@ -125,10 +125,10 @@ html:not([data-tool]) .l5g-dot {
   background: hsl(var(--foreground)) !important;
 }
 /* ปุ่ม/ป้ายที่ใส่สีวิชาด้วย style ตรง (ยกเว้นภาพปกชุดคำถามซึ่งเป็นผลงานของครู) */
-html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) :is(button, span, p, li, a)[style*='background']:not(.l5g-gcover *):not(.sh-cover *) {
+html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) :is(button, span, p, li, a)[style*='background']:not(.l5g-gcover *):not(.sh-cover *):not(.sh-tpl-art *):not(.sh-tpl-page *):not(.ag-stage *):not(.ag-gart *):not(.ws-paper *):not(.l5g-bg-swatch):not(.l5g-bg-swatch *):not(.l5g-color-dot):not(.l5g-color-custom) {
   background: hsl(var(--muted)) !important;
 }
-html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) :is(button, span, p, li, a)[style*='color']:not(.l5g-gcover *):not(.sh-cover *) {
+html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) :is(button, span, p, li, a)[style*='color']:not(.l5g-gcover *):not(.sh-cover *):not(.sh-tpl-art *):not(.sh-tpl-page *):not(.ag-stage *):not(.ag-gart *):not(.ws-paper *):not(.l5g-bg-swatch):not(.l5g-bg-swatch *):not(.l5g-color-dot):not(.l5g-color-custom) {
   color: hsl(var(--foreground)) !important;
   border-color: hsl(var(--border)) !important;
 }
@@ -141,7 +141,7 @@ html:not([data-tool]) :is(.l5g-modecard, .l5g-tcard, .l5g-newset, .l5g-mode):hov
   filter: none;
 }
 /* ชิปที่ส่งสีผ่านตัวแปร --c (ตัวกรองแม่แบบ วิชา ระดับ) */
-html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) [style*='--c']:not(.l5g-gcover *):not(.sh-cover *) {
+html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) [style*='--c']:not(.l5g-gcover *):not(.sh-cover *):not(.sh-tpl-art *):not(.sh-tpl-page *):not(.ag-stage *):not(.ag-gart *):not(.ws-paper *):not(.l5g-bg-swatch):not(.l5g-bg-swatch *):not(.l5g-color-dot):not(.l5g-color-custom) {
   --c: hsl(var(--foreground)) !important;
   --cc: hsl(var(--foreground)) !important;
 }
@@ -178,7 +178,7 @@ html:not([data-tool]) :is(.sh-mode[data-on='true'], .sh-cats button[data-on='tru
   box-shadow: none !important;
 }
 
-/* ---------- หน้าเกม AI (aigame.css) ตัวเกมตัวอย่าง (.ag-stage) ยังมีสีเหมือนเดิม ---------- */
+/* ---------- หน้าเกม AI (aigame.css) ตัวเกมตัวอย่าง (.ag-stage) ไม่ถูกแตะ (ตัดออกด้วย :not ในกฎกว้างด้านบน) ---------- */
 html:not([data-tool]) .ag-page,
 html:not([data-tool]) .dark .ag-head,
 html:not([data-tool]) .ag-search input {

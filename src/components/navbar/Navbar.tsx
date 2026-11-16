@@ -37,7 +37,7 @@ export function Navbar() {
   }, [open]);
 
   return (
-    <header className="site-nav sticky top-0 z-40 w-full border-b bg-background/85 supports-[backdrop-filter]:bg-background/70 supports-[backdrop-filter]:backdrop-blur-md">
+    <header className="site-nav sticky top-0 z-40 w-full border-b bg-background/95">
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6">
         <Logo />
 

@@ -27,7 +27,7 @@ export type EntTable = Record<Tier, Ent>;
 /** ค่าเริ่มต้น (ใช้เมื่อยังไม่ได้รัน migration 030 หรือโหลดไม่สำเร็จ) ต้องตรงกับแถวเริ่มต้นใน migration */
 export const DEFAULT_ENTS: EntTable = {
   free: { sets: 2, designs: 3, upload_mb: 5, discover: false, ai_game: true, worksheet: true, innovation_jobs: 0, innovation_revisions: 0, extra: '' },
-  plus: { sets: 50, designs: 50, upload_mb: 30, discover: true, ai_game: true, worksheet: true, innovation_jobs: 0, innovation_revisions: 0, extra: '' },
+  plus: { sets: null, designs: null, upload_mb: 30, discover: true, ai_game: true, worksheet: true, innovation_jobs: 0, innovation_revisions: 0, extra: '' },
   pro: { sets: null, designs: null, upload_mb: 60, discover: true, ai_game: true, worksheet: true, innovation_jobs: 0, innovation_revisions: 0, extra: '' },
   master: { sets: null, designs: null, upload_mb: 100, discover: true, ai_game: true, worksheet: true, innovation_jobs: 2, innovation_revisions: 3, extra: '' },
 };

@@ -69,7 +69,8 @@ export function CheckoutModal({ plan, onPick, onClose, onPaid }: Props) {
       setFatal('เชื่อมต่อไม่ได้ ตรวจอินเทอร์เน็ตแล้วลองใหม่');
       setStep('error');
     }
-  }, [plan.id, user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan.id, user?.id]); // ผูกกับ id เท่านั้น: ออบเจกต์ user เปลี่ยนทุกครั้งที่ต่ออายุโทเคน (จะสร้าง QR ใหม่กลางการจ่าย)
 
   useEffect(() => {
     createOrder();

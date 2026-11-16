@@ -33,7 +33,7 @@ create table if not exists public.plan_entitlements (
 
 insert into public.plan_entitlements (tier, sets, designs, upload_mb, discover, ai_game, worksheet, innovation_jobs, innovation_revisions) values
   ('free',   2,    3,    5,   false, true, true, 0, 0),
-  ('plus',   50,   50,   30,  true,  true, true, 0, 0),
+  ('plus',   null, null, 30,  true,  true, true, 0, 0),
   ('pro',    null, null, 60,  true,  true, true, 0, 0),
   ('master', null, null, 100, true,  true, true, 2, 3)
 on conflict (tier) do nothing;
@@ -67,7 +67,7 @@ as $$
   from public.profiles p where p.id = p_uid;
 $$;
 revoke all on function public.user_tier(uuid) from public, anon;
-grant execute on function public.user_tier(uuid) to authenticated, service_role;
+grant execute on function public.user_tier(uuid) to service_role;
 
 create or replace function public.can_discover()
 returns boolean

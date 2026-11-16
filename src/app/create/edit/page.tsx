@@ -32,12 +32,13 @@ function EditInner() {
     );
   }, [tpl]);
   const tier = creatorTier(!!user, profile);
-  const { ent, tier: planT } = useMembership();
+  const { ent, tier: planT, ready } = useMembership();
   const allowed = tier !== 'guest';
   const [checked, setChecked] = React.useState(false);
 
   useEffect(() => {
-    if (isLoading) return;
+    // รอสิทธิ์ของแพ็กเกจโหลดเสร็จก่อน (ไม่งั้นตัดสินด้วยค่าเริ่มต้น แล้วเด้งออกผิด)
+    if (isLoading || ready === null) return;
     // ยังไม่ล็อกอิน: ลองสร้าง/ทดลองเล่นชุดใหม่ได้ (บันทึกเป็นฉบับร่างในเครื่อง) ขอสมัครตอนกดบันทึก · แก้ชุดที่มีอยู่ไม่ได้
     if (!allowed || !user) {
       if (id) router.replace('/create?gate=guest');
@@ -57,7 +58,8 @@ function EditInner() {
       return;
     }
     setChecked(true);
-  }, [isLoading, allowed, tier, id, user, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, ready, allowed, tier, planT, ent.sets, id, user?.id, router]);
 
   const guest = !allowed || !user || !profile;
   if (isLoading || !checked || (guest && id) || initial === undefined) {
