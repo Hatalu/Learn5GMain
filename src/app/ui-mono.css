@@ -96,17 +96,17 @@ html:not([data-tool]) .l5g-hero-sub {
 }
 
 /* ---------- สีที่เขียนตรงในคลาส Tailwind (bg-[#...], text-[#...]) ในหน้าเหล่านี้ ---------- */
-html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) :is([class*='bg-[#'], [class*='from-[#'], [class*='bg-gradient-to-']):not(img):not(svg *):not(.l5g-gcover *):not(.sh-cover *):not(.sh-tpl-art *):not(.sh-tpl-page *):not(.ag-stage *):not(.ag-gart *):not(.ws-paper *):not(.l5g-bg-swatch):not(.l5g-bg-swatch *):not(.l5g-color-dot):not(.l5g-color-custom) {
+html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) :is([class*='bg-[#'], [class*='from-[#'], [class*='bg-gradient-to-']):not(img):not(svg *):not(.l5g-gcover *):not(.ma *):not(.l5g-tcard *):not(.l5g-newset-art *):not(.sh-cover *):not(.sh-tpl-art *):not(.sh-tpl-page *):not(.ag-stage *):not(.ag-gart *):not(.ws-paper *):not(.l5g-bg-swatch):not(.l5g-bg-swatch *):not(.l5g-color-dot):not(.l5g-color-custom) {
   background-color: hsl(var(--muted)) !important;
   background-image: none !important;
 }
-html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) [class*='text-[#']:not(.l5g-gcover *):not(.sh-cover *):not(.sh-tpl-art *):not(.sh-tpl-page *):not(.ag-stage *):not(.ag-gart *):not(.ws-paper *):not(.l5g-bg-swatch):not(.l5g-bg-swatch *):not(.l5g-color-dot):not(.l5g-color-custom) {
+html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) [class*='text-[#']:not(.l5g-gcover *):not(.ma *):not(.l5g-tcard *):not(.l5g-newset-art *):not(.sh-cover *):not(.sh-tpl-art *):not(.sh-tpl-page *):not(.ag-stage *):not(.ag-gart *):not(.ws-paper *):not(.l5g-bg-swatch):not(.l5g-bg-swatch *):not(.l5g-color-dot):not(.l5g-color-custom) {
   color: hsl(var(--foreground)) !important;
 }
-html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) [class*='border-[#']:not(.l5g-gcover *):not(.sh-cover *):not(.sh-tpl-art *):not(.sh-tpl-page *):not(.ag-stage *):not(.ag-gart *):not(.ws-paper *):not(.l5g-bg-swatch):not(.l5g-bg-swatch *):not(.l5g-color-dot):not(.l5g-color-custom) {
+html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) [class*='border-[#']:not(.l5g-gcover *):not(.ma *):not(.l5g-tcard *):not(.l5g-newset-art *):not(.sh-cover *):not(.sh-tpl-art *):not(.sh-tpl-page *):not(.ag-stage *):not(.ag-gart *):not(.ws-paper *):not(.l5g-bg-swatch):not(.l5g-bg-swatch *):not(.l5g-color-dot):not(.l5g-color-custom) {
   border-color: hsl(var(--border)) !important;
 }
-html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) [class*='shadow-[']:not(.l5g-gcover *):not(.sh-cover *):not(.sh-tpl-art *):not(.sh-tpl-page *):not(.ag-stage *):not(.ag-gart *):not(.ws-paper *):not(.l5g-bg-swatch):not(.l5g-bg-swatch *):not(.l5g-color-dot):not(.l5g-color-custom) {
+html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) [class*='shadow-[']:not(.l5g-gcover *):not(.ma *):not(.l5g-tcard *):not(.l5g-newset-art *):not(.sh-cover *):not(.sh-tpl-art *):not(.sh-tpl-page *):not(.ag-stage *):not(.ag-gart *):not(.ws-paper *):not(.l5g-bg-swatch):not(.l5g-bg-swatch *):not(.l5g-color-dot):not(.l5g-color-custom) {
   box-shadow: none !important;
 }
 
@@ -121,27 +121,33 @@ html:not([data-tool]) :is(.l5g-stpl-filter, .l5g-stpl-search, .l5g-quick-clock, 
 html:not([data-tool]) :is(.l5g-sec-note, .l5g-sec-sub) {
   color: hsl(var(--muted-foreground)) !important;
 }
-html:not([data-tool]) .l5g-dot {
+html:not([data-tool]) .l5g-dot:not(.l5g-tcard *) {
   background: hsl(var(--foreground)) !important;
 }
 /* ปุ่ม/ป้ายที่ใส่สีวิชาด้วย style ตรง (ยกเว้นภาพปกชุดคำถามซึ่งเป็นผลงานของครู) */
-html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) :is(button, span, p, li, a)[style*='background']:not(.l5g-gcover *):not(.sh-cover *):not(.sh-tpl-art *):not(.sh-tpl-page *):not(.ag-stage *):not(.ag-gart *):not(.ws-paper *):not(.l5g-bg-swatch):not(.l5g-bg-swatch *):not(.l5g-color-dot):not(.l5g-color-custom) {
+html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) :is(button, span, p, li, a)[style*='background']:not(.l5g-gcover *):not(.ma *):not(.l5g-tcard *):not(.l5g-newset-art *):not(.sh-cover *):not(.sh-tpl-art *):not(.sh-tpl-page *):not(.ag-stage *):not(.ag-gart *):not(.ws-paper *):not(.l5g-bg-swatch):not(.l5g-bg-swatch *):not(.l5g-color-dot):not(.l5g-color-custom) {
   background: hsl(var(--muted)) !important;
 }
-html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) :is(button, span, p, li, a)[style*='color']:not(.l5g-gcover *):not(.sh-cover *):not(.sh-tpl-art *):not(.sh-tpl-page *):not(.ag-stage *):not(.ag-gart *):not(.ws-paper *):not(.l5g-bg-swatch):not(.l5g-bg-swatch *):not(.l5g-color-dot):not(.l5g-color-custom) {
+html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) :is(button, span, p, li, a)[style*='color']:not(.l5g-gcover *):not(.ma *):not(.l5g-tcard *):not(.l5g-newset-art *):not(.sh-cover *):not(.sh-tpl-art *):not(.sh-tpl-page *):not(.ag-stage *):not(.ag-gart *):not(.ws-paper *):not(.l5g-bg-swatch):not(.l5g-bg-swatch *):not(.l5g-color-dot):not(.l5g-color-custom) {
   color: hsl(var(--foreground)) !important;
   border-color: hsl(var(--border)) !important;
 }
-/* ภาพประกอบรูปแบบเกม: ขาว-ดำ แล้วกลับเป็นสีเมื่อชี้ */
+/* ภาพประกอบรูปแบบเกม: สีเต็มตามเกมจริง (ผู้ใช้สั่ง 16 พ.ย. 2026 "หน้าเกมมีสี ไม่ต้องขาวดำ")
+   คืนพาเลตต์เดิมของ creator.css ภายในภาพ เพราะบรรทัดบนสุดของไฟล์นี้เปลี่ยนตัวแปรเหล่านี้เป็นเทาทั้งหน้า */
 html:not([data-tool]) :is(.ma, .l5g-newset-art, .l5g-tcard-art, .l5g-empty-art, .l5g-gate-art) {
-  filter: grayscale(1);
-  transition: filter 0.4s ease;
-}
-html:not([data-tool]) :is(.l5g-modecard, .l5g-tcard, .l5g-newset, .l5g-mode):hover :is(.ma, .l5g-newset-art, .l5g-tcard-art) {
-  filter: none;
+  --l5g-ink: #2a2350;
+  --l5g-paper: #fff8ec;
+  --l5g-paper2: #ffeccb;
+  --l5g-sun: #ffcf3f;
+  --l5g-orange: #ff9a3d;
+  --l5g-coral: #ff6b7a;
+  --l5g-mint: #3fd6a8;
+  --l5g-violet: #9b6cf0;
+  --l5g-blue: #4a7bf0;
+  --l5g-sky: #4fb3ff;
 }
 /* ชิปที่ส่งสีผ่านตัวแปร --c (ตัวกรองแม่แบบ วิชา ระดับ) */
-html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) [style*='--c']:not(.l5g-gcover *):not(.sh-cover *):not(.sh-tpl-art *):not(.sh-tpl-page *):not(.ag-stage *):not(.ag-gart *):not(.ws-paper *):not(.l5g-bg-swatch):not(.l5g-bg-swatch *):not(.l5g-color-dot):not(.l5g-color-custom) {
+html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) [style*='--c']:not(.l5g-gcover *):not(.ma *):not(.l5g-tcard *):not(.l5g-newset-art *):not(.sh-cover *):not(.sh-tpl-art *):not(.sh-tpl-page *):not(.ag-stage *):not(.ag-gart *):not(.ws-paper *):not(.l5g-bg-swatch):not(.l5g-bg-swatch *):not(.l5g-color-dot):not(.l5g-color-custom) {
   --c: hsl(var(--foreground)) !important;
   --cc: hsl(var(--foreground)) !important;
 }
@@ -210,9 +216,134 @@ html:not([data-tool]) :is(.ag-gcard[data-on], .ag-set[data-on]) {
 }
 html:not([data-tool]) .ag-gart {
   border-bottom: 1px solid hsl(var(--border)) !important;
-  filter: grayscale(1);
-  transition: filter 0.4s ease;
 }
-html:not([data-tool]) .ag-gcard:is(:hover, [data-on]) .ag-gart {
-  filter: none;
+
+/* ---------- หน้าระบบสร้างเกม / สร้างสื่อ: มินิมอลพรีเมียม ตัวอักษรใหญ่ขึ้น (16 พ.ย. 2026) ----------
+   การ์ดขาว เส้นบาง 1px มุมโค้งกว้าง ภาพเกมมีสี ชี้แล้วลอยขึ้นพร้อมเงานุ่ม (เงาเฉพาะตอนชี้ ไม่มีเงาค้าง) */
+html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) {
+  font-size: 1.0625rem;
+}
+html:not([data-tool]) .l5g-world .l5g-hero-title {
+  font-size: clamp(1.95rem, 6vw, 4.25rem);
+  line-height: 1.12;
+  font-weight: 500;
+}
+html:not([data-tool]) .l5g-world .l5g-hero-sub {
+  font-size: clamp(1.05rem, 1.6vw, 1.25rem);
+  line-height: 1.6;
+  max-width: 44rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+html:not([data-tool]) .l5g-world .l5g-sec-title {
+  color: hsl(var(--foreground)) !important;
+  font-size: clamp(1.6rem, 3vw, 2.1rem);
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+}
+html:not([data-tool]) .l5g-world .l5g-sec-note {
+  font-size: 1.05rem;
+  font-weight: 400;
+  margin-top: 6px;
+}
+html:not([data-tool]) .l5g-world .l5g-sec-sub {
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 3px 14px;
+}
+@media (max-width: 420px) {
+  html:not([data-tool]) .l5g-world .l5g-seg {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  html:not([data-tool]) .l5g-world .l5g-seg button {
+    padding: 8px 10px;
+    gap: 5px;
+    font-size: 0.88rem;
+  }
+  html:not([data-tool]) .l5g-world .l5g-seg button > svg {
+    display: none;
+  }
+}
+@media (min-width: 640px) {
+  html:not([data-tool]) .l5g-world .l5g-seg button {
+    font-size: 1.05rem;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+}
+html:not([data-tool]) .l5g-world .l5g-btn-xl {
+  font-size: 1.2rem;
+  padding: 14px 28px;
+}
+
+/* การ์ดรูปแบบเกม */
+html:not([data-tool]) .l5g-world .l5g-tcard {
+  border-radius: 24px;
+  overflow: hidden;
+  animation: none;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s ease, border-color 0.35s ease;
+}
+html:not([data-tool]) .l5g-world .l5g-tcard:hover {
+  transform: translateY(-4px);
+  border-color: hsl(var(--foreground) / 0.18) !important;
+  box-shadow: 0 18px 40px -18px rgb(0 0 0 / 0.22) !important;
+}
+html:not([data-tool]) .l5g-world .l5g-tcard-art {
+  height: 184px;
+  border-bottom: 1px solid hsl(var(--border));
+  border-radius: 0;
+}
+html:not([data-tool]) .l5g-world .l5g-tcard .l5g-dot {
+  width: 7px;
+  height: 7px;
+  border: 0;
+}
+
+/* การ์ดขั้นที่ 1 */
+html:not([data-tool]) .l5g-world .l5g-newset {
+  padding: clamp(22px, 4vw, 40px);
+  border-radius: 28px;
+  gap: 28px;
+}
+html:not([data-tool]) .l5g-world .l5g-newset-art {
+  width: 260px;
+  height: 168px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 20px;
+}
+@media (max-width: 640px) {
+  html:not([data-tool]) .l5g-world .l5g-newset-art {
+    width: 100%;
+  }
+}
+
+/* แถบ 1 นาทีจากแม่แบบ */
+html:not([data-tool]) .l5g-world .l5g-quick {
+  border: 1px solid hsl(var(--border)) !important;
+  background: hsl(var(--muted)) !important;
+  color: hsl(var(--foreground)) !important;
+  border-radius: 22px;
+  padding: 18px 22px;
+}
+html:not([data-tool]) .l5g-world .l5g-quick b {
+  font-size: 1.4rem;
+  font-weight: 500;
+}
+html:not([data-tool]) .l5g-world .l5g-quick li {
+  font-size: 0.9rem;
+  font-weight: 500;
+  background: hsl(var(--card)) !important;
+}
+html:not([data-tool]) .l5g-world .l5g-quick li::before {
+  color: hsl(var(--muted-foreground));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:not([data-tool]) .l5g-world .l5g-tcard,
+  html:not([data-tool]) .l5g-world .l5g-tcard:hover {
+    transition: none;
+    transform: none;
+  }
 }

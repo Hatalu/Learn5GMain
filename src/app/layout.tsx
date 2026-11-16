@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Noto_Sans_Thai, IBM_Plex_Sans_Thai } from 'next/font/google';
+import { Noto_Sans_Thai_Looped, IBM_Plex_Sans_Thai_Looped } from 'next/font/google';
 import './globals.css';
 import './ui-minimal.css';
 import './ui-mono.css';
@@ -7,15 +7,16 @@ import { Providers } from './providers';
 import { GFX_BOOT } from '@/lib/gfx';
 import { UI_BOOT } from '@/lib/ui-look';
 
-const notoSansThai = Noto_Sans_Thai({
+// ฟอนต์ไทยแบบมีหัวกลม (looped) อ่านง่าย ผู้ใช้สั่ง 16 พ.ย. 2026 (ชื่อตัวแปร CSS เดิมเพื่อไม่ต้องแก้ไฟล์อื่น)
+const notoSansThai = Noto_Sans_Thai_Looped({
   subsets: ['thai', 'latin'],
-  weight: ['300', '400', '500', '600', '700'],
+  weight: ['300', '400', '500', '600', '700', '800'],
   variable: '--font-noto-sans-thai',
   display: 'swap',
 });
 
-// ฟอนต์หัวข้อ: IBM Plex Sans Thai เส้นบาง เรียบ ดูพรีเมียม
-const display = IBM_Plex_Sans_Thai({
+// ฟอนต์หัวข้อ: IBM Plex Sans Thai Looped เส้นเรียบ มีหัว ดูพรีเมียม
+const display = IBM_Plex_Sans_Thai_Looped({
   subsets: ['thai', 'latin'],
   weight: ['300', '400', '500', '600'],
   variable: '--font-display',

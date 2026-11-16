@@ -361,8 +361,8 @@ function CreateHub() {
                 <div className="l5g-newset" data-tour="create-new">
                   <div className="l5g-newset-text">
                     <span className="l5g-sec-sub">ขั้นที่ 1</span>
-                    <h2 className="font-display text-3xl mt-2">สร้างชุดคำถาม</h2>
-                    <p className="font-semibold opacity-80 mt-1">ใส่คำถาม ตัวเลือก สูตรคณิต รูป และคลิปได้อิสระ ชุดเดียวเล่นได้ทุกรูปแบบ</p>
+                    <h2 className="font-display text-4xl sm:text-5xl mt-3">สร้างชุดคำถาม</h2>
+                    <p className="text-lg font-medium opacity-70 mt-2">ใส่คำถาม ตัวเลือก สูตรคณิต รูป และคลิปได้อิสระ ชุดเดียวเล่นได้ทุกรูปแบบ</p>
                     <button
                       type="button"
                       className="l5g-btn l5g-btn-go l5g-btn-xl mt-4"
@@ -415,13 +415,13 @@ function CreateHub() {
                         <ModeArt mode={m.id} />
                         <PlayTypeTag mode={m.id} />
                       </div>
-                      <div className="p-4 pt-3 flex flex-col flex-1">
-                        <p className="text-xs font-extrabold tracking-wider" style={{ color: m.dark }}>
+                      <div className="p-5 pt-4 flex flex-col flex-1">
+                        <p className="text-sm font-semibold tracking-wide" style={{ color: m.dark }}>
                           {m.genre}
                         </p>
-                        <h3 className="font-display text-xl">{m.name}</h3>
-                        <p className="text-sm font-semibold opacity-80 mt-1">{m.tagline}</p>
-                        <ul className="mt-2 space-y-1 text-xs font-bold">
+                        <h3 className="font-display text-2xl mt-0.5">{m.name}</h3>
+                        <p className="text-base opacity-70 mt-1.5">{m.tagline}</p>
+                        <ul className="mt-3 space-y-1.5 text-sm font-medium">
                           <li className="flex items-center gap-2">
                             <span className="l5g-dot" style={{ background: m.color }} />
                             ต้องมีอย่างน้อย {m.minQuestions} ข้อ
