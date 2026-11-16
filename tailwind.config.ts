@@ -1,12 +1,24 @@
 import type { Config } from "tailwindcss";
 
-/**
- * Brand palette ("Cozy Twilight")
- * - indigo  -> Grape violet (สีหลักของแบรนด์ ตามโลโก้ 5G)
- * - violet  -> Bubblegum pink (ใช้คู่กับ indigo ในกราเดียนต์ปุ่ม/หัวข้อ)
- * - gray    -> Plum-tinted neutrals (พื้นหลัง/เส้น/ข้อความ ทั้งโหมดสว่างและมืด)
- * ทุกคอมโพเนนต์เดิมที่ใช้ indigo-*, violet-*, gray-* จะเปลี่ยนสีตามอัตโนมัติ
- */
+// เทากลาง (เหมือน neutral ของ Tailwind) ใช้แทนทุกสีตกแต่ง: ทั้งเว็บเป็นขาว-ดำ
+const N = {
+  50: "#fafafa",
+  100: "#f5f5f5",
+  200: "#e5e5e5",
+  300: "#d4d4d4",
+  400: "#a3a3a3",
+  500: "#737373",
+  600: "#525252",
+  700: "#404040",
+  800: "#262626",
+  900: "#171717",
+  950: "#0a0a0a",
+};
+/** สีตกแต่งเดิมทั้งหมดกลายเป็นเทา (แดง/เขียว ยังคงไว้สำหรับแจ้งผิด/ถูก) */
+const MONO = Object.fromEntries(
+  ["indigo", "violet", "gray", "purple", "fuchsia", "pink", "sky", "blue", "cyan", "teal", "orange", "amber", "yellow", "lime", "sun", "mint", "slate", "zinc", "stone"].map((k) => [k, N])
+);
+
 const config: Config = {
   darkMode: ["class"],
   content: [
@@ -42,60 +54,7 @@ const config: Config = {
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",
         },
-        indigo: {
-          50: "#f4f1ff",
-          100: "#ebe5ff",
-          200: "#d9ccff",
-          300: "#bfa9ff",
-          400: "#a285ff",
-          500: "#8660fb",
-          600: "#7140f0",
-          700: "#5f2fd4",
-          800: "#4e28ab",
-          900: "#3f2388",
-          950: "#271358",
-        },
-        violet: {
-          50: "#fff0f8",
-          100: "#ffe0f0",
-          200: "#ffc2e2",
-          300: "#ff94cc",
-          400: "#ff62b3",
-          500: "#f53d9b",
-          600: "#df2182",
-          700: "#bb1569",
-          800: "#981458",
-          900: "#7c154c",
-          950: "#4a0630",
-        },
-        gray: {
-          50: "#faf8ff",
-          100: "#f3f0fc",
-          200: "#e7e1f6",
-          300: "#d1c9ea",
-          400: "#9d94bd",
-          500: "#7a7099",
-          600: "#5c5279",
-          700: "#433a60",
-          800: "#2c2548",
-          900: "#1e1838",
-          950: "#120e26",
-        },
-        sun: {
-          300: "#ffe08a",
-          400: "#ffd25e",
-          500: "#ffc53a",
-          600: "#f5a50f",
-        },
-        mint: {
-          400: "#52e3ad",
-          500: "#2fd196",
-          600: "#17b07a",
-        },
-        sky: {
-          400: "#5ccbff",
-          500: "#2eb4f5",
-        },
+        ...MONO,
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -104,13 +63,13 @@ const config: Config = {
       },
       fontFamily: {
         sans: ["var(--font-noto-sans-thai)", "sans-serif"],
-        display: ["var(--font-mitr)", "var(--font-noto-sans-thai)", "sans-serif"],
+        display: ["var(--font-display)", "var(--font-noto-sans-thai)", "sans-serif"],
       },
       boxShadow: {
         // เงาแบบ "ของเล่น" ให้การ์ด/ปุ่มดูหนานุ่ม
-        toy: "0 4px 0 0 rgb(95 47 212 / 0.18), 0 12px 28px -8px rgb(95 47 212 / 0.28)",
-        "toy-lg": "0 6px 0 0 rgb(95 47 212 / 0.2), 0 22px 44px -12px rgb(95 47 212 / 0.38)",
-        glow: "0 0 0 4px rgb(134 96 251 / 0.25), 0 0 32px rgb(134 96 251 / 0.55)",
+        toy: "0 1px 2px rgb(0 0 0 / 0.04)",
+        "toy-lg": "0 8px 30px -12px rgb(0 0 0 / 0.18)",
+        glow: "0 0 0 3px rgb(0 0 0 / 0.08)",
       },
       animation: {
         "fade-in": "fadeIn 0.25s ease-out forwards",

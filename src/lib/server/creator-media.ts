@@ -1,20 +1,24 @@
 import { createClient } from '@/lib/supabase/server';
 import { getAdminClient } from '@/lib/supabase/admin';
 import { MEDIA_BUCKET } from '@/lib/game-creator/prefix';
-import { creatorTier, quotaBytes, type CreatorTier } from '@/lib/game-creator/quota';
+import { creatorTier, mbBytes, type CreatorTier } from '@/lib/game-creator/quota';
+import { tierOf, type Tier } from '@/lib/entitlements';
+import { getEntTable } from '@/lib/server/entitlements';
 
 /** ผู้ใช้ที่ล็อกอินอยู่ + ระดับสิทธิ์ (guest = ไม่ได้ล็อกอินหรือเป็นบัญชีทดลอง) */
-export async function getCreator(): Promise<{ id: string; username: string; tier: CreatorTier } | null> {
+export async function getCreator(): Promise<{ id: string; username: string; tier: CreatorTier; plan: Tier; quota: number } | null> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return null;
-  const { data: p } = await supabase.from('profiles').select('username, role, premium_until').eq('id', user.id).maybeSingle();
+  const { data: p } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
   if (!p) return null;
   const tier = creatorTier(true, p);
   if (tier === 'guest') return null;
-  return { id: user.id, username: p.username, tier };
+  const plan = tierOf(p);
+  const ents = await getEntTable();
+  return { id: user.id, username: p.username, tier, plan, quota: mbBytes(ents[plan].upload_mb) };
 }
 
 export interface StoredFile {
@@ -63,4 +67,3 @@ export async function sweepUnused(uid: string, opts: { minAgeMs: number; keep?: 
   return { removed: dead.length, freed: usedBytes(dead), ok: true };
 }
 
-export { quotaBytes };

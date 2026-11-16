@@ -6,10 +6,11 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Check, Compass, Copy, Crown, Eye, FileText, FileUp, LayoutDashboard, FolderHeart, Globe, Loader2, Lock, LogIn, MoreVertical, Palette, Pencil, Plus, Search, ShieldCheck, Sparkles, Trash2, Wand2 } from 'lucide-react';
 import { Navbar } from '@/components/navbar/Navbar';
-import { NightSky } from '@/components/fx/NightSky';
 import { useAuth } from '@/context/AuthContext';
 import { createClient } from '@/lib/supabase/client';
-import { FREE_DESIGN_LIMIT, creatorTier, setsUsed } from '@/lib/game-creator/quota';
+import { atCap, creatorTier, setsUsed } from '@/lib/game-creator/quota';
+import { useMembership } from '@/components/membership/MembershipProvider';
+
 import { cleanTitle, sanitizeQuiz } from '@/lib/game-creator/quiz';
 import { mediaPrefix } from '@/lib/game-creator/prefix';
 import { quizPages } from '@/lib/studio/fromQuiz';
@@ -125,7 +126,10 @@ function TemplateGallery({ disabled, creating, onPick }: { disabled: boolean; cr
 function StudioHub() {
   const { user, profile, isLoading, isDev } = useAuth();
   const tier = creatorTier(!!user, profile);
-  const member = tier === 'member';
+  const { ent, ents, tier: planT } = useMembership();
+  /** ใช้ Discover ได้ตามสิทธิ์ของแพ็กเกจ */
+  const member = ent.discover || isDev;
+  const FREE_DESIGN_LIMIT = ents.free.designs ?? 0;
   const signedIn = tier !== 'guest';
   const router = useRouter();
   const sp = useSearchParams();
@@ -154,7 +158,7 @@ function StudioHub() {
   const [devAll, setDevAll] = useState(false);
 
   const used = setsUsed(made, mine?.length ?? 0);
-  const atLimit = tier === 'free' && used >= FREE_DESIGN_LIMIT;
+  const atLimit = signedIn && !isDev && atCap(planT, ent.designs, made, mine?.length ?? 0);
 
   const load = useCallback(async () => {
     if (!signedIn || !user) return;
@@ -372,7 +376,6 @@ function StudioHub() {
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className="l5g-world flex-1">
-        <NightSky />
         <span className="l5g-bg-cloud" style={{ top: '7%', animationDelay: '-20s' }} />
         <span className="l5g-bg-cloud" style={{ top: '40%', animationDelay: '-55s', ['--s' as string]: 0.7 }} />
 

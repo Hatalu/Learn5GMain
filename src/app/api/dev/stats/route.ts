@@ -1,68 +1,32 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
 import { getAdminClient } from '@/lib/supabase/admin';
+import { verifyDev } from '@/lib/server/dev-auth';
+import { tierOf, type Tier } from '@/lib/entitlements';
 
+export const dynamic = 'force-dynamic';
+
+/** ตัวเลขสรุปหน้า Dev: บัญชี แยกตามแพ็กเกจ ผลงาน งานนวัตกรรมที่ค้าง */
 export async function GET() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: 'กรุณาเข้าสู่ระบบ' }, { status: 401 });
-  }
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (!profile || profile.role !== 'dev') {
-    return NextResponse.json({ error: 'คุณไม่มีสิทธิ์เข้าถึงส่วนนี้ (สำหรับ Dev เท่านั้น)' }, { status: 403 });
-  }
-
-  try {
-    const admin = getAdminClient();
-
-    // 1. Total Media
-    const { count: totalMedia } = await admin
-      .from('media')
-      .select('*', { count: 'exact', head: true });
-
-    // 2. Total Members
-    const { count: totalMembers } = await admin
-      .from('profiles')
-      .select('*', { count: 'exact', head: true });
-
-    // 3. Total Views (sum of view_count)
-    const { data: viewsData } = await admin
-      .from('media')
-      .select('view_count');
-
-    const totalViews = viewsData?.reduce((acc, curr) => acc + (curr.view_count || 0), 0) || 0;
-
-    // 4. Total Favorites
-    const { count: totalFavorites } = await admin
-      .from('favorites')
-      .select('*', { count: 'exact', head: true });
-
-    // 5. Total trial plays (ตารางอาจยังไม่ถูกสร้าง = 0)
-    const { count: totalTrials } = await admin
-      .from('trial_plays')
-      .select('*', { count: 'exact', head: true });
-
-    return NextResponse.json({
-      stats: {
-        totalTrials: totalTrials || 0,
-        totalMedia: totalMedia || 0,
-        totalMembers: totalMembers || 0,
-        totalViews,
-        totalFavorites: totalFavorites || 0,
-      },
-    });
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Error fetching stats';
-    return NextResponse.json({ error: msg }, { status: 500 });
-  }
+  const c = await verifyDev();
+  if (!c.ok) return NextResponse.json({ error: c.error }, { status: c.status });
+  const admin = getAdminClient();
+  const count = async (table: string) => {
+    const { count: n } = await admin.from(table).select('id', { count: 'exact', head: true });
+    return n || 0;
+  };
+  const [{ data: profiles }, games, designs, innov] = await Promise.all([
+    admin.from('profiles').select('*').not('username', 'like', 'trial\\_%'),
+    count('user_games'),
+    count('user_designs'),
+    admin.from('innovation_requests').select('id', { count: 'exact', head: true }).in('status', ['pending', 'working', 'revision']),
+  ]);
+  const byTier: Record<Tier, number> = { free: 0, plus: 0, pro: 0, master: 0 };
+  for (const p of profiles || []) if (p.role !== 'dev') byTier[tierOf(p)]++;
+  return NextResponse.json({
+    accounts: (profiles || []).length,
+    byTier,
+    games,
+    designs,
+    innovationOpen: innov.error ? null : innov.count || 0,
+  });
 }

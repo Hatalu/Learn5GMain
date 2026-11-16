@@ -1,48 +1,16 @@
 /* ============================================================================
- * ธีมมินิมอล (ตั้งค่า > ธีม > มินิมอล, lib/ui-look.ts)
+ * ธีมมินิมอล (เปิดตลอด: layout ใส่ <html data-ui="minimal"> 16 พ.ย. 2026) สีมาจากตัวแปรธีมขาว-ดำใน globals.css
  * หลัก: พื้นขาว ตัวหนังสือหมึก สีเน้นสีเดียว เส้นบาง 1px ไม่มีเงา ไม่มีไล่สี ไม่มีของลอย ไม่มีแอนิเมชันวน
  * ใช้กับทุกหน้า ยกเว้นหน้าที่เป็นเครื่องมือ/เกมเต็มจอ (<html data-tool> ตั้งโดย UiLookScope: ตัวแก้ไข Studio, ตัวแก้ไขชุดคำถาม, จอครู, จอเล่น)
- * ธีม "ปกติ" และ "คลีน" ไม่ถูกแตะ: ทุกกฎในไฟล์นี้ขึ้นต้นด้วย html[data-ui="minimal"]
  * ========================================================================== */
 
 html[data-ui="minimal"] {
-  --background: 0 0% 100%;
-  --foreground: 240 10% 9%;
-  --card: 0 0% 100%;
-  --card-foreground: 240 10% 9%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 240 10% 9%;
-  --muted: 240 5% 96%;
-  --muted-foreground: 240 4% 40%;
-  --accent: 240 5% 96%;
-  --border: 240 6% 90%;
-  --input: 240 6% 90%;
-  --radius: 0.75rem;
-  --min-bg: #ffffff;
-  --min-ink: #17171c;
-  --min-mute: #6b6b76;
-  --min-line: #e4e4ea;
-  --min-soft: #f5f5f7;
-  --min-accent: #6d4df2;
-}
-html.dark[data-ui="minimal"] {
-  --background: 240 6% 7%;
-  --foreground: 240 6% 96%;
-  --card: 240 5% 10%;
-  --card-foreground: 240 6% 96%;
-  --popover: 240 5% 10%;
-  --popover-foreground: 240 6% 96%;
-  --muted: 240 5% 14%;
-  --muted-foreground: 240 5% 66%;
-  --accent: 240 5% 14%;
-  --border: 240 5% 20%;
-  --input: 240 5% 20%;
-  --min-bg: #111114;
-  --min-ink: #f4f4f6;
-  --min-mute: #a3a3ad;
-  --min-line: #2c2c33;
-  --min-soft: #19191d;
-  --min-accent: #a892ff;
+  --min-bg: hsl(var(--background));
+  --min-ink: hsl(var(--foreground));
+  --min-mute: hsl(var(--muted-foreground));
+  --min-line: hsl(var(--border));
+  --min-soft: hsl(var(--muted));
+  --min-accent: hsl(var(--foreground));
 }
 
 /* ---------- พื้นหลัง ---------- */

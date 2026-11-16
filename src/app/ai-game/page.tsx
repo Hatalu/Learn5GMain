@@ -2,8 +2,8 @@
 
 import React, { Suspense } from 'react';
 import { Navbar } from '@/components/navbar/Navbar';
-import { NightSky } from '@/components/fx/NightSky';
 import { AiGameBuilder } from '@/components/aigame/AiGameBuilder';
+import { FeatureGate } from '@/components/site/FeatureGate';
 import '@/components/creator/creator.css';
 import '@/components/creator/creator-pages.css';
 import '@/components/worksheet/worksheet.css';
@@ -14,9 +14,10 @@ export default function AiGamePage() {
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className="l5g-world l5g-world-edit flex-1 relative">
-        <NightSky />
         <Suspense fallback={null}>
-          <AiGameBuilder />
+          <FeatureGate flag="ai_game" name="เกม AI">
+            <AiGameBuilder />
+          </FeatureGate>
         </Suspense>
       </main>
     </div>

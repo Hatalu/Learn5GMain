@@ -1,26 +1,17 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { AlertCircle, ArrowLeft, Download, Eye, EyeOff, Gift, ImagePlus, Loader2, QrCode, RefreshCw, ShieldCheck, Timer, X } from 'lucide-react';
+import { AlertCircle, Check, Download, ImagePlus, Loader2, RefreshCw, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { Offer, Plan, WELCOME_PCT, planLength } from '@/lib/plans';
+import { PLANS, PLAN_DAYS, type Plan, nextTerm } from '@/lib/plans';
 import { CONTACT_PAGE_URL } from '@/lib/membership';
-import { FacebookIcon } from '@/components/icons/FacebookIcon';
 import { getTurnstileToken } from '@/lib/turnstile';
-import { GMAIL_ONLY_MESSAGE, normalizeGmail } from '@/lib/validations/signup';
-import s from '@/app/membership/membership.module.css';
-import { PriceBlock, fmtLeft, useCountdown } from './Pricing';
+import { cn } from '@/lib/utils/cn';
 
 interface Order {
   orderId: string;
   amount: number;
-  listAmount?: number;
-  days?: number;
-  bonusDays?: number;
-  welcome?: boolean;
   qr: string;
   expiresAt: string;
   accountName: string;
@@ -29,164 +20,36 @@ interface Order {
   forUsername: string | null;
 }
 
-type Step = 'loading' | 'pay' | 'verifying' | 'done' | 'error';
+type Step = 'login' | 'loading' | 'pay' | 'verifying' | 'done' | 'error';
 
 const fmt = (ms: number) => {
   const t = Math.max(0, Math.floor(ms / 1000));
   return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
 };
-
-const CONFETTI = ['#ff6b7a', '#ffcf3f', '#3fd6a8', '#4a7bf0', '#9b6cf0', '#ff9a3d'];
+const thDate = (iso: string) => new Date(iso).toLocaleDateString('th-TH', { dateStyle: 'long' });
 
 interface Props {
-  plan: Plan | null;
-  plans: Plan[];
-  offer: Offer;
-  skew: number;
-  onPick: (p: Plan | null) => void;
+  plan: Plan;
+  onPick: (p: Plan) => void;
   onClose: () => void;
   onPaid?: () => void;
 }
 
-/**
- * หน้าต่างจ่ายเงินสมาชิก เปิดได้จากทุกหน้า (ผ่าน MembershipProvider)
- * ไม่ระบุแพลน = ให้เลือกแพลนในหน้าต่างก่อน แล้วค่อยสร้าง QR
- */
-export function CheckoutModal(props: Props) {
-  if (!props.plan) return <PlanPicker {...props} />;
-  return <Checkout key={props.plan.id} {...props} plan={props.plan} />;
-}
-
-function Shell({
-  title,
-  sub,
-  image,
-  onClose,
-  closable = true,
-  wide = false,
-  children,
-}: {
-  title: string;
-  sub: React.ReactNode;
-  image: string;
-  onClose: () => void;
-  closable?: boolean;
-  wide?: boolean;
-  children: React.ReactNode;
-}) {
-  // Esc ปิด + ล็อก scroll
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && closable && onClose();
-    window.addEventListener('keydown', onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      window.removeEventListener('keydown', onKey);
-      document.body.style.overflow = prev;
-    };
-  }, [onClose, closable]);
-
-  return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center p-2 sm:p-5 bg-[#1d1a3a]/75 backdrop-blur-sm animate-fade-in" onMouseDown={() => closable && onClose()}>
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        onMouseDown={(e) => e.stopPropagation()}
-        style={{ overflowY: 'auto' }}
-        className={`${s.world} w-full ${wide ? 'max-w-4xl' : 'max-w-3xl'} max-h-[96vh] rounded-[2rem] border-[3px] border-[#2a2350] shadow-[0_10px_0_#2a2350] animate-pop-in text-[#2a2350]`}
-      >
-        <div className={s.dots} />
-        <div className="sticky top-0 z-20 flex items-center gap-3 px-4 sm:px-6 py-3 bg-[#fff8ec] border-b-[3px] border-[#2a2350]">
-          <div className="relative w-11 h-11 shrink-0">
-            <Image src={image} alt="" fill sizes="44px" className="object-contain" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-display text-lg leading-tight truncate">{title}</p>
-            <p className="text-sm font-bold opacity-75">{sub}</p>
-          </div>
-          {closable && (
-            <button type="button" onClick={onClose} aria-label="ปิด" className="p-2 rounded-xl border-[3px] border-[#2a2350] bg-white hover:bg-[#ffeccb]">
-              <X className="w-5 h-5" />
-            </button>
-          )}
-        </div>
-        <div className="relative p-4 sm:p-6">{children}</div>
-      </div>
-    </div>
-  );
-}
-
-/** ขั้นเลือกแพลน (เมื่อเปิดหน้าต่างจากปุ่มทั่วไป) */
-function PlanPicker({ plans, offer, skew, onPick, onClose }: Props) {
-  const welcomeLeft = useCountdown(offer.welcomeEndsAt, skew);
-  return (
-    <Shell title="สมัครสมาชิก" sub="เลือกแพลน แล้วสแกนจ่ายพร้อมเพย์ได้ทันที" image="/plans/fiveg-kid.webp" onClose={onClose} wide>
-      {welcomeLeft > 0 && (
-        <div className="mb-5 flex flex-wrap items-center justify-center gap-2 rounded-2xl border-[3px] border-[#2a2350] px-3 py-2 font-bold text-center" style={{ background: 'linear-gradient(100deg,#ffd75e,#ff9ad5)' }}>
-          <Gift className="w-5 h-5" /> ส่วนลด {WELCOME_PCT}% บัญชีใหม่ เหลือเวลา
-          <span className="px-2 py-0.5 rounded-lg bg-[#2a2350] text-white font-display tabular-nums">{fmtLeft(welcomeLeft)}</span>
-        </div>
-      )}
-      <div className={`grid gap-x-4 gap-y-6 grid-cols-1 sm:grid-cols-2 ${plans.length > 3 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
-        {plans.map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            onClick={() => onPick(p)}
-            className="relative flex flex-col items-center px-3 pt-5 pb-4 text-center rounded-3xl border-[3px] border-[#2a2350] shadow-[0_5px_0_#2a2350] hover:-translate-y-1 transition-transform"
-            style={{ background: p.color.soft }}
-          >
-            {p.badge && (
-              <span
-                className="absolute -top-3.5 left-1/2 -translate-x-1/2 whitespace-nowrap px-3 py-0.5 rounded-full border-2 border-[#2a2350] text-xs font-bold"
-                style={{ background: p.id === 'grown' ? '#ff6b7a' : '#ffcf3f', color: p.id === 'grown' ? '#fff' : '#2a2350' }}
-              >
-                {p.badge}
-              </span>
-            )}
-            <div className="relative w-20 h-24">
-              <Image src={p.image} alt="" fill sizes="80px" className="object-contain" />
-            </div>
-            <p className="mt-1 font-display text-lg leading-tight">{p.name}</p>
-            <div className="mt-2">
-              <PriceBlock plan={p} offer={offer} compact />
-            </div>
-            <span className={`${s.btn} mt-3 w-full py-2 text-sm`} style={{ background: p.color.main }}>
-              <QrCode className="w-4 h-4" /> เลือกแพลนนี้
-            </span>
-          </button>
-        ))}
-      </div>
-      <p className="mt-5 text-center text-sm font-bold">
-        <Link href="/membership" onClick={onClose} className="underline decoration-2 underline-offset-4">
-          ดูรายละเอียดว่าสมาชิกได้อะไรบ้าง
-        </Link>
-      </p>
-    </Shell>
-  );
-}
-
-function Checkout({ plan, plans, onClose, onPick, onPaid }: Props & { plan: Plan }) {
-  const { user, signIn, refreshProfile } = useAuth();
-  const router = useRouter();
-  const [step, setStep] = useState<Step>('loading');
+/** หน้าต่างจ่ายเงินแพ็กเกจ: QR พร้อมเพย์ระบุยอด แล้วส่งสลิปให้ระบบตรวจอัตโนมัติ (ต้องเข้าสู่ระบบก่อน) */
+export function CheckoutModal({ plan, onPick, onClose, onPaid }: Props) {
+  const { user, profile, refreshProfile } = useAuth();
+  const [step, setStep] = useState<Step>(user ? 'loading' : 'login');
   const [order, setOrder] = useState<Order | null>(null);
   const [fatal, setFatal] = useState('');
   const [err, setErr] = useState('');
   const [left, setLeft] = useState(0);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [password2, setPassword2] = useState('');
-  const [email, setEmail] = useState('');
-  const [showPw, setShowPw] = useState(false);
-  const [result, setResult] = useState<{ username: string; premiumUntil: string; bonusDays: number } | null>(null);
+  const [until, setUntil] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
-  const guest = !user;
 
   const createOrder = useCallback(async () => {
+    if (!user) return setStep('login');
     setStep('loading');
     setErr('');
     try {
@@ -198,8 +61,7 @@ function Checkout({ plan, plans, onClose, onPick, onPaid }: Props & { plan: Plan
       const j = await res.json().catch(() => ({}));
       if (!res.ok) {
         setFatal(j.error || 'สร้างคำสั่งซื้อไม่สำเร็จ');
-        setStep('error');
-        return;
+        return setStep('error');
       }
       setOrder(j);
       setStep('pay');
@@ -207,13 +69,12 @@ function Checkout({ plan, plans, onClose, onPick, onPaid }: Props & { plan: Plan
       setFatal('เชื่อมต่อไม่ได้ ตรวจอินเทอร์เน็ตแล้วลองใหม่');
       setStep('error');
     }
-  }, [plan.id]);
+  }, [plan.id, user]);
 
   useEffect(() => {
     createOrder();
   }, [createOrder]);
 
-  // นับถอยหลังอายุ QR
   useEffect(() => {
     if (!order) return;
     const tick = () => setLeft(new Date(order.expiresAt).getTime() - Date.now());
@@ -222,24 +83,24 @@ function Checkout({ plan, plans, onClose, onPick, onPaid }: Props & { plan: Plan
     return () => clearInterval(t);
   }, [order]);
 
-  useEffect(
-    () => () => {
-      if (preview) URL.revokeObjectURL(preview);
-    },
-    [preview]
-  );
+  useEffect(() => () => void (preview && URL.revokeObjectURL(preview)), [preview]);
+
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => e.key === 'Escape' && step !== 'verifying' && onClose();
+    document.addEventListener('keydown', k);
+    const o = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', k);
+      document.body.style.overflow = o;
+    };
+  }, [onClose, step]);
 
   const pickFile = (f: File | null) => {
     setErr('');
     if (!f) return;
-    if (!/^image\/(jpeg|png|webp|gif)$/.test(f.type)) {
-      setErr('รองรับเฉพาะรูป JPG PNG WEBP');
-      return;
-    }
-    if (f.size > 4 * 1024 * 1024) {
-      setErr('รูปใหญ่เกิน 4MB');
-      return;
-    }
+    if (!/^image\/(jpeg|png|webp|gif)$/.test(f.type)) return setErr('รองรับเฉพาะรูป JPG PNG WEBP');
+    if (f.size > 4 * 1024 * 1024) return setErr('รูปใหญ่เกิน 4MB');
     setFile(f);
     setPreview(URL.createObjectURL(f));
   };
@@ -247,34 +108,21 @@ function Checkout({ plan, plans, onClose, onPick, onPaid }: Props & { plan: Plan
   const submit = async () => {
     if (!order) return;
     setErr('');
-    if (!file) return setErr('แนบรูปสลิปก่อนนะ');
-    if (guest) {
-      if (!/^[a-zA-Z0-9_-]{3,30}$/.test(username.trim())) return setErr('ชื่อผู้ใช้ใช้ภาษาอังกฤษ ตัวเลข _ หรือ - ยาว 3-30 ตัว');
-      if (password.length < 8) return setErr('รหัสผ่านต้องยาวอย่างน้อย 8 ตัว');
-      if (password !== password2) return setErr('รหัสผ่านสองช่องไม่ตรงกัน');
-      if (email.trim() && !normalizeGmail(email)) return setErr(GMAIL_ONLY_MESSAGE);
-    }
+    if (!file) return setErr('แนบรูปสลิปก่อน');
     setStep('verifying');
     const fd = new FormData();
     fd.append('orderId', order.orderId);
     fd.append('slip', file);
     fd.append('cf', (await getTurnstileToken('verify')) || '');
-    if (guest) {
-      fd.append('username', username.trim());
-      fd.append('password', password);
-      if (email.trim()) fd.append('email', email.trim());
-    }
     try {
       const res = await fetch('/api/membership/verify', { method: 'POST', body: fd });
       const j = await res.json().catch(() => ({}));
       if (!res.ok || !j.ok) {
         setErr(j.error || 'ตรวจสลิปไม่สำเร็จ ลองใหม่อีกครั้ง');
-        setStep('pay');
-        return;
+        return setStep('pay');
       }
-      if (guest) await signIn(username.trim(), password);
-      else await refreshProfile();
-      setResult({ username: j.username, premiumUntil: j.premiumUntil, bonusDays: Number(j.bonusDays || 0) });
+      await refreshProfile();
+      setUntil(j.premiumUntil);
       setStep('done');
       onPaid?.();
     } catch {
@@ -287,235 +135,199 @@ function Checkout({ plan, plans, onClose, onPick, onPaid }: Props & { plan: Plan
     if (!order) return;
     const a = document.createElement('a');
     a.href = order.qr;
-    a.download = `qr-5g-${order.amount}baht.png`;
+    a.download = `learn5g-${plan.id}-${order.amount}.png`;
     a.click();
   };
 
   const expired = !!order && left <= 0;
-  const inputCls =
-    'w-full px-3.5 py-2.5 rounded-2xl border-[3px] border-[#2a2350] bg-white text-[#2a2350] font-semibold focus:outline-none focus:ring-4 focus:ring-[#ffcf3f]/60';
-  const amount = order?.amount ?? plan.price;
-  const bonus = order?.bonusDays ?? 0;
+  // คาดการณ์วันหมดอายุหลังจ่าย (เซิร์ฟเวอร์คิดจริงอีกครั้ง)
+  const preview2 = profile ? nextTerm({ plan: profile.plan, until: profile.premium_until }, plan.id) : null;
 
   return (
-    <Shell
-      title={plan.name}
-      image={plan.image}
-      closable={step !== 'verifying'}
-      onClose={onClose}
-      sub={
-        <>
-          {order?.welcome && <s className="mr-1 opacity-70">{plan.price}</s>}
-          {amount} บาท · {planLength(plan)}
-          {bonus > 0 && <span className="ml-1 text-emerald-700">+{bonus} วันฟรี</span>}
-        </>
-      }
-    >
-      {step === 'loading' && (
-        <div className="py-20 flex flex-col items-center gap-3 font-bold">
-          <Loader2 className="w-10 h-10 animate-spin" />
-          กำลังสร้าง QR พร้อมเพย์...
-        </div>
-      )}
-
-      {step === 'error' && (
-        <div className={`${s.paper} p-6 text-center`}>
-          <AlertCircle className="w-12 h-12 mx-auto text-[#ff6b7a]" />
-          <p className="mt-3 font-display text-xl">{fatal}</p>
-          <div className="mt-5 flex flex-col sm:flex-row gap-3 justify-center">
-            <button type="button" onClick={createOrder} className={`${s.btn} px-5 py-3 bg-[#ffcf3f]`}>
-              <RefreshCw className="w-5 h-5" /> ลองใหม่
-            </button>
-            <a href={CONTACT_PAGE_URL} target="_blank" rel="noopener noreferrer" className={`${s.btn} px-5 py-3 bg-white`}>
-              <FacebookIcon className="w-5 h-5" /> สมัครผ่านเพจ
-            </a>
+    <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/50 sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label={`สมัครแพ็กเกจ ${plan.name}`}>
+      <div className="absolute inset-0" onClick={() => step !== 'verifying' && onClose()} />
+      <div className="relative max-h-[94dvh] w-full max-w-3xl overflow-y-auto rounded-t-3xl border bg-background sm:rounded-3xl">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-background/95 px-5 py-4 sm:px-7">
+          <div>
+            <p className="ui-kicker">แพ็กเกจ</p>
+            <p className="font-display text-xl font-medium">
+              {plan.name} <span className="ui-muted text-base font-normal">{plan.price} บาท / {PLAN_DAYS} วัน</span>
+            </p>
           </div>
+          <button type="button" onClick={onClose} disabled={step === 'verifying'} aria-label="ปิด" className="ui-btn ui-btn-ghost h-9 w-9 px-0">
+            <X className="h-5 w-5" />
+          </button>
         </div>
-      )}
 
-      {(step === 'pay' || step === 'verifying') && order && (
-        <>
-          {plans.length > 1 && step === 'pay' && (
-            <button type="button" onClick={() => onPick(null)} className="mb-3 inline-flex items-center gap-1.5 text-sm font-bold underline decoration-2 underline-offset-4">
-              <ArrowLeft className="w-4 h-4" /> เปลี่ยนแพลน
-            </button>
-          )}
-          <div className="grid gap-5 md:grid-cols-2">
-            {/* ฝั่ง QR */}
-            <div className={`${s.paper} p-4 sm:p-5 text-center`}>
-              <div className="rounded-2xl bg-[#113566] text-white py-2 font-bold tracking-wide">พร้อมเพย์ PromptPay</div>
-              <div className="relative mt-3 mx-auto w-full max-w-[260px] aspect-square rounded-2xl border-[3px] border-[#2a2350] bg-white p-2">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={order.qr} alt={`QR พร้อมเพย์ ยอด ${order.amount} บาท`} className={`w-full h-full ${expired ? 'opacity-15 blur-[2px]' : ''}`} />
-                {expired && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-                    <p className="font-display text-lg">QR หมดอายุแล้ว</p>
-                    <button type="button" onClick={createOrder} className={`${s.btn} px-4 py-2 bg-[#ffcf3f] text-sm`}>
-                      <RefreshCw className="w-4 h-4" /> สร้าง QR ใหม่
-                    </button>
-                  </div>
-                )}
-              </div>
-              <p className="mt-3 font-display text-4xl">
-                {order.amount.toFixed(2)} <span className="text-lg">บาท</span>
-              </p>
-              {order.welcome && (
-                <p className="text-sm font-bold text-[#e0344a]">
-                  ส่วนลดบัญชีใหม่ {WELCOME_PCT}% จากราคาปกติ <s>{order.listAmount ?? plan.price}</s> บาท
-                </p>
-              )}
-              {bonus > 0 && <p className="text-sm font-bold text-emerald-700">โบนัสต่ออายุ ได้เพิ่ม {bonus} วันฟรี</p>}
-              <p className="text-sm font-bold">โอนยอดนี้ให้ตรงเป๊ะ</p>
-              <div className="mt-3 rounded-2xl bg-[#ffeccb] border-2 border-[#2a2350] px-3 py-2 text-sm font-semibold text-left">
-                <p>
-                  ชื่อบัญชี: <b>{order.accountName}</b>
-                </p>
-                {order.bankName && <p>ธนาคาร: {order.bankName}</p>}
-                <p>พร้อมเพย์: {order.promptpay}</p>
-              </div>
-              <div className="mt-3 flex items-center justify-center gap-2 text-sm font-bold">
-                <Timer className="w-4 h-4" />
-                {expired ? 'QR หมดอายุ' : `QR ใช้ได้อีก ${fmt(left)}`}
-              </div>
-              <button type="button" onClick={downloadQr} disabled={expired} className={`${s.btn} mt-3 w-full py-2.5 bg-white text-sm`}>
-                <Download className="w-4 h-4" /> บันทึกรูป QR
-              </button>
-              <p className="mt-2 text-xs font-semibold opacity-70">บนมือถือ: บันทึกรูป แล้วเปิดแอปธนาคาร เลือกสแกนจากรูปภาพ</p>
-            </div>
-
-            {/* ฝั่งส่งสลิป */}
-            <div className="flex flex-col gap-4">
-              <div className={`${s.paper} p-4 sm:p-5`}>
-                <p className="font-display text-lg">โอนแล้ว ส่งสลิปที่นี่</p>
-                <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={(e) => pickFile(e.target.files?.[0] || null)} />
+        <div className="p-5 sm:p-7">
+          {step !== 'done' && step !== 'verifying' && (
+            <div role="radiogroup" aria-label="เลือกแพ็กเกจ" className="mb-6 grid grid-cols-3 gap-1 rounded-full border p-1">
+              {PLANS.map((p) => (
                 <button
+                  key={p.id}
                   type="button"
-                  onClick={() => fileRef.current?.click()}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    pickFile(e.dataTransfer.files?.[0] || null);
-                  }}
-                  className="mt-2 w-full min-h-[150px] rounded-2xl border-[3px] border-dashed border-[#2a2350] bg-white hover:bg-[#fffbf3] flex items-center justify-center overflow-hidden"
+                  role="radio"
+                  aria-checked={p.id === plan.id}
+                  onClick={() => p.id !== plan.id && onPick(p)}
+                  className={cn('h-9 rounded-full text-sm transition-colors', p.id === plan.id ? 'bg-foreground text-background' : 'ui-muted hover:text-foreground')}
                 >
-                  {preview ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={preview} alt="สลิปที่เลือก" className="max-h-[220px] object-contain" />
-                  ) : (
-                    <span className="flex flex-col items-center gap-1 py-6 font-bold">
-                      <ImagePlus className="w-9 h-9" />
-                      แตะเพื่อเลือกรูปสลิป
-                      <span className="text-xs font-semibold opacity-60">JPG PNG WEBP ไม่เกิน 4MB</span>
+                  {p.name} · {p.price}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {step === 'login' && (
+            <div className="py-10 text-center">
+              <p className="font-display text-2xl font-light">เข้าสู่ระบบก่อนสมัครแพ็กเกจ</p>
+              <p className="mt-2 text-sm ui-muted">สิทธิ์ของแพ็กเกจผูกกับบัญชีของคุณ ยังไม่มีบัญชี สมัครฟรีได้ในไม่กี่วินาที</p>
+              <div className="mt-6 flex flex-col justify-center gap-2 sm:flex-row">
+                <Link href={`/signup?redirect=${encodeURIComponent('/pricing')}`} onClick={onClose} className="ui-btn ui-btn-ink">
+                  สมัครบัญชีฟรี
+                </Link>
+                <Link href={`/login?redirect=${encodeURIComponent('/pricing')}`} onClick={onClose} className="ui-btn ui-btn-line">
+                  เข้าสู่ระบบ
+                </Link>
+              </div>
+            </div>
+          )}
+
+          {step === 'loading' && (
+            <div className="flex flex-col items-center gap-3 py-20 text-sm ui-muted">
+              <Loader2 className="h-6 w-6 animate-spin" />
+              กำลังสร้าง QR พร้อมเพย์
+            </div>
+          )}
+
+          {step === 'error' && (
+            <div className="py-10 text-center">
+              <AlertCircle className="mx-auto h-8 w-8" />
+              <p className="mt-3 text-lg">{fatal}</p>
+              <div className="mt-6 flex flex-col justify-center gap-2 sm:flex-row">
+                <button type="button" onClick={createOrder} className="ui-btn ui-btn-ink">
+                  <RefreshCw className="h-4 w-4" /> ลองใหม่
+                </button>
+                <a href={CONTACT_PAGE_URL} target="_blank" rel="noopener noreferrer" className="ui-btn ui-btn-line">
+                  ติดต่อทางเพจ
+                </a>
+              </div>
+            </div>
+          )}
+
+          {(step === 'pay' || step === 'verifying') && order && (
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="ui-card p-5 text-center">
+                <p className="ui-kicker">PromptPay</p>
+                <div className="relative mx-auto mt-3 aspect-square w-full max-w-[250px] rounded-2xl border bg-white p-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={order.qr} alt={`QR พร้อมเพย์ ยอด ${order.amount} บาท`} className={cn('h-full w-full', expired && 'opacity-10')} />
+                  {expired && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-black">
+                      <p className="text-sm">QR หมดอายุแล้ว</p>
+                      <button type="button" onClick={createOrder} className="ui-btn h-9 bg-black text-white">
+                        <RefreshCw className="h-4 w-4" /> สร้างใหม่
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <p className="mt-4 font-display text-4xl font-light tabular-nums">
+                  {order.amount.toFixed(2)} <span className="text-base ui-muted">บาท</span>
+                </p>
+                <p className="mt-1 text-xs ui-muted">โอนยอดนี้ให้ตรงทุกสตางค์ · {expired ? 'QR หมดอายุ' : `ใช้ได้อีก ${fmt(left)}`}</p>
+                <dl className="mt-4 space-y-1 border-t pt-4 text-left text-sm">
+                  <div className="flex justify-between gap-3">
+                    <dt className="ui-muted">ชื่อบัญชี</dt>
+                    <dd className="text-right">{order.accountName}</dd>
+                  </div>
+                  {order.bankName && (
+                    <div className="flex justify-between gap-3">
+                      <dt className="ui-muted">ธนาคาร</dt>
+                      <dd>{order.bankName}</dd>
+                    </div>
+                  )}
+                  <div className="flex justify-between gap-3">
+                    <dt className="ui-muted">พร้อมเพย์</dt>
+                    <dd>{order.promptpay}</dd>
+                  </div>
+                </dl>
+                <button type="button" onClick={downloadQr} disabled={expired} className="ui-btn ui-btn-line mt-4 h-10 w-full">
+                  <Download className="h-4 w-4" /> บันทึกรูป QR
+                </button>
+                <p className="mt-2 text-[11px] ui-muted">บนมือถือ บันทึกรูปแล้วเปิดแอปธนาคาร เลือกสแกนจากรูปภาพ</p>
+              </div>
+
+              <div className="flex flex-col gap-4">
+                <div>
+                  <p className="ui-label">สลิปการโอน</p>
+                  <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={(e) => pickFile(e.target.files?.[0] || null)} />
+                  <button
+                    type="button"
+                    onClick={() => fileRef.current?.click()}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      pickFile(e.dataTransfer.files?.[0] || null);
+                    }}
+                    className="flex min-h-[180px] w-full items-center justify-center overflow-hidden rounded-2xl border border-dashed transition-colors hover:border-foreground/50"
+                  >
+                    {preview ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={preview} alt="สลิปที่เลือก" className="max-h-[240px] object-contain" />
+                    ) : (
+                      <span className="flex flex-col items-center gap-2 py-8 text-sm ui-muted">
+                        <ImagePlus className="h-6 w-6" />
+                        แตะเพื่อเลือกรูปสลิป
+                        <span className="text-xs">JPG PNG WEBP ไม่เกิน 4MB</span>
+                      </span>
+                    )}
+                  </button>
+                </div>
+
+                <div className="rounded-2xl bg-muted px-4 py-3 text-sm">
+                  บัญชี <b className="font-medium">{order.forUsername}</b>
+                  {preview2 && (
+                    <span className="block text-xs ui-muted">
+                      ใช้ได้ถึงประมาณ {thDate(preview2.until)}
+                      {preview2.carriedDays > 0 && ` (รวมวันที่เหลือของแพ็กเกจเดิม ${preview2.carriedDays} วัน)`}
                     </span>
                   )}
-                </button>
-              </div>
+                </div>
 
-              {guest ? (
-                <div className={`${s.paper} p-4 sm:p-5 space-y-2.5`}>
-                  <p className="font-display text-lg">ตั้งชื่อผู้ใช้สำหรับเข้าเล่น</p>
-                  <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="ชื่อผู้ใช้ (ภาษาอังกฤษ)" autoComplete="username" maxLength={30} className={inputCls} />
-                  <div className="relative">
-                    <input
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      type={showPw ? 'text' : 'password'}
-                      placeholder="รหัสผ่าน อย่างน้อย 8 ตัว"
-                      autoComplete="new-password"
-                      className={inputCls + ' pr-11'}
-                    />
-                    <button type="button" onClick={() => setShowPw((v) => !v)} aria-label="แสดงรหัสผ่าน" className="absolute right-3 top-1/2 -translate-y-1/2">
-                      {showPw ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
-                  </div>
-                  <input value={password2} onChange={(e) => setPassword2(e.target.value)} type={showPw ? 'text' : 'password'} placeholder="ยืนยันรหัสผ่าน" autoComplete="new-password" className={inputCls} />
-                  <input
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    type="email"
-                    inputMode="email"
-                    placeholder="อีเมล Gmail (ไม่บังคับ) ไว้แจ้งเตือนก่อนหมดอายุ"
-                    autoComplete="email"
-                    maxLength={254}
-                    className={inputCls}
-                  />
-                  <p className="text-xs font-semibold opacity-75">
-                    มีบัญชีอยู่แล้ว?{' '}
-                    <Link href="/login?redirect=%2Fmembership" onClick={onClose} className="underline font-bold">
-                      เข้าสู่ระบบก่อน
-                    </Link>{' '}
-                    ระบบจะต่ออายุให้บัญชีเดิม
+                {err && (
+                  <p role="alert" className="flex items-start gap-2 rounded-2xl border border-red-500/40 px-4 py-3 text-sm text-red-600 dark:text-red-400">
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                    {err}
                   </p>
-                </div>
-              ) : (
-                <div className={`${s.paper} px-4 py-3 text-sm font-semibold`}>
-                  ต่ออายุให้บัญชี <b>{order.forUsername}</b> วันจะต่อจากวันหมดอายุเดิม
-                </div>
-              )}
+                )}
 
-              {err && (
-                <div className="flex items-start gap-2 rounded-2xl border-[3px] border-[#2a2350] bg-[#ffe1e5] px-3.5 py-2.5 text-sm font-bold" role="alert">
-                  <AlertCircle className="w-5 h-5 shrink-0 text-[#e0344a]" />
-                  <span>{err}</span>
-                </div>
-              )}
-
-              <button type="button" onClick={submit} disabled={step === 'verifying'} className={`${s.btn} w-full py-3.5 font-display text-lg bg-[#3fd6a8]`}>
-                <ShieldCheck className="w-5 h-5" /> ตรวจสลิปและเปิดสิทธิ์
-              </button>
-              <p className="text-xs text-center font-semibold opacity-70">ตรวจสลิปกับธนาคารอัตโนมัติ สลิป 1 ใบใช้ได้ครั้งเดียว</p>
+                <button type="button" onClick={submit} disabled={step === 'verifying'} className="ui-btn ui-btn-ink h-12 w-full">
+                  {step === 'verifying' ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  {step === 'verifying' ? 'กำลังตรวจสลิป' : 'ตรวจสลิปและเปิดสิทธิ์'}
+                </button>
+                <p className="text-center text-xs ui-muted">ตรวจกับธนาคารอัตโนมัติ สลิป 1 ใบใช้ได้ครั้งเดียว</p>
+              </div>
             </div>
-          </div>
-        </>
-      )}
+          )}
 
-      {/* กำลังตรวจ */}
-      {step === 'verifying' && (
-        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-[#fff8ec]/90 backdrop-blur-sm rounded-b-[2rem]">
-          <div className={`relative w-28 h-36 ${s.wobble}`}>
-            <Image src="/plans/fiveg-egg.webp" alt="" fill sizes="112px" className="object-contain" />
-          </div>
-          <p className="font-display text-xl">กำลังตรวจสลิป...</p>
-          <p className="text-sm font-semibold opacity-70">ใช้เวลาไม่เกินครึ่งนาที อย่าเพิ่งปิดหน้านี้นะ</p>
-        </div>
-      )}
-
-      {/* สำเร็จ */}
-      {step === 'done' && result && (
-        <div className="relative py-6 text-center overflow-hidden">
-          {Array.from({ length: 36 }).map((_, i) => (
-            <span key={i} className={s.confetti} style={{ left: `${(i * 37) % 100}%`, background: CONFETTI[i % CONFETTI.length], animationDelay: `${(i % 9) * 0.12}s` }} />
-          ))}
-          <div className="relative mx-auto w-52 h-56">
-            <span className={s.burst} />
-            <div className={`absolute inset-0 ${s.bob}`}>
-              <Image src={plan.image} alt={plan.name} fill sizes="208px" className="object-contain" />
+          {step === 'done' && (
+            <div className="py-10 text-center">
+              <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-foreground text-background">
+                <Check className="h-7 w-7" strokeWidth={2.5} />
+              </span>
+              <p className="mt-5 font-display text-3xl font-light">เปิดแพ็กเกจ {plan.name} แล้ว</p>
+              {until && <p className="mt-2 text-sm ui-muted">ใช้ได้ถึง {thDate(until)}</p>}
+              <div className="mt-7 flex flex-col justify-center gap-2 sm:flex-row">
+                <Link href="/create" onClick={onClose} className="ui-btn ui-btn-ink">
+                  เริ่มสร้างเกม
+                </Link>
+                <Link href="/studio" onClick={onClose} className="ui-btn ui-btn-line">
+                  สร้างสื่อการสอน
+                </Link>
+              </div>
             </div>
-          </div>
-          <h2 className="mt-2 font-display text-3xl sm:text-4xl text-white" style={{ textShadow: '0 3px 0 #2a2350' }}>
-            ยินดีต้อนรับสมาชิก!
-          </h2>
-          <div className={`${s.paper} mt-4 inline-block px-5 py-3 font-semibold`}>
-            บัญชี <b>{result.username}</b> ใช้ได้ถึง <b>{new Date(result.premiumUntil).toLocaleDateString('th-TH', { dateStyle: 'long' })}</b>
-            {result.bonusDays > 0 && <span className="block text-sm text-emerald-700">รวมโบนัสต่ออายุ {result.bonusDays} วันแล้ว</span>}
-          </div>
-          <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
-            <button
-              type="button"
-              onClick={() => {
-                onClose();
-                router.push('/home');
-              }}
-              className={`${s.btn} px-6 py-3.5 font-display text-lg bg-[#ffcf3f]`}
-            >
-              ไปเล่นเกมเลย
-            </button>
-            <button type="button" onClick={onClose} className={`${s.btn} px-6 py-3.5 bg-white`}>
-              <X className="w-5 h-5" /> ปิดหน้าต่าง
-            </button>
-          </div>
+          )}
         </div>
-      )}
-    </Shell>
+      </div>
+    </div>
   );
 }

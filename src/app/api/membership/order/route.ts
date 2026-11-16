@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import QRCode from 'qrcode';
 import { createClient } from '@/lib/supabase/server';
 import { getAdminClient } from '@/lib/supabase/admin';
-import { NO_OFFER, planById, quote } from '@/lib/plans';
-import { offerFor, offersReady } from '@/lib/server/offers';
+import { PLAN_DAYS, planById } from '@/lib/plans';
 import { maskPromptPay, promptPayKind, promptPayPayload } from '@/lib/promptpay';
 import { ORDER_PAY_MINUTES, easySlipConfigured, getPaymentSettings } from '@/lib/server/payments';
 import { clientIp, isSameOrigin, limit } from '@/lib/server/rate-limit';
@@ -30,45 +29,38 @@ export async function POST(req: NextRequest) {
   }
   if (!(await verifyTurnstile(cf, ip))) return NextResponse.json({ error: 'ยืนยันว่าไม่ใช่บอทไม่สำเร็จ รีเฟรชหน้าแล้วลองใหม่นะ' }, { status: 403 });
   const plan = planById(planId);
-  if (!plan) return NextResponse.json({ error: 'ไม่พบแพลนนี้' }, { status: 400 });
-  const v2 = await offersReady().catch(() => false);
-  if (plan.id === 'day' && !v2) return NextResponse.json({ error: 'แพลนรายวันยังไม่เปิด เลือกแพลนอื่นก่อนนะ' }, { status: 400 });
+  if (!plan) return NextResponse.json({ error: 'ไม่พบแพ็กเกจนี้' }, { status: 400 });
 
   const s = await getPaymentSettings().catch(() => null);
   if (!s || !s.enabled || !promptPayKind(s.promptpay_id || '') || !s.account_name || !easySlipConfigured()) {
     return NextResponse.json({ error: 'ระบบชำระเงินยังไม่เปิด ติดต่อสมัครทางเพจได้เลย' }, { status: 503 });
   }
 
-  // ผู้ที่ล็อกอินอยู่: ผูกคำสั่งซื้อกับบัญชีนั้น (ต่ออายุ) / ผู้เยี่ยมชม: สร้างบัญชีตอนชำระสำเร็จ
+  // ต้องเข้าสู่ระบบก่อนซื้อแพ็กเกจ (สิทธิ์ผูกกับบัญชี)
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  let username: string | null = null;
-  if (user) {
-    const { data: p } = await supabase.from('profiles').select('username, role').eq('id', user.id).maybeSingle();
-    if (p?.role === 'dev') return NextResponse.json({ error: 'บัญชี Dev ใช้งานได้ทุกอย่างอยู่แล้ว' }, { status: 400 });
-    if (String(p?.username || '').startsWith('trial_')) return NextResponse.json({ error: 'บัญชีทดลองสมัครไม่ได้' }, { status: 400 });
-    username = p?.username ?? null;
-  }
-
-  // ราคา/วันแถมคิดจากข้อมูลในฐานข้อมูลเท่านั้น
-  const offer = user && v2 ? await offerFor(user.id).catch(() => NO_OFFER) : NO_OFFER;
-  const q = quote(plan, offer);
+  if (!user) return NextResponse.json({ error: 'เข้าสู่ระบบก่อนสมัครแพ็กเกจ' }, { status: 401 });
+  const { data: p } = await supabase.from('profiles').select('username, role').eq('id', user.id).maybeSingle();
+  if (!p) return NextResponse.json({ error: 'ไม่พบบัญชี' }, { status: 400 });
+  if (p.role === 'dev') return NextResponse.json({ error: 'บัญชี Dev ใช้งานได้ทุกอย่างอยู่แล้ว' }, { status: 400 });
+  if (String(p.username || '').startsWith('trial_')) return NextResponse.json({ error: 'บัญชีทดลองสมัครไม่ได้' }, { status: 400 });
+  const username = p.username as string;
+  const q = { amount: plan.price };
 
   const now = Date.now();
   const expiresAt = new Date(now + ORDER_PAY_MINUTES * 60 * 1000).toISOString();
   const { data: order, error } = await getAdminClient()
     .from('payment_orders')
     .insert({
-      user_id: user?.id ?? null,
+      user_id: user.id,
       username,
       plan: plan.id,
-      days: plan.days,
+      days: PLAN_DAYS,
       amount: q.amount,
       expires_at: expiresAt,
       ip,
-      ...(v2 ? { promo: q.welcome ? 'welcome' : q.bonusDays ? 'renew' : null, list_amount: plan.price, bonus_days: q.bonusDays } : {}),
     })
     .select('id, created_at')
     .single();
@@ -79,17 +71,14 @@ export async function POST(req: NextRequest) {
     errorCorrectionLevel: 'M',
     margin: 1,
     width: 560,
-    color: { dark: '#1d1a3a', light: '#ffffff' },
+    color: { dark: '#000000', light: '#ffffff' },
   });
 
   return NextResponse.json({
     orderId: order.id,
     plan: plan.id,
     amount: q.amount,
-    listAmount: plan.price,
-    days: q.days,
-    bonusDays: q.bonusDays,
-    welcome: q.welcome,
+    days: PLAN_DAYS,
     qr,
     expiresAt,
     accountName: s.account_name,

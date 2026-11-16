@@ -8,6 +8,7 @@ import {
 } from '@/lib/supabase/admin';
 import { createMemberSchema, editMemberSchema } from '@/lib/validations/member';
 import { isSameOrigin } from '@/lib/server/rate-limit';
+import { isPlanId } from '@/lib/plans';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -80,6 +81,7 @@ export async function POST(req: NextRequest) {
       validated.premium_until
     );
 
+    if (isPlanId(body.plan)) await getAdminClient().from('profiles').update({ plan: body.plan }).eq('id', newMember.id);
     return NextResponse.json({ member: newMember }, { status: 201 });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการสร้างสมาชิก';
@@ -111,6 +113,8 @@ export async function PUT(req: NextRequest) {
       validated.premium_until
     );
 
+    // แพ็กเกจ (คอลัมน์จาก migration 030 ยังไม่รัน = ข้าม)
+    if ('plan' in body) await getAdminClient().from('profiles').update({ plan: isPlanId(body.plan) ? body.plan : null }).eq('id', userId);
     return NextResponse.json({ member: updated });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการแก้ไขข้อมูลสมาชิก';

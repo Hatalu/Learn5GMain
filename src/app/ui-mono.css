@@ -1,0 +1,218 @@
+/* ============================================================================
+ * ชั้นขาว-ดำของหน้าเครื่องมือเดิม (16 พ.ย. 2026)
+ * หน้าศูนย์รวมของระบบสร้างเกม/สื่อการสอน/เกม AI/ใบงาน AI ยังใช้คลาสเดิม (l5g- sh- ag- ws-) ที่มีสีฝังในไฟล์ CSS
+ * ไฟล์นี้เปลี่ยนสีเหล่านั้นเป็นโทนเดียวกับธีมใหม่ (พื้น = card, ตัวหนังสือ = foreground, เส้น = border)
+ * ไม่แตะหน้าจอเกม/ตัวแก้ไข (<html data-tool>) เพราะสีในเกม เช่น สีตัวเลือกคำตอบ มีความหมาย
+ * ========================================================================== */
+
+html:not([data-tool]) {
+  --l5g-ink: hsl(var(--foreground));
+  --l5g-paper: hsl(var(--card));
+  --l5g-paper2: hsl(var(--muted));
+  --l5g-sun: hsl(var(--muted));
+  --l5g-orange: hsl(var(--muted));
+  --l5g-coral: hsl(var(--muted));
+  --l5g-mint: hsl(var(--muted));
+  --l5g-violet: hsl(var(--muted));
+  --l5g-blue: hsl(var(--muted));
+  --l5g-sky: hsl(var(--muted));
+  --min-accent: hsl(var(--foreground));
+  --min-bg: hsl(var(--background));
+  --min-ink: hsl(var(--foreground));
+  --min-mute: hsl(var(--muted-foreground));
+  --min-line: hsl(var(--border));
+  --min-soft: hsl(var(--muted));
+}
+
+/* ---------- พื้นหลังหน้า ---------- */
+html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) {
+  background: hsl(var(--background)) !important;
+  color: hsl(var(--foreground));
+}
+
+/* ---------- ปุ่ม: เส้นบาง ทรงแคปซูล ปุ่มหลักหมึกทึบ ---------- */
+html:not([data-tool]) :is(.l5g-btn, .ws-btn, .l5g-chipbtn, .l5g-icon-btn, .l5g-usage-btn, .ag-go, .ag-ghost, .ag-srcbtn) {
+  background: hsl(var(--card)) !important;
+  background-image: none !important;
+  color: hsl(var(--foreground)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  border-radius: 999px;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  font-weight: 500;
+}
+html:not([data-tool]) :is(.l5g-btn-go, .l5g-btn-violet, .l5g-btn-coral, .l5g-btn-mint, .ag-go, .l5g-stpl-go) {
+  background: hsl(var(--foreground)) !important;
+  color: hsl(var(--background)) !important;
+  border-color: hsl(var(--foreground)) !important;
+}
+html:not([data-tool]) :is(.l5g-btn, .ws-btn, .l5g-chipbtn, .ag-go):hover {
+  transform: none;
+  opacity: 0.86;
+}
+
+/* ---------- การ์ด/พื้นผิว ---------- */
+html:not([data-tool])
+  :is(
+    .l5g-card, .l5g-gcard, .l5g-tcard, .l5g-newset, .l5g-quick, .l5g-tierbar, .l5g-usage, .l5g-stpl, .l5g-gate, .l5g-empty, .l5g-join-card,
+    .l5g-modecard, .l5g-mode, .l5g-ptype, .l5g-seg, .l5g-menu, .l5g-math-sheet, .l5g-stage, .l5g-search, .l5g-input,
+    .sh-card, .sh-tpl, .sh-mode, .sh-size, .sh-feat, .sh-import, .sh-paper, .sh-chip,
+    .ws-card, .ws-chip, .ws-look, .ws-char, .ws-tab, .ws-paper,
+    .ag-gcard, .ag-step, .ag-set, .ag-src, .ag-input, .ag-search, .ag-out, .ag-prompt, .ag-tips, .ag-note, .ag-how
+  ) {
+  background-color: hsl(var(--card)) !important;
+  background-image: none !important;
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--border)) !important;
+  border-width: 1px !important;
+  box-shadow: none !important;
+}
+html:not([data-tool]) :is(.l5g-card, .l5g-gcard, .l5g-tcard, .l5g-newset, .l5g-stpl, .l5g-gate, .sh-card, .sh-tpl, .ws-card, .ag-gcard, .ag-step) {
+  border-radius: 1.25rem;
+}
+
+/* ตัวเลือกที่ถูกเลือก/แท็บที่เปิด = หมึกทึบ */
+html:not([data-tool])
+  :is(.l5g-tab[data-on='true'], .l5g-chipbtn[aria-pressed='true'], .ws-chip[aria-pressed='true'], .ws-look[aria-pressed='true'], .ws-char[aria-pressed='true'], .ws-tab[aria-selected='true'], .sh-chip[aria-pressed='true'], .l5g-seg [aria-pressed='true'], .l5g-seg [aria-selected='true'], .ag-gcard[aria-pressed='true'], .ag-srcbtn[aria-pressed='true']) {
+  background: hsl(var(--foreground)) !important;
+  color: hsl(var(--background)) !important;
+  border-color: hsl(var(--foreground)) !important;
+}
+
+/* ---------- หัวข้อ ---------- */
+html:not([data-tool]) .l5g-hero-title {
+  color: hsl(var(--foreground)) !important;
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  text-shadow: none !important;
+}
+html:not([data-tool]) .l5g-hero-title span {
+  color: hsl(var(--muted-foreground)) !important;
+  background: none !important;
+  -webkit-text-fill-color: currentColor;
+}
+html:not([data-tool]) .l5g-hero-sub {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+/* ---------- สีที่เขียนตรงในคลาส Tailwind (bg-[#...], text-[#...]) ในหน้าเหล่านี้ ---------- */
+html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) :is([class*='bg-[#'], [class*='from-[#'], [class*='bg-gradient-to-']):not(img):not(svg *) {
+  background-color: hsl(var(--muted)) !important;
+  background-image: none !important;
+}
+html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) [class*='text-[#'] {
+  color: hsl(var(--foreground)) !important;
+}
+html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) [class*='border-[#'] {
+  border-color: hsl(var(--border)) !important;
+}
+html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) [class*='shadow-['] {
+  box-shadow: none !important;
+}
+
+/* ---------- ส่วนเฉพาะของหน้าสร้างเกม (แม่แบบ ป้าย จุดสี) ---------- */
+html:not([data-tool]) :is(.l5g-stpl-filter, .l5g-stpl-search, .l5g-quick-clock, .l5g-quick li, .l5g-stpl-q, .l5g-stpl-g, .l5g-stpl-grade, .l5g-ptag, .l5g-pill, .l5g-vis-badge, .l5g-privtag, .l5g-devchip, .l5g-modechip) {
+  background: hsl(var(--muted)) !important;
+  background-image: none !important;
+  color: hsl(var(--foreground)) !important;
+  border-color: hsl(var(--border)) !important;
+  box-shadow: none !important;
+}
+html:not([data-tool]) :is(.l5g-sec-note, .l5g-sec-sub) {
+  color: hsl(var(--muted-foreground)) !important;
+}
+html:not([data-tool]) .l5g-dot {
+  background: hsl(var(--foreground)) !important;
+}
+/* ปุ่ม/ป้ายที่ใส่สีวิชาด้วย style ตรง (ยกเว้นภาพปกชุดคำถามซึ่งเป็นผลงานของครู) */
+html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) :is(button, span, p, li, a)[style*='background']:not(.l5g-gcover *):not(.sh-cover *) {
+  background: hsl(var(--muted)) !important;
+}
+html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) :is(button, span, p, li, a)[style*='color']:not(.l5g-gcover *):not(.sh-cover *) {
+  color: hsl(var(--foreground)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+/* ภาพประกอบรูปแบบเกม: ขาว-ดำ แล้วกลับเป็นสีเมื่อชี้ */
+html:not([data-tool]) :is(.ma, .l5g-newset-art, .l5g-tcard-art, .l5g-empty-art, .l5g-gate-art) {
+  filter: grayscale(1);
+  transition: filter 0.4s ease;
+}
+html:not([data-tool]) :is(.l5g-modecard, .l5g-tcard, .l5g-newset, .l5g-mode):hover :is(.ma, .l5g-newset-art, .l5g-tcard-art) {
+  filter: none;
+}
+/* ชิปที่ส่งสีผ่านตัวแปร --c (ตัวกรองแม่แบบ วิชา ระดับ) */
+html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) [style*='--c']:not(.l5g-gcover *):not(.sh-cover *) {
+  --c: hsl(var(--foreground)) !important;
+  --cc: hsl(var(--foreground)) !important;
+}
+html:not([data-tool]) :is(.l5g-stpl-chips, .l5g-stpl-row) button {
+  border: 1px solid hsl(var(--border)) !important;
+  background: hsl(var(--card)) !important;
+  color: hsl(var(--foreground)) !important;
+  font-weight: 500;
+  box-shadow: none !important;
+}
+html:not([data-tool]) :is(.l5g-stpl-chips, .l5g-stpl-row) button[data-on='true'] {
+  border-color: hsl(var(--foreground)) !important;
+  background: hsl(var(--foreground)) !important;
+  color: hsl(var(--background)) !important;
+}
+
+/* ---------- หน้าสร้างสื่อการสอน (studio-hub.css) ---------- */
+html:not([data-tool]) .sh-size[data-main='true'] {
+  outline: 1px solid hsl(var(--foreground)) !important;
+  outline-offset: 2px;
+  background: hsl(var(--card)) !important;
+}
+html:not([data-tool]) :is(.sh-size-box, .sh-import, .sh-tpl-busy, .sh-empty-ic, .sh-import-ic) {
+  color: hsl(var(--foreground)) !important;
+  background-color: hsl(var(--muted)) !important;
+  background-image: none !important;
+  border-color: hsl(var(--border)) !important;
+  box-shadow: none !important;
+}
+html:not([data-tool]) :is(.sh-mode[data-on='true'], .sh-cats button[data-on='true']) {
+  background: hsl(var(--foreground)) !important;
+  color: hsl(var(--background)) !important;
+  border-color: hsl(var(--foreground)) !important;
+  box-shadow: none !important;
+}
+
+/* ---------- หน้าเกม AI (aigame.css) ตัวเกมตัวอย่าง (.ag-stage) ยังมีสีเหมือนเดิม ---------- */
+html:not([data-tool]) .ag-page,
+html:not([data-tool]) .dark .ag-head,
+html:not([data-tool]) .ag-search input {
+  color: hsl(var(--foreground)) !important;
+}
+html:not([data-tool])
+  :is(.ag-badge, .ag-flow li, .ag-dim, .ag-tag, .ag-picked, .ag-left, .ag-right, .ag-input, .ag-src, .ag-search, .ag-set, .ag-more, .ag-empty-note, .ag-pickedset, .ag-sum, .ag-ghost, .ag-prompt, .ag-tips, .ag-gcard, .ag-demo-load) {
+  background: hsl(var(--card)) !important;
+  color: hsl(var(--foreground)) !important;
+  border-color: hsl(var(--border)) !important;
+  border-width: 1px !important;
+  box-shadow: none !important;
+}
+html:not([data-tool]) :is(.ag-flow b, .ag-how b, .ag-stepn, .ag-srcbtn[aria-selected='true'], .ag-go, .ag-toast) {
+  background: hsl(var(--foreground)) !important;
+  color: hsl(var(--background)) !important;
+  border-color: hsl(var(--foreground)) !important;
+  box-shadow: none !important;
+}
+html:not([data-tool]) :is(.ag-gbody small, .ag-set small) {
+  color: hsl(var(--muted-foreground)) !important;
+}
+html:not([data-tool]) .ag-link {
+  color: hsl(var(--foreground)) !important;
+}
+html:not([data-tool]) :is(.ag-gcard[data-on], .ag-set[data-on]) {
+  outline: 2px solid hsl(var(--foreground)) !important;
+  outline-offset: 2px;
+}
+html:not([data-tool]) .ag-gart {
+  border-bottom: 1px solid hsl(var(--border)) !important;
+  filter: grayscale(1);
+  transition: filter 0.4s ease;
+}
+html:not([data-tool]) .ag-gcard:is(:hover, [data-on]) .ag-gart {
+  filter: none;
+}

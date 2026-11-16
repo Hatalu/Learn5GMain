@@ -31,6 +31,8 @@ export interface Profile {
   role: UserRole;
   password?: string | null;
   premium_until?: string | null;
+  /** แพ็กเกจ plus/pro/master (migration 030) ใช้คู่กับ premium_until */
+  plan?: string | null;
   /** อีเมลติดต่อที่ผู้สมัครกรอกเอง (migration 019) */
   contact_email?: string | null;
   /** จำนวนชุดคำถามที่เคยสร้างทั้งหมด ไม่ลดเมื่อลบ ใช้จำกัดบัญชีฟรี (migration 021) */

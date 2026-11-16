@@ -152,7 +152,7 @@ function PlayInner() {
             <ArrowLeft className="w-5 h-5" />
           </button>
         ) : step !== 'room' ? (
-          <Link href="/home" className="l5g-icon-btn" aria-label="หน้าแรก">
+          <Link href="/" className="l5g-icon-btn" aria-label="หน้าแรก">
             <Home className="w-5 h-5" />
           </Link>
         ) : (
@@ -263,7 +263,7 @@ function PlayInner() {
                 >
                   <DoorOpen className="w-5 h-5" /> เข้าห้องอื่น
                 </button>
-                <Link href="/home" className="l5g-btn l5g-btn-ghost">
+                <Link href="/" className="l5g-btn l5g-btn-ghost">
                   <Home className="w-5 h-5" /> หน้าแรก
                 </Link>
               </div>

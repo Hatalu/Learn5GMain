@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isSameOrigin, limit } from '@/lib/server/rate-limit';
-import { quotaBytes } from '@/lib/game-creator/quota';
 import { getCreator, listUserFiles, sweepUnused, usedBytes } from '@/lib/server/creator-media';
 
 export const dynamic = 'force-dynamic';
@@ -10,7 +9,7 @@ export async function GET() {
   const me = await getCreator();
   if (!me) return NextResponse.json({ error: 'ต้องเข้าสู่ระบบก่อน' }, { status: 401 });
   const files = await listUserFiles(me.id);
-  return NextResponse.json({ tier: me.tier, used: usedBytes(files), quota: quotaBytes(me.tier), files: files.length });
+  return NextResponse.json({ tier: me.tier, used: usedBytes(files), quota: me.quota, files: files.length });
 }
 
 /** ล้างไฟล์ที่ไม่มีเกมไหนใช้แล้ว เพื่อคืนพื้นที่ (ไฟล์ที่ตัวแก้ไขที่เปิดอยู่ใช้ และที่เพิ่งอัปโหลดใน 10 นาที จะไม่ถูกลบ) */
@@ -31,5 +30,5 @@ export async function POST(req: NextRequest) {
   const sw = await sweepUnused(me.id, { minAgeMs: 10 * 60 * 1000, keep });
   if (!sw.ok) return NextResponse.json({ error: 'ล้างไฟล์ไม่สำเร็จ (ผู้ดูแลต้องติดตั้ง migration 019 ก่อน)' }, { status: 503 });
   const files = await listUserFiles(me.id);
-  return NextResponse.json({ tier: me.tier, used: usedBytes(files), quota: quotaBytes(me.tier), files: files.length, removed: sw.removed, freed: sw.freed });
+  return NextResponse.json({ tier: me.tier, used: usedBytes(files), quota: me.quota, files: files.length, removed: sw.removed, freed: sw.freed });
 }

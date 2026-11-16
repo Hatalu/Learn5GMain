@@ -38,7 +38,9 @@ import { useAuth } from '@/context/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { uploadImage } from '@/lib/game-creator/media';
 import { cleanTitle } from '@/lib/game-creator/quiz';
-import { FREE_DESIGN_LIMIT, creatorTier } from '@/lib/game-creator/quota';
+import { creatorTier } from '@/lib/game-creator/quota';
+import { useMembership } from '@/components/membership/MembershipProvider';
+
 import { blankPage, cleanSrc, makeChar, makeGraph, makeImage, makeLine, makeMath, makeShape, makeText, MAX_PAGES, sanitizeDesign, sizeLabel, uid, type Design, type EditMode, type Item, type Page } from '@/lib/studio/doc';
 import { cleanGraph, newSpec, type GraphSpec } from '@/lib/studio/graph';
 import { FLOW_GAP, cleanFlowHtml, flowIsEmpty } from '@/lib/studio/flow';
@@ -155,6 +157,7 @@ const mapItems = (d: Design, pi: number, fn: (items: Item[]) => Item[]): Design 
 export function StudioEditor({ id }: { id: string }) {
   const { user, profile, isLoading } = useAuth();
   const tier = creatorTier(!!user, profile);
+  const FREE_DESIGN_LIMIT = useMembership().ents.free.designs ?? 0;
   const supabase = useMemo(() => createClient(), []);
 
   const [status, setStatus] = useState<'loading' | 'ready' | 'missing' | 'denied'>('loading');

@@ -36,7 +36,6 @@ import { PaperModal } from '@/components/creator/PaperModal';
 import { CHARS, COUNT_MAX, COUNT_MIN, DECOS, DECO_PLACES, FRAMES, GRADES, HEADS, LANGS, LAYOUTS, LEVELS, LOOKS, MAX_DECOS, NOTE_MAX, PATTERNS, SCENES, STYLES, SUBJECTS, THEMES, THEME_CATS, activitiesFor, gradeLabel, subjectOf, type DecoPlace, type ThemeCat } from '@/lib/worksheet/options';
 import { PRESETS, applyLook, buildPrompt, cleanRecipe, decodeRecipe, defaultRecipe, lookOf, presetRecipe, randomPart, titleOf, type Recipe } from '@/lib/worksheet/recipe';
 import { palOf } from '@/lib/worksheet/layout';
-import { MAX_ENTRIES, leftText, type Contest, type Phase } from '@/lib/worksheet/contest';
 import { Motif, PaperPreview } from './PaperPreview';
 import { CharFigure } from './PaperArt';
 import './worksheet.css';
@@ -111,8 +110,7 @@ export function WorksheetBuilder() {
   const [toast, setToast] = useState('');
   const [showPrompt, setShowPrompt] = useState(false);
   const [saved, setSaved] = useState<Saved[]>([]);
-  const [contest, setContest] = useState<{ c: Contest; phase: Phase } | null>(null);
-  const [send, setSend] = useState<null | 'studio' | 'contest'>(null);
+  const [send, setSend] = useState<null | 'studio'>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const [geminiLink, setGeminiLink] = useState(false);
   const loaded = useRef(false);
@@ -134,10 +132,6 @@ export function WorksheetBuilder() {
     loaded.current = true;
     setSaved(readSaved());
     if (sp.get('send') === '1') setTimeout(() => document.getElementById('ws-step3')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 400);
-    fetch('/api/contest?brief=1')
-      .then((x) => x.json())
-      .then((j) => j.contest && setContest({ c: j.contest, phase: j.phase }))
-      .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -242,8 +236,6 @@ export function WorksheetBuilder() {
     }
   };
 
-  const open = contest?.phase === 'open';
-
   return (
     <div className="relative z-[1] max-w-7xl mx-auto px-3 sm:px-6 pb-24">
       {/* หัวหน้า */}
@@ -262,21 +254,8 @@ export function WorksheetBuilder() {
           <button type="button" onClick={saveRecipe} className="ws-btn bg-[#a8f0d4] text-[#2a2350]">
             <Bookmark className="w-5 h-5" /> <span className="max-sm:hidden">บันทึกสูตร</span>
           </button>
-          <Link href="/contest" className="ws-btn bg-[#ff8fab] text-[#2a2350]">
-            <Trophy className="w-5 h-5" /> <span className="max-sm:hidden">กิจกรรมประกวด</span>
-          </Link>
         </div>
       </div>
-
-      {open && contest && (
-        <Link href="/contest" className="mb-5 flex items-center gap-3 px-4 py-3 rounded-2xl border-[3px] border-[#2a2350] bg-gradient-to-r from-[#ffe08a] to-[#ffb3cf] text-[#2a2350] shadow-[0_4px_0_#2a2350] font-bold hover:-translate-y-0.5 transition-transform">
-          <Trophy className="w-6 h-6 shrink-0" />
-          <span className="flex-1 min-w-0">
-            {contest.c.title} <span className="font-semibold opacity-80">· เหลือ {leftText(new Date(contest.c.ends_at).getTime() - Date.now())}</span>
-          </span>
-          <span className="max-sm:hidden text-sm underline">ดูผลงาน</span>
-        </Link>
-      )}
 
       {/* สูตรที่บันทึกไว้ในเครื่องนี้ */}
       <div id="ws-saved" className="mb-4 scroll-mt-24">
@@ -783,19 +762,12 @@ export function WorksheetBuilder() {
             <p className="text-sm font-semibold opacity-80">ดาวน์โหลดภาพมาก่อน แล้วเลือกว่าจะทำอะไรต่อ</p>
           </div>
         </div>
-        <div className="mt-4 grid sm:grid-cols-2 gap-3">
+        <div className="mt-4 grid gap-3">
           <button type="button" onClick={() => setSend('studio')} className="ws-btn bg-white text-[#2a2350] !justify-start !py-4">
             <Type className="w-7 h-7 shrink-0 text-[#7c5cf0]" />
             <span className="text-left">
               ใส่ข้อความไทยใน Studio
               <span className="block text-xs font-semibold opacity-75">ใช้ภาพเป็นพื้นหลัง แล้วพิมพ์คำสั่ง/โจทย์ทับ ตัวหนังสือถูกแน่นอน</span>
-            </span>
-          </button>
-          <button type="button" onClick={() => setSend('contest')} className="ws-btn bg-white text-[#2a2350] !justify-start !py-4">
-            <Trophy className="w-7 h-7 shrink-0 text-[#e8456b]" />
-            <span className="text-left">
-              ส่งเข้าประกวด
-              <span className="block text-xs font-semibold opacity-75">{open ? `ให้ครูทั่วประเทศกดใจ ลุ้นสมาชิกฟรี (คนละ ${MAX_ENTRIES} ผลงาน)` : 'ตอนนี้ยังไม่มีกิจกรรมที่เปิดรับ'}</span>
             </span>
           </button>
         </div>
@@ -808,7 +780,6 @@ export function WorksheetBuilder() {
           signedIn={signedIn}
           loading={isLoading}
           userId={user?.id || ''}
-          contestOpen={open}
           onClose={() => setSend(null)}
           onDone={(msg, url) => {
             setSend(null);
@@ -835,23 +806,19 @@ function SendDialog({
   signedIn,
   loading,
   userId,
-  contestOpen,
   onClose,
   onDone,
 }: {
-  kind: 'studio' | 'contest';
+  kind: 'studio';
   recipe: Recipe;
   signedIn: boolean;
   loading: boolean;
   userId: string;
-  contestOpen: boolean;
   onClose: () => void;
   onDone: (msg: string, url?: string) => void;
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState('');
-  const [title, setTitle] = useState(titleOf(recipe));
-  const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const input = useRef<HTMLInputElement>(null);
@@ -863,7 +830,7 @@ function SendDialog({
     return () => URL.revokeObjectURL(u);
   }, [file]);
 
-  const heading = kind === 'studio' ? 'ใส่ข้อความไทยใน Studio' : 'ส่งผลงานเข้าประกวด';
+  const heading = 'ใส่ข้อความไทยใน Studio';
 
   if (!loading && !signedIn)
     return (
@@ -880,36 +847,13 @@ function SendDialog({
       </PaperModal>
     );
 
-  if (kind === 'contest' && !contestOpen)
-    return (
-      <PaperModal title={heading} icon={<Trophy className="w-5 h-5" />} onClose={onClose}>
-        <p className="font-semibold text-[#2a2350]">ตอนนี้ยังไม่มีกิจกรรมที่เปิดรับผลงาน ติดตามประกาศรอบใหม่ได้ที่หน้ากิจกรรม</p>
-        <Link href="/contest" className="mt-4 ws-btn bg-[#ff8fab] text-[#2a2350] w-full">
-          <Heart className="w-5 h-5" /> ไปหน้ากิจกรรม
-        </Link>
-      </PaperModal>
-    );
-
   const go = async () => {
     if (!file) return setErr('เลือกภาพก่อนนะ');
-    if (kind === 'contest' && !consent) return setErr('ติ๊กยอมรับกติกาก่อนนะ');
     setBusy(true);
     setErr('');
     try {
       const m = await uploadImage(userId, file, 1800);
-      if (kind === 'studio') {
-        onDone('', `/studio?fromImage=${encodeURIComponent(m.url)}&o=${(m.w || 1) > (m.h || 1) ? 'l' : 'p'}`);
-        return;
-      }
-      const res = await fetch('/api/contest', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'submit', title, recipe, image: m.url, consent }),
-      });
-      const j = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(j.error || 'ส่งไม่สำเร็จ');
-      gsfx.fanfare();
-      onDone('ส่งผลงานแล้ว รอทีมงานตรวจไม่เกิน 1 วันก็ขึ้นแกลเลอรี', '/contest?sent=1');
+      onDone('', `/studio?fromImage=${encodeURIComponent(m.url)}&o=${(m.w || 1) > (m.h || 1) ? 'l' : 'p'}`);
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'ไม่สำเร็จ ลองใหม่นะ');
       setBusy(false);
@@ -917,7 +861,7 @@ function SendDialog({
   };
 
   return (
-    <PaperModal title={heading} icon={kind === 'studio' ? <Type className="w-5 h-5" /> : <Trophy className="w-5 h-5" />} onClose={onClose} busy={busy}>
+    <PaperModal title={heading} icon={<Type className="w-5 h-5" />} onClose={onClose} busy={busy}>
       <input
         ref={input}
         type="file"
@@ -933,26 +877,10 @@ function SendDialog({
         {preview ? <img src={preview} alt="ภาพใบงานที่เลือก" className="max-h-64 rounded-xl border-2 border-[#2a2350]" /> : <FileImage className="w-10 h-10 text-[#7c5cf0]" />}
         {preview ? 'เปลี่ยนภาพ' : 'เลือกภาพใบงานที่ดาวน์โหลดจาก Gemini'}
       </button>
-      {kind === 'contest' && (
-        <>
-          <label className="block mt-4 text-sm font-extrabold text-[#5b5280]">ชื่อผลงาน</label>
-          <input value={title} maxLength={60} onChange={(e) => setTitle(e.target.value)} className="mt-1 w-full px-4 py-3 rounded-2xl border-[3px] border-[#2a2350] font-semibold text-[#2a2350]" />
-          <label className="mt-4 flex items-start gap-3 text-sm font-semibold text-[#2a2350] cursor-pointer">
-            <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-1 w-5 h-5 accent-[#7c5cf0]" />
-            <span>
-              ฉันออกแบบใบงานนี้เอง ไม่มีตัวละครหรือโลโก้ที่มีลิขสิทธิ์ ยอมรับ
-              <Link href="/contest#rules" target="_blank" className="underline mx-1">
-                กติกา
-              </Link>
-              และอนุญาตให้เว็บนำภาพไปประชาสัมพันธ์กิจกรรม (ผลงานยังเป็นของครู)
-            </span>
-          </label>
-        </>
-      )}
       {err && <p className="mt-3 text-sm font-bold text-rose-600">{err}</p>}
       <button type="button" onClick={go} disabled={busy || !file} className="mt-4 w-full ws-btn bg-[#ffd166] text-[#2a2350]">
-        {busy ? <Loader2 className="w-5 h-5 animate-spin" /> : kind === 'studio' ? <Type className="w-5 h-5" /> : <Send className="w-5 h-5" />}
-        {busy ? 'กำลังอัปโหลด...' : kind === 'studio' ? 'เปิดใน Studio' : 'ส่งผลงาน'}
+        {busy ? <Loader2 className="w-5 h-5 animate-spin" /> : <Type className="w-5 h-5" />}
+        {busy ? 'กำลังอัปโหลด...' : 'เปิดใน Studio'}
       </button>
       <p className="mt-2 text-xs text-center text-[#5b5280]">ภาพนับรวมในพื้นที่อัปโหลดของบัญชี</p>
     </PaperModal>

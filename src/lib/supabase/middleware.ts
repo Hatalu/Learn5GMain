@@ -38,14 +38,9 @@ export async function updateSession(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
 
-  // 1. Root redirect
-  if (path === '/') {
-    return NextResponse.redirect(new URL('/home', request.url));
-  }
-
   // 2. Already logged in accessing /login
   if (path === '/login' && user) {
-    return NextResponse.redirect(new URL('/home', request.url));
+    return NextResponse.redirect(new URL('/', request.url));
   }
 
   // 3. Unauthenticated accessing protected routes (/dev only)
@@ -69,7 +64,7 @@ export async function updateSession(request: NextRequest) {
 
     if (!profile || profile.role !== 'dev') {
       // Forbidden: redirect to home
-      return NextResponse.redirect(new URL('/home?error=unauthorized_dev', request.url));
+      return NextResponse.redirect(new URL('/?error=unauthorized_dev', request.url));
     }
   }
 

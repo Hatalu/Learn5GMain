@@ -2,14 +2,15 @@
 
 import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { NightSky } from '@/components/fx/NightSky';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Timer } from 'lucide-react';
 import { Check, Compass, Copy, Crown, DoorOpen, FileText, FolderHeart, Globe, Loader2, Lock, LogIn, MoreVertical, Pencil, Play, Plus, Rocket, Search, Sparkles, Trash2, Wand2 } from 'lucide-react';
 import { Navbar } from '@/components/navbar/Navbar';
 import { useAuth } from '@/context/AuthContext';
 import { ShieldCheck } from 'lucide-react';
-import { FREE_SET_LIMIT, creatorTier, setsUsed } from '@/lib/game-creator/quota';
+import { atCap, creatorTier, setsUsed } from '@/lib/game-creator/quota';
+import { useMembership } from '@/components/membership/MembershipProvider';
+
 import { TierCompare } from '@/components/creator/TierCompare';
 import { UsageMeter } from '@/components/creator/UsageMeter';
 import { createClient } from '@/lib/supabase/client';
@@ -28,8 +29,6 @@ import { PaperModal } from '@/components/creator/PaperModal';
 import '@/components/creator/creator.css';
 import '@/components/creator/creator-pages.css';
 import { JoinButton } from '@/components/membership/JoinButton';
-import { OfferBanner } from '@/components/membership/Pricing';
-import { SocialProof } from '@/components/membership/SocialProof';
 
 type Tab = 'new' | 'discover' | 'library';
 const GAME_COLS = 'id, owner_id, owner_name, title, template, question_count, play_count, cover_url, is_public, created_at, updated_at';
@@ -63,7 +62,10 @@ function GameCover({ game }: { game: UserGameSummary }) {
 function CreateHub() {
   const { user, profile, isLoading, isDev } = useAuth();
   const tier = creatorTier(!!user, profile);
-  const member = tier === 'member';
+  const { ent, ents, tier: planT } = useMembership();
+  /** ใช้ Discover ได้ตามสิทธิ์ของแพ็กเกจ */
+  const member = ent.discover || isDev;
+  const FREE_SET_LIMIT = ents.free.sets ?? 0;
   const signedIn = tier !== 'guest';
   const router = useRouter();
   const sp = useSearchParams();
@@ -105,7 +107,7 @@ function CreateHub() {
   // บัญชีฟรี: นับชุดที่เคยสร้างทั้งหมด (ลบแล้วไม่คืนสิทธิ์)
   const [made, setMade] = useState<number | null>(null);
   const used = setsUsed(made, games?.length ?? 0);
-  const atLimit = tier === 'free' && used >= FREE_SET_LIMIT;
+  const atLimit = signedIn && !isDev && atCap(planT, ent.sets, made, games?.length ?? 0);
 
   const load = useCallback(async () => {
     if (!signedIn || !user) return;
@@ -281,7 +283,6 @@ function CreateHub() {
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className="l5g-world flex-1">
-        <NightSky />
         <span className="l5g-bg-cloud" style={{ top: '7%', animationDelay: '-20s' }} />
         <span className="l5g-bg-cloud" style={{ top: '40%', animationDelay: '-55s', ['--s' as string]: 0.7 }} />
 
@@ -320,8 +321,6 @@ function CreateHub() {
             </div>
 
             <div className="max-w-6xl mx-auto px-4 mt-4 flex flex-col gap-3">
-              <OfferBanner />
-              <SocialProof />
               {tier === 'guest' ? (
                 <div className="l5g-tierbar">
                   <Lock className="w-5 h-5 shrink-0" />
@@ -390,9 +389,6 @@ function CreateHub() {
                     <b>สร้างเกมแรกใน 1 นาทีจากแม่แบบ</b>
                     <span>เลือกแม่แบบ ป.1 ถึง ม.6 กดทดลองเล่นได้ทันที ไม่ต้องพิมพ์คำถามเองสักข้อ</span>
                   </div>
-                  <Link href="/secondary" className="l5g-quick-link">
-                    ครูมัธยม ดูหน้าเฉพาะ ม.1 - ม.6
-                  </Link>
                   <ol>
                     <li>เลือกแม่แบบ</li>
                     <li>กดทดลองเล่น</li>

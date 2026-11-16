@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase/admin';
 import { isSameOrigin, limit } from '@/lib/server/rate-limit';
 import { MEDIA_BUCKET } from '@/lib/game-creator/prefix';
-import { fmtMB, quotaBytes } from '@/lib/game-creator/quota';
+import { fmtMB } from '@/lib/game-creator/quota';
 import { getCreator, listUserFiles, sweepUnused, usedBytes } from '@/lib/server/creator-media';
 
 export const dynamic = 'force-dynamic';
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
   if (!Number.isFinite(size) || size <= 0) return NextResponse.json({ error: 'ไฟล์ว่างเปล่า' }, { status: 400 });
   if (size > MAX_FILE) return NextResponse.json({ error: 'ไฟล์ใหญ่เกิน 25 MB' }, { status: 413 });
 
-  const quota = quotaBytes(me.tier);
+  const quota = me.quota;
   let files = await listUserFiles(me.id);
   let used = usedBytes(files);
   if (used + size > quota) {
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
   if (used + size > quota) {
     return NextResponse.json(
       {
-        error: `พื้นที่อัปโหลดเต็ม (ใช้ ${fmtMB(used)} จาก ${fmtMB(quota)}) ลบรูปหรือคลิปที่ไม่ใช้ในเกมออก${me.tier === 'free' ? ' หรือสมัครสมาชิกเพื่อเพิ่มพื้นที่' : ''}`,
+        error: `พื้นที่อัปโหลดเต็ม (ใช้ ${fmtMB(used)} จาก ${fmtMB(quota)}) ลบรูปหรือคลิปที่ไม่ใช้ในเกมออก${me.tier === 'free' ? ' หรือสมัครแพ็กเกจเพื่อเพิ่มพื้นที่' : ''}`,
         code: 'quota',
         used,
         quota,

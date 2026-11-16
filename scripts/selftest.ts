@@ -18,18 +18,18 @@ import { buildDict, checkText, ruleCheck, suggest } from '../src/lib/studio/thai
 import { FONT_IDS } from '../src/lib/studio/doc';
 import katex from 'katex';
 import { MATH_DEFAULTS, WORD_KEYS, assignMath, comboLabel, comboOf, conflictOf, mathKeyOf } from '../src/lib/studio/keys';
-import { FREE_SET_LIMIT, FREE_UPLOAD_MB, MEMBER_UPLOAD_MB, creatorTier, fmtMB, quotaBytes, setsUsed } from '../src/lib/game-creator/quota';
+import { atCap, creatorTier, fmtMB, setsUsed } from '../src/lib/game-creator/quota';
+import { DEFAULT_ENTS, cleanEnt, entLines, entTableFrom, tierOf } from '../src/lib/entitlements';
+import { PLANS, nextTerm } from '../src/lib/plans';
+import { monthKey } from '../src/lib/innovation';
 import { normalizeGmail, signupSchema } from '../src/lib/validations/signup';
-import { SHOWCASE_MAX, showcaseRows } from '../src/lib/game-creator/showcase';
 import { bkkParts, eventOf, phaseOf, seasonOf } from '../src/lib/bkk-time';
 import { hasMembership } from '../src/lib/membership';
 import { CircleDraw, Swipe } from '../src/lib/game-creator/ar/inputs';
-import { CODE_ABC, isCode, makeCode, normCode } from '../src/lib/redeem';
 import { crc16, promptPayKind, promptPayPayload, maskPromptPay } from '../src/lib/promptpay';
 import { extendUntil, maskedMatch, nameMatch, receiverMatches } from '../src/lib/server/payments';
-import { NO_OFFER, PLANS, comparePrice, perDay, quote, saveBaht, welcomePrice } from '../src/lib/plans';
-import { checkUnsubscribeToken, unsubscribeToken, winbackEmail } from '../src/lib/server/email';
-import { MEMBER_PLAY_SECONDS, TRIAL_GRACE_SECONDS, TRIAL_SECONDS, signTrialToken, trialPublicJwk, verifyTrialToken } from '../src/lib/server/trial';
+import { innovationEmail } from '../src/lib/server/email';
+
 import { TURF_CELLS, cleanModeSettings, isWorldMode, modeFit, modeQuiz, scoreCap } from '../src/lib/game-creator/modes';
 import { BOSS_SPEED, EGG_BIOMES, EGG_MAX_VALUE, EGG_SLOTS_RARITY, RARITY, SIZE_MAX, SIZE_MIN, eggEpoch, eggKg, pickEggType, takeWins } from '../src/lib/game-creator/eggValues';
 import { GEAR_BASE } from '../src/lib/game-creator/gear';
@@ -72,10 +72,6 @@ import { cleanNickname, isRoomCode } from '../src/lib/game-creator/templates';
 import { GEAR_SLOTS, cleanGear, gearCount, randomGear, sameGear } from '../src/lib/game-creator/gear';
 import { MODE_MUSIC, TRACKS, cleanMusicSetting, roomTrack } from '../src/lib/music-tracks';
 import { MODES } from '../src/lib/game-creator/modes';
-import { ALL_MEDIA_TYPES, ALL_SUBJECTS, GAME_FILTER_TYPES } from '../src/types/database';
-import { CHAPTERS, STEPS } from '../src/components/tour/steps';
-import { mediaSchema } from '../src/lib/validations/media';
-import { FREE_DESIGN_LIMIT } from '../src/lib/game-creator/quota';
 import { blankDesign, cleanSrc, designMediaPaths, MAX_PAGES, sanitizeDesign, SIZES } from '../src/lib/studio/doc';
 import { buildPdf, jpegSize } from '../src/lib/studio/pdf';
 import { answerSheet, arithProblems, cellsOf, scrambleWord, THAI_CONSONANTS, timesTable, wordSearch } from '../src/lib/studio/gen';
@@ -129,16 +125,6 @@ t('วันสำคัญ: สงกรานต์ ปีใหม่ วั�
 });
 
 console.log('ห้องเลี้ยงปุ๋ง/ปริศนา/รายงาน');
-t('ผลงานครูหน้าแรก: ไม่ส่งเฉลย/ชื่อเจ้าของ ตัดของซ้ำ ของน้อยไม่โชว์', () => {
-  const row = (i: number, extra = {}) => ({ id: 'g' + i, title: 'ชุด ' + i, question_count: 10, cover_url: null, content: { secret: 1 }, owner_name: 'ครู', ...extra });
-  assert.deepEqual(showcaseRows([row(1), row(2)]), []);
-  const out = showcaseRows([row(1), row(1), row(2), row(3), row(4, { title: 'ทดสอบ' }), row(5, { question_count: 2 })]);
-  assert.deepEqual(out.map((x) => x.id), ['g1', 'g2', 'g3']);
-  for (const x of out) assert.deepEqual(Object.keys(x).sort(), ['cover_url', 'id', 'question_count', 'title']);
-  assert.equal(showcaseRows(Array.from({ length: 30 }, (_, i) => row(i))).length, SHOWCASE_MAX);
-});
-
-console.log('\nสมาชิก');
 t('hasMembership: ผู้เยี่ยมชม/สมาชิกหมดอายุ/สมาชิกปกติ/dev', () => {
   const day = 24 * 60 * 60 * 1000;
   const future = new Date(Date.now() + 30 * day).toISOString();
@@ -155,56 +141,6 @@ t('hasMembership: ผู้เยี่ยมชม/สมาชิกหมด�
 
 console.log('\nทดลองเล่น');
 process.env.TRIAL_SIGNING_SEED = process.env.TRIAL_SIGNING_SEED || 'selftest-seed';
-t('โทเคนทดลองเล่น: เซ็นแล้วตรวจผ่าน และหมดอายุตามเวลา', () => {
-  const now = 1_800_000_000_000;
-  const { token, exp } = signTrialToken(now);
-  assert.equal(exp, Math.floor(now / 1000) + TRIAL_SECONDS + TRIAL_GRACE_SECONDS);
-  assert.ok(verifyTrialToken(token, now + 1000));
-  assert.ok(verifyTrialToken(token, now + (TRIAL_SECONDS + TRIAL_GRACE_SECONDS - 1) * 1000));
-  assert.equal(verifyTrialToken(token, now + (TRIAL_SECONDS + TRIAL_GRACE_SECONDS + 1) * 1000), null);
-});
-
-t('โทเคนทดลองเล่น: แก้ข้อมูล/ลายเซ็น/รูปแบบผิด ใช้ไม่ได้', () => {
-  const now = 1_800_000_000_000;
-  const { token } = signTrialToken(now);
-  const [body, sig] = token.split('.');
-  // ยืดเวลาหมดอายุเอง
-  const forged = Buffer.from(JSON.stringify({ v: 1, exp: Math.floor(now / 1000) + 99999, n: 'aaaa' })).toString('base64url');
-  assert.equal(verifyTrialToken(forged + '.' + sig, now), null);
-  // ลายเซ็นเพี้ยน
-  const bad = sig.slice(0, -2) + (sig.endsWith('AA') ? 'BB' : 'AA');
-  assert.equal(verifyTrialToken(body + '.' + bad, now), null);
-  for (const junk of ['', 'abc', 'a.b', '.', body + '.', '.' + sig]) assert.equal(verifyTrialToken(junk, now), null);
-  // โทเคนต่างกันทุกครั้ง
-  assert.notEqual(signTrialToken(now).token, signTrialToken(now).token);
-});
-
-t('โทเคนสมาชิกเล่นเต็ม: มีธง m=1 อายุ 4 ชั่วโมง ส่วนโทเคนทดลองไม่มีธงนี้ และแก้ธงไม่ได้', () => {
-  const now = 1_800_000_000_000;
-  const m = signTrialToken(now, { member: true });
-  assert.equal(m.exp, Math.floor(now / 1000) + MEMBER_PLAY_SECONDS);
-  assert.equal(MEMBER_PLAY_SECONDS, 4 * 3600);
-  const p = verifyTrialToken(m.token, now + 1000);
-  assert.ok(p);
-  assert.equal(p!.m, 1);
-  assert.ok(verifyTrialToken(m.token, now + (MEMBER_PLAY_SECONDS - 5) * 1000));
-  assert.equal(verifyTrialToken(m.token, now + (MEMBER_PLAY_SECONDS + 5) * 1000), null);
-  // โทเคนทดลองธรรมดาไม่มีธงสมาชิก
-  assert.equal(verifyTrialToken(signTrialToken(now).token, now + 1000)!.m, undefined);
-  // เอาลายเซ็นของโทเคนทดลองไปแปะกับข้อมูลสมาชิก (ปลอมสิทธิ์สมาชิก) ต้องไม่ผ่าน
-  const trial = signTrialToken(now);
-  const forged = Buffer.from(JSON.stringify({ v: 1, exp: Math.floor(now / 1000) + 3000, n: 'aaaa', m: 1 })).toString('base64url');
-  assert.equal(verifyTrialToken(forged + '.' + trial.token.split('.')[1], now), null);
-});
-
-t('กุญแจสาธารณะเป็น EC P-256 และไม่เปิดเผยกุญแจส่วนตัว', () => {
-  const k = trialPublicJwk() as Record<string, unknown>;
-  assert.equal(k.kty, 'EC');
-  assert.equal(k.crv, 'P-256');
-  assert.equal(k.d, undefined);
-});
-
-console.log('\nชำระเงิน');
 t('CRC16-CCITT ตามมาตรฐาน', () => {
   assert.equal(crc16('123456789'), '29B1');
 });
@@ -264,42 +200,6 @@ t('ต่ออายุสมาชิก: ต่อจากวันเดิ
   assert.equal(extendUntil(new Date(now + 3 * day).toISOString(), 30, now), new Date(now + 33 * day).toISOString());
 });
 
-t('แพลนและราคา', () => {
-  assert.deepEqual(PLANS.map((p) => [p.id, p.days, p.price]), [['day', 1, 19], ['egg', 7, 39], ['kid', 14, 59], ['grown', 30, 99]]);
-  assert.equal(perDay(PLANS[3]), 3.3);
-  // ราคาเทียบ = ซื้อแพลนรายวันต่อกัน (ราคาที่ขายจริง)
-  assert.equal(comparePrice(PLANS[0]), null);
-  assert.deepEqual(PLANS.slice(1).map((p) => [comparePrice(p), saveBaht(p)]), [[133, 94], [266, 207], [570, 471]]);
-});
-
-t('ส่วนลดบัญชีใหม่ปัดลง + โบนัสต่ออายุ', () => {
-  assert.deepEqual(PLANS.map((p) => welcomePrice(p)), [13, 27, 41, 69]);
-  const now = Date.now();
-  const soon = new Date(now + 3600e3).toISOString();
-  const past = new Date(now - 1000).toISOString();
-  assert.deepEqual(quote(PLANS[1], NO_OFFER, now), { amount: 39, welcome: false, bonusDays: 0, days: 7 });
-  assert.deepEqual(quote(PLANS[1], { welcomeEndsAt: soon, renewEndsAt: null }, now), { amount: 27, welcome: true, bonusDays: 0, days: 7 });
-  assert.deepEqual(quote(PLANS[1], { welcomeEndsAt: past, renewEndsAt: null }, now).amount, 39);
-  assert.deepEqual(quote(PLANS[3], { welcomeEndsAt: null, renewEndsAt: soon }, now), { amount: 99, welcome: false, bonusDays: 3, days: 33 });
-  // แพลนรายวันไม่ได้โบนัสต่ออายุ
-  assert.equal(quote(PLANS[0], { welcomeEndsAt: null, renewEndsAt: soon }, now).bonusDays, 0);
-});
-
-t('ลิงก์ยกเลิกรับอีเมล + เนื้อหาอีเมล', () => {
-  // ไม่พึ่งค่าใน .env.local (รันที่ไหนก็ผ่าน)
-  process.env.EMAIL_LINK_SECRET = process.env.EMAIL_LINK_SECRET || 'selftest-email-secret';
-  const id = '11111111-2222-3333-4444-555555555555';
-  const tok = unsubscribeToken(id);
-  assert.ok(checkUnsubscribeToken(id, tok));
-  assert.ok(!checkUnsubscribeToken('11111111-2222-3333-4444-555555555556', tok));
-  assert.ok(!checkUnsubscribeToken(id, tok.slice(0, -1) + (tok.endsWith('A') ? 'B' : 'A')));
-  const m = winbackEmail({ username: '<b>x</b>', sets: 4, bonusDays: 3, bonusUntil: new Date().toISOString(), site: 'https://s', unsubscribe: 'https://s/u' });
-  assert.ok(m.subject.includes('4 ชุด'));
-  assert.ok(m.html.includes('&lt;b&gt;x&lt;/b&gt;') && !m.html.includes('<b>x</b>'));
-  assert.ok(m.html.includes('https://s/u') && m.html.includes('3 วันฟรี'));
-});
-
-console.log('\nระบบสร้างเกม (ควิซ)');
 const PFX = 'https://abc.supabase.co/storage/v1/object/public/game-media/';
 const UID = '11111111-2222-3333-4444-555555555555';
 const goodImg = { kind: 'image', url: `${PFX}${UID}/a1.webp`, path: `${UID}/a1.webp`, w: 800, h: 600 };
@@ -561,16 +461,74 @@ t('สิทธิ์ระบบสร้างเกม: ไม่ล็อก
   assert.equal(creatorTier(true, { role: 'dev', premium_until: null, username: 'dev1' }), 'member');
 });
 
-t('โควต้า: guest ไม่มีพื้นที่ บัญชีฟรีน้อยกว่าสมาชิก และชุดคำถามฟรี 2 ชุด', () => {
-  assert.equal(quotaBytes('guest'), 0);
-  assert.equal(quotaBytes('free'), FREE_UPLOAD_MB * 1024 * 1024);
-  assert.equal(quotaBytes('member'), MEMBER_UPLOAD_MB * 1024 * 1024);
-  assert.ok(quotaBytes('free') < quotaBytes('member'));
-  assert.equal(FREE_SET_LIMIT, 2); // ตรงกับตัวกันใน migration 019
+t('แพ็กเกจ: ราคา 99/199/299 ต่อ 30 วัน, สิทธิ์ค่าเริ่มต้นตรงกับ migration 030, ตัวกรองสิทธิ์', () => {
+  assert.deepEqual(PLANS.map((p) => [p.id, p.price]), [['plus', 99], ['pro', 199], ['master', 299]]);
+  assert.equal(DEFAULT_ENTS.free.sets, 2);
+  assert.equal(DEFAULT_ENTS.master.innovation_jobs, 2);
+  assert.equal(DEFAULT_ENTS.master.innovation_revisions, 3);
+  assert.equal(DEFAULT_ENTS.plus.innovation_jobs, 0);
+  // ค่าแปลกถูกบีบเข้าช่วง, null = ไม่จำกัด, ไม่ส่งมา = ค่าเดิม
+  const c = cleanEnt({ sets: -5, designs: null, upload_mb: 99999, innovation_jobs: 7.9, discover: 'yes', extra: 'x'.repeat(2000) }, DEFAULT_ENTS.plus);
+  assert.equal(c.sets, 0);
+  assert.equal(c.designs, null);
+  assert.equal(c.upload_mb, 2000);
+  assert.equal(c.innovation_jobs, 7);
+  assert.equal(c.discover, DEFAULT_ENTS.plus.discover);
+  assert.equal(c.extra.length, 1000);
+  assert.equal(cleanEnt({}, DEFAULT_ENTS.pro).sets, null);
+  // แถวจาก DB แทนเฉพาะแพ็กเกจที่มี
+  const t = entTableFrom([{ tier: 'pro', sets: 9 }, { tier: 'bogus', sets: 1 }]);
+  assert.equal(t.pro.sets, 9);
+  assert.equal(t.plus.sets, DEFAULT_ENTS.plus.sets);
+  assert.ok(entLines('master', DEFAULT_ENTS.master).some((l) => l.includes('นวัตกรรม')));
+  assert.ok(!entLines('plus', DEFAULT_ENTS.plus).some((l) => l.includes('นวัตกรรม')));
+  assert.ok(entLines('free', DEFAULT_ENTS.free)[0].includes('ตลอดอายุบัญชี'));
   assert.equal(fmtMB(5 * 1024 * 1024), '5 MB');
   assert.equal(fmtMB(1.5 * 1024 * 1024), '1.5 MB');
   assert.equal(fmtMB(0), '0 MB');
-  assert.equal(fmtMB(30 * 1024 * 1024), '30 MB');
+});
+
+t('แพ็กเกจของบัญชี: dev = master, หมดอายุ = free, สมาชิกเก่าไม่มี plan = plus, บัญชีทดลอง = free', () => {
+  const future = new Date(Date.now() + 86400000).toISOString();
+  const past = new Date(Date.now() - 86400000).toISOString();
+  assert.equal(tierOf(null), 'free');
+  assert.equal(tierOf({ role: 'dev', premium_until: null, username: 'd' }), 'master');
+  assert.equal(tierOf({ role: 'member', premium_until: future, username: 'a' }), 'plus');
+  assert.equal(tierOf({ role: 'member', premium_until: future, username: 'a', plan: 'pro' }), 'pro');
+  assert.equal(tierOf({ role: 'member', premium_until: past, username: 'a', plan: 'master' }), 'free');
+  assert.equal(tierOf({ role: 'member', premium_until: future, username: 'trial_x', plan: 'master' }), 'free');
+  assert.equal(tierOf({ role: 'member', premium_until: future, username: 'a', plan: 'weird' }), 'plus');
+  // เพดาน: ฟรีนับตลอดอายุ แพ็กเกจนับที่มีอยู่ null = ไม่จำกัด
+  assert.equal(atCap('free', 2, 2, 0), true);
+  assert.equal(atCap('free', 2, 1, 0), false);
+  assert.equal(atCap('plus', 50, 80, 10), false);
+  assert.equal(atCap('plus', 50, 0, 50), true);
+  assert.equal(atCap('pro', null, 999, 999), false);
+});
+
+t('ซื้อแพ็กเกจ: ต่อแพ็กเกจเดิมต่อจากวันหมดอายุ, เปลี่ยนแพ็กเกจแปลงวันเหลือตามมูลค่า', () => {
+  const D = 86400000;
+  const now = Date.UTC(2026, 10, 16);
+  assert.equal(nextTerm({ plan: null, until: null }, 'plus', now).until, new Date(now + 30 * D).toISOString());
+  assert.equal(nextTerm({ plan: 'pro', until: new Date(now - D).toISOString() }, 'pro', now).until, new Date(now + 30 * D).toISOString());
+  assert.equal(nextTerm({ plan: 'pro', until: new Date(now + 10 * D).toISOString() }, 'pro', now).until, new Date(now + 40 * D).toISOString());
+  // Plus เหลือ 20 วัน -> Master: 20 x 99 / 299 = 6.62 วัน
+  const up = nextTerm({ plan: 'plus', until: new Date(now + 20 * D).toISOString() }, 'master', now);
+  assert.equal(up.carriedDays, 6);
+  assert.equal(new Date(up.until).getTime(), now + Math.floor((20 * D * 99) / 299) + 30 * D);
+  // Master เหลือ 10 วัน -> Plus: ได้วันมากขึ้นตามมูลค่า
+  assert.equal(nextTerm({ plan: 'master', until: new Date(now + 10 * D).toISOString() }, 'plus', now).carriedDays, 30);
+  // สมาชิกเก่าไม่มี plan นับเป็น Plus
+  assert.equal(nextTerm({ plan: null, until: new Date(now + 20 * D).toISOString() }, 'master', now).carriedDays, 6);
+});
+
+t('นวัตกรรม: เดือนตามเวลาไทย + อีเมลส่งงาน escape ข้อความ', () => {
+  assert.equal(monthKey(new Date('2026-11-30T18:00:00Z')), '2026-12');
+  assert.equal(monthKey(new Date('2026-11-30T16:00:00Z')), '2026-11');
+  const m = innovationEmail({ username: '<b>x</b>', title: 'เกม <i>', link: 'https://a.b/c?d="e"', note: 'บรรทัด1\nบรรทัด2', revision: false, revisionsLeft: 3, site: 'https://s' });
+  assert.ok(!m.html.includes('<b>x</b>') && m.html.includes('&lt;b&gt;'));
+  assert.ok(m.html.includes('&quot;e&quot;'));
+  assert.ok(m.html.includes('บรรทัด1<br>บรรทัด2'));
 });
 
 t('สมัครบัญชีเอง: กติกาชื่อ/อีเมล/รหัสผ่าน', () => {
@@ -614,42 +572,9 @@ t('บัญชีฟรี: สิทธิ์ 2 ชุดนับจากท
   assert.equal(setsUsed(undefined, 1), 1, 'ยังไม่รัน migration: ใช้จำนวนที่มีอยู่');
   assert.equal(setsUsed(null, 0), 0);
   assert.equal(setsUsed(2, 0), 2, 'สร้างครบ 2 แล้วลบหมด ยังนับว่าใช้ครบ');
-  assert.ok(setsUsed(2, 0) >= FREE_SET_LIMIT);
-  assert.ok(setsUsed(1, 1) < FREE_SET_LIMIT);
+  assert.ok(setsUsed(2, 0) >= DEFAULT_ENTS.free.sets!);
+  assert.ok(setsUsed(1, 1) < DEFAULT_ENTS.free.sets!);
   assert.equal(setsUsed(1, 2), 2, 'ตัวเลขที่เคยสร้างน้อยกว่าที่มีอยู่จริง ใช้ค่าที่มากกว่า');
-});
-
-t('คลังเกม: ตัวกรองประเภทไม่มีแบบทดสอบ/แบบฝึกหัด', () => {
-  assert.ok(!GAME_FILTER_TYPES.includes('แบบทดสอบ'));
-  assert.ok(!GAME_FILTER_TYPES.includes('แบบฝึกหัด'));
-  assert.ok(GAME_FILTER_TYPES.includes('เกม'));
-  assert.equal(GAME_FILTER_TYPES.length, ALL_MEDIA_TYPES.length - 2);
-});
-
-t('ทัวร์แนะนำเว็บ: ลำดับหน้า ภาพรวมรูปแบบเกม และจบที่ฉากเลือก', () => {
-  const ids = STEPS.map((x) => x.id);
-  assert.equal(new Set(ids).size, ids.length);
-  // ลำดับหน้า: หน้าหลัก > สร้างเกม > สมาชิก (ไม่ย้อนไปมา)
-  const order = ['/home', '/create', '/studio', '/membership'];
-  const seq = STEPS.map((x) => order.indexOf(x.path));
-  assert.ok(seq.every((v) => v >= 0));
-  assert.ok(seq.every((v, i) => i === 0 || v >= seq[i - 1]));
-  // ไม่มีคลังวิดีโอ/เอกสารแล้ว
-  assert.ok(!ids.includes('videos') && !ids.includes('docs'));
-  // รูปแบบเกมโชว์แค่ภาพรวมขั้นเดียว ไม่ไล่ทีละแบบ
-  assert.ok(ids.includes('modes'));
-  assert.ok(!ids.some((id) => id.startsWith('mode-')));
-  // ทุกขั้นเดินเองได้ ยกเว้นฉากสุดท้ายที่รอผู้ใช้เลือก
-  const last = STEPS[STEPS.length - 1];
-  assert.ok(last.final && !last.target && last.path === '/membership');
-  for (const x of STEPS.slice(0, -1)) {
-    assert.ok(!x.final && x.ms >= 3000 && x.ms <= 8000, x.id);
-    assert.ok(CHAPTERS[x.chapter], x.id);
-    assert.ok(x.title.length > 0 && x.text.length <= 60, x.id);
-  }
-  // ไม่ช้า/ไม่เร็วเกิน: เวลาโชว์รวมราว 1 นาที
-  const total = STEPS.reduce((a, x) => a + x.ms, 0);
-  assert.ok(total >= 35_000 && total <= 90_000, String(total));
 });
 
 t('สร้างสื่อ: ตัวกรองข้อมูลกันสคริปต์/สไตล์แปลกปลอม และรูปจากเว็บอื่น', () => {
@@ -713,7 +638,7 @@ t('สร้างสื่อ: ตัวกรองข้อมูลกัน
   // จำนวนหน้า/ชิ้นมีเพดาน
   assert.equal(sanitizeDesign({ pages: Array.from({ length: 50 }, () => ({})) }).pages.length, MAX_PAGES);
   assert.equal(sanitizeDesign(null).pages.length, 1);
-  assert.equal(FREE_DESIGN_LIMIT, 3);
+  assert.equal(DEFAULT_ENTS.free.designs, 3);
 });
 
 t('สร้างสื่อ: ค่าเริ่มต้น A4 แนวตั้ง และแม่แบบทุกอันผ่านตัวกรองครบไม่ตกหล่น', () => {
@@ -863,7 +788,7 @@ t('สร้างสื่อ: โจทย์เลขลบไม่ติด
   assert.equal(fx('glow', '#ff0000').fx, 'glow');
   assert.equal(fx('glow', 'red;x').fxColor, '#2a2350');
   assert.equal(fx('url(x)').fx, 'none');
-  assert.equal(FREE_DESIGN_LIMIT, 3);
+  assert.equal(DEFAULT_ENTS.free.designs, 3);
   assert.ok(EDU_KINDS.length >= 19 && EDU_KINDS.every((k) => k.params.length > 0));
 });
 
@@ -1791,15 +1716,8 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
     assert.equal(again, null);
     const slow = new Swipe(() => 600);
     for (let x = -200; x <= 200; x += 5) assert.equal(slow.update({ x, y: 0 }, T, 33), null);
-    // โค้ดสมาชิก 10 หลัก: ไม่มีตัวอ่านสับสน
-    const code = makeCode(new Uint8Array(Array.from({ length: 24 }, (_, i) => (i * 37) % 248)));
-    assert.ok(isCode(code));
-    assert.ok(!/[01OIL]/.test(CODE_ABC));
-    assert.equal(normCode(' abcde-fghjk '), 'ABCDEFGHJK');
-    assert.ok(!isCode('ABCDEFGHJ0'));
-    assert.equal(makeCode(new Uint8Array([250, 251, 252])), '');
     passed++;
-    console.log('  ok  ท่าเลือกเป้าแต่ละเกม AR (วาดวง/ปัด) + โค้ดสมาชิก 10 หลัก');
+    console.log('  ok  ท่าเลือกเป้าแต่ละเกม AR (วาดวง/ปัด)');
   }
   {
     // แม่แบบชุดคำถาม: ทุกวิชามี ผ่านตัวกรองครบ 1 ข้อถูกต่อข้อ ตำแหน่งข้อถูกไม่ซ้ำที่เดิมตลอด

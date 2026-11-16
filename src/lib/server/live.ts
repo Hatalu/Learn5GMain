@@ -9,7 +9,6 @@ import crypto from 'crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { getAdminClient } from '@/lib/supabase/admin';
-import { hasMembership } from '@/lib/membership';
 import { mediaPrefix } from '@/lib/game-creator/prefix';
 import { cleanBackground } from '@/lib/game-creator/backgrounds';
 import { endlessIndex, publicQuestion, questionOrder, sanitizeQuiz } from '@/lib/game-creator/quiz';
@@ -74,18 +73,6 @@ export const PLAYER_COLS =
 export const admin = () => getAdminClient();
 
 /* ------------------------------- สมาชิก ------------------------------- */
-
-/** ผู้ใช้ที่ล็อกอินและเป็นสมาชิก (ไม่นับบัญชีทดลอง) คืน null ถ้าไม่ใช่ */
-export async function getMember(): Promise<{ id: string; username: string } | null> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
-  const { data: p } = await supabase.from('profiles').select('username, role, premium_until').eq('id', user.id).maybeSingle();
-  if (!p || String(p.username || '').startsWith('trial_') || !hasMembership(p)) return null;
-  return { id: user.id, username: p.username };
-}
 
 /** เจ้าของห้อง: ผู้ใช้ที่ล็อกอินและเป็นบัญชีจริง (บัญชีฟรีก็เปิดห้องจากชุดของตัวเองได้ ไม่นับบัญชีทดลองเล่น) */
 export async function getHost(): Promise<{ id: string; username: string } | null> {

@@ -57,6 +57,18 @@ const nextConfig = {
     ],
   },
   poweredByHeader: false,
+  // หน้าเก่าที่ย้าย/ลบแล้ว (เว็บเหลือแค่ระบบสำหรับครู 16 พ.ย. 2026)
+  async redirects() {
+    return [
+      { source: '/home', destination: '/', permanent: false },
+      { source: '/membership', destination: '/pricing', permanent: false },
+      { source: '/secondary', destination: '/create', permanent: false },
+      { source: '/contest', destination: '/', permanent: false },
+      { source: '/buddy', destination: '/', permanent: false },
+      { source: '/puzzle', destination: '/', permanent: false },
+      { source: '/report', destination: '/', permanent: false },
+    ];
+  },
   async headers() {
     return [
       {

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { PLANS, planName } from '@/lib/plans';
 import { Profile, UserRole } from '@/types/database';
 import { useToast } from '@/components/ui/Toast';
 import {
@@ -45,12 +46,14 @@ export function MemberManagement() {
   const [newPassword, setNewPassword] = useState('');
   const [newRole, setNewRole] = useState<UserRole>('member');
   const [newPremiumUntil, setNewPremiumUntil] = useState('');
+  const [newPlan, setNewPlan] = useState('');
   const [isSubmittingAdd, setIsSubmittingAdd] = useState(false);
 
   // Edit Member Form State
   const [editUsername, setEditUsername] = useState('');
   const [editRole, setEditRole] = useState<UserRole>('member');
   const [editPremiumUntil, setEditPremiumUntil] = useState('');
+  const [editPlan, setEditPlan] = useState('');
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
 
   // Reset Password State
@@ -130,6 +133,7 @@ export function MemberManagement() {
           password: newPassword,
           role: newRole,
           premium_until: newPremiumUntil || null,
+          plan: newPlan || null,
         }),
       });
       const data = await res.json();
@@ -174,6 +178,7 @@ export function MemberManagement() {
           username: editUsername.trim(),
           role: editRole,
           premium_until: editPremiumUntil || null,
+          plan: editPlan || null,
         }),
       });
       const data = await res.json();
@@ -342,7 +347,10 @@ export function MemberManagement() {
                           {m.username.charAt(0).toUpperCase()}
                         </div>
                         <span className="flex flex-col min-w-0">
-                          <span className="font-semibold text-gray-900 dark:text-white">{m.username}</span>
+                          <span className="font-semibold text-gray-900 dark:text-white">
+                            {m.username}
+                            {isPremiumActive && m.role !== 'dev' && <span className="ml-2 rounded-full border px-2 py-0.5 text-[10px] font-medium">{m.plan ? planName(m.plan) : 'Plus (เดิม)'}</span>}
+                          </span>
                           {m.contact_email && <span className="text-[11px] text-gray-500 dark:text-gray-400 truncate max-w-[200px]">{m.contact_email}</span>}
                         </span>
                       </div>
@@ -426,6 +434,7 @@ export function MemberManagement() {
                             setEditMember(m);
                             setEditUsername(m.username);
                             setEditRole(m.role);
+                            setEditPlan(m.plan || '');
                             setEditPremiumUntil(
                               m.premium_until ? m.premium_until.split('T')[0] : ''
                             );
@@ -568,6 +577,15 @@ export function MemberManagement() {
                   onChange={(e) => setNewPremiumUntil(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
+                <label className="block mt-3 mb-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">แพ็กเกจ (ใช้คู่กับวันหมดอายุ)</label>
+                <select value={newPlan} onChange={(e) => setNewPlan(e.target.value)} className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm">
+                  <option value="">ไม่ระบุ (สมาชิกเก่า = Plus)</option>
+                  {PLANS.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} ({p.price} บาท)
+                    </option>
+                  ))}
+                </select>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   หากไม่ระบุวันที่ ระบบจะตั้งเป็นค่าเริ่มต้นคือ &quot;-&quot;
                 </p>
@@ -681,6 +699,15 @@ export function MemberManagement() {
                   onChange={(e) => setEditPremiumUntil(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
+                <label className="block mt-3 mb-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">แพ็กเกจ (ใช้คู่กับวันหมดอายุ)</label>
+                <select value={editPlan} onChange={(e) => setEditPlan(e.target.value)} className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm">
+                  <option value="">ไม่ระบุ (สมาชิกเก่า = Plus)</option>
+                  {PLANS.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} ({p.price} บาท)
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="pt-4 border-t border-gray-100 dark:border-gray-800 flex justify-end gap-2.5">

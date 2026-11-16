@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Dev Dashboard - สื่อการสอน 5G',
-  description: 'ระบบจัดการสื่อการสอนและสมาชิกสำหรับผู้พัฒนา',
+  title: 'หลังบ้าน - Learn5G',
+  description: 'จัดการสมาชิก แพ็กเกจ และงานนวัตกรรม',
 };
 
 export default function DevLayout({

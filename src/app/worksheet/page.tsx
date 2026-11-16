@@ -2,8 +2,8 @@
 
 import React, { Suspense } from 'react';
 import { Navbar } from '@/components/navbar/Navbar';
-import { NightSky } from '@/components/fx/NightSky';
 import { WorksheetBuilder } from '@/components/worksheet/WorksheetBuilder';
+import { FeatureGate } from '@/components/site/FeatureGate';
 import '@/components/creator/creator.css';
 import '@/components/creator/creator-pages.css';
 
@@ -13,9 +13,10 @@ export default function WorksheetPage() {
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className="l5g-world l5g-world-edit flex-1 relative">
-        <NightSky />
         <Suspense fallback={null}>
-          <WorksheetBuilder />
+          <FeatureGate flag="worksheet" name="ใบงาน AI">
+            <WorksheetBuilder />
+          </FeatureGate>
         </Suspense>
       </main>
     </div>

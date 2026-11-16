@@ -2,43 +2,18 @@
 
 import React, { useEffect, useState } from 'react';
 import { useTheme } from 'next-themes';
-import { Sun, Moon } from 'lucide-react';
-import { cn } from '@/lib/utils/cn';
-import fx from '@/components/ui/fancy.module.css';
+import { Moon, Sun } from 'lucide-react';
 
-export function ThemeToggle() {
-  const { theme, setTheme, resolvedTheme } = useTheme();
+/** สลับโหมดสว่าง/มืด */
+export function ThemeToggle({ className = '' }: { className?: string }) {
+  const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return (
-      <div className="w-10 h-10 rounded-2xl border-2 border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50" />
-    );
-  }
-
-  const isDark = resolvedTheme === 'dark';
-
+  useEffect(() => setMounted(true), []);
+  const dark = mounted && resolvedTheme === 'dark';
+  const label = dark ? 'เปลี่ยนเป็นโหมดสว่าง' : 'เปลี่ยนเป็นโหมดมืด';
   return (
-    <button
-      onClick={() => setTheme(isDark ? 'light' : 'dark')}
-      className={cn(
-        'btn-jelly relative w-10 h-10 rounded-2xl flex items-center justify-center border-2 transition-colors',
-        isDark
-          ? 'bg-gradient-to-br from-amber-300 to-orange-400 border-white/40 shadow-[0_3px_0_0_rgba(194,65,12,0.45)]'
-          : 'bg-gradient-to-br from-indigo-500 to-violet-600 border-white/40 shadow-[0_3px_0_0_rgba(76,29,149,0.45)]'
-      )}
-      aria-label={isDark ? 'เปลี่ยนเป็นโหมดสว่าง' : 'เปลี่ยนเป็นโหมดมืด'}
-      title={isDark ? 'เปลี่ยนเป็นโหมดสว่าง' : 'เปลี่ยนเป็นโหมดมืด'}
-    >
-      {isDark ? (
-        <Sun className={cn('w-5 h-5 text-white', fx.spinSlow)} />
-      ) : (
-        <Moon className="w-5 h-5 text-white -rotate-12 transition-transform hover:rotate-0" />
-      )}
+    <button type="button" onClick={() => setTheme(dark ? 'light' : 'dark')} aria-label={label} title={label} className={`ui-btn ui-btn-ghost h-9 w-9 px-0 ${className}`}>
+      {!mounted ? <span className="h-4 w-4" /> : dark ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
     </button>
   );
 }
