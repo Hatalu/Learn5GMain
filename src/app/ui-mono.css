@@ -99,6 +99,8 @@ html:not([data-tool]) .l5g-hero-sub {
 html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) :is([class*='bg-[#'], [class*='from-[#'], [class*='bg-gradient-to-']):not(img):not(svg *):not(.l5g-gcover *):not(.ma *):not(.l5g-tcard *):not(.l5g-newset-art *):not(.sh-cover *):not(.sh-tpl-art *):not(.sh-tpl-page *):not(.ag-stage *):not(.ag-gart *):not(.ws-paper *):not(.l5g-bg-swatch):not(.l5g-bg-swatch *):not(.l5g-color-dot):not(.l5g-color-custom) {
   background-color: hsl(var(--muted)) !important;
   background-image: none !important;
+  /* พื้นกลายเป็นเทาอ่อน/เข้มตามโหมด: ตัวหนังสือและไอคอน (เดิม text-white) ต้องตามโหมดด้วย */
+  color: hsl(var(--foreground)) !important;
 }
 html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) [class*='text-[#']:not(.l5g-gcover *):not(.ma *):not(.l5g-tcard *):not(.l5g-newset-art *):not(.sh-cover *):not(.sh-tpl-art *):not(.sh-tpl-page *):not(.ag-stage *):not(.ag-gart *):not(.ws-paper *):not(.l5g-bg-swatch):not(.l5g-bg-swatch *):not(.l5g-color-dot):not(.l5g-color-custom) {
   color: hsl(var(--foreground)) !important;
@@ -127,6 +129,7 @@ html:not([data-tool]) .l5g-dot:not(.l5g-tcard *) {
 /* ปุ่ม/ป้ายที่ใส่สีวิชาด้วย style ตรง (ยกเว้นภาพปกชุดคำถามซึ่งเป็นผลงานของครู) */
 html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) :is(button, span, p, li, a)[style*='background']:not(.l5g-gcover *):not(.ma *):not(.l5g-tcard *):not(.l5g-newset-art *):not(.sh-cover *):not(.sh-tpl-art *):not(.sh-tpl-page *):not(.ag-stage *):not(.ag-gart *):not(.ws-paper *):not(.l5g-bg-swatch):not(.l5g-bg-swatch *):not(.l5g-color-dot):not(.l5g-color-custom) {
   background: hsl(var(--muted)) !important;
+  color: hsl(var(--foreground)) !important;
 }
 html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) :is(button, span, p, li, a)[style*='color']:not(.l5g-gcover *):not(.ma *):not(.l5g-tcard *):not(.l5g-newset-art *):not(.sh-cover *):not(.sh-tpl-art *):not(.sh-tpl-page *):not(.ag-stage *):not(.ag-gart *):not(.ws-paper *):not(.l5g-bg-swatch):not(.l5g-bg-swatch *):not(.l5g-color-dot):not(.l5g-color-custom) {
   color: hsl(var(--foreground)) !important;
@@ -346,4 +349,34 @@ html:not([data-tool]) .l5g-world .l5g-quick li::before {
     transition: none;
     transform: none;
   }
+}
+
+/* ---------- ตัวหนังสือ/ไอคอนต้องตามโหมด (17 พ.ย. 2026 ผู้ใช้สั่ง: สว่าง = เข้ม, มืด = สว่าง ทุกหน้า) ----------
+   ต้นเหตุเดิม: คลาสเก่าเขียน color #fff ไว้บนพื้นสี แต่ชั้นนี้เปลี่ยนพื้นเป็นขาว/เทา ตัวหนังสือขาวเลยหายในโหมดสว่าง
+   :not(#__l5g) = เพิ่มน้ำหนัก selector ให้ชนะกฎกว้างด้านบนที่มี :not() ยาว */
+html:not([data-tool]) :is(.sh-tpl-cat, .sh-tpl-empty) {
+  color: hsl(var(--foreground)) !important;
+}
+html:not([data-tool]) .sh-feat > svg {
+  color: hsl(var(--primary)) !important;
+}
+html:not([data-tool]):not(#__l5g) .ws-btn[class*='bg-[#2a2350]'] {
+  background: hsl(var(--primary)) !important;
+  border-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+}
+html:not([data-tool]) .ws-look-sub {
+  color: hsl(var(--muted-foreground));
+}
+html:not([data-tool]):not(#__l5g) :is(.ws-look, .ws-char)[aria-pressed='true'] :is(.ws-look-sub, small) {
+  color: rgb(255 255 255 / 0.85) !important;
+}
+/* พื้นขาวของ Tailwind (bg-white) ในโหมดมืด = พื้นการ์ดมืด ตัวหนังสือสว่าง (ยกเว้นกระดาษ/ภาพตัวอย่าง/QR ที่ต้องขาวเสมอ) */
+html.dark:not([data-tool]) .bg-white:not(img):not(svg *):not(.ws-paper):not(.ws-paper *):not(.sh-tpl-art *):not(.sh-tpl-page *):not(.sh-cover *):not(.l5g-gcover *):not(.ag-stage *):not(.ma *):not([data-keep-white]):not([data-keep-white] *) {
+  background-color: hsl(var(--card)) !important;
+  color: hsl(var(--foreground));
+}
+/* ชื่อแนวเกมบนการ์ดรูปแบบเกม: สีเข้มประจำเกมอ่านไม่ออกบนพื้นมืด ใช้สีหลักของเกมผสมขาวแทน */
+html.dark:not([data-tool]) .l5g-tcard p[style*='color'] {
+  color: color-mix(in srgb, var(--a) 55%, white) !important;
 }

@@ -88,7 +88,7 @@ export default function LoginPage() {
               placeholder="รหัสผ่าน"
               className={`${glassInput} pr-11`}
             />
-            <button type="button" onClick={() => setShow((v) => !v)} aria-label={show ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-400 transition-colors hover:text-neutral-900 dark:hover:text-white">
+            <button type="button" onClick={() => setShow((v) => !v)} aria-label={show ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-500 dark:text-neutral-400 transition-colors hover:text-neutral-900 dark:hover:text-white">
               {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
@@ -107,7 +107,7 @@ export default function LoginPage() {
         >
           {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <>เข้าสู่ระบบ <ArrowRight className="h-4 w-4" /></>}
         </button>
-        <p className="pt-1 text-center text-[11px] text-neutral-400">ลืมรหัสผ่าน ติดต่อแอดมินทางเพจเพื่อรีเซ็ต</p>
+        <p className="pt-1 text-center text-xs text-neutral-500 dark:text-neutral-400">ลืมรหัสผ่าน ติดต่อแอดมินทางเพจเพื่อรีเซ็ต</p>
       </form>
     </LiquidGlassShell>
   );

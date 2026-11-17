@@ -135,7 +135,7 @@ export default function SignupPage() {
                 placeholder="อย่างน้อย 8 ตัว"
                 className={`${glassInput} pr-11`}
               />
-              <button type="button" onClick={() => setShow((x) => !x)} aria-label={show ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-400 transition-colors hover:text-neutral-900 dark:hover:text-white">
+              <button type="button" onClick={() => setShow((x) => !x)} aria-label={show ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-500 dark:text-neutral-400 transition-colors hover:text-neutral-900 dark:hover:text-white">
                 {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
@@ -175,7 +175,7 @@ export default function SignupPage() {
           >
             {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <>สร้างบัญชี <ArrowRight className="h-4 w-4" /></>}
           </button>
-          <p className="text-center text-[11px] leading-relaxed text-neutral-400">บัญชีฟรีใช้ระบบสร้างเกมและสื่อได้ทันที อัปเกรดเป็น Plus Pro หรือ Master ได้ภายหลัง</p>
+          <p className="text-center text-[11px] leading-relaxed text-neutral-500 dark:text-neutral-400">บัญชีฟรีใช้ระบบสร้างเกมและสื่อได้ทันที อัปเกรดเป็น Plus Pro หรือ Master ได้ภายหลัง</p>
         </form>
       )}
     </LiquidGlassShell>

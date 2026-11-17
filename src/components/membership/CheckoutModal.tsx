@@ -219,7 +219,7 @@ export function CheckoutModal({ plan, onPick, onClose, onPaid }: Props) {
             <div className="grid gap-6 md:grid-cols-2">
               <div className="ui-card p-5 text-center">
                 <p className="ui-kicker">PromptPay</p>
-                <div className="relative mx-auto mt-3 aspect-square w-full max-w-[250px] rounded-2xl border bg-white p-2">
+                <div data-keep-white className="relative mx-auto mt-3 aspect-square w-full max-w-[250px] rounded-2xl border bg-white p-2">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={order.qr} alt={`QR พร้อมเพย์ ยอด ${order.amount} บาท`} className={cn('h-full w-full', expired && 'opacity-10')} />
                   {expired && (

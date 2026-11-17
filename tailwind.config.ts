@@ -28,10 +28,11 @@ const P = {
   900: "#4a1d87",
   950: "#2e0f5c",
 };
-/** สีโทนม่วง = ม่วงแบรนด์ สีตกแต่งอื่นเป็นเทา (แดง/เขียว ยังคงไว้สำหรับแจ้งผิด/ถูก) */
+/** เทา = เทากลาง, สีตกแต่งทุกสี = ม่วงแบรนด์ (เดิมเป็นเทา ทำให้ text-white บนพื้น amber/sky กลายเป็นขาวบนเทาอ่อน อ่านไม่ออก)
+ *  แดง/เขียว ยังคงไว้สำหรับแจ้งผิด/ถูก */
 const MONO = {
-  ...Object.fromEntries(["gray", "pink", "sky", "blue", "cyan", "teal", "orange", "amber", "yellow", "lime", "sun", "mint", "slate", "zinc", "stone"].map((k) => [k, N])),
-  ...Object.fromEntries(["indigo", "violet", "purple", "fuchsia"].map((k) => [k, P])),
+  ...Object.fromEntries(["gray", "slate", "zinc", "stone"].map((k) => [k, N])),
+  ...Object.fromEntries(["indigo", "violet", "purple", "fuchsia", "pink", "sky", "blue", "cyan", "teal", "orange", "amber", "yellow", "lime", "sun", "mint"].map((k) => [k, P])),
 };
 
 const config: Config = {
