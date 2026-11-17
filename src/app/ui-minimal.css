@@ -62,9 +62,9 @@ html[data-ui="minimal"]:not([data-tool]) .border-t-2 {
 
 /* ---------- ปุ่มหลัก: หมึกทึบ ---------- */
 html[data-ui="minimal"]:not([data-tool]) .btn-primary-grad {
-  background: var(--min-ink) !important;
-  color: var(--min-bg) !important;
-  border: 1px solid var(--min-ink) !important;
+  background: var(--min-accent) !important;
+  color: #fff !important;
+  border: 1px solid var(--min-accent) !important;
 }
 
 /* ---------- แถบเมนู: ไอคอนเปล่าๆ บนพื้นขาว ---------- */
@@ -106,9 +106,9 @@ html[data-ui="minimal"] .site-nav [data-tour="nav-join"] {
   padding-right: 0.75rem;
 }
 html[data-ui="minimal"] .site-nav .btn-primary-grad {
-  background: var(--min-ink) !important;
-  color: var(--min-bg) !important;
-  border: 1px solid var(--min-ink) !important;
+  background: var(--min-accent) !important;
+  color: #fff !important;
+  border: 1px solid var(--min-accent) !important;
   font-weight: 600;
 }
 
@@ -210,9 +210,9 @@ html[data-ui="minimal"] .l5g-jb .l5g-code-box {
   background: var(--min-bg);
 }
 html[data-ui="minimal"] .l5g-jb .l5g-btn-go {
-  border: 1px solid var(--min-ink);
-  background: var(--min-ink);
-  color: var(--min-bg);
+  border: 1px solid var(--min-accent);
+  background: var(--min-accent);
+  color: #fff;
 }
 
 /* ---------- หน้าตระกูล l5g- / sh- (สร้างเกม, Studio, ใบงาน, ประกวด, สมาชิก): พื้นขาว เส้น 1px ---------- */
@@ -245,8 +245,8 @@ html[data-ui="minimal"]:not([data-tool]) .l5g-hero-sub {
   font-weight: 500;
 }
 html[data-ui="minimal"]:not([data-tool]) .l5g-tab[data-on='true'] {
-  background: var(--min-ink);
-  color: var(--min-bg);
+  background: var(--min-accent);
+  color: #fff;
 }
 
 /* ---------- ใบงาน AI: ปุ่มสีสด -> เส้นบาง ปุ่มหลักหมึกทึบ ---------- */

@@ -9,39 +9,41 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 0 0% 4%;
+    --foreground: 0 0% 7%;
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 4%;
+    --card-foreground: 0 0% 7%;
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 4%;
-    --primary: 0 0% 4%;
+    --popover-foreground: 0 0% 7%;
+    --primary: 264 100% 68%;
     --primary-foreground: 0 0% 100%;
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 42%;
-    --accent: 0 0% 96%;
-    --accent-foreground: 0 0% 4%;
-    --border: 0 0% 90%;
-    --input: 0 0% 88%;
-    --ring: 0 0% 4%;
+    --brand-soft: 267 100% 83%;
+    --muted: 270 30% 97%;
+    --muted-foreground: 0 0% 40%;
+    --accent: 268 100% 96%;
+    --accent-foreground: 264 70% 48%;
+    --border: 0 0% 89%;
+    --input: 0 0% 82%;
+    --ring: 264 100% 68%;
     --radius: 0.875rem;
   }
 
   .dark {
-    --background: 0 0% 3%;
+    --background: 0 0% 7%;
     --foreground: 0 0% 96%;
-    --card: 0 0% 6%;
+    --card: 0 0% 10%;
     --card-foreground: 0 0% 96%;
-    --popover: 0 0% 7%;
+    --popover: 0 0% 11%;
     --popover-foreground: 0 0% 96%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 4%;
-    --muted: 0 0% 11%;
-    --muted-foreground: 0 0% 62%;
-    --accent: 0 0% 11%;
-    --accent-foreground: 0 0% 96%;
-    --border: 0 0% 15%;
-    --input: 0 0% 18%;
-    --ring: 0 0% 96%;
+    --primary: 264 100% 68%;
+    --primary-foreground: 0 0% 100%;
+    --brand-soft: 267 100% 83%;
+    --muted: 0 0% 13%;
+    --muted-foreground: 0 0% 71%;
+    --accent: 264 35% 18%;
+    --accent-foreground: 267 100% 83%;
+    --border: 0 0% 18%;
+    --input: 0 0% 24%;
+    --ring: 267 100% 83%;
   }
 }
 
@@ -70,8 +72,8 @@ h1, h2, h3 {
 }
 
 ::selection {
-  background: hsl(var(--foreground));
-  color: hsl(var(--background));
+  background: hsl(var(--brand-soft));
+  color: #111111;
 }
 
 :focus-visible {
@@ -120,8 +122,8 @@ h1, h2, h3 {
 
   /* ปุ่มหลักเดิม = หมึกทึบ */
   .btn-primary-grad {
-    background: hsl(var(--foreground));
-    color: hsl(var(--background));
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
     transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
   }
   .btn-primary-grad:hover {
@@ -153,8 +155,8 @@ h1, h2, h3 {
     @apply opacity-50 cursor-not-allowed;
   }
   .ui-btn-ink {
-    background: hsl(var(--foreground));
-    color: hsl(var(--background));
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
   }
   .ui-btn-ink:hover {
     opacity: 0.86;
@@ -194,8 +196,8 @@ h1, h2, h3 {
   }
   .ui-input:focus {
     outline: none;
-    border-color: hsl(var(--foreground));
-    box-shadow: 0 0 0 3px hsl(var(--foreground) / 0.08);
+    border-color: hsl(var(--primary));
+    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.18);
   }
   .ui-label {
     @apply block text-[11px] font-medium uppercase mb-1.5;
@@ -205,7 +207,7 @@ h1, h2, h3 {
   .ui-kicker {
     @apply text-[11px] font-medium uppercase;
     letter-spacing: 0.18em;
-    color: hsl(var(--muted-foreground));
+    color: hsl(var(--primary));
   }
   .ui-title {
     @apply font-display font-light tracking-tight;

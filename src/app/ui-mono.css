@@ -16,7 +16,7 @@ html:not([data-tool]) {
   --l5g-violet: hsl(var(--muted));
   --l5g-blue: hsl(var(--muted));
   --l5g-sky: hsl(var(--muted));
-  --min-accent: hsl(var(--foreground));
+  --min-accent: hsl(var(--primary));
   --min-bg: hsl(var(--background));
   --min-ink: hsl(var(--foreground));
   --min-mute: hsl(var(--muted-foreground));
@@ -42,9 +42,9 @@ html:not([data-tool]) :is(.l5g-btn, .ws-btn, .l5g-chipbtn, .l5g-icon-btn, .l5g-u
   font-weight: 500;
 }
 html:not([data-tool]) :is(.l5g-btn-go, .l5g-btn-violet, .l5g-btn-coral, .l5g-btn-mint, .ag-go, .l5g-stpl-go) {
-  background: hsl(var(--foreground)) !important;
-  color: hsl(var(--background)) !important;
-  border-color: hsl(var(--foreground)) !important;
+  background: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+  border-color: hsl(var(--primary)) !important;
 }
 html:not([data-tool]) :is(.l5g-btn, .ws-btn, .l5g-chipbtn, .ag-go):hover {
   transform: none;
@@ -74,9 +74,9 @@ html:not([data-tool]) :is(.l5g-card, .l5g-gcard, .l5g-tcard, .l5g-newset, .l5g-s
 /* ตัวเลือกที่ถูกเลือก/แท็บที่เปิด = หมึกทึบ */
 html:not([data-tool])
   :is(.l5g-tab[data-on='true'], .l5g-chipbtn[aria-pressed='true'], .ws-chip[aria-pressed='true'], .ws-look[aria-pressed='true'], .ws-char[aria-pressed='true'], .ws-tab[aria-selected='true'], .sh-chip[aria-pressed='true'], .l5g-seg [aria-pressed='true'], .l5g-seg [aria-selected='true'], .ag-gcard[aria-pressed='true'], .ag-srcbtn[aria-pressed='true']) {
-  background: hsl(var(--foreground)) !important;
-  color: hsl(var(--background)) !important;
-  border-color: hsl(var(--foreground)) !important;
+  background: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+  border-color: hsl(var(--primary)) !important;
 }
 
 /* ---------- หัวข้อ ---------- */
@@ -87,7 +87,7 @@ html:not([data-tool]) .l5g-hero-title {
   text-shadow: none !important;
 }
 html:not([data-tool]) .l5g-hero-title span {
-  color: hsl(var(--muted-foreground)) !important;
+  color: hsl(var(--primary)) !important;
   background: none !important;
   -webkit-text-fill-color: currentColor;
 }
@@ -122,7 +122,7 @@ html:not([data-tool]) :is(.l5g-sec-note, .l5g-sec-sub) {
   color: hsl(var(--muted-foreground)) !important;
 }
 html:not([data-tool]) .l5g-dot:not(.l5g-tcard *) {
-  background: hsl(var(--foreground)) !important;
+  background: hsl(var(--primary)) !important;
 }
 /* ปุ่ม/ป้ายที่ใส่สีวิชาด้วย style ตรง (ยกเว้นภาพปกชุดคำถามซึ่งเป็นผลงานของครู) */
 html:not([data-tool]) :is(.l5g-world, .l5g-world-edit) :is(button, span, p, li, a)[style*='background']:not(.l5g-gcover *):not(.ma *):not(.l5g-tcard *):not(.l5g-newset-art *):not(.sh-cover *):not(.sh-tpl-art *):not(.sh-tpl-page *):not(.ag-stage *):not(.ag-gart *):not(.ws-paper *):not(.l5g-bg-swatch):not(.l5g-bg-swatch *):not(.l5g-color-dot):not(.l5g-color-custom) {
@@ -159,14 +159,14 @@ html:not([data-tool]) :is(.l5g-stpl-chips, .l5g-stpl-row) button {
   box-shadow: none !important;
 }
 html:not([data-tool]) :is(.l5g-stpl-chips, .l5g-stpl-row) button[data-on='true'] {
-  border-color: hsl(var(--foreground)) !important;
-  background: hsl(var(--foreground)) !important;
-  color: hsl(var(--background)) !important;
+  border-color: hsl(var(--primary)) !important;
+  background: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
 }
 
 /* ---------- หน้าสร้างสื่อการสอน (studio-hub.css) ---------- */
 html:not([data-tool]) .sh-size[data-main='true'] {
-  outline: 1px solid hsl(var(--foreground)) !important;
+  outline: 1px solid hsl(var(--primary)) !important;
   outline-offset: 2px;
   background: hsl(var(--card)) !important;
 }
@@ -178,9 +178,9 @@ html:not([data-tool]) :is(.sh-size-box, .sh-import, .sh-tpl-busy, .sh-empty-ic, 
   box-shadow: none !important;
 }
 html:not([data-tool]) :is(.sh-mode[data-on='true'], .sh-cats button[data-on='true']) {
-  background: hsl(var(--foreground)) !important;
-  color: hsl(var(--background)) !important;
-  border-color: hsl(var(--foreground)) !important;
+  background: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+  border-color: hsl(var(--primary)) !important;
   box-shadow: none !important;
 }
 
@@ -199,19 +199,19 @@ html:not([data-tool])
   box-shadow: none !important;
 }
 html:not([data-tool]) :is(.ag-flow b, .ag-how b, .ag-stepn, .ag-srcbtn[aria-selected='true'], .ag-go, .ag-toast) {
-  background: hsl(var(--foreground)) !important;
-  color: hsl(var(--background)) !important;
-  border-color: hsl(var(--foreground)) !important;
+  background: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+  border-color: hsl(var(--primary)) !important;
   box-shadow: none !important;
 }
 html:not([data-tool]) :is(.ag-gbody small, .ag-set small) {
   color: hsl(var(--muted-foreground)) !important;
 }
 html:not([data-tool]) .ag-link {
-  color: hsl(var(--foreground)) !important;
+  color: hsl(var(--primary)) !important;
 }
 html:not([data-tool]) :is(.ag-gcard[data-on], .ag-set[data-on]) {
-  outline: 2px solid hsl(var(--foreground)) !important;
+  outline: 2px solid hsl(var(--primary)) !important;
   outline-offset: 2px;
 }
 html:not([data-tool]) .ag-gart {

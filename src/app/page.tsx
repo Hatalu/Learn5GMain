@@ -45,7 +45,7 @@ export default function HomePage() {
               สร้างสื่อการสอน
               <br />
               และเกมห้องเรียน
-              <span className="ui-muted whitespace-nowrap"> ในที่เดียว</span>
+              <span className="text-primary whitespace-nowrap"> ในที่เดียว</span>
             </h1>
             <p className="ui-rise mt-7 max-w-xl text-base ui-muted sm:text-lg" style={{ animationDelay: '120ms' }}>
               เครื่องมือที่ทำให้การเตรียมสอนเร็วขึ้น ตั้งแต่ใบงาน เกมตอบคำถาม จนถึงนวัตกรรมตามแผนการสอนของคุณ

@@ -14,10 +14,25 @@ const N = {
   900: "#171717",
   950: "#0a0a0a",
 };
-/** สีตกแต่งเดิมทั้งหมดกลายเป็นเทา (แดง/เขียว ยังคงไว้สำหรับแจ้งผิด/ถูก) */
-const MONO = Object.fromEntries(
-  ["indigo", "violet", "gray", "purple", "fuchsia", "pink", "sky", "blue", "cyan", "teal", "orange", "amber", "yellow", "lime", "sun", "mint", "slate", "zinc", "stone"].map((k) => [k, N])
-);
+// ม่วงของพาเลต Digital Luxury (#9d5cff หลัก, #cfa8ff อ่อน) ผู้ใช้สั่ง 17 พ.ย. 2026
+const P = {
+  50: "#f7f1ff",
+  100: "#efe3ff",
+  200: "#e2ccff",
+  300: "#cfa8ff",
+  400: "#b781ff",
+  500: "#9d5cff",
+  600: "#8a3ff5",
+  700: "#7329d6",
+  800: "#5d22ac",
+  900: "#4a1d87",
+  950: "#2e0f5c",
+};
+/** สีโทนม่วง = ม่วงแบรนด์ สีตกแต่งอื่นเป็นเทา (แดง/เขียว ยังคงไว้สำหรับแจ้งผิด/ถูก) */
+const MONO = {
+  ...Object.fromEntries(["gray", "pink", "sky", "blue", "cyan", "teal", "orange", "amber", "yellow", "lime", "sun", "mint", "slate", "zinc", "stone"].map((k) => [k, N])),
+  ...Object.fromEntries(["indigo", "violet", "purple", "fuchsia"].map((k) => [k, P])),
+};
 
 const config: Config = {
   darkMode: ["class"],
