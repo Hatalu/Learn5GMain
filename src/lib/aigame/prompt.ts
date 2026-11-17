@@ -9,8 +9,8 @@ import { GRADES, LANGS, LEVELS, SUBJECTS, gradeEn, gradeLabel, subjectOf, type S
 import { cleanText } from '@/lib/worksheet/recipe';
 import { richToPlain } from '@/lib/game-creator/quiz';
 import type { QuizContent } from '@/lib/game-creator/types';
-import { AI_GAMES, gameById, type AiGame } from './games';
-import { ENGINE_CSS, ENGINE_HTML, ENGINE_JS, HOOKS_JS } from './engine';
+import { AI_GAMES, actOf, gameById, type Act, type AiGame } from './games';
+import { ENGINE_CSS, ENGINE_HTML, ENGINE_JS, HOOKS_JS, KIT3D_JS } from './engine';
 
 /** คำถามแบบเรียบที่ใช้ทั้ง prompt และเกมตัวอย่าง */
 export interface GItem {
@@ -23,6 +23,8 @@ export interface GItem {
   accept?: string[];
   /** ต้นฉบับมีรูป/คลิปประกอบที่ไม่ได้แนบไปด้วย */
   media?: boolean;
+  /** ข้อเรียงลำดับ: choices เรียงถูกแล้ว ต้องเลือกตามลำดับ correct */
+  ordered?: boolean;
 }
 
 export type Source = 'ai' | 'bank' | 'mine';
@@ -187,6 +189,7 @@ export function cleanGameRecipe(raw: Partial<GameRecipe>): GameRecipe {
   const g = GRADES.includes(Number(raw.g)) ? Number(raw.g) : d.g;
   const topics = subjectOf(s).topics;
   const extras = Array.isArray(raw.extras) ? [...new Set(raw.extras)].filter((x) => EXTRAS.some((e) => e.id === x)).slice(0, EXTRA_MAX) : [];
+  const act = gameById(raw.game)?.act ?? 'pick';
   return {
     game: gameById(raw.game)?.id ?? d.game,
     s,
@@ -196,7 +199,8 @@ export function cleanGameRecipe(raw: Partial<GameRecipe>): GameRecipe {
     lv: LEVELS.some((l) => l.id === raw.lv) ? (raw.lv as GameRecipe['lv']) : d.lv,
     lang: LANGS.some((l) => l.id === raw.lang) ? (raw.lang as GameRecipe['lang']) : d.lang,
     count: COUNT_OPTIONS.includes(Number(raw.count)) ? Number(raw.count) : d.count,
-    source: raw.source === 'bank' || raw.source === 'mine' ? raw.source : 'ai',
+    // ชุดคำถามของเว็บ/ของครูเป็นแบบเลือกตอบ ใช้กับเกมจัดกลุ่ม/เรียงลำดับไม่ได้: ให้ AI เตรียมเนื้อหาเสมอ
+    source: act === 'pick' && (raw.source === 'bank' || raw.source === 'mine') ? raw.source : 'ai',
     note: stripEmoji(String(raw.note ?? '')).slice(0, NOTE_MAX),
     pace: pick(PACES, raw.pace, d.pace),
     // เกมจับคู่ไม่มีจังหวะต่อข้อ: ไม่จับเวลา
@@ -286,6 +290,7 @@ const UI_WORDS: Record<string, [string, string]> = {
   wrong: ['เกือบแล้ว ลองอีกครั้งนะ', 'So close, try again!'],
   reveal: ['คำตอบคือ', 'The answer is'],
   again: ['เล่นอีกครั้ง', 'Play again'],
+  no3d: ['เครื่องนี้แสดงภาพ 3 มิติไม่ได้ ลองเปิดด้วย Chrome หรือเครื่องอื่นนะ', 'This device cannot show 3D. Please try Chrome or another device.'],
 };
 
 export function wordsBlock(lang: GameRecipe['lang']): string {
@@ -295,6 +300,9 @@ export function wordsBlock(lang: GameRecipe['lang']): string {
 
 /** ชื่อ CONFIG ทั้งหมดที่ข้อความของเกมอ้างถึง */
 export const configRefs = (g: AiGame) => [...new Set(JSON.stringify(g).match(/CONFIG\.\w+/g) || [])].map((x) => x.slice(7));
+
+/** ฉลองหลังตอบถูก: จัดกลุ่มสั้น (ชิ้นถัดไปมาเลย ไม่ให้กลายเป็นข้อสอบ) เรียงลำดับยาว (ฉลองทั้งชุด) */
+const FEEDBACK_SEC: Record<Act, number> = { pick: 1.5, sort: 0.8, order: 2.4 };
 
 /** บล็อก CONFIG: เวลาทุกตัว (วินาที) คูณตามความเร็วที่เลือก */
 export function configBlock(r: GameRecipe, game: AiGame): string {
@@ -307,13 +315,56 @@ export function configBlock(r: GameRecipe, game: AiGame): string {
     add('readPerCharSec', p.perChar, 'READ phase: extra seconds per character of a long question');
   }
   add('inputLockSec', 0.4, 'ignore taps for this long after a question becomes playable');
-  add('feedbackCorrectSec', 1.5, 'celebration after a correct answer before the next question');
+  if (game.act === 'sort') add('keepOrder', 1, 'sorting game: choices are the categories and always stay in the same place (choice i = bin i)');
+  add('feedbackCorrectSec', FEEDBACK_SEC[game.act], game.act === 'order' ? 'celebration after the LAST step of a sequence before the next sequence' : 'celebration after a correct answer before the next question');
   add('feedbackWrongSec', 1, 'soft feedback after a wrong answer, then the same question continues');
   if (refs.includes('maxSpeedUp')) add('maxSpeedUp', p.up, 'speed-ups from streaks can never exceed this multiple of the base speed');
   for (const [k, [v, why]] of Object.entries(game.cfg)) add(k, r1(v * p.f), why);
   add('timerSec', r.timer, r.timer ? 'per-question time bar (soft: running out only removes the speed bonus)' : '0 = no time limit');
   add('lives', r.lives === 'on' ? 3 : 0, r.lives === 'on' ? 'hearts (running out never ends the game)' : '0 = no hearts');
   return ['const CONFIG = {', ...L, '};'].join('\n');
+}
+
+/** เนื้อหาที่ให้ AI เตรียม ตามการกระทำการเรียนรู้ของเกม (รูปแบบข้อมูลเดียวกับ engine: q / choices / answer(s) / order) */
+function aiContent(act: Act, about: string, count: number, fields: string, explain: boolean): string {
+  const ex = explain ? ', "explain": "..."' : '';
+  const hintLine = (what: string) =>
+    `- Every entry has a ${fields} field: the hint ${what} in one short sentence and never gives the answer away${explain ? '; the explanation says why in one line' : ''}.`;
+  const common = ['- Correct according to the Thai national core curriculum, using words and situations Thai children of this age know.', '- Double-check every answer before writing it into the code. No duplicates.'];
+  if (act === 'sort')
+    return [
+      `Prepare a sorting activity ${about}.`,
+      '- First choose 2 or 3 categories that are the key idea of this topic for this grade (for example: wood / metal / plastic, even / odd, living / non-living, noun / verb). Short category names (at most 14 characters).',
+      `- Then write ${count} items. Each item belongs to exactly ONE category beyond doubt (no borderline items). Spread them about evenly over the categories and mix obvious items with tricky ones that target common misconceptions.`,
+      '- Each item is short (at most 20 characters): a word, a number, an expression or a short phrase a child can picture.',
+      ...common,
+      hintLine('points at the property that decides the group (never names the group)'),
+      '- Every item uses the SAME choices array (CATEGORIES, same order) and "answer" is the index of its category. Do not shuffle; the engine keeps the bins in place (CONFIG.keepOrder).',
+      '',
+      `Data format: const CATEGORIES = ["...", "..."]; const QUESTIONS = [ { "q": "item", "choices": CATEGORIES, "answer": 0, "hint": "..."${ex} }, ... ];`,
+    ].join('\n');
+  if (act === 'order')
+    return [
+      `Prepare an ordering activity ${about}.`,
+      `- Write ${count} sequences. Each has 3 to 5 steps with exactly one order everyone agrees on (a life cycle, the steps of a process, numbers from smallest to largest, events of a story, the words of a sentence, times of the day).`,
+      '- "q" says what to order and in which direction (for example: "Order from smallest to largest"). Steps are short (at most 18 characters) and all different.',
+      '- "choices" lists the steps in the CORRECT order, "answers" is [0, 1, 2, ...] and "order" is true. The engine shuffles the steps for play and accepts them only in this order.',
+      '- Start with 3-step sequences and move to longer ones.',
+      ...common,
+      hintLine('says how to decide what comes next'),
+      '',
+      `Data format: const QUESTIONS = [ { "q": "...", "choices": ["first", "second", "third"], "answers": [0, 1, 2], "order": true, "hint": "..."${ex} }, ... ];`,
+    ].join('\n');
+  return [
+    `Write ${count} questions ${about}.`,
+    ...common.slice(0, 1),
+    '- 3-4 choices per question, exactly one correct. Wrong choices come from real, common misconceptions, not random values.',
+    '- Short questions (one line if possible). Each answer is short enough to sit on a game object (about 20 characters at most).',
+    '- Order from easy to hard, no duplicates. Double-check every answer before writing it into the code.',
+    hintLine('guides the thinking'),
+    '',
+    `Data format: const QUESTIONS = [ { "q": "...", "choices": ["...", "..."], "answer": 0, "hint": "..."${ex} }, ... ];`,
+  ].join('\n');
 }
 
 export interface PromptExtra {
@@ -343,6 +394,7 @@ export function buildGamePrompt(raw: GameRecipe, extra: PromptExtra = {}): strin
   const mode = game.modes?.[r.mode] || MODES.find((m) => m.id === r.mode)!.en;
   const extras = EXTRAS.filter((e) => r.extras.includes(e.id));
   const explain = r.extras.includes('explain');
+  const act = actOf(game.act);
 
   const langLine =
     r.lang === 'th'
@@ -367,23 +419,15 @@ export function buildGamePrompt(raw: GameRecipe, extra: PromptExtra = {}): strin
         ...items.map(itemLine),
         '];',
       ].join('\n')
-    : [
-        `Write ${r.count} questions in ${qLang} on "${topicFull}" for ${subj.en}, ${gradeEn(r.g)}, ${level.en}.`,
-        '- Correct according to the Thai national core curriculum, using words and situations Thai children of this age know.',
-        '- 3-4 choices per question, exactly one correct. Wrong choices come from real, common misconceptions, not random values.',
-        '- Short questions (one line if possible). Each answer is short enough to sit on a game object (about 20 characters at most).',
-        '- Order from easy to hard, no duplicates. Double-check every answer before writing it into the code.',
-        `- Every question has a ${fields} field: the hint guides the thinking in one short sentence and never gives the answer away${explain ? '; the explanation says why the answer is right in one line' : ''}.`,
-        '',
-        `Data format: const QUESTIONS = [ { "q": "...", "choices": ["...", "..."], "answer": 0, "hint": "..."${explain ? ', "explain": "..."' : ''} }, ... ];`,
-      ].join('\n');
+    : aiContent(game.act, `in ${qLang} on "${topicFull}" for ${subj.en}, ${gradeEn(r.g)}, ${level.en}`, r.count, fields, explain);
 
   const rules = [
     'Build the game ON the starter engine below. Copy the engine code exactly; only fill in the Hooks object, the scene, the art and the CSS. Do not rewrite the engine, do not add a second game loop, do not add setTimeout/setInterval for game logic (use after(sec, fn) and tween() from the engine).',
-    'Copy the WHOLE engine, from the STARTER ENGINE line to the END OF STARTER ENGINE line. Check before answering that your file defines every one of these: safe, txt, attr, store, ease, shuffle, G, boot, after, tween, setState, pause, prepare, readTime, startGame, nextQuestion, beginPlay, answer, endGame, say, hud, frame, Sound, on. A missing boot gives "boot is not defined" and the Start button does nothing.',
+    `Copy the WHOLE engine, from the STARTER ENGINE line to the END OF STARTER ENGINE line${is3d ? ', and the WHOLE 3D KIT' : ''}. Check before answering that your file defines every one of these: safe, txt, attr, store, ease, shuffle, G, boot, after, tween, setState, pause, prepare, answerText, readTime, startGame, nextQuestion, beginPlay, answer, endGame, say, hud, frame, Sound, FX, on${is3d ? ', K3' : ''}. A missing boot gives "boot is not defined" and the Start button does nothing.`,
+    'Use FX for juice: FX.burst(x, y) for confetti at an object (window pixels), FX.text(x, y, "+100") for floating points, FX.shake(6) on impacts. The engine draws FX every frame; do not write another particle system.',
     'Never put onclick="..." attributes in the HTML. The engine wires every button with addEventListener, which also works inside <script type="module"> (inline onclick handlers fail there, which is why "Start" did nothing in earlier attempts).',
     'Anything that is hidden must use display: none (or pointer-events: none). An invisible layer with opacity 0 that covers the screen blocks every tap. #fx, decorations and speech bubbles must have pointer-events: none.',
-    'The question text lives in the HTML element #qtext (the engine fills it). Do not draw the question on a canvas. Answer labels are real HTML/SVG text too.',
+    `The question text lives in the HTML element #qtext (the engine fills it). Do not draw the question on a canvas. Answer labels are real HTML${is3d ? ' text made with K3.label (inside #labels)' : '/SVG text too'}.`,
     'A question ends ONLY when answer(i) returns true for its last correct choice; the engine then moves to the next question by itself. Call answer(i) exactly once per hit (on impact for things that fly), never every frame.',
     'All movement uses the dt passed to Hooks.update (game seconds, already 0 while paused and scaled by the speed slider). Speeds come from CONFIG as "seconds to cross a distance" (speed = distance / CONFIG.xxxSec), so the pace is the same on every screen and on 60, 120 or 144 Hz displays.',
     'Nothing is spawned during READ: spawn(q) is called when PLAY starts. From then on every answer must be on screen and tappable within 1 second (enter with a quick eased pop-in, then move at the CONFIG pace); no empty waiting time. Answer objects that leave the screen or pass the player come back (loop or respawn).',
@@ -420,16 +464,22 @@ Priorities, in this order: (1) it works and is fun at a child's pace, (2) it loo
 - Game speed chosen by the teacher: ${PACES.find((p) => p.id === r.pace)!.en}
 - On-screen language: ${langLine}${r.note ? `\n- Teacher's note (written in Thai; follow it when it is safe and fits the game): ${r.note}` : ''}
 
+Learning design (this is what makes it a learning game, not a quiz with decorations):
+- Learning action: ${act.en}
+- The game action IS the learning action. The child gets a clue (${game.act === 'sort' ? 'the item' : game.act === 'order' ? 'the scattered steps' : 'the question'}), acts on it in the world, and the world proves the result with a visible consequence (${game.act === 'sort' ? 'the item stays in its group and the group grows' : game.act === 'order' ? 'the chain grows piece by piece into the finished sequence' : 'the right object reacts and the scene moves on'}). Never show a separate quiz panel.
+- Mistakes teach: a wrong move gets a soft, funny reaction and a hint about the idea; the child tries again at once. Nothing is ever lost for good.
+- The game adapts as written in the rules below (faster after streaks, calmer after mistakes), always within CONFIG limits.
+
 # 2. Rules that make it work (MOST IMPORTANT)
 Earlier games made from prompts like this had a Start button that did nothing, no question on screen, questions that never moved on, and questions that flashed past too fast. These rules prevent all of that:
 ${num(rules)}
 
-# 3. The game: "${game.en}" (Thai name: "${game.name}"), ${game.dim}
+# 3. The game: "${game.en}" (Thai name: "${game.name}"), ${game.dim}, learning action: ${game.act}
 Scene: ${game.scene}
 ${
   is3d
-    ? 'Technology: a real 3D game built with three.js r160, loaded with an importmap ({"imports": {"three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}) and <script type="module">. Put the three.js renderer canvas inside #world; keep the HUD, question card, answer labels and screens as HTML on top (labels are HTML elements positioned each frame by projecting 3D points with vector.project(camera)). Build every model from primitives (box, sphere, cylinder, cone, torus, capsule) with rounded, chunky proportions; no external model or texture files. Lighting: HemisphereLight plus a DirectionalLight with soft shadows (1024 shadow map), fog for depth, renderer.setPixelRatio(Math.min(devicePixelRatio, 2)), resize with the window. Camera framing: a third-person camera behind and above the player, looking ahead down the track, so the player character fills only about 15% of the screen height near the bottom and the oncoming answers are clearly visible in the middle of the screen; nothing may block the view of the answers. Answer labels: HTML plates projected onto the objects, scaled with distance; labels of far objects fade in only when they are close enough to read, and labels must never overlap each other. Keep the scene light (low-poly, at most a few hundred meshes, reuse geometries and materials) so it stays smooth on school tablets. Load three.js with a dynamic import inside try/catch (const THREE = await import("three")); if it or WebGL fails, show a friendly message in #world instead of a blank page.'
-    : 'Technology: 2D built with HTML + inline SVG sprites inside #world, moved every frame with transform: translate3d(...) rotate(...) scale(...) (GPU-smooth, crisp vector art, perfect Thai text, and each sprite gets its own pointerdown listener). Use the #fx canvas only for particles. No image files.'
+    ? 'Technology: a real 3D game built with three.js r160, loaded with an importmap ({"imports": {"three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}) and ONE <script type="module">. Use the 3D KIT (K3) below for all the hard parts: K3.init() loads three.js and creates the renderer inside #world, the scene, the camera, hemisphere + sun light with soft shadows and fog (it shows a friendly message itself if WebGL fails); after it, set K3.scene.background, K3.scene.fog.color and the camera position to fit this scene. Build every model from primitives (box with small bevel-like rounded proportions, sphere, capsule, cylinder, cone, torus) with K3.part(geometry, color, x, y, z, parent) and K3.group(); give characters and answer objects a dark outline with K3.outline(mesh). Answer text: K3.label(object, text, className, heightAbove) creates an HTML plate that follows the object (never put text in textures); style .k3-label as a solid rounded plate with big text, and hide labels of objects that are far away or behind others so labels never overlap. Taps: in a pointerdown listener on #world use K3.pick(event, listOfObjects); also listen on the label elements. Hooks.draw() must call K3.render(). Camera: frame the scene so every answer object and its label is fully visible on a phone in portrait and in landscape; a player character fills only about 15% of the screen height; nothing blocks the answers; camera moves are slow and eased. No external model or texture files. Keep the scene light (low-poly, a few hundred meshes at most, reuse geometries and K3.mat materials) so it stays smooth on school tablets.'
+    : 'Technology: 2D built with HTML + inline SVG sprites inside #world, moved every frame with transform: translate3d(...) rotate(...) scale(...) (GPU-smooth, crisp vector art, perfect Thai text, and each sprite gets its own pointerdown listener). The #fx canvas belongs to FX (particles and floating text). No image files.'
 }
 
 ## Core mechanics
@@ -493,7 +543,7 @@ ${bullets(settings)}
 - Smooth 60 fps on an average phone; keep particle counts modest.
 
 # 11. Starter engine (use exactly; fill in the Hooks)
-File order: <head> with the Mali font link${is3d ? ' and the three.js importmap' : ''}, then <style> (the engine CSS below + your styles), then the body HTML below with every screen filled in, then ONE <script${is3d ? ' type="module"' : ''}> that contains, in order: CONFIG, QUESTIONS, WORDS, the engine, your game code, and the Hooks object followed by boot().
+File order: <head> with the Mali font link${is3d ? ' and the three.js importmap' : ''}, then <style> (the engine CSS below + your styles), then the body HTML below with every screen filled in, then ONE <script${is3d ? ' type="module"' : ''}> that contains, in order: CONFIG, QUESTIONS, WORDS, the engine, ${is3d ? 'the 3D kit, ' : ''}your game code, and the Hooks object followed by ${is3d ? 'K3.init().then(...boot...) exactly as shown' : 'boot()'}.
 
 ${fence}js
 ${configBlock(r, game)}
@@ -515,17 +565,32 @@ Engine JavaScript (copy exactly):
 ${fence}js
 ${ENGINE_JS}
 ${fence}
-
+${
+  is3d
+    ? `
+3D kit (copy exactly, right after the engine):
+${fence}js
+${KIT3D_JS}
+${fence}
+`
+    : ''
+}
 Hooks to fill in (keep the names; the engine calls them):
 ${fence}js
-${HOOKS_JS}
+${is3d ? HOOKS_JS.replace(/boot\(\);$/, 'K3.init().then((ok) => { if (ok) boot(); });   // 3D: start only after three.js is ready') : HOOKS_JS}
 ${fence}
 
 # 12. Delivery
 - Output format: create the game as a CODE canvas containing the raw HTML source, starting with <!DOCTYPE html> and ending with </html>, so Gemini Canvas can run and preview it as an app. Do NOT create a text document, do not explain the code in the canvas, and do not split it into several files.
 - One complete HTML file. No TODOs, no placeholders, no "add more here", nothing left out.
 - A short comment at the top of the script explains how to edit QUESTIONS and CONFIG.
-- Before answering, test it in your head step by step: the page loads with no error; tapping Start leaves the start screen; question 1 appears big, then moves up while the answers appear and move at the CONFIG pace; a wrong hit shows the hint and the game continues; a correct hit celebrates and question 2 appears; after the last question the result screen appears and Play again works; everything fits a 375 x 667 phone. Fix anything that fails, then output the whole file.`;
+- Before answering, test it in your head step by step: the page loads with no error; tapping Start leaves the start screen; ${
+    game.act === 'sort'
+      ? 'the categories are on screen and the first item arrives at the CONFIG pace; a wrong group shows the hint and the item stays; a correct group celebrates briefly and the next item arrives;'
+      : game.act === 'order'
+        ? 'sequence 1 is shown big, then the steps appear scattered; a step out of order shows the hint; each next step joins the chain; the last step celebrates and sequence 2 appears;'
+        : 'question 1 appears big, then moves up while the answers appear and move at the CONFIG pace; a wrong hit shows the hint and the game continues; a correct hit celebrates and question 2 appears;'
+  }${is3d ? ' the 3D scene renders with labels on the right objects and taps pick the right object;' : ''} after the last question the result screen appears and Play again works; everything fits a 375 x 667 phone. Fix anything that fails, then output the whole file.`;
 }
 
 /* ---------------------------------------------------------------- prompt แก้เกมต่อ (วางต่อในแชตเดิมของ Gemini) */

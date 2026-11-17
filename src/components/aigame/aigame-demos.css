@@ -320,3 +320,111 @@ html body .ag-stage .ag-fish:not([data-state]) { animation-iteration-count: infi
 @keyframes ag-bob { to { transform: translateY(-5%) scale(1.02, 0.98); } }
 .ag-dart { position: absolute; width: 3%; min-width: 10px; translate: -50% -50%; z-index: 7; pointer-events: none; animation: ag-dart 0.38s cubic-bezier(0.3, 0.6, 0.4, 1) forwards; }
 @keyframes ag-dart { from { left: 50%; top: 86%; } to { left: var(--tx); top: var(--ty); } }
+
+/* ---------- ฉากต้องมีชีวิต: ธีมมินิมอล (เปิดตลอด) และกราฟิกลื่นตัดแอนิเมชันวนเหลือรอบเดียว ในเกมตัวอย่างให้วนต่อ
+   (ความเจาะจงต้องสูงกว่า html[data-ui=minimal]:not([data-tool]) *:not(.animate-spin)) ---------- */
+html body .ag-stage :is(.ag-cloud, .ag-water, .ag-boat, .ag-slime svg, .ag-kid, .ag-road3d, .ag-runner svg, .ag-stars, .ag-flame, .ag-leg, .ag-blower svg, .ag-balloon svg, .ag-loop, .ag-gear, .ag-belt-top, .ag-crate:not(.ag-crate-fly), .ag-crate b, .ag-mill i, .ag-smoke, .ag-car:not([data-on]):not([data-shake]) svg),
+html body .ag-stage :is(.ag-cloud, .ag-loop)::before,
+html body .ag-stage :is(.ag-cloud, .ag-loop)::after { animation-iteration-count: infinite !important; }
+@media (prefers-reduced-motion: reduce) {
+  html body .ag-stage :is(.ag-gear, .ag-smoke, .ag-mill i, .ag-belt-top) { animation: none !important; }
+}
+
+/* ---------- โรงงานสายพาน (จัดกลุ่ม) ---------- */
+.ag-factory { background: linear-gradient(#ffeedd 0 58%, #d9c2ff 58%); }
+.ag-fwall { position: absolute; inset: 0 0 42%; }
+.ag-fwin { position: absolute; top: 22%; width: 18%; aspect-ratio: 1; border-radius: 999px; background: radial-gradient(circle at 35% 35%, #fff, #bfe9ff 60%); border: 3px solid #2a2350; }
+.ag-gear { position: absolute; width: 11%; animation: ag-turn 6s linear infinite; }
+.ag-gear2 { width: 8%; animation-direction: reverse; animation-duration: 4s; }
+@keyframes ag-turn { to { transform: rotate(360deg); } }
+.ag-belt { position: absolute; left: 3%; right: 14%; top: 44%; height: 11%; }
+.ag-belt-top { position: absolute; inset: 0 0 35%; border: 3px solid #2a2350; border-radius: 999px; background: #5d5486 repeating-linear-gradient(90deg, transparent 0 22px, rgba(255, 255, 255, 0.25) 22px 30px); background-size: 30px 100%; animation: ag-beltmove 0.8s linear infinite; }
+@keyframes ag-beltmove { to { background-position: 30px 0; } }
+.ag-belt-wheel { position: absolute; bottom: 0; width: 6%; aspect-ratio: 1; translate: -50% 0; border-radius: 999px; background: #ffcf3f; border: 3px solid #2a2350; }
+.ag-arm { position: absolute; right: 2%; top: 30%; width: 12%; z-index: 6; pointer-events: none; }
+.ag-arm svg { display: block; overflow: visible; }
+.ag-arm-up { transform-origin: 31px 60px; transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.ag-arm[data-swing] .ag-arm-up { transform: rotate(-38deg); }
+.ag-crate {
+  position: absolute; left: 4%; top: 37.5%; z-index: 7; translate: 0 -50%;
+  min-width: 15%; max-width: 30%; padding: 0.55rem 0.6rem; border: 3px solid #2a2350; border-radius: 0.8rem;
+  background: #ffcf7a repeating-linear-gradient(90deg, transparent 0 46%, rgba(42, 35, 80, 0.12) 46% 54%); box-shadow: 0 4px 0 #2a2350;
+  text-align: center; font-weight: 900; font-size: clamp(0.8rem, 3cqw, 1.15rem); line-height: 1.2; overflow-wrap: anywhere;
+  animation: ag-ride 9s linear infinite;
+}
+.ag-crate b { display: block; animation: ag-wobble 0.9s ease-in-out infinite alternate; }
+@keyframes ag-ride { 0% { left: 3%; opacity: 0; } 4% { opacity: 1; } 94% { opacity: 1; } 100% { left: 66%; opacity: 0; } }
+@keyframes ag-wobble { from { transform: rotate(-3deg); } to { transform: rotate(3deg); } }
+.ag-crate-fly { translate: -50% -50%; animation: ag-throw 0.55s cubic-bezier(0.35, 0.1, 0.45, 1) forwards; }
+@keyframes ag-throw {
+  0% { left: var(--x0); top: var(--y0); transform: scale(1) rotate(0); }
+  50% { top: calc(min(var(--y0), var(--y1)) - 16%); transform: scale(1.08) rotate(-160deg); }
+  100% { left: var(--x1); top: var(--y1); transform: scale(0.75) rotate(-340deg); }
+}
+.ag-bins { position: absolute; left: 3%; right: 3%; bottom: 4%; top: 64%; display: grid; gap: 4%; z-index: 5; }
+.ag-bin { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; background: none; border: 0; padding: 0; cursor: pointer; transition: transform 0.15s; }
+.ag-bin:hover { transform: translateY(-3px); }
+.ag-bin svg { width: 100%; max-width: 160px; display: block; }
+.ag-bin-sign { position: absolute; top: -2%; z-index: 2; max-width: 96%; padding: 0.15rem 0.55rem; border: 3px solid #2a2350; border-radius: 0.7rem; background: #fff; font-weight: 900; font-size: clamp(0.78rem, 2.8cqw, 1.1rem); line-height: 1.2; box-shadow: 0 3px 0 #2a2350; }
+.ag-bin-n { position: absolute; bottom: 14%; font-style: normal; font-weight: 900; font-size: clamp(0.9rem, 3.2cqw, 1.3rem); color: #fff; text-shadow: 0 2px 0 #2a2350; }
+.ag-bin .ag-num { top: 0; right: 4%; }
+.ag-bin .ag-burst { top: -20%; width: 80%; }
+.ag-bin[data-bonk] svg { animation: ag-shake 0.4s ease-in-out; }
+.ag-bin[data-got] svg { animation: ag-squash 0.35s ease-out; }
+@keyframes ag-shake { 25% { transform: translateX(-6%) rotate(-4deg); } 75% { transform: translateX(6%) rotate(4deg); } }
+@keyframes ag-squash { 40% { transform: scale(1.12, 0.86); } 100% { transform: scale(1); } }
+
+/* ---------- รถไฟเรียงลำดับ ---------- */
+.ag-station { background: linear-gradient(#a9e4ff 0 46%, #c6efb4 46%); }
+.ag-rail { position: absolute; left: 0; right: 0; height: 2.2%; translate: 0 2.4cqh; background: repeating-linear-gradient(90deg, #8a5a3c 0 10px, transparent 10px 22px); border-bottom: 3px solid #6b6b8a; }
+.ag-mill { position: absolute; right: 8%; top: 22%; width: 6%; height: 18%; background: #fff; border: 3px solid #2a2350; border-radius: 40% 40% 0 0; }
+.ag-mill i { position: absolute; left: 50%; top: 10%; width: 260%; aspect-ratio: 1; translate: -50% -50%; background: conic-gradient(#ff6b7a 0 10%, transparent 10% 25%, #ffcf3f 25% 35%, transparent 35% 50%, #4fb3ff 50% 60%, transparent 60% 75%, #3fd6a8 75% 85%, transparent 85%); border-radius: 999px; animation: ag-turn 7s linear infinite; }
+.ag-mover { transition: left 0.65s cubic-bezier(0.45, 0, 0.3, 1), top 0.65s cubic-bezier(0.45, 0, 0.3, 1), transform 1.5s cubic-bezier(0.55, 0, 0.8, 0.4); }
+.ag-station[data-go] .ag-mover { transform: translateX(115cqw) !important; transition-delay: 0.35s; }
+.ag-loco { position: absolute; left: 2%; top: 47%; width: 20%; max-width: 150px; translate: 0 -78%; z-index: 4; animation: ag-arrive 0.9s cubic-bezier(0.2, 0.8, 0.3, 1); }
+@keyframes ag-arrive { from { left: -25%; } }
+.ag-loco svg { display: block; overflow: visible; }
+.ag-smoke { position: absolute; left: 12%; top: -6%; width: 14%; aspect-ratio: 1; border-radius: 999px; background: #fff; opacity: 0; animation: ag-smoke 1.4s ease-out infinite; }
+@keyframes ag-smoke { 0% { transform: translateY(0) scale(0.4); opacity: 0.9; } 100% { transform: translate(-60%, -160%) scale(1.6); opacity: 0; } }
+.ag-car {
+  position: absolute; width: 15%; max-width: 116px; translate: -50% -78%; z-index: 5;
+  background: none; border: 0; padding: 0; cursor: pointer; display: flex; justify-content: center;
+}
+.ag-car[data-on] { translate: 0 -78%; z-index: 4; pointer-events: none; }
+.ag-car svg { width: 100%; display: block; overflow: visible; }
+.ag-car-t { position: absolute; top: 14%; left: 10%; right: 10%; height: 50%; display: flex; align-items: center; justify-content: center; text-align: center; font-weight: 900; font-size: clamp(0.66rem, 2.5cqw, 0.95rem); line-height: 1.1; overflow-wrap: anywhere; }
+@container (max-width: 440px) {
+  .ag-car { width: 17%; }
+  .ag-loco { width: 22%; }
+}
+.ag-car .ag-num { top: -14%; right: -4%; }
+.ag-car-n { position: absolute; top: -18%; left: 50%; translate: -50% 0; font-style: normal; width: 1.3rem; height: 1.3rem; border-radius: 999px; background: #3fd6a8; color: #fff; border: 2px solid #2a2350; font-size: 0.72rem; font-weight: 900; display: flex; align-items: center; justify-content: center; animation: ag-pop 0.35s ease-out; }
+.ag-car:not([data-on]) svg { animation: ag-bob 1.4s ease-in-out infinite alternate; }
+.ag-car[data-glow] svg { filter: drop-shadow(0 0 6px #ffd166) drop-shadow(0 0 12px #ffd166); }
+.ag-car[data-shake] svg { animation: ag-shake 0.45s ease-in-out; }
+.ag-car:hover:not([data-on]) { z-index: 6; }
+
+/* ---------- เกมตัวอย่าง 3D (three.js) ---------- */
+.ag-3d { background: #bfe9ff; touch-action: none; }
+.ag-3dcanvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; display: block; z-index: 0; }
+.ag-3dlabels { position: absolute; inset: 0; z-index: 8; pointer-events: none; overflow: hidden; }
+.ag-3dlabel {
+  position: absolute; left: 0; top: 0; pointer-events: auto; cursor: pointer; white-space: nowrap;
+  max-width: 11em; overflow: hidden; text-overflow: ellipsis;
+  padding: 0.2rem 0.6rem; border: 3px solid #2a2350; border-radius: 0.8rem; background: #fff; box-shadow: 0 3px 0 #2a2350;
+  font-weight: 900; font-size: clamp(0.72rem, 2.6cqw, 1.05rem); line-height: 1.25; color: #2a2350;
+}
+.ag-3dlabel[data-off] { opacity: 0.45; }
+.ag-3dlabel[data-glow] { box-shadow: 0 0 0 3px #ffd166, 0 0 14px 4px #ffd166; }
+.ag-3dlabel.is-item { background: #2a2350; color: #fff; pointer-events: none; }
+.ag-3dlabel.is-sign { background: var(--c, #fff); }
+.ag-3dlabel.is-small { font-size: clamp(0.62rem, 2.1cqw, 0.88rem); padding: 0.12rem 0.45rem; white-space: normal; text-align: center; max-width: 8em; }
+.ag-3dlabel .ag-num { position: static; display: inline-flex; margin-right: 0.3rem; vertical-align: middle; }
+.ag-3dpad { position: absolute; left: 0.6rem; right: 0.6rem; bottom: 0.6rem; z-index: 12; display: flex; justify-content: space-between; pointer-events: none; }
+.ag-3dpad button { pointer-events: auto; width: 2.8rem; height: 2.8rem; border-radius: 999px; border: 3px solid #2a2350; background: #fff; box-shadow: 0 3px 0 #2a2350; display: flex; align-items: center; justify-content: center; }
+.ag-3dpad button svg { width: 60%; }
+.ag-lanebar { position: absolute; left: 3.9rem; right: 3.9rem; bottom: 0.7rem; z-index: 11; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.35rem; pointer-events: none; }
+.ag-lanebar span { background: var(--c); border: 3px solid #2a2350; border-radius: 0.8rem; padding: 0.25rem 0.3rem; text-align: center; font-weight: 900; font-size: clamp(0.68rem, 2.4cqw, 0.95rem); line-height: 1.15; color: #2a2350; opacity: 0.8; overflow-wrap: anywhere; transition: transform 0.15s, opacity 0.15s; }
+.ag-lanebar span[data-on] { opacity: 1; transform: translateY(-5px); box-shadow: 0 4px 0 #2a2350; }
+.ag-lanebar span[data-off] { opacity: 0.3; }
+.ag-3dhint { position: absolute; left: 50%; bottom: 0.8rem; translate: -50% 0; z-index: 12; padding: 0.2rem 0.7rem; border-radius: 999px; background: rgba(42, 35, 80, 0.75); color: #fff; font-weight: 800; font-size: 0.75rem; pointer-events: none; white-space: nowrap; }

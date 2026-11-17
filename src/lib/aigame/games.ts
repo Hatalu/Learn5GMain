@@ -7,6 +7,37 @@
 
 export type Dim = '2D' | '3D';
 
+/**
+ * การกระทำการเรียนรู้ = สิ่งที่เด็กทำกับความรู้ในเกม (หลักออกแบบ: กลไกเกมต้องเป็นการกระทำเดียวกับบทเรียน ไม่ใช่ข้อสอบแปะบนเกม)
+ * pick = ระบุ/จำ/คำนวณแล้วเลือกคำตอบ · sort = แยกของเข้าหมวด · order = เรียงขั้นตอน/ลำดับ
+ */
+export type Act = 'pick' | 'sort' | 'order';
+
+export const ACTS: { id: Act; th: string; sub: string; unit: string; en: string }[] = [
+  {
+    id: 'pick',
+    th: 'เลือกคำตอบ',
+    sub: 'จำ คำนวณ ตีความ แล้วเลือกคำตอบที่ถูก',
+    unit: 'ข้อ',
+    en: 'IDENTIFY: the child recalls, calculates or interprets, then acts on the one right answer among several.',
+  },
+  {
+    id: 'sort',
+    th: 'จัดกลุ่ม',
+    sub: 'แยกของเข้าหมวด เช่น วัสดุ ชนิดคำ คู่-คี่ สิ่งมีชีวิต',
+    unit: 'ชิ้น',
+    en: 'CLASSIFY: the child looks at one item at a time and physically moves it into the category it belongs to. The categories stay on screen for the whole game, so the child compares every item with the same set of groups (this builds the concept, not just one fact).',
+  },
+  {
+    id: 'order',
+    th: 'เรียงลำดับ',
+    sub: 'เรียงขั้นตอน วัฏจักร ตัวเลข เหตุการณ์ หรือคำในประโยค',
+    unit: 'ชุด',
+    en: 'SEQUENCE: the child sees all the pieces of one sequence scattered and builds the sequence piece by piece in the right order. Each correct piece visibly joins the growing chain, so the child sees the whole order take shape.',
+  },
+];
+export const actOf = (id: Act) => ACTS.find((a) => a.id === id)!;
+
 export interface AiGame {
   id: string;
   /** ชื่อเกม (ไทย) */
@@ -14,6 +45,8 @@ export interface AiGame {
   /** ชื่อเกมภาษาอังกฤษ (ใช้เป็นชื่อในเกม) */
   en: string;
   dim: Dim;
+  /** การกระทำการเรียนรู้ของเกมนี้ */
+  act: Act;
   /** สีหลักของการ์ด */
   color: string;
   /** อธิบายเกมหนึ่งบรรทัด */
@@ -46,6 +79,7 @@ export const AI_GAMES: AiGame[] = [
     name: 'ยิงลูกโป่งคำตอบ',
     en: 'Balloon Pop Party',
     dim: '2D',
+    act: 'pick',
     color: '#ff6b7a',
     pitch: 'เป่าลูกดอกใส่ลูกโป่งคำตอบที่ลอยตามลม เลือกลูกที่ถูกก่อนลมพัดหนี',
     how: ['อ่านคำถามบนป้ายด้านบน', 'แตะลูกโป่งที่ถูก ตัวละครจะเป่าลูกดอกไป', 'ระวังลมพัด ลูกโป่งจะลอยเฉไป'],
@@ -83,6 +117,7 @@ export const AI_GAMES: AiGame[] = [
     name: 'วิ่งผ่านประตูคำตอบ',
     en: 'Answer Gate Run',
     dim: '3D',
+    act: 'pick',
     color: '#4fb3ff',
     pitch: 'วิ่งบนถนน 3 เลน เปลี่ยนเลนไปชนประตูที่มีคำตอบถูก',
     how: ['ดูคำถามที่ลอยเหนือถนน', 'ปัด/กดลูกศร เปลี่ยนเลนไปประตูที่ถูก', 'ผ่านประตูถูกได้เหรียญและวิ่งเร็วขึ้น'],
@@ -122,6 +157,7 @@ export const AI_GAMES: AiGame[] = [
     name: 'ทุบตัวตุ่นคำตอบ',
     en: 'Whack-a-Mole Quiz',
     dim: '2D',
+    act: 'pick',
     color: '#3fd6a8',
     pitch: 'ตัวตุ่นถือป้ายคำตอบโผล่จากหลุม ทุบตัวที่ถือคำตอบถูก',
     how: ['อ่านคำถามบนป้ายด้านบน', 'รอตัวตุ่นโผล่ แล้วทุบตัวที่ถูก', 'ทุบผิด ตัวตุ่นแลบลิ้นแล้วมุดหนี'],
@@ -156,6 +192,7 @@ export const AI_GAMES: AiGame[] = [
     name: 'ตกปลาคำตอบ',
     en: 'Lucky Fishing',
     dim: '2D',
+    act: 'pick',
     color: '#22b8cf',
     pitch: 'ปลาว่ายพร้อมป้ายคำตอบ หย่อนเบ็ดลงไปตกตัวที่ถูก',
     how: ['อ่านคำถามบนเรือ', 'แตะปลาที่ถือคำตอบถูกเพื่อหย่อนเบ็ด', 'ตกได้ปลาใหญ่ = คะแนนมาก'],
@@ -190,6 +227,7 @@ export const AI_GAMES: AiGame[] = [
     name: 'เปิดการ์ดจับคู่',
     en: 'Match & Flip',
     dim: '2D',
+    act: 'pick',
     color: '#9b6cf0',
     pitch: 'จำตำแหน่งการ์ดคำตอบที่คว่ำอยู่ แล้วเปิดใบที่ตอบคำถามบนจอได้ถูก',
     how: ['ดูการ์ดคำตอบทุกใบก่อนคว่ำ', 'อ่านคำถาม แล้วเปิดการ์ดที่เป็นคำตอบ', 'จำตำแหน่งได้ ยิ่งเปิดถูกเร็ว'],
@@ -217,6 +255,7 @@ export const AI_GAMES: AiGame[] = [
     name: 'ป้องกันปราสาท',
     en: 'Castle Guardians',
     dim: '2D',
+    act: 'pick',
     color: '#ff9a3d',
     pitch: 'สไลม์ขนมเดินเข้าหาปราสาท ตอบถูกเพื่อยิงปืนใหญ่ลูกกวาด',
     how: ['สไลม์เดินมาทางปราสาท', 'ตอบคำถามถูก = ปืนใหญ่ยิง', 'ปกป้องปราสาทให้ครบทุกระลอก'],
@@ -247,6 +286,7 @@ export const AI_GAMES: AiGame[] = [
     name: 'ชักเย่อทีมความรู้',
     en: 'Tug of Knowledge',
     dim: '2D',
+    act: 'pick',
     color: '#ffcf3f',
     pitch: 'สองทีมแข่งกันตอบ ตอบถูกดึงเชือกเข้าหาฝั่งตัวเอง เล่นหน้าห้องได้',
     how: ['แบ่งห้องเป็น 2 ทีม (ซ้าย/ขวา)', 'ทีมที่ตอบถูกได้ดึงเชือกเข้าหาตัว', 'ธงกลางเชือกเข้าเขตใครก่อนชนะ'],
@@ -279,6 +319,7 @@ export const AI_GAMES: AiGame[] = [
     name: 'ยานอวกาศบินลอดวงแหวน',
     en: 'Star Ring Pilot',
     dim: '3D',
+    act: 'pick',
     color: '#7c5cf0',
     pitch: 'ขับยานบินผ่านอวกาศ ลอดวงแหวนที่มีคำตอบถูก',
     how: ['ดูคำถามบนจอยาน', 'บังคับยานไปลอดวงแหวนคำตอบที่ถูก', 'เก็บดาวและเชื้อเพลิงระหว่างทาง'],
@@ -302,6 +343,123 @@ export const AI_GAMES: AiGame[] = [
     cfg: {
       ringTravelSec: [8, 'seconds for a set of rings to travel from far away to the ship'],
       gapSec: [2.5, 'seconds of free flight between two sets of rings'],
+    },
+  },
+  {
+    id: 'belt',
+    name: 'โรงงานสายพานแยกของ',
+    en: 'Sorting Factory',
+    dim: '2D',
+    act: 'sort',
+    color: '#2bb5a0',
+    pitch: 'ของไหลมาบนสายพานทีละชิ้น แตะถังให้แขนกลดีดของลงหมวดที่ถูก',
+    how: ['ดูของที่ไหลมาบนสายพาน', 'แตะถังหมวดที่ของชิ้นนั้นควรอยู่', 'แยกถูกต่อเนื่อง สายพานยิ่งเร็ว'],
+    fit: 'จัดกลุ่ม · วัสดุ ชนิดคำ คู่-คี่ สัตว์-พืช',
+    scene:
+      'A bright toy factory: pastel walls with big round windows, pipes and gears turning slowly in the background, a long conveyor belt across the middle with moving stripes and rolling wheels, and 2 or 3 big colorful sorting bins along the bottom, each with its category name on a large sign. A cute robot arm (operated by the mascot) stands at the end of the belt.',
+    core: [
+      'The bins are the categories: q.choices in a FIXED order (CONFIG.keepOrder is 1, so choice i is always bin i). Build the bins once in setup() from QUESTIONS[0].choices; they never move or change, so the child always compares each item with the same groups.',
+      'Each question is ONE item: spawn(q) drops a crate showing the item (q.q, big and readable, plus a simple drawn icon when it fits) onto the left end of the belt with a bounce. The belt carries it to the right end in CONFIG.beltSec seconds; there it rides a small loop back to the left end (it never falls off), so an item can never be missed.',
+      'Answer action: tap/click a bin, or drag the crate onto a bin. The robot arm swings back (anticipation), grabs the crate and flings it along an arc into that bin in CONFIG.flySec seconds. Call answer(binIndex) when the crate lands.',
+      'Correct: the crate drops in with a satisfying thunk, the bin lid bounces, the counter on that bin goes up, sparkles burst, and the next item arrives at once.',
+      'Wrong: the crate bounces off the bin rim with a cartoon boing, rolls back onto the belt and the hint appears in #bubble. The same item continues.',
+      'Every 5 items a short "quality check" banner shows how many items each bin holds. Between items a little sweeper bot crosses the floor or a pipe puffs steam.',
+    ],
+    controls: ['Tap or click a bin, or drag the crate onto a bin.', 'Keyboard: number keys 1-3 match the bins from left to right.'],
+    progression: [
+      'Every 4 correct items in a row the belt runs 8% faster, never faster than CONFIG.maxSpeedUp times the base speed.',
+      'After 2 wrong items in a row the belt returns to the base speed.',
+    ],
+    juice: ['Belt stripes scroll at the belt speed and crates wobble while riding.', 'The robot arm has springy joints with overshoot.', 'Bins squash when an item lands and the counter pops.'],
+    cfg: {
+      beltSec: [9, 'seconds for an item to ride from the left end to the right end of the belt'],
+      flySec: [0.5, 'seconds for a crate to fly from the belt into a bin'],
+    },
+    noRead: true,
+  },
+  {
+    id: 'roll',
+    name: 'บอลกลิ้งกลับบ้าน',
+    en: 'Roll Home Sort',
+    dim: '3D',
+    act: 'sort',
+    color: '#ff8a5c',
+    pitch: 'บอลนุ่มถือป้ายของกลิ้งบนโต๊ะของเล่น 3D พาบอลเข้าบ้านหมวดที่ถูก',
+    how: ['ดูของที่บอลถืออยู่', 'แตะบ้านหมวดที่ถูก บอลจะกลิ้งเข้าไป', 'เข้าผิดบ้าน บอลเด้งกลับมาให้ลองใหม่'],
+    fit: 'จัดกลุ่ม · ป.1-ป.4 · วิทย์ ภาษา คณิต',
+    scene:
+      'A cozy 3D toy table seen from a high three-quarter camera: a soft wooden board with low rounded walls, little trees and flowers in the corners, and 2 or 3 small toy houses along the far edge, each a different color with its category name on a big sign above the roof. A squishy glossy ball with a cute face sits on a launch pad near the camera.',
+    core: [
+      'The houses are the categories: q.choices in a FIXED order (CONFIG.keepOrder is 1, so choice i is always house i). Build the houses once in setup() from QUESTIONS[0].choices; they never change.',
+      'Each question is ONE item: spawn(q) pops a new ball out of a toy tube onto the launch pad; a label plate above the ball shows q.q. The ball idles: breathes, blinks and looks at the houses.',
+      'Answer action: tap a house (raycast the house meshes or tap its sign), or drag the ball toward a house and release. The ball squashes (anticipation), then rolls along a smooth curved path to that house in CONFIG.rollSec seconds, with rotation that matches the distance travelled and a small hop over a bump. Call answer(houseIndex) when it reaches the door.',
+      'Correct: the door swings open, the ball hops inside, the windows light up and a flag on the roof rises one notch (each house counts its items), confetti, and the next ball pops out at once.',
+      'Wrong: the door stays shut, the ball bonks it, rolls back to the pad with a dizzy wobble and the hint appears. Same item.',
+      'Little life: a bird lands on a roof now and then, flowers sway, and the houses turn slightly toward the ball.',
+    ],
+    controls: ['Tap a house, or drag the ball and release toward a house.', 'Keyboard: number keys 1-3 match the houses from left to right.'],
+    progression: [
+      'Every 4 correct in a row a toy block appears on the table and the ball path curves around it (visual only, it never blocks the answer).',
+      'After 2 wrong in a row the roll speed goes back to normal and the camera moves a little closer.',
+    ],
+    juice: ['The ball squashes on landing and stretches when it rolls fast.', 'Dust puffs where the ball bounces; a house shakes happily on a correct ball.', 'The camera dips slightly toward the chosen house and returns.'],
+    cfg: {
+      rollSec: [1.1, 'seconds for the ball to roll from the launch pad to a house'],
+    },
+    noRead: true,
+  },
+  {
+    id: 'train',
+    name: 'รถไฟเรียงลำดับ',
+    en: 'Order Express',
+    dim: '2D',
+    act: 'order',
+    color: '#ff6b7a',
+    pitch: 'ตู้รถไฟแต่ละตู้คือหนึ่งขั้น แตะตามลำดับให้ตู้วิ่งมาต่อหัวรถจักร',
+    how: ['อ่านโจทย์ว่าให้เรียงอะไร', 'แตะตู้ที่เป็นลำดับต่อไป', 'ต่อครบทุกตู้ รถไฟออกเดินทาง'],
+    fit: 'เรียงลำดับ · วัฏจักร ขั้นตอน ตัวเลข ประโยค',
+    scene:
+      'A sunny toy railway station: a cute locomotive with a smiling face waits on the main track on the left, a yard of short side tracks below where the cars wait, hills, a windmill and puffy clouds behind. Each car is a different color and carries one step on a big sign.',
+    core: [
+      'Each question is one sequence: q.q says what to put in order, q.choices are the steps (shuffled by the engine), q.correct lists them in the right order and q.ordered is true, so answer(i) is only true for the NEXT step.',
+      'spawn(q): one car per step rolls in and parks on the side tracks in the shuffled order, each with its sign facing the player and a small number painted on it for the keyboard.',
+      'Answer action: tap a car and call answer(i) right away. If it returns true, the car rolls over the switch onto the main track and couples behind the last car in CONFIG.coupleSec seconds with a clack and a puff, and gets a badge with its place (1, 2, 3...).',
+      'Wrong car: it honks, shakes on its spot and its wheels spin; the hint appears; the train waits. After 2 wrong taps the engine reveals the answer, so also make the next correct car glow.',
+      'When the last car couples, the whistle blows and the whole train chugs off to the right in CONFIG.departSec seconds with smoke puffs while the finished sequence is shown as a line of signs at the top; then the locomotive backs in for the next sequence.',
+    ],
+    controls: ['Tap or click a car.', 'Keyboard: number keys match the number painted on each waiting car.'],
+    progression: ['From the 4th sequence the waiting cars swap places once while the question is read (slow and easy to follow).', 'A sequence finished with no wrong tap earns a golden car for the final parade on the result screen.'],
+    juice: ['The locomotive breathes steam and blinks; wheels really turn while moving.', 'Coupling clack with a small screen shake; smoke puffs grow and fade.', 'Waiting cars bob on their springs.'],
+    cfg: {
+      coupleSec: [0.7, 'seconds for a car to roll from its side track to the end of the train'],
+      departSec: [2, 'seconds for the finished train to leave the screen'],
+    },
+  },
+  {
+    id: 'stack',
+    name: 'ต่อตึกบล็อกเรียงลำดับ',
+    en: 'Block Tower Order',
+    dim: '3D',
+    act: 'order',
+    color: '#ffb547',
+    pitch: 'บล็อก 3D แต่ละก้อนคือหนึ่งขั้น แตะตามลำดับให้เครนยกไปต่อเป็นตึก',
+    how: ['อ่านโจทย์ว่าให้เรียงอะไร', 'แตะบล็อกที่เป็นลำดับต่อไป', 'ต่อครบ ตึกเปิดไฟฉลอง'],
+    fit: 'เรียงลำดับ · ป.2 ขึ้นไป · ขั้นตอน เหตุการณ์ น้อยไปมาก',
+    scene:
+      'A 3D toy play mat on a table in warm afternoon light: a round base plate in the center, chunky toy blocks with rounded edges scattered around it, a toy crane with a hook beside the base, soft toy trees and a toy city skyline in the distance with fog.',
+    core: [
+      'Each question is one sequence: q.q says what to put in order, q.choices are the steps (shuffled by the engine), q.correct lists them in the right order and q.ordered is true, so answer(i) is only true for the NEXT step.',
+      'spawn(q): one block per step drops onto the mat around the base with a bounce, each a different color with its step on a label plate; blocks are spread so labels never overlap, and each has a small number for the keyboard.',
+      'Answer action: tap a block (raycast or its label) and call answer(i) at once. If true, the crane hook picks it up and swings it onto the top of the tower in CONFIG.stackSec seconds; it lands with a squash and gets a badge with its place.',
+      'Wrong block: it jumps, wiggles "no" and settles; the hint appears; the tower waits. After 2 wrong taps the engine reveals the answer, so also make the next correct block glow.',
+      'When the last block lands, windows light up on every block, a flag pops on top and soft fireworks burst; then the tower slides off the mat and the base is ready for the next sequence.',
+      'Camera: a high three-quarter view that slowly sways a few degrees and rises as the tower grows, so the top of the tower and all waiting blocks stay in view.',
+    ],
+    controls: ['Tap or click a block.', 'Keyboard: number keys match the number on each waiting block.'],
+    progression: ['Sequences with more steps come later in the game when the content has them.', 'A sequence finished with no wrong tap adds a golden block to a trophy tower shown on the result screen.'],
+    juice: ['Blocks squash and stretch when they land; the tower sways a little and settles.', 'Dust puffs at the base; the landing chime rises in pitch with each block.', 'Soft contact shadows under every block.'],
+    cfg: {
+      stackSec: [0.9, 'seconds for the crane to lift a block onto the tower'],
     },
   },
 ];

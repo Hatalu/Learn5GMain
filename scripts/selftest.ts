@@ -2028,7 +2028,9 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
     const O = await import('../src/lib/worksheet/options');
     const ids = G.AI_GAMES.map((g) => g.id);
     assert.equal(new Set(ids).size, ids.length, 'id เกมซ้ำ');
-    assert.ok(G.AI_GAMES.length >= 8 && G.AI_GAMES.some((g) => g.dim === '3D') && G.AI_GAMES.some((g) => g.dim === '2D'));
+    assert.ok(G.AI_GAMES.length >= 12);
+    // ทุกการกระทำการเรียนรู้มีทั้งเกม 2D และ 3D
+    for (const a of G.ACTS) for (const d of ['2D', '3D']) assert.ok(G.AI_GAMES.some((g) => g.act === a.id && g.dim === d), a.id + d);
     for (const g of G.AI_GAMES) {
       const text = [g.name, g.pitch, g.fit, g.scene, ...g.how, ...g.core, ...g.controls, ...g.progression, ...g.juice].join(' ');
       assert.ok(!P.hasEmoji(text), g.id);
@@ -2037,13 +2039,19 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
         const p = P.buildGamePrompt(r);
         assert.ok(!P.hasEmoji(p), `${g.id}/${s.id} emoji`);
         assert.ok(p.includes(g.name) && p.includes(s.th) && p.includes('ป.4') && p.includes(P.topicLabel(r)), `${g.id}/${s.id}`);
-        assert.ok(p.includes('const QUESTIONS') && p.includes('NO EMOJI') && p.includes('const CONFIG') && p.includes('Write 10 questions'));
+        assert.ok(p.includes('const QUESTIONS') && p.includes('NO EMOJI') && p.includes('const CONFIG') && p.includes('Learning action: ' + G.actOf(g.act).en));
+        assert.ok(p.includes(g.act === 'sort' ? 'write 10 items' : g.act === 'order' ? 'Write 10 sequences' : 'Write 10 questions'), g.id + ' content');
+        assert.equal(p.includes('keepOrder: 1,'), g.act === 'sort', g.id + ' keepOrder');
+        assert.equal(p.includes('const K3 = {'), g.dim === '3D', g.id + ' K3');
         // ทุกชื่อ CONFIG ที่ข้อความเกมอ้างถึง ต้องมีค่าในบล็อก CONFIG
         for (const k of P.configRefs(g)) assert.ok(new RegExp('\n  ' + k + ': [0-9.]+,').test(p), `${g.id} CONFIG.${k}`);
         assert.equal(p.includes('readMinSec:'), !g.noRead, g.id);
         assert.equal(p.includes('three.js'), g.dim === '3D');
       }
       for (const items of Object.values(S.SAMPLES)) for (const it of items) assert.ok(it.choices[it.correct[0]] !== undefined && !P.hasEmoji(it.q));
+      for (const items of Object.values(S.SORT_SAMPLES)) for (const it of items) assert.ok(it.choices.length >= 2 && it.choices.length <= 3 && it.choices[it.correct[0]] !== undefined && !P.hasEmoji(it.q + it.choices.join('')));
+      for (const items of Object.values(S.ORDER_SAMPLES))
+        for (const it of items) assert.ok(it.ordered && it.choices.length >= 3 && it.correct.join() === it.choices.map((_, i) => i).join() && new Set(it.choices).size === it.choices.length && !P.hasEmoji(it.q + it.choices.join('')));
     }
     // ชุดคำถามของเว็บ: ทุกข้อเข้า prompt, ข้อพิมพ์ตอบ/หลายคำตอบ/รูปอย่างเดียว
     const quiz = {
@@ -2086,10 +2094,17 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
     const full = P.buildGamePrompt(P.cleanGameRecipe({ game: 'runner', timer: 20, lives: 'on', count: 20, extras: P.EXTRAS.map((e) => e.id) }));
     assert.equal(full.match(/timerSec: /g)!.length, 1);
     assert.ok(full.includes('timerSec: 20,') && full.includes('lives: 3,'));
-    assert.ok(full.length < 32000, String(full.length));
+    assert.ok(full.length < 42000, String(full.length));
+    // เกมจัดกลุ่ม/เรียงลำดับใช้ชุดคำถามแบบเลือกตอบไม่ได้: บังคับให้ AI เตรียมเนื้อหา
+    assert.equal(P.cleanGameRecipe({ game: 'belt', source: 'mine' }).source, 'ai');
+    assert.equal(P.cleanGameRecipe({ game: 'stack', source: 'bank' }).source, 'ai');
+    assert.equal(P.cleanGameRecipe({ game: 'balloon', source: 'bank' }).source, 'bank');
     const E = await import('../src/lib/aigame/engine');
-    assert.ok(full.includes(E.ENGINE_JS) && full.includes(E.HOOKS_JS) && full.includes('const WORDS = {'));
-    assert.ok(!/\$\{|\x60/.test(E.ENGINE_JS + E.ENGINE_HTML + E.ENGINE_CSS + E.HOOKS_JS), 'engine must not contain template syntax');
+    assert.ok(full.includes(E.ENGINE_JS) && full.includes(E.KIT3D_JS) && full.includes('K3.init().then(') && full.includes('const WORDS = {') && full.includes('no3d:'));
+    assert.ok(!/\$\{|\x60/.test(E.ENGINE_JS + E.ENGINE_HTML + E.ENGINE_CSS + E.HOOKS_JS + E.KIT3D_JS), 'engine must not contain template syntax');
+    for (const k of ['function answerText', 'const FX = {', 'q.ordered ? i === q.correct[G.picked.size]', 'CONFIG.keepOrder']) assert.ok(E.ENGINE_JS.includes(k), k);
+    const flat = P.buildGamePrompt(P.cleanGameRecipe({ game: 'balloon' }));
+    assert.ok(flat.includes(E.HOOKS_JS) && !flat.includes('K3'));
     assert.equal(P.cleanGameRecipe({ extras: ['tts', 'tts', 'zzz', 'boss', 'map', 'cert', 'best'] }).extras.join(), 'tts,boss,map,cert');
     for (const x of P.FIXES) assert.ok(!P.hasEmoji(x.en + x.th));
     // ค่าแปลกปลอมกลับเป็นค่าเริ่มต้น และตัดอิโมจิจากข้อความครู
@@ -2101,7 +2116,7 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
     assert.deepEqual([bad2.pace, bad2.timer, bad2.lives, bad2.mode, bad2.art, bad2.hero, bad2.extras.length], ['normal', 0, 'off', 'solo', 'cartoon', 'auto', 0]);
     assert.ok(!P.hasEmoji(bad.note) && bad.note.includes('สนุก'));
     passed++;
-    console.log('  ok  สร้างเกมด้วย AI: 8 เกม x 9 วิชา prompt ครบ ไม่มีอิโมจิ ชุดคำถามเข้าครบทุกข้อ + CONFIG/ลูกเล่นครบ');
+    console.log('  ok  สร้างเกมด้วย AI: 12 เกม (เลือกตอบ/จัดกลุ่ม/เรียงลำดับ x 2D/3D) x 9 วิชา prompt ครบ ไม่มีอิโมจิ ชุดคำถามเข้าครบทุกข้อ + CONFIG/ชุด 3D/ลูกเล่นครบ');
   }
   console.log(`\n${passed} tests passed`);
 })().catch((e) => {

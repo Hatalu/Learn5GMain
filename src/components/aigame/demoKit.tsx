@@ -80,6 +80,78 @@ export function useLoop(items: GItem[], max = 4, holdMs = 750) {
   return { pool, item, n, score, combo, fb, wrong, answer };
 }
 
+/**
+ * เกมเรียงลำดับ: choices ของข้อเรียงถูกแล้ว (0,1,2...) ต้องเลือกตามลำดับ
+ * layout = ลำดับที่วางบนจอ (สลับแบบมีเมล็ด) · glow = ขั้นถัดไปเรืองแสงหลังผิด 2 ครั้ง
+ */
+export function useOrder(items: GItem[], holdMs = 1700) {
+  const pool = useMemo(() => items.filter((it) => it.ordered && it.choices.length >= 2), [items]);
+  const [n, setN] = useState(0);
+  const [score, setScore] = useState(0);
+  const [combo, setCombo] = useState(0);
+  const [fb, setFb] = useState<Fb>(null);
+  const [placed, setPlaced] = useState<number[]>([]);
+  const [miss, setMiss] = useState(0);
+  const [shake, setShake] = useState<{ i: number; k: number } | null>(null);
+  const lock = useRef(false);
+  const timers = useRef<number[]>([]);
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
+  useEffect(() => {
+    setN(0);
+    setPlaced([]);
+    setMiss(0);
+    lock.current = false;
+  }, [pool]);
+  const item = pool.length ? pool[n % pool.length] : null;
+  const layout = useMemo(() => {
+    if (!item) return [];
+    const r = seeded(n + 3);
+    const a = item.choices.map((_, i) => i);
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(r() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    // ไม่ให้เรียงถูกอยู่แล้ว
+    if (a.every((x, i) => x === i)) a.push(a.shift()!);
+    return a;
+  }, [item, n]);
+  const done = !!item && placed.length === item.choices.length;
+
+  const pick = useCallback(
+    (ci: number): boolean | null => {
+      if (!item || lock.current || placed.includes(ci)) return null;
+      if (ci === placed.length) {
+        const next = [...placed, ci];
+        setPlaced(next);
+        if (next.length === item.choices.length) {
+          gsfx.correct();
+          setFb({ ok: true, key: Date.now() });
+          setScore((s) => s + 100 + combo * 20);
+          setCombo((c) => c + 1);
+          lock.current = true;
+          timers.current.push(
+            window.setTimeout(() => {
+              lock.current = false;
+              setPlaced([]);
+              setMiss(0);
+              setN((k) => k + 1);
+            }, holdMs),
+          );
+        } else gsfx.pick();
+        return true;
+      }
+      gsfx.wrong();
+      setFb({ ok: false, key: Date.now() });
+      setCombo(0);
+      setMiss((m) => m + 1);
+      setShake({ i: ci, k: Date.now() });
+      return false;
+    },
+    [item, placed, combo, holdMs],
+  );
+  return { item, n, score, combo, fb, placed, done, layout, glow: miss >= 2 && !done ? placed.length : -1, shake, pick };
+}
+
 /** แถบบน: คำถาม + คะแนน + คอมโบ */
 export function Hud({ q, score, combo, tone = '#2a2350' }: { q: string; score: number; combo: number; tone?: string }) {
   return (

@@ -16,7 +16,7 @@ import { sanitizeQuiz } from '@/lib/game-creator/quiz';
 import { mediaPrefix } from '@/lib/game-creator/prefix';
 import type { SetMeta } from '@/lib/game-creator/setBank';
 import { GRADES, LANGS, LEVELS, SUBJECTS, gradeLabel, subjectOf } from '@/lib/worksheet/options';
-import { AI_GAMES, gameById, type Dim } from '@/lib/aigame/games';
+import { ACTS, AI_GAMES, actOf, gameById, type Act, type Dim } from '@/lib/aigame/games';
 import {
   ARTS,
   COUNT_OPTIONS,
@@ -39,7 +39,7 @@ import {
   type GameRecipe,
   type Source,
 } from '@/lib/aigame/prompt';
-import { SAMPLES } from '@/lib/aigame/samples';
+import { ORDER_SAMPLES, SAMPLES, SORT_SAMPLES } from '@/lib/aigame/samples';
 import { copyNow } from '@/lib/utils/copyNow';
 import { GameArt } from './GameArt';
 import './aigame.css';
@@ -107,7 +107,9 @@ export function AiGameBuilder() {
   const [r, setR] = useState<GameRecipe>(() => cleanGameRecipe({ ...defaultGameRecipe(), game: params.get('g') || undefined }));
   const set = useCallback((p: Partial<GameRecipe>) => setR((x) => cleanGameRecipe({ ...x, ...p })), []);
   const [dim, setDim] = useState<Dim | 'all'>('all');
+  const [actF, setActF] = useState<Act | 'all'>('all');
   const game = gameById(r.game)!;
+  const act = actOf(game.act);
   const builderRef = useRef<HTMLDivElement>(null);
 
   // เปิดจากลิงก์ ?g= (เช่นจากหน้าแรก) ให้เลื่อนไปที่ส่วนปรับเกมเลย
@@ -118,6 +120,8 @@ export function AiGameBuilder() {
 
   const chooseGame = (id: string) => {
     gsfx.pick();
+    // เกมจัดกลุ่ม/เรียงลำดับใช้ชุดคำถามแบบเลือกตอบไม่ได้: ล้างชุดที่เลือกไว้ (cleanGameRecipe เปลี่ยนแหล่งเป็น AI ให้เอง)
+    if (gameById(id)?.act !== 'pick') setPicked(null);
     set({ game: id });
     router.replace(`/ai-game?g=${id}`, { scroll: false });
     setTimeout(() => builderRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
@@ -207,7 +211,7 @@ export function AiGameBuilder() {
   /* ---------- prompt ---------- */
   const needSet = r.source !== 'ai' && !picked;
   const prompt = useMemo(() => (needSet ? '' : buildGamePrompt(r, picked ? { items: picked.items, setTitle: picked.title, skipped: picked.skipped } : {})), [r, picked, needSet]);
-  const demoItems = picked?.items.length ? picked.items : SAMPLES[r.s];
+  const demoItems = game.act === 'sort' ? SORT_SAMPLES[r.s] : game.act === 'order' ? ORDER_SAMPLES[r.s] : picked?.items.length ? picked.items : SAMPLES[r.s];
 
   const [toast, setToast] = useState('');
   const [show, setShow] = useState(false);
@@ -256,7 +260,7 @@ export function AiGameBuilder() {
     }
   };
 
-  const games = AI_GAMES.filter((g) => dim === 'all' || g.dim === dim);
+  const games = AI_GAMES.filter((g) => (dim === 'all' || g.dim === dim) && (actF === 'all' || g.act === actF));
   const subj = subjectOf(r.s);
 
   return (
@@ -267,10 +271,10 @@ export function AiGameBuilder() {
           <Sparkles className="w-4 h-4" /> ระบบใหม่สำหรับคุณครู
         </span>
         <h1 className="font-display">สร้างเกมของตัวเองด้วย AI</h1>
-        <p>เลือกเกมที่ชอบ ปรับเป็นวิชาและเนื้อหาของคุณครู แล้วคัดลอก prompt ไปให้ Gemini สร้างเกมที่เล่นได้จริง</p>
+        <p>เลือกสิ่งที่อยากให้เด็กฝึก แล้วเลือกเกม 2D หรือ 3D ที่ลงมือทำสิ่งนั้นจริงในเกม ปรับเป็นวิชาและเนื้อหาของคุณครู แล้วคัดลอก prompt ไปให้ Gemini สร้างเกมที่เล่นได้จริง</p>
         <ol className="ag-flow">
           <li>
-            <b>1</b> เลือกเกม
+            <b>1</b> เลือกสิ่งที่ฝึก + เกม
           </li>
           <li>
             <b>2</b> ปรับวิชา ชั้น เนื้อหา ลูกเล่น
@@ -290,10 +294,22 @@ export function AiGameBuilder() {
           <div className="ag-dims" role="group" aria-label="กรองตามมิติ">
             {(['all', '2D', '3D'] as const).map((d) => (
               <Chip key={d} on={dim === d} onClick={() => setDim(d)}>
-                {d === 'all' ? 'ทั้งหมด' : d}
+                {d === 'all' ? '2D + 3D' : d}
               </Chip>
             ))}
           </div>
+        </div>
+        <div className="ag-acts" role="group" aria-label="สิ่งที่เด็กได้ฝึก">
+          <button type="button" className="ag-act" aria-pressed={actF === 'all'} onClick={() => setActF('all')}>
+            <b>ทุกแบบ</b>
+            <small>{AI_GAMES.length} เกม</small>
+          </button>
+          {ACTS.map((a) => (
+            <button key={a.id} type="button" className="ag-act" data-act={a.id} aria-pressed={actF === a.id} onClick={() => setActF(a.id)}>
+              <b>{a.th}</b>
+              <small>{a.sub}</small>
+            </button>
+          ))}
         </div>
         <div className="ag-grid">
           {games.map((g) => (
@@ -301,6 +317,9 @@ export function AiGameBuilder() {
               <span className="ag-gart">
                 <GameArt id={g.id} />
                 <i className="ag-dim">{g.dim}</i>
+                <i className="ag-actb" data-act={g.act}>
+                  {actOf(g.act).th}
+                </i>
                 {g.id === r.game && (
                   <i className="ag-picked">
                     <Check className="w-3.5 h-3.5" strokeWidth={4} /> เลือกอยู่
@@ -326,8 +345,12 @@ export function AiGameBuilder() {
             <span className="ag-tag">เกมตัวอย่าง เล่นได้เลย</span>
           </div>
           <GameDemo key={game.id} game={game.id} items={demoItems} />
+          <p className="ag-actline" data-act={game.act}>
+            <b>ฝึก: {act.th}</b> {act.sub}
+          </p>
           <p className="ag-note">
-            {picked ? `ตัวอย่างใช้คำถามจากชุด "${picked.title}"` : `ตัวอย่างใช้คำถามตัวอย่างวิชา${subj.th}`} · เกมจริงที่ Gemini สร้างจะละเอียดกว่านี้{game.dim === '3D' ? ' และเป็น 3D ด้วย three.js' : ''}
+            {picked && game.act === 'pick' ? `ตัวอย่างใช้คำถามจากชุด "${picked.title}"` : `ตัวอย่างใช้เนื้อหาตัวอย่างวิชา${subj.th}`} · เกมจริงที่ Gemini สร้างจะใช้เนื้อหาตามเรื่องที่เลือก
+            {game.dim === '3D' ? ' และเป็น 3D แบบเดียวกันด้วยชุดเครื่องมือ 3D ที่แนบไปใน prompt' : ''}
           </p>
           <ol className="ag-how">
             {game.how.map((h, i) => (
@@ -360,8 +383,15 @@ export function AiGameBuilder() {
             </div>
           </Step>
 
-          <Step n={3} title="คำถามในเกม">
-            <div className="ag-src" role="tablist" aria-label="แหล่งคำถาม">
+          <Step n={3} title={game.act === 'pick' ? 'คำถามในเกม' : game.act === 'sort' ? 'ของและหมวดในเกม' : 'ลำดับในเกม'}>
+            {game.act !== 'pick' && (
+              <p className="ag-empty-note ag-actnote">
+                {game.act === 'sort'
+                  ? 'AI จะเลือกหมวด 2-3 หมวดที่เป็นหัวใจของเรื่องนี้ แล้วเตรียมของให้เด็กแยก (ชุดคำถามแบบเลือกตอบใช้กับเกมนี้ไม่ได้)'
+                  : 'AI จะเตรียมชุดลำดับ 3-5 ขั้นของเรื่องนี้ เช่น วัฏจักร ขั้นตอน ตัวเลข หรือคำในประโยค (ชุดคำถามแบบเลือกตอบใช้กับเกมนี้ไม่ได้)'}
+              </p>
+            )}
+            <div className="ag-src" role="tablist" aria-label="แหล่งคำถาม" hidden={game.act !== 'pick'}>
               {(
                 [
                   ['ai', 'ให้ AI แต่งคำถาม', Wand2],
@@ -388,11 +418,11 @@ export function AiGameBuilder() {
                 <input className="ag-input" value={r.custom} maxLength={60} placeholder="หรือพิมพ์เรื่องเอง เช่น การบวกเลขสองหลักมีทด" onChange={(e) => set({ custom: e.target.value })} />
                 <div className="ag-two">
                   <div>
-                    <p className="ag-flabel">จำนวนข้อ</p>
+                    <p className="ag-flabel">จำนวน{act.unit}</p>
                     <div className="ag-chips">
                       {COUNT_OPTIONS.map((c) => (
                         <Chip key={c} on={r.count === c} onClick={() => set({ count: c })}>
-                          {c} ข้อ
+                          {c} {act.unit}
                         </Chip>
                       ))}
                     </div>
@@ -547,7 +577,7 @@ export function AiGameBuilder() {
             <div className="ag-sum">
               <b>{game.name}</b>
               <span>
-                {subj.th} · {gradeLabel(r.g)} · {r.source === 'ai' ? `${topicLabel(r)} · AI แต่ง ${r.count} ข้อ` : picked ? `ชุด "${picked.title}"` : 'ยังไม่ได้เลือกชุดคำถาม'}
+                {subj.th} · {gradeLabel(r.g)} · {r.source === 'ai' ? `${topicLabel(r)} · ${act.th} · AI เตรียม ${r.count} ${act.unit}`: picked ? `ชุด "${picked.title}"` : 'ยังไม่ได้เลือกชุดคำถาม'}
               </span>
             </div>
             <button type="button" className="ag-go" disabled={!prompt} onClick={() => copy(true)}>

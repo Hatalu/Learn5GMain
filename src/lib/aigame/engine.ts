@@ -11,7 +11,8 @@
 
 export const ENGINE_HTML = String.raw`<div id="app">
   <div id="world"></div>                 <!-- the game scene: SVG/DOM sprites (2D) or the 3D renderer canvas -->
-  <canvas id="fx"></canvas>              <!-- particles only, pointer-events: none -->
+  <div id="labels"></div>                <!-- answer labels / signs (HTML text over the scene) -->
+  <canvas id="fx"></canvas>              <!-- FX particles only, pointer-events: none -->
   <header id="hud">
     <div id="score">0</div><div id="progress"></div><div id="combo"></div><div id="hearts"></div>
     <div id="timebar"><i></i></div>
@@ -27,6 +28,9 @@ export const ENGINE_HTML = String.raw`<div id="app">
 export const ENGINE_CSS = String.raw`html, body { margin: 0; height: 100%; overflow: hidden; }
 #app { position: fixed; inset: 0; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
 #world { position: absolute; inset: 0; z-index: 1; }
+#labels { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+#labels > * { position: absolute; left: 0; top: 0; pointer-events: auto; }
+.k3-fail { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 24px; text-align: center; font-size: 22px; }
 #fx { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 5; pointer-events: none; }
 #hud { position: absolute; top: 0; left: 0; right: 0; z-index: 10; }
 #qcard { position: absolute; z-index: 12; left: 50%; transform: translateX(-50%); transition: all .35s cubic-bezier(.34,1.56,.64,1); }
@@ -74,6 +78,7 @@ function boot() {
   ['btn-sound', 'btn-sound2'].forEach((id) => on(id, () => { G.sound = !G.sound; document.body.dataset.sound = G.sound ? '1' : '0'; }));
   const sp = $('speed'); if (sp) sp.addEventListener('input', () => { G.speed = Number(sp.value) || 1; });
   document.addEventListener('visibilitychange', () => { if (document.hidden && (G.state === 'play' || G.state === 'read')) pause(true); });
+  safe(FX.size); window.addEventListener('resize', () => safe(FX.size));
   safe(() => Hooks.setup());
   setState('start');
   requestAnimationFrame(frame);   // started exactly once
@@ -97,17 +102,21 @@ function pause(on) {
   G.paused = on; document.body.dataset.paused = on ? '1' : '0';
 }
 
-/* normalize one question: shuffled choices, correct = list of indexes into the shuffled choices */
+/* normalize one question: shuffled choices (kept in place when CONFIG.keepOrder, e.g. sorting bins),
+   correct = indexes into the shuffled choices; ordered = the correct choices must be hit in that order */
 function prepare(raw) {
   const choices = raw.choices ? raw.choices.slice() : [];
-  let correct = Array.isArray(raw.answers) ? raw.answers.slice() : [raw.answer];
-  const perm = shuffle(choices.map((_, i) => i));
+  const correct = Array.isArray(raw.answers) ? raw.answers.slice() : [raw.answer];
+  const idx = choices.map((_, i) => i);
+  const perm = CONFIG.keepOrder ? idx : shuffle(idx);
   return {
-    raw: raw, q: raw.q, hint: raw.hint || '', explain: raw.explain || '',
+    raw: raw, q: raw.q, hint: raw.hint || '', explain: raw.explain || '', ordered: !!raw.order,
     choices: perm.map((i) => choices[i]),
     correct: correct.map((c) => perm.indexOf(c)),
   };
 }
+/* the correct choice(s) as text: the remaining steps for an ordered question */
+function answerText(q) { return q.ordered ? q.correct.slice(G.picked.size).map((c) => q.choices[c]).join(' > ') : q.correct.map((c) => q.choices[c]).join(', '); }
 function readTime(q) { return Math.max(CONFIG.readMinSec || 0, q.q.length * (CONFIG.readPerCharSec || 0)); }
 
 function startGame() {
@@ -143,7 +152,8 @@ function beginPlay() {
 function answer(i) {
   if (G.state !== 'play' || G.paused || G.t < CONFIG.inputLockSec) return null;
   const q = G.q;
-  if (q.correct.indexOf(i) >= 0 && !G.picked.has(i)) {
+  const hit = q.ordered ? i === q.correct[G.picked.size] : q.correct.indexOf(i) >= 0 && !G.picked.has(i);
+  if (hit) {
     G.picked.add(i);
     if (G.picked.size < q.correct.length) { safe(() => Hooks.onPartial(i)); Sound.play('pop'); return true; }
     const bonus = CONFIG.timerSec && G.timeLeft > 0 ? Math.round(50 * G.timeLeft / CONFIG.timerSec) : 0;
@@ -161,7 +171,7 @@ function answer(i) {
   if (G.tries === 1) G.missed.push(q);
   if (CONFIG.lives && G.hearts > 0) G.hearts--;
   setState('feedback');
-  say(G.tries >= 2 ? WORDS.reveal + ' ' + q.correct.map((c) => q.choices[c]).join(', ') : (q.hint || WORDS.wrong));
+  say(G.tries >= 2 ? WORDS.reveal + ' ' + answerText(q) : (q.hint || WORDS.wrong));
   Sound.play('wrong');
   safe(() => Hooks.onWrong(i, G.tries));
   after(CONFIG.feedbackWrongSec, () => setState('play'));   // same question, same objects, keep playing
@@ -176,7 +186,7 @@ function endGame() {
   txt('result-score', String(G.score));
   txt('result-count', G.firstTry + ' / ' + n);
   const ul = $('missed'); if (ul) ul.innerHTML = '';
-  if (ul) G.missed.forEach((q) => { const li = document.createElement('li'); li.textContent = q.q + '  ->  ' + q.correct.map((c) => q.choices[c]).join(', '); ul.appendChild(li); });
+  if (ul) G.missed.forEach((q) => { const li = document.createElement('li'); li.textContent = q.q + '  ->  ' + q.correct.map((c) => q.choices[c]).join(q.ordered ? ' > ' : ', '); ul.appendChild(li); });
   Sound.play('win');
   safe(() => Hooks.onEnd(stars));
 }
@@ -221,6 +231,7 @@ function frame(now) {
   });
   safe(() => Hooks.update(d, dt));
   safe(() => Hooks.draw(dt));
+  safe(() => FX.step(dt));
   safe(hud);
   requestAnimationFrame(frame);
 }
@@ -248,12 +259,133 @@ const Sound = {
   },
 };
 
+/* FX on the #fx canvas, in window pixels: FX.burst(x, y) confetti, FX.text(x, y, '+100') floating text, FX.shake(8) */
+const FX = {
+  parts: [], texts: [], ctx: null, dpr: 1, sk: 0, ska: 0,
+  size() { const c = $('fx'); if (!c) return; FX.dpr = Math.min(window.devicePixelRatio || 1, 2); c.width = innerWidth * FX.dpr; c.height = innerHeight * FX.dpr; FX.ctx = c.getContext('2d'); },
+  burst(x, y, colors, n) {
+    colors = colors || ['#ffd166', '#ff6b7a', '#4fb3ff', '#3fd6a8', '#c9b8ff']; n = Math.min(n || 22, 40);
+    for (let k = 0; k < n; k++) { const a = Math.random() * 6.283, s = 140 + Math.random() * 280; FX.parts.push({ x: x, y: y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 160, r: 3 + Math.random() * 5, c: colors[k % colors.length], life: 0.7 + Math.random() * 0.5, t: 0, rot: Math.random() * 6, star: k % 3 === 0 }); }
+  },
+  text(x, y, s, color) { FX.texts.push({ x: x, y: y, s: String(s), c: color || '#2a2350', t: 0 }); },
+  shake(px) { if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return; FX.ska = px || 8; FX.sk = 0.28; },
+  step(dt) {
+    const g = FX.ctx; if (!g) return;
+    g.setTransform(FX.dpr, 0, 0, FX.dpr, 0, 0); g.clearRect(0, 0, innerWidth, innerHeight);
+    FX.parts = FX.parts.filter((p) => (p.t += dt) < p.life);
+    FX.parts.forEach((p) => {
+      p.vy += 620 * dt; p.vx *= 0.985; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += dt * 8;
+      g.globalAlpha = 1 - p.t / p.life; g.fillStyle = p.c; g.save(); g.translate(p.x, p.y); g.rotate(p.rot); g.beginPath();
+      if (p.star) { for (let k = 0; k < 8; k++) { const rr = k % 2 ? p.r * 0.45 : p.r * 1.5, a = k * 0.785; g.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); } } else g.rect(-p.r, -p.r * 0.6, p.r * 2, p.r * 1.2);
+      g.fill(); g.restore();
+    });
+    FX.texts = FX.texts.filter((m) => (m.t += dt) < 1);
+    FX.texts.forEach((m) => {
+      const k = m.t, sc = k < 0.15 ? 0.6 + k * 3 : 1.05;
+      g.globalAlpha = k > 0.7 ? (1 - k) / 0.3 : 1; g.font = '900 ' + Math.round(30 * sc) + 'px Mali, sans-serif'; g.textAlign = 'center';
+      g.lineWidth = 6; g.strokeStyle = '#fff'; g.strokeText(m.s, m.x, m.y - k * 70); g.fillStyle = m.c; g.fillText(m.s, m.x, m.y - k * 70);
+    });
+    g.globalAlpha = 1;
+    const w = $('world');
+    if (w) { FX.sk = Math.max(0, FX.sk - dt); const a = FX.sk > 0 ? FX.ska * FX.sk / 0.28 : 0; w.style.transform = a ? 'translate(' + ((Math.random() - 0.5) * a) + 'px,' + ((Math.random() - 0.5) * a) + 'px)' : ''; }
+  },
+};
+
 function on(id, fn) {
   const el = $(id);
   if (el) el.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); safe(() => Sound.init()); Sound.play('tap'); fn(); });
 }
 
 /* ================= END OF STARTER ENGINE ================= */`;
+
+/**
+ * ชุดเครื่องมือ 3D (เฉพาะเกม 3D): ฉาก/แสง/เงา/หมอก วัสดุ toon + เส้นขอบ ป้ายข้อความ HTML ที่ตามวัตถุ และการแตะเลือกวัตถุ
+ * ทำให้เกม 3D ที่ Gemini สร้างหน้าตาสม่ำเสมอ (ของเล่นนุ่ม เส้นขอบเข้ม) และไม่ต้องเขียนส่วนยากเอง
+ * ทดสอบกับ three r160 จาก CDN แล้ว (scripts/aigame-engine-test.ts 3d)
+ */
+export const KIT3D_JS = String.raw`/* ================= 3D KIT: keep this code, build the scene with it ================= */
+const K3 = {
+  THREE: null, scene: null, camera: null, renderer: null, sun: null, ray: null, ramp: null, ink: null, mats: {}, labels: [],
+  /* call once: K3.init().then((ok) => { if (ok) boot(); }) */
+  async init() {
+    try {
+      const T = await import('three');
+      K3.THREE = T;
+      const r = new T.WebGLRenderer({ antialias: (window.devicePixelRatio || 1) < 2 });
+      r.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      r.shadowMap.enabled = true; r.shadowMap.type = T.PCFSoftShadowMap;
+      r.outputColorSpace = T.SRGBColorSpace;
+      $('world').appendChild(r.domElement);
+      K3.renderer = r;
+      const s = new T.Scene();
+      s.background = new T.Color('#bfe9ff');
+      s.fog = new T.Fog('#bfe9ff', 22, 70);
+      K3.scene = s;
+      K3.camera = new T.PerspectiveCamera(48, 1, 0.1, 200);
+      K3.camera.position.set(0, 9, 13); K3.camera.lookAt(0, 0, 0);
+      s.add(new T.HemisphereLight('#ffffff', '#c9b8ff', 1.25));
+      const sun = new T.DirectionalLight('#fff4dc', 1.7);
+      sun.position.set(7, 14, 9); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
+      Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 16, bottom: -16, near: 1, far: 60 });
+      sun.shadow.bias = -0.0006; sun.shadow.radius = 3;
+      s.add(sun); K3.sun = sun;
+      const ramp = new T.DataTexture(new Uint8Array([110, 190, 255]), 3, 1, T.RedFormat);
+      ramp.minFilter = T.NearestFilter; ramp.magFilter = T.NearestFilter; ramp.needsUpdate = true; K3.ramp = ramp;
+      K3.ink = new T.MeshBasicMaterial({ color: '#2a2350', side: T.BackSide });
+      K3.ray = new T.Raycaster();
+      K3.resize(); window.addEventListener('resize', K3.resize);
+      return true;
+    } catch (e) {
+      console.warn('[3d]', e);
+      const w = $('world'); if (w) { w.innerHTML = '<div class="k3-fail"></div>'; w.firstChild.textContent = WORDS.no3d; }
+      return false;
+    }
+  },
+  resize() { const w = innerWidth, h = innerHeight; K3.renderer.setSize(w, h); K3.camera.aspect = w / h; K3.camera.fov = w < h ? 62 : 48; K3.camera.updateProjectionMatrix(); },
+  /* soft toy material (cached per color) */
+  mat(color) { if (!K3.mats[color]) K3.mats[color] = new K3.THREE.MeshToonMaterial({ color: color, gradientMap: K3.ramp }); return K3.mats[color]; },
+  /* one model part: K3.part(new K3.THREE.SphereGeometry(1, 24, 16), '#ff6b7a', x, y, z, parentGroup) */
+  part(geo, color, x, y, z, parent) {
+    const m = new K3.THREE.Mesh(geo, K3.mat(color));
+    m.position.set(x || 0, y || 0, z || 0); m.castShadow = true; m.receiveShadow = true;
+    (parent || K3.scene).add(m); return m;
+  },
+  /* thick dark outline (inverted hull) for centered primitives: K3.outline(mesh, 0.06) */
+  outline(mesh, w) { const o = new K3.THREE.Mesh(mesh.geometry, K3.ink); o.scale.setScalar(1 + (w || 0.06)); mesh.add(o); return o; },
+  group(x, y, z, parent) { const g = new K3.THREE.Group(); g.position.set(x || 0, y || 0, z || 0); (parent || K3.scene).add(g); return g; },
+  /* big ground that receives soft shadows */
+  ground(color, size) { const m = new K3.THREE.Mesh(new K3.THREE.CircleGeometry(size || 40, 48), K3.mat(color || '#8edc6f')); m.rotation.x = -Math.PI / 2; m.receiveShadow = true; K3.scene.add(m); return m; },
+  /* HTML label that follows a 3D object every frame; returns the element (add your own class/listeners) */
+  label(obj, text, cls, dy) {
+    const el = document.createElement('div'); el.className = 'k3-label ' + (cls || ''); el.textContent = text;
+    $('labels').appendChild(el); K3.labels.push({ obj: obj, el: el, dy: dy || 0 }); return el;
+  },
+  unlabel(el) { K3.labels = K3.labels.filter((L) => L.el !== el); if (el && el.parentNode) el.parentNode.removeChild(el); },
+  clearLabels() { K3.labels.forEach((L) => L.el.remove()); K3.labels = []; },
+  /* window pixel position of an object (plus dy world units up) */
+  toScreen(obj, dy) {
+    const v = new K3.THREE.Vector3(); obj.getWorldPosition(v); v.y += dy || 0; v.project(K3.camera);
+    return { x: (v.x + 1) / 2 * innerWidth, y: (1 - v.y) / 2 * innerHeight, z: v.z };
+  },
+  /* tap picking: returns the item of list (meshes or groups) under the pointer, or null */
+  pick(e, list) {
+    const T = K3.THREE, p = new T.Vector2((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+    K3.ray.setFromCamera(p, K3.camera);
+    const hits = K3.ray.intersectObjects(list, true);
+    for (const h of hits) { let o = h.object; while (o && list.indexOf(o) < 0) o = o.parent; if (o) return o; }
+    return null;
+  },
+  /* call from Hooks.draw: places labels, then renders */
+  render() {
+    K3.labels.forEach((L) => {
+      const s = K3.toScreen(L.obj, L.dy);
+      L.el.style.display = s.z > 1 || !L.obj.visible ? 'none' : '';
+      L.el.style.transform = 'translate(' + s.x.toFixed(1) + 'px,' + s.y.toFixed(1) + 'px) translate(-50%, -100%)';
+    });
+    K3.renderer.render(K3.scene, K3.camera);
+  },
+};
+/* ================= END OF 3D KIT ================= */`;
 
 /** ค่าเริ่มของ Hooks ที่ Gemini ต้องเติม (แสดงใน prompt) */
 export const HOOKS_JS = String.raw`const Hooks = {
