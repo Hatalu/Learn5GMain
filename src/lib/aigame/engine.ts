@@ -88,6 +88,7 @@ function boot() {
 function after(sec, fn) { G.waits.push({ left: sec, fn: fn, tk: G.token, st: G.state }); }
 /* tween any numeric props of an object: tween(sprite, { x: 100, scale: 1 }, 0.4, ease.outBack) */
 function tween(obj, to, sec, fn, done) {
+  if (typeof fn !== 'function') fn = ease.outCubic;
   const from = {}; for (const k in to) from[k] = obj[k];
   G.tweens = G.tweens.filter((w) => w.obj !== obj || !Object.keys(to).some((k) => k in w.to));
   G.tweens.push({ obj: obj, from: from, to: to, sec: sec, t: 0, fn: fn || ease.outCubic, done: done });
@@ -222,13 +223,15 @@ function frame(now) {
       if (G.timeLeft <= 0) say(G.q.hint || WORDS.wrong);
     }
   }
+  const fin = [];
   G.tweens = G.tweens.filter((w) => {
     w.t = Math.min(1, w.t + dt / w.sec);   // tweens use real time so menus still animate
-    const k = w.fn(w.t);
-    for (const p in w.to) w.obj[p] = w.from[p] + (w.to[p] - w.from[p]) * k;
-    if (w.t >= 1 && w.done) safe(w.done);
+    const k = safe(() => w.fn(w.t));
+    for (const p in w.to) if (typeof w.from[p] === 'number') w.obj[p] = w.from[p] + (w.to[p] - w.from[p]) * (typeof k === 'number' ? k : w.t);
+    if (w.t >= 1 && w.done) fin.push(w.done);
     return w.t < 1;
   });
+  fin.forEach((f) => safe(f));   // after the list is saved, so a done() that starts a new tween keeps it
   safe(() => Hooks.update(d, dt));
   safe(() => Hooks.draw(dt));
   safe(() => FX.step(dt));
@@ -380,7 +383,10 @@ const K3 = {
     K3.labels.forEach((L) => {
       const s = K3.toScreen(L.obj, L.dy);
       L.el.style.display = s.z > 1 || !L.obj.visible ? 'none' : '';
-      L.el.style.transform = 'translate(' + s.x.toFixed(1) + 'px,' + s.y.toFixed(1) + 'px) translate(-50%, -100%)';
+      /* keep every label fully on screen (a sign above a far roof must not be cut off at the top) */
+      const hw = L.el.offsetWidth / 2 + 6, hh = L.el.offsetHeight + 6;
+      const x = Math.min(innerWidth - hw, Math.max(hw, s.x)), y = Math.min(innerHeight - 6, Math.max(hh, s.y));
+      L.el.style.transform = 'translate(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px) translate(-50%, -100%)';
     });
     K3.renderer.render(K3.scene, K3.camera);
   },

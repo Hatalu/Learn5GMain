@@ -356,16 +356,16 @@ export const AI_GAMES: AiGame[] = [
     how: ['ดูของที่ไหลมาบนสายพาน', 'แตะถังหมวดที่ของชิ้นนั้นควรอยู่', 'แยกถูกต่อเนื่อง สายพานยิ่งเร็ว'],
     fit: 'จัดกลุ่ม · วัสดุ ชนิดคำ คู่-คี่ สัตว์-พืช',
     scene:
-      'A bright toy factory: pastel walls with big round windows, pipes and gears turning slowly in the background, a long conveyor belt across the middle with moving stripes and rolling wheels, and 2 or 3 big colorful sorting bins along the bottom, each with its category name on a large sign. A cute robot arm (operated by the mascot) stands at the end of the belt.',
+      'A bright toy factory: pastel walls with big round windows, pipes and gears turning slowly in the background, a long conveyor belt across the middle with moving stripes and rolling wheels, and 2 to 4 big colorful sorting bins along the bottom, each with its category name on a large sign. A cute robot arm (operated by the mascot) stands at the end of the belt.',
     core: [
       'The bins are the categories: q.choices in a FIXED order (CONFIG.keepOrder is 1, so choice i is always bin i). Build the bins once in setup() from QUESTIONS[0].choices; they never move or change, so the child always compares each item with the same groups.',
       'Each question is ONE item: spawn(q) drops a crate showing the item (q.q, big and readable, plus a simple drawn icon when it fits) onto the left end of the belt with a bounce. The belt carries it to the right end in CONFIG.beltSec seconds; there it rides a small loop back to the left end (it never falls off), so an item can never be missed.',
       'Answer action: tap/click a bin, or drag the crate onto a bin. The robot arm swings back (anticipation), grabs the crate and flings it along an arc into that bin in CONFIG.flySec seconds. Call answer(binIndex) when the crate lands.',
       'Correct: the crate drops in with a satisfying thunk, the bin lid bounces, the counter on that bin goes up, sparkles burst, and the next item arrives at once.',
-      'Wrong: the crate bounces off the bin rim with a cartoon boing, rolls back onto the belt and the hint appears in #bubble. The same item continues.',
+      'Wrong: the crate bounces off the bin rim with a cartoon boing, rolls back onto the belt and the hint appears in #bubble. The same item continues and can be thrown again as soon as it is back on the belt.',
       'Every 5 items a short "quality check" banner shows how many items each bin holds. Between items a little sweeper bot crosses the floor or a pipe puffs steam.',
     ],
-    controls: ['Tap or click a bin, or drag the crate onto a bin.', 'Keyboard: number keys 1-3 match the bins from left to right.'],
+    controls: ['Tap or click a bin, or drag the crate onto a bin.', 'Keyboard: number keys 1-4 match the bins from left to right.'],
     progression: [
       'Every 4 correct items in a row the belt runs 8% faster, never faster than CONFIG.maxSpeedUp times the base speed.',
       'After 2 wrong items in a row the belt returns to the base speed.',
@@ -388,16 +388,16 @@ export const AI_GAMES: AiGame[] = [
     how: ['ดูของที่บอลถืออยู่', 'แตะบ้านหมวดที่ถูก บอลจะกลิ้งเข้าไป', 'เข้าผิดบ้าน บอลเด้งกลับมาให้ลองใหม่'],
     fit: 'จัดกลุ่ม · ป.1-ป.4 · วิทย์ ภาษา คณิต',
     scene:
-      'A cozy 3D toy table seen from a high three-quarter camera: a soft wooden board with low rounded walls, little trees and flowers in the corners, and 2 or 3 small toy houses along the far edge, each a different color with its category name on a big sign above the roof. A squishy glossy ball with a cute face sits on a launch pad near the camera.',
+      'A cozy 3D toy table seen from a high three-quarter camera: a soft wooden board with low rounded walls, little trees and flowers in the corners, and 2 to 4 small toy houses along the far edge, each a different color with its category name on a big sign above the roof. A squishy glossy ball with a cute face sits on a launch pad near the camera.',
     core: [
       'The houses are the categories: q.choices in a FIXED order (CONFIG.keepOrder is 1, so choice i is always house i). Build the houses once in setup() from QUESTIONS[0].choices; they never change.',
       'Each question is ONE item: spawn(q) pops a new ball out of a toy tube onto the launch pad; a label plate above the ball shows q.q. The ball idles: breathes, blinks and looks at the houses.',
       'Answer action: tap a house (raycast the house meshes or tap its sign), or drag the ball toward a house and release. The ball squashes (anticipation), then rolls along a smooth curved path to that house in CONFIG.rollSec seconds, with rotation that matches the distance travelled and a small hop over a bump. Call answer(houseIndex) when it reaches the door.',
       'Correct: the door swings open, the ball hops inside, the windows light up and a flag on the roof rises one notch (each house counts its items), confetti, and the next ball pops out at once.',
-      'Wrong: the door stays shut, the ball bonks it, rolls back to the pad with a dizzy wobble and the hint appears. Same item.',
+      'Wrong: the door stays shut, the ball bonks it, rolls back to the pad with a dizzy wobble and the hint appears. Same item, and the ball can be sent again as soon as it is back on the pad.',
       'Little life: a bird lands on a roof now and then, flowers sway, and the houses turn slightly toward the ball.',
     ],
-    controls: ['Tap a house, or drag the ball and release toward a house.', 'Keyboard: number keys 1-3 match the houses from left to right.'],
+    controls: ['Tap a house, or drag the ball and release toward a house.', 'Keyboard: number keys 1-4 match the houses from left to right.'],
     progression: [
       'Every 4 correct in a row a toy block appears on the table and the ball path curves around it (visual only, it never blocks the answer).',
       'After 2 wrong in a row the roll speed goes back to normal and the camera moves a little closer.',

@@ -11,7 +11,8 @@ const out = process.argv[2] || 'engine-test.html';
 const is3d = process.argv[3] === '3d';
 
 const hooks2d = `const Hooks = {
-  setup() {}, onStart() { __log.push('start'); }, onRead() { __log.push('read'); },
+  setup() { const o = { a: 0 }; tween(o, { a: 1 }, 0.05, ease.outCubic, () => tween(o, { a: 2 }, 0.05, ease.outCubic, () => __log.push('chain:' + o.a))); },
+  onStart() { __log.push('start'); }, onRead() { __log.push('read'); },
   spawn(q) { __log.push('spawn:' + q.q); $('world').innerHTML = ''; q.choices.forEach((c, i) => { const b = document.createElement('button'); b.textContent = c; b.dataset.i = i; b.addEventListener('pointerdown', (e) => { __log.push('ans:' + answer(i)); FX.burst(e.clientX, e.clientY); FX.text(e.clientX, e.clientY, '+100'); }); $('world').appendChild(b); }); },
   update() {}, draw() {}, onCorrect() {}, onWrong() {}, onPartial() {}, clear() { $('world').innerHTML = ''; }, onEnd(s) { __log.push('end:' + s); },
 };

@@ -334,12 +334,13 @@ function aiContent(act: Act, about: string, count: number, fields: string, expla
   if (act === 'sort')
     return [
       `Prepare a sorting activity ${about}.`,
-      '- First choose 2 or 3 categories that are the key idea of this topic for this grade (for example: wood / metal / plastic, even / odd, living / non-living, noun / verb). Short category names (at most 14 characters).',
+      '- First choose 2 to 4 categories (3 is best) that are the key idea of this topic for this grade (for example: wood / metal / plastic, even / odd, living / non-living, noun / verb). Short category names (at most 14 characters).',
       `- Then write ${count} items. Each item belongs to exactly ONE category beyond doubt (no borderline items). Spread them about evenly over the categories and mix obvious items with tricky ones that target common misconceptions.`,
       '- Each item is short (at most 20 characters): a word, a number, an expression or a short phrase a child can picture.',
       ...common,
       hintLine('points at the property that decides the group (never names the group)'),
       '- Every item uses the SAME choices array (CATEGORIES, same order) and "answer" is the index of its category. Do not shuffle; the engine keeps the bins in place (CONFIG.keepOrder).',
+      '- The category names must be readable at all times: besides the signs in the scene, show a row of big HTML category cards along the bottom edge of the screen (number, name, the same color as its bin/house). Tapping a card does exactly the same as tapping that bin/house.',
       '',
       `Data format: const CATEGORIES = ["...", "..."]; const QUESTIONS = [ { "q": "item", "choices": CATEGORIES, "answer": 0, "hint": "..."${ex} }, ... ];`,
     ].join('\n');
@@ -431,6 +432,7 @@ export function buildGamePrompt(raw: GameRecipe, extra: PromptExtra = {}): strin
     'A question ends ONLY when answer(i) returns true for its last correct choice; the engine then moves to the next question by itself. Call answer(i) exactly once per hit (on impact for things that fly), never every frame.',
     'All movement uses the dt passed to Hooks.update (game seconds, already 0 while paused and scaled by the speed slider). Speeds come from CONFIG as "seconds to cross a distance" (speed = distance / CONFIG.xxxSec), so the pace is the same on every screen and on 60, 120 or 144 Hz displays.',
     'Nothing is spawned during READ: spawn(q) is called when PLAY starts. From then on every answer must be on screen and tappable within 1 second (enter with a quick eased pop-in, then move at the CONFIG pace); no empty waiting time. Answer objects that leave the screen or pass the player come back (loop or respawn).',
+    'Do not invent your own input lock (busy, active, canTap...) unless you release it on EVERY path: after a wrong answer the object comes back AND is tappable again; after a correct answer the next object is tappable. Simplest: check G.state === "play" plus one "moving" flag that is cleared in the done callback of the movement and in onWrong. A forgotten lock freezes the whole game after the first mistake.',
     'Use pointerdown for taps on game objects (no separate touchstart + click). Every tap target is at least 48 x 48 px, larger than the drawing if needed.',
     'Wrap anything optional (fonts, audio, localStorage, speechSynthesis, vibration) in safe(() => ...) so a blocked feature can never stop the game. Never await fonts or audio before the game can start.',
     'Adaptive difficulty only as written in the game rules, always capped by the CONFIG limits. Read G.combo and G.wrongRow from the engine.',
