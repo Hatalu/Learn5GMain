@@ -2103,6 +2103,23 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
     assert.ok(full.includes(E.ENGINE_JS) && full.includes(E.KIT3D_JS) && full.includes('K3.init().then(') && full.includes('const WORDS = {') && full.includes('no3d:'));
     assert.ok(!/\$\{|\x60/.test(E.ENGINE_JS + E.ENGINE_HTML + E.ENGINE_CSS + E.HOOKS_JS + E.KIT3D_JS), 'engine must not contain template syntax');
     for (const k of ['function answerText', 'const FX = {', 'q.ordered ? i === q.correct[G.picked.size]', 'CONFIG.keepOrder']) assert.ok(E.ENGINE_JS.includes(k), k);
+    // เนื้อหาเกมตัวอย่างตามตัวเลือก: ทุกวิชา x ชั้น x เรื่อง x ความยาก ได้ชุดที่ใช้ได้ และความยากมีผล
+    const DC = await import('../src/lib/aigame/demoContent');
+    for (const s of O.SUBJECTS)
+      for (const g of O.GRADES)
+        for (const t of P.topicsFor(s.id, g))
+          for (const lv of O.LEVELS) {
+            const r = P.cleanGameRecipe({ game: 'belt', s: s.id, g, topic: t.id, lv: lv.id });
+            const so = DC.actItems(r, 'sort');
+            assert.ok(so.length >= 4, `sort ${s.id}/${g}/${t.id}`);
+            for (const it of so) assert.ok(it.choices.length >= 2 && it.choices[it.correct[0]] !== undefined && !P.hasEmoji(it.q + it.choices.join('')), `sort item ${s.id}/${g}/${t.id}`);
+            const or = DC.actItems(r, 'order');
+            assert.ok(or.length >= 1, `order ${s.id}/${g}/${t.id}`);
+            for (const it of or) assert.ok(it.ordered && it.choices.length >= 3 && new Set(it.choices).size === it.choices.length && it.correct.join() === it.choices.map((_, i) => i).join(), `order item ${s.id}/${g}/${t.id} ${it.choices.join()}`);
+          }
+    const nOrd = (lv: string) => DC.actItems(P.cleanGameRecipe({ game: 'train', s: 'sci', g: 3, topic: 'lifecycle', lv: lv as never }), 'order')[0].choices.length;
+    assert.ok(nOrd('easy') < nOrd('hard'));
+    assert.ok(DC.topicScore('สมการอย่างง่าย', 'สมการเชิงเส้นตัวแปรเดียว') > 0 && DC.topicScore('สมการอย่างง่าย', 'ทฤษฎีบทพีทาโกรัส') === 0);
     const flat = P.buildGamePrompt(P.cleanGameRecipe({ game: 'balloon' }));
     assert.ok(flat.includes(E.HOOKS_JS) && !flat.includes('K3'));
     assert.equal(P.cleanGameRecipe({ extras: ['tts', 'tts', 'zzz', 'boss', 'map', 'cert', 'best'] }).extras.join(), 'tts,boss,map,cert');

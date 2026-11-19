@@ -204,7 +204,7 @@ export function cleanGameRecipe(raw: Partial<GameRecipe>): GameRecipe {
     note: stripEmoji(String(raw.note ?? '')).slice(0, NOTE_MAX),
     pace: pick(PACES, raw.pace, d.pace),
     // เกมจับคู่ไม่มีจังหวะต่อข้อ: ไม่จับเวลา
-    timer: gameById(raw.game)?.noRead ? 0 : pick(TIMERS, Number(raw.timer), d.timer),
+    timer: gameById(raw.game)?.noTimer ? 0 : pick(TIMERS, Number(raw.timer), d.timer),
     lives: pick(LIVES, raw.lives, d.lives) as GameRecipe['lives'],
     mode: pick(MODES, raw.mode, d.mode),
     art: pick(ARTS, raw.art, d.art),

@@ -69,6 +69,8 @@ export interface AiGame {
   cfg: Record<string, [number, string]>;
   /** เกมไม่มีของเคลื่อนที่ (คำถามอยู่บนการ์ด) ไม่ต้องมีช่วงอ่านโจทย์ */
   noRead?: boolean;
+  /** ไม่มีเวลาต่อข้อ (เกมจับคู่การ์ด: ทั้งด่านเล่นต่อเนื่อง) */
+  noTimer?: boolean;
   /** ความหมายของโหมดผู้เล่นสำหรับเกมนี้ (ถ้าต่างจากค่าปกติ) */
   modes?: Partial<Record<'solo' | 'duel' | 'class', string>>;
 }
@@ -249,6 +251,7 @@ export const AI_GAMES: AiGame[] = [
       mismatchSec: [1.3, 'seconds a wrong card stays face up before flipping back'],
     },
     modes: { duel: 'Two players on one device take turns question by question; separate scores and a clear turn banner.' },
+    noTimer: true,
   },
   {
     id: 'castle',

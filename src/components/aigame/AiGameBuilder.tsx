@@ -39,7 +39,9 @@ import {
   type GameRecipe,
   type Source,
 } from '@/lib/aigame/prompt';
-import { ORDER_SAMPLES, SAMPLES, SORT_SAMPLES } from '@/lib/aigame/samples';
+import { SAMPLES } from '@/lib/aigame/samples';
+import { actItems, demoTopicLine, pickItems } from '@/lib/aigame/demoContent';
+import type { DemoOpts } from './demoCtx';
 import { copyNow } from '@/lib/utils/copyNow';
 import { GameArt } from './GameArt';
 import './aigame.css';
@@ -211,7 +213,40 @@ export function AiGameBuilder() {
   /* ---------- prompt ---------- */
   const needSet = r.source !== 'ai' && !picked;
   const prompt = useMemo(() => (needSet ? '' : buildGamePrompt(r, picked ? { items: picked.items, setTitle: picked.title, skipped: picked.skipped } : {})), [r, picked, needSet]);
-  const demoItems = game.act === 'sort' ? SORT_SAMPLES[r.s] : game.act === 'order' ? ORDER_SAMPLES[r.s] : picked?.items.length ? picked.items : SAMPLES[r.s];
+  /* ---------- เกมตัวอย่างเปลี่ยนตามทุกตัวเลือก ---------- */
+  // เนื้อหา: ชุดที่เลือก > คลังของเว็บตามชั้น/เรื่อง/ระดับ (เลือกตอบ) หรือเนื้อหาจัดกลุ่ม/เรียงลำดับตามชั้น/เรื่อง/ระดับ
+  const contentKey = [r.s, r.g, r.topic, r.custom, r.lv].join('|');
+  const [bankItems, setBankItems] = useState<{ key: string; items: GItem[] } | null>(null);
+  useEffect(() => {
+    if (game.act !== 'pick' || picked) return;
+    let live = true;
+    const t = setTimeout(() => pickItems(r).then((items) => live && setBankItems({ key: contentKey, items })), 250);
+    return () => {
+      live = false;
+      clearTimeout(t);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contentKey, game.act, picked]);
+  const demoItems = useMemo(
+    () =>
+      game.act !== 'pick' ? actItems(r, game.act) : picked?.items.length ? picked.items : bankItems?.key === contentKey ? bankItems.items : SAMPLES[r.s],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [game.act, contentKey, picked, bankItems],
+  );
+  const demoOpts = useMemo<DemoOpts>(
+    () => ({
+      count: picked && game.act === 'pick' ? Math.min(picked.items.length, 20) : r.count,
+      pace: PACES.find((p) => p.id === r.pace)!.f,
+      timer: r.timer,
+      lives: r.lives === 'on',
+      mode: r.mode,
+      art: r.art,
+      hero: r.hero,
+      extras: r.extras,
+      lang: r.lang,
+    }),
+    [r.count, r.pace, r.timer, r.lives, r.mode, r.art, r.hero, r.extras, r.lang, picked, game.act],
+  );
 
   const [toast, setToast] = useState('');
   const [show, setShow] = useState(false);
@@ -344,12 +379,12 @@ export function AiGameBuilder() {
             <h2 className="font-display">{game.name}</h2>
             <span className="ag-tag">เกมตัวอย่าง เล่นได้เลย</span>
           </div>
-          <GameDemo key={game.id} game={game.id} items={demoItems} />
+          <GameDemo key={[game.id, demoOpts.count, r.mode, contentKey, picked?.id].join("|")} game={game.id} items={demoItems} opts={demoOpts} />
           <p className="ag-actline" data-act={game.act}>
             <b>ฝึก: {act.th}</b> {act.sub}
           </p>
           <p className="ag-note">
-            {picked && game.act === 'pick' ? `ตัวอย่างใช้คำถามจากชุด "${picked.title}"` : `ตัวอย่างใช้เนื้อหาตัวอย่างวิชา${subj.th}`} · เกมจริงที่ Gemini สร้างจะใช้เนื้อหาตามเรื่องที่เลือก
+            {picked && game.act === 'pick' ? `ตัวอย่างใช้คำถามจากชุด "${picked.title}"` : `ตัวอย่างตามที่เลือก: ${demoTopicLine(r)}`} · ตัวเลือกทุกอย่างทางขวามีผลกับเกมตัวอย่างนี้ทันที
             {game.dim === '3D' ? ' และเป็น 3D แบบเดียวกันด้วยชุดเครื่องมือ 3D ที่แนบไปใน prompt' : ''}
           </p>
           <ol className="ag-how">
@@ -531,7 +566,7 @@ export function AiGameBuilder() {
           <Step n={4} title="ลูกเล่นเกม" hint="ปรับให้เข้ากับห้องเรียนของคุณครู ค่าเริ่มต้นใช้ได้เลย">
             <Pick label="ความเร็วเกม" list={PACES} value={r.pace} onPick={(pace) => set({ pace })} />
             <div className="ag-two">
-              {!game.noRead && <Pick label="เวลาต่อข้อ" list={TIMERS} value={r.timer} onPick={(timer) => set({ timer })} />}
+              {!game.noTimer && <Pick label="เวลาต่อข้อ" list={TIMERS} value={r.timer} onPick={(timer) => set({ timer })} />}
               <Pick label="หัวใจ" list={LIVES} value={r.lives} onPick={(lives) => set({ lives: lives as GameRecipe['lives'] })} />
             </div>
             <Pick label="ผู้เล่น" list={MODES} value={r.mode} onPick={(mode) => set({ mode })} />

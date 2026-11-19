@@ -4,6 +4,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { gsfx } from '@/lib/game-creator/gsound';
 import { COLORS, Empty, Hud, Spark, Stamp, seeded, toDemo, useLoop, useNumKeys, type DemoProps } from './demoKit';
+import { useDemo, usePace } from './demoCtx';
 
 /* ---------------------------------------------------------------- ยิงลูกโป่ง */
 
@@ -121,6 +122,7 @@ export function MoleDemo({ items }: DemoProps) {
   const [up, setUp] = useState<Map<number, number>>(new Map());
   const [bonk, setBonk] = useState<number | null>(null);
   const tick = useRef(0);
+  const pace = usePace();
   const it = useRef(item);
   it.current = item;
   useEffect(() => {
@@ -137,9 +139,9 @@ export function MoleDemo({ items }: DemoProps) {
       setUp(new Map(holes.map((h, k) => [h, picks[k]])));
     };
     show();
-    const t = setInterval(show, 2300);
+    const t = setInterval(show, 2300 * pace);
     return () => clearInterval(t);
-  }, [n]);
+  }, [n, pace]);
   const hit = (hole: number) => {
     const ci = up.get(hole);
     if (ci === undefined || wrong.has(ci)) return;
@@ -283,6 +285,11 @@ export function MemoryDemo({ items }: DemoProps) {
     return () => clearTimeout(t);
   }, [stage]);
   const target = stage.qs[turn];
+  const { report } = useDemo();
+  const qIdx = round * 4 + turn;
+  useEffect(() => {
+    if (target && !peek) report({ t: 'q', n: qIdx, q: target.q });
+  }, [qIdx, peek, target, report]);
   const flip = (k: number) => {
     const c = stage.cards[k];
     if (peek || lock.current || !target || done.has(c.id)) return;
@@ -291,6 +298,7 @@ export function MemoryDemo({ items }: DemoProps) {
     setOpen(k);
     const ok = c.text === stage.ans(target);
     setFb({ ok, key: Date.now() });
+    report(ok ? { t: 'ok', ans: c.text } : { t: 'bad' });
     window.setTimeout(
       () => {
         if (ok) {
@@ -342,6 +350,9 @@ interface Slime {
 
 export function CastleDemo({ items }: DemoProps) {
   const { item, score, combo, fb, wrong, answer } = useLoop(items, 4, 500);
+  const pace = usePace();
+  const paceRef = useRef(pace);
+  paceRef.current = pace;
   const [slimes, setSlimes] = useState<Slime[]>([]);
   const [hearts, setHearts] = useState(5);
   const [shot, setShot] = useState<{ key: number; x: number } | null>(null);
@@ -363,7 +374,7 @@ export function CastleDemo({ items }: DemoProps) {
     const sp = setInterval(spawn, 3800);
     const mv = setInterval(() => {
       if (Date.now() < frozen.current) return;
-      const next = live.current.map((m) => ({ ...m, x: m.x - 0.45 }));
+      const next = live.current.map((m) => ({ ...m, x: m.x - 0.45 / paceRef.current }));
       if (next.some((m) => m.x <= 22)) setHearts((h) => (h > 1 ? h - 1 : 5));
       put(next.filter((m) => m.x > 22));
     }, 60);
@@ -429,6 +440,7 @@ export function CastleDemo({ items }: DemoProps) {
 
 export function TugDemo({ items }: DemoProps) {
   const { item, n, score, combo, fb, wrong, answer } = useLoop(items, 4, 700);
+  const pace = usePace();
   const [rope, setRope] = useState(0); // -5 (ฝั่งเราชนะ) .. 5 (คอมพิวเตอร์ชนะ)
   const [win, setWin] = useState<'me' | 'cpu' | null>(null);
   // คอมพิวเตอร์ตอบถูกหลัง 4.5-7 วินาที
@@ -437,9 +449,9 @@ export function TugDemo({ items }: DemoProps) {
     const t = setTimeout(() => {
       gsfx.tick();
       setRope((r) => Math.min(5, r + 1));
-    }, 4500 + ((n * 977) % 2500));
+    }, (4500 + ((n * 977) % 2500)) * pace);
     return () => clearTimeout(t);
-  }, [n, win, rope]);
+  }, [n, win, rope, pace]);
   useEffect(() => {
     if (rope <= -5) setWin('me');
     else if (rope >= 5) setWin('cpu');

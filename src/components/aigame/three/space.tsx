@@ -98,7 +98,7 @@ function buildSpace(st: Stage3D) {
     }
     const a = sg.attributes.position as THREE.BufferAttribute;
     for (let i = 0; i < N; i++) {
-      let z = a.getZ(i) + SPEED * 1.6 * dt;
+      let z = a.getZ(i) + (SPEED / st.pace) * 1.6 * dt;
       if (z > 12) z -= 100;
       a.setZ(i, z);
     }
@@ -115,7 +115,7 @@ function buildSpace(st: Stage3D) {
     }
     flame.scale.set(1, 1 + Math.sin(t * 40) * 0.25, 1);
     if (set) {
-      set.g.position.z += SPEED * dt;
+      set.g.position.z += (SPEED / st.pace) * dt;
       const z = set.g.position.z;
       set.g.children.forEach((c) => (c.rotation.z += dt * ((c.userData.spin as number) || 0)));
       const op = Math.max(0, Math.min(1, (z + 34) / 10));

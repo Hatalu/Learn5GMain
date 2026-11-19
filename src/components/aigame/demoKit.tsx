@@ -7,6 +7,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { gsfx } from '@/lib/game-creator/gsound';
 import type { GItem } from '@/lib/aigame/prompt';
+import { useDemo } from './demoCtx';
 
 export interface DemoProps {
   items: GItem[];
@@ -50,12 +51,17 @@ export function useLoop(items: GItem[], max = 4, holdMs = 750) {
     lock.current = false;
   }, [pool]);
   const item = pool.length ? pool[n % pool.length] : null;
+  const { report } = useDemo();
+  useEffect(() => {
+    if (item) report({ t: 'q', n, q: item.q });
+  }, [n, item, report]);
 
   const answer = useCallback(
     (ci: number): boolean | null => {
       if (!item || lock.current) return null;
       const ok = item.correct.has(ci);
       setFb({ ok, key: Date.now() });
+      report(ok ? { t: 'ok', ans: item.choices[ci] } : { t: 'bad' });
       if (ok) {
         gsfx.correct();
         lock.current = true;
@@ -75,7 +81,7 @@ export function useLoop(items: GItem[], max = 4, holdMs = 750) {
       }
       return ok;
     },
-    [item, combo, holdMs],
+    [item, combo, holdMs, report],
   );
   return { pool, item, n, score, combo, fb, wrong, answer };
 }
@@ -116,6 +122,10 @@ export function useOrder(items: GItem[], holdMs = 1700) {
     return a;
   }, [item, n]);
   const done = !!item && placed.length === item.choices.length;
+  const { report } = useDemo();
+  useEffect(() => {
+    if (item) report({ t: 'q', n, q: item.q });
+  }, [n, item, report]);
 
   const pick = useCallback(
     (ci: number): boolean | null => {
@@ -126,6 +136,7 @@ export function useOrder(items: GItem[], holdMs = 1700) {
         if (next.length === item.choices.length) {
           gsfx.correct();
           setFb({ ok: true, key: Date.now() });
+          report({ t: 'ok', ans: item.choices.join(' > ') });
           setScore((s) => s + 100 + combo * 20);
           setCombo((c) => c + 1);
           lock.current = true;
@@ -142,12 +153,13 @@ export function useOrder(items: GItem[], holdMs = 1700) {
       }
       gsfx.wrong();
       setFb({ ok: false, key: Date.now() });
+      report({ t: 'bad' });
       setCombo(0);
       setMiss((m) => m + 1);
       setShake({ i: ci, k: Date.now() });
       return false;
     },
-    [item, placed, combo, holdMs],
+    [item, placed, combo, holdMs, report],
   );
   return { item, n, score, combo, fb, placed, done, layout, glow: miss >= 2 && !done ? placed.length : -1, shake, pick };
 }
@@ -169,10 +181,11 @@ export function Hud({ q, score, combo, tone = '#2a2350' }: { q: string; score: n
 
 /** ป้ายถูก/ผิด เด้งกลางจอ */
 export function Stamp({ fb }: { fb: Fb }) {
+  const { w } = useDemo();
   if (!fb) return null;
   return (
     <span key={fb.key} className="ag-stamp" data-ok={fb.ok}>
-      {fb.ok ? 'ถูกต้อง!' : 'ลองอีกนิด'}
+      {w(fb.ok ? 'ok' : 'bad')}
     </span>
   );
 }

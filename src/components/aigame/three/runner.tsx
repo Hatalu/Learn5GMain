@@ -115,7 +115,7 @@ function buildRunner(st: Stage3D) {
       st.camera.updateProjectionMatrix();
     }
     for (const m of movers) {
-      m.position.z += SPEED * dt;
+      m.position.z += (SPEED / st.pace) * dt;
       if (m.position.z > 9) m.position.z -= 106;
     }
     // ตัวละคร: เลื่อนเลนนุ่มๆ เอียงตัว วิ่งเด้ง
@@ -127,7 +127,7 @@ function buildRunner(st: Stage3D) {
     me.g.position.y = Math.abs(Math.sin(t * 11)) * 0.22;
     me.torso.scale.set(1, 0.9 - Math.abs(Math.sin(t * 11)) * 0.06, 0.95);
     if (row) {
-      row.g.position.z += SPEED * dt;
+      row.g.position.z += (SPEED / st.pace) * dt;
       const z = row.g.position.z;
       // ป้ายโผล่เมื่อใกล้พออ่าน (ไม่ทับกันตอนไกล)
       const a = Math.max(0, Math.min(1, (z + 34) / 10));

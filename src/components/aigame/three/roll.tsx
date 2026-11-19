@@ -28,7 +28,7 @@ function buildRoll(st: Stage3D, onHouse: (i: number) => void) {
   const tw = new Tweens();
   // มุมสูงเห็นทั้งโต๊ะ: บ้าน+ป้ายอยู่ใต้แถบคำถาม บอลอยู่เหนือป้ายบอกวิธีเล่น
   st.camera.position.set(0, 10.4, 9.6);
-  st.camera.lookAt(0, 0.6, -1.9);
+  st.camera.lookAt(0, 0.4, -2.6);
 
   const grass = st.part(new T.CircleGeometry(48, 40), '#9be08a', [0, -0.62, 0]);
   grass.rotation.x = -Math.PI / 2;
@@ -145,7 +145,7 @@ function buildRoll(st: Stage3D, onHouse: (i: number) => void) {
       b.scale.setScalar(1);
       let prev = from.clone();
       tw.add(
-        1.0,
+        1.0 * st.pace,
         (q) => {
           const e = ease.inOut(q);
           const a = (1 - e) * (1 - e);

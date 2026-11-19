@@ -26,6 +26,8 @@ export interface Stage3D {
   /** วัตถุใน list ที่อยู่ใต้นิ้ว (clientX/Y ของหน้า) */
   pick(clientX: number, clientY: number, list: THREE.Object3D[]): THREE.Object3D | null;
   onFrame(cb: (dt: number, t: number) => void): void;
+  /** ตัวคูณเวลาตามความเร็วที่ครูเลือก (มาก = ช้า) */
+  pace: number;
   /** กระดาษสีระเบิดที่จุดหนึ่งในฉาก */
   burst(at: THREE.Vector3, n?: number): void;
   dispose(): void;
@@ -35,12 +37,13 @@ const CONFETTI = ['#ffd166', '#ff6b7a', '#4fb3ff', '#3fd6a8', '#c9b8ff'];
 
 const INK = '#2a2350';
 
-export function createStage(host: HTMLElement, labels: HTMLElement, sky = '#bfe9ff'): Stage3D | null {
+export function createStage(host: HTMLElement, labels: HTMLElement, sky = '#bfe9ff', pixel = false): Stage3D | null {
   let renderer: THREE.WebGLRenderer;
   try {
     const lite = getGfx() === 'lite';
-    renderer = new THREE.WebGLRenderer({ antialias: !lite, powerPreference: 'low-power' });
-    renderer.setPixelRatio(gfxDpr(1.5));
+    renderer = new THREE.WebGLRenderer({ antialias: !lite && !pixel, powerPreference: 'low-power' });
+    // สไตล์พิกเซล: วาดความละเอียดต่ำแล้วขยายแบบไม่เกลี่ย
+    renderer.setPixelRatio(pixel ? 0.3 : gfxDpr(1.5));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = lite ? THREE.BasicShadowMap : THREE.PCFSoftShadowMap;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -50,7 +53,7 @@ export function createStage(host: HTMLElement, labels: HTMLElement, sky = '#bfe9
   const cv = renderer.domElement;
   cv.className = 'ag-3dcanvas';
   // ตั้งตรงนี้ด้วย กันขนาด canvas ดันกรอบฉากให้โตวนไม่จบ ถ้า CSS ยังไม่โหลด
-  Object.assign(cv.style, { position: 'absolute', inset: '0', width: '100%', height: '100%', display: 'block' });
+  Object.assign(cv.style, { position: 'absolute', inset: '0', width: '100%', height: '100%', display: 'block', imageRendering: pixel ? 'pixelated' : '' });
   host.prepend(cv);
 
   const scene = new THREE.Scene();
@@ -137,7 +140,11 @@ export function createStage(host: HTMLElement, labels: HTMLElement, sky = '#bfe9
     for (const L of tags) {
       const s = toScreen(L.obj, L.dy);
       L.el.style.display = s.z > 1 || !L.obj.visible ? 'none' : '';
-      L.el.style.transform = `translate(${s.x.toFixed(1)}px, ${s.y.toFixed(1)}px) translate(-50%, -100%)`;
+      // ป้ายต้องอยู่ในฉากและไม่หลบใต้แถบคำถามด้านบน (สูงราว 66px รวมแถบเวลา)
+      const hw = L.el.offsetWidth / 2 + 4;
+      const x = Math.min(size.w - hw, Math.max(hw, s.x));
+      const y = Math.min(size.h - 4, Math.max(66 + L.el.offsetHeight, s.y));
+      L.el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translate(-50%, -100%)`;
     }
     renderer.render(scene, camera);
   };
@@ -145,6 +152,7 @@ export function createStage(host: HTMLElement, labels: HTMLElement, sky = '#bfe9
 
   return {
     T: THREE,
+    pace: 1,
     scene,
     camera,
     size,

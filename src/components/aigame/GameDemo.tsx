@@ -10,6 +10,7 @@ import { Loader2 } from 'lucide-react';
 import type { GItem } from '@/lib/aigame/prompt';
 import { BalloonDemo, CastleDemo, FishingDemo, MemoryDemo, MoleDemo, TugDemo } from './demos2d';
 import { BeltDemo, TrainDemo } from './demosAct';
+import { DemoFrame, type DemoOpts } from './demoCtx';
 import './aigame-demos.css';
 
 const load = () => (
@@ -37,7 +38,13 @@ const DEMOS: Record<string, React.ComponentType<{ items: GItem[] }>> = {
   stack: StackDemo3D,
 };
 
-export default function GameDemo({ game, items }: { game: string; items: GItem[] }) {
+/** เกมตัวอย่าง + ชั้นตัวเลือกของครู (เวลา หัวใจ ผู้เล่น ตัวละคร ลูกเล่น ภาษา ความเร็ว สไตล์ภาพ) */
+export default function GameDemo({ game, items, opts }: { game: string; items: GItem[]; opts: DemoOpts }) {
   const D = DEMOS[game];
-  return D ? <D items={items} /> : null;
+  if (!D) return null;
+  return (
+    <DemoFrame o={opts} game={game}>
+      <D key={opts.art} items={items} />
+    </DemoFrame>
+  );
 }
