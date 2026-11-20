@@ -3,6 +3,7 @@ import { Noto_Sans_Thai_Looped, IBM_Plex_Sans_Thai_Looped } from 'next/font/goog
 import './globals.css';
 import './ui-minimal.css';
 import './ui-mono.css';
+import './ui-depth.css';
 import { Providers } from './providers';
 import { GFX_BOOT } from '@/lib/gfx';
 import { UI_BOOT } from '@/lib/ui-look';

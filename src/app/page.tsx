@@ -69,7 +69,7 @@ export default function HomePage() {
               <h2 className="ui-title mt-3 text-3xl sm:text-5xl">ทุกอย่างที่ครูต้องใช้</h2>
             </div>
           </div>
-          <div className="mt-12 grid gap-px overflow-hidden rounded-3xl border bg-border sm:grid-cols-2">
+          <div className="ui-depth-grid mt-12 grid gap-px overflow-hidden rounded-3xl border bg-border sm:grid-cols-2">
             {TOOLS.map((t) => (
               <Link key={t.href} href={t.href} className="group relative bg-background p-8 transition-colors hover:bg-muted/60 sm:p-10">
                 <div className="flex items-start justify-between">
@@ -87,7 +87,7 @@ export default function HomePage() {
         </section>
 
         {/* innovation (Master) */}
-        <section className="bg-foreground text-background">
+        <section className="ui-depth-invert bg-foreground text-background">
           <div className="mx-auto grid max-w-6xl gap-14 px-4 py-24 sm:px-6 sm:py-32 lg:grid-cols-[1.1fr_1fr]">
             <div>
               <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-background/55">เฉพาะแพ็กเกจ Master</p>

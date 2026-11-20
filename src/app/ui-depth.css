@@ -1,0 +1,144 @@
+/* ============================================================================
+ * ชั้นมิติ (20 พ.ย. 2026 ผู้ใช้สั่ง "ให้ดูมีมิติมากขึ้น"): โหลดหลัง ui-minimal.css / ui-mono.css
+ * ui-minimal ลบเงาทุกอย่าง (กันเงาทึบแบบเยลลี่ของเดิม) ไฟล์นี้ใส่ความลึกแบบพรีเมียมกลับเฉพาะชิ้นหลัก:
+ * แสงฟุ้งสีม่วงหลังหน้า · การ์ดมีเงาซ้อนชั้นนุ่ม + ไฮไลต์ขอบบน · ปุ่มหลักไล่สีเรืองแสง · ชี้แล้วลอยขึ้น
+ * ทุกกฎขึ้นต้น html[data-ui="minimal"]:not([data-tool]) + !important ให้ชนะกฎ "ไม่มีเงา" (หน้าเครื่องมือ/เกมไม่โดน)
+ * ไม่มีแอนิเมชันวน ไม่มี backdrop-filter (กฎของเว็บ)
+ * ========================================================================== */
+
+:root {
+  --d-hl: inset 0 1px 0 rgb(255 255 255 / 0.75);
+  --d-e1: 0 1px 2px rgb(17 17 17 / 0.05), 0 2px 6px -2px rgb(17 17 17 / 0.06);
+  --d-e2: 0 1px 2px rgb(17 17 17 / 0.04), 0 6px 16px -6px rgb(17 17 17 / 0.1), 0 18px 40px -20px rgb(60 20 120 / 0.14);
+  --d-e3: 0 2px 4px rgb(17 17 17 / 0.05), 0 14px 30px -10px rgb(17 17 17 / 0.14), 0 30px 60px -28px rgb(90 40 180 / 0.28);
+  --d-glow: 0 10px 26px -10px hsl(var(--primary) / 0.7), 0 2px 6px -2px hsl(var(--primary) / 0.5);
+  --d-card-top: hsl(var(--card));
+  --d-card-bot: hsl(270 30% 98.5%);
+  --d-aura-a: hsl(var(--primary) / 0.1);
+  --d-aura-b: hsl(var(--brand-soft) / 0.22);
+}
+.dark {
+  --d-hl: inset 0 1px 0 rgb(255 255 255 / 0.07);
+  --d-e1: 0 1px 2px rgb(0 0 0 / 0.4), 0 2px 8px -2px rgb(0 0 0 / 0.45);
+  --d-e2: 0 1px 2px rgb(0 0 0 / 0.45), 0 10px 24px -8px rgb(0 0 0 / 0.6), 0 24px 50px -24px rgb(120 60 255 / 0.22);
+  --d-e3: 0 2px 4px rgb(0 0 0 / 0.5), 0 20px 40px -12px rgb(0 0 0 / 0.7), 0 36px 70px -30px rgb(140 80 255 / 0.4);
+  --d-glow: 0 10px 28px -8px hsl(var(--primary) / 0.75), 0 0 0 1px hsl(var(--primary) / 0.35);
+  --d-card-top: hsl(0 0% 12%);
+  --d-card-bot: hsl(0 0% 9%);
+  --d-aura-a: hsl(var(--primary) / 0.16);
+  --d-aura-b: hsl(var(--brand-soft) / 0.07);
+}
+
+/* ---------- แสงฟุ้งหลังหน้า (ตรึงกับจอ ไม่ขยับ) ---------- */
+html[data-ui="minimal"]:not([data-tool]) body {
+  background:
+    radial-gradient(900px 520px at 8% -8%, var(--d-aura-a), transparent 62%),
+    radial-gradient(760px 480px at 100% 4%, var(--d-aura-b), transparent 60%),
+    hsl(var(--background)) !important;
+  background-attachment: fixed !important;
+}
+/* หน้าที่ปูพื้นทึบเองให้โปร่งเพื่อเห็นแสงฟุ้ง */
+html[data-ui="minimal"]:not([data-tool]) :is(.l5g-world, .l5g-world-edit) {
+  background: transparent !important;
+}
+
+/* ---------- แถบเมนู: ลอยเหนือหน้าด้วยเงาบาง ---------- */
+html[data-ui="minimal"]:not([data-tool]) .site-nav {
+  box-shadow: 0 1px 0 hsl(var(--border)), 0 8px 24px -16px rgb(17 17 17 / 0.25) !important;
+}
+
+/* ---------- การ์ด/แผง: เงาซ้อนชั้น + ไล่สีบางมาก + ไฮไลต์ขอบบน ---------- */
+html[data-ui="minimal"]:not([data-tool]) :is(
+    .ui-card, .surface, .ag-left, .ag-right, .ag-gcard, .ag-act, .ws-card, .sh-tpl, .sh-mode, .sh-size, .sh-feat, .sh-import,
+    .l5g-gcard, .l5g-tcard, .l5g-stpl, .l5g-mode, .l5g-newset, .l5g-quick, .l5g-join-room
+  ) {
+  background-image: linear-gradient(180deg, var(--d-card-top), var(--d-card-bot)) !important;
+  box-shadow: var(--d-hl), var(--d-e2) !important;
+  border-color: hsl(var(--foreground) / 0.08) !important;
+}
+/* การ์ดที่กดได้: ชี้แล้วลอยขึ้น */
+html[data-ui="minimal"]:not([data-tool]) :is(a.ui-card, button.ui-card, .ag-gcard, .ag-act, .sh-tpl, .sh-mode, .sh-size, .sh-feat, .l5g-gcard, .l5g-tcard, .l5g-stpl, .l5g-mode) {
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s ease, border-color 0.35s ease !important;
+}
+html[data-ui="minimal"]:not([data-tool]) :is(a.ui-card, button.ui-card, .ag-gcard, .ag-act, .sh-tpl, .sh-mode, .sh-size, .sh-feat, .l5g-gcard, .l5g-tcard, .l5g-stpl, .l5g-mode):hover {
+  transform: translateY(-4px) !important;
+  box-shadow: var(--d-hl), var(--d-e3) !important;
+  border-color: hsl(var(--primary) / 0.35) !important;
+}
+/* การ์ดที่เลือกอยู่: ขอบเรืองสีม่วง */
+html[data-ui="minimal"]:not([data-tool]) :is(.ag-gcard[data-on], .ag-act[aria-pressed='true']) {
+  box-shadow: var(--d-hl), var(--d-e3), 0 0 0 2px hsl(var(--primary) / 0.55) !important;
+}
+
+/* กล่องย่อยในแผง (ชุดคำถาม แหล่งคำถาม สรุป): เงาบางชั้นเดียว */
+html[data-ui="minimal"]:not([data-tool]) :is(.ag-set, .ag-sum, .ag-src, .ag-pickedset, .ag-tips, .ag-empty-note, .ag-ghost, .ui-pill, .l5g-seg, .l5g-tierbar) {
+  box-shadow: var(--d-hl), var(--d-e1) !important;
+}
+
+/* ตารางเครื่องมือหน้าแรก: ทั้งก้อนลอย เซลล์ชี้แล้วสว่างขึ้นจากด้านใน (พื้นก้อนคือเส้นแบ่ง ห้ามทับด้วยไล่สี) */
+html[data-ui="minimal"]:not([data-tool]) .ui-depth-grid {
+  box-shadow: var(--d-e3) !important;
+}
+html[data-ui="minimal"]:not([data-tool]) .ui-depth-grid > * {
+  background-image: linear-gradient(180deg, var(--d-card-top), var(--d-card-bot)) !important;
+  box-shadow: var(--d-hl) !important;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease !important;
+}
+html[data-ui="minimal"]:not([data-tool]) .ui-depth-grid > *:hover {
+  box-shadow: inset 0 0 0 1px hsl(var(--primary) / 0.25), inset 0 -40px 80px -50px hsl(var(--primary) / 0.35) !important;
+}
+
+/* ---------- ปุ่ม ---------- */
+html[data-ui="minimal"]:not([data-tool]) :is(.ui-btn-ink, .ag-go, .btn-primary-grad) {
+  background-image: linear-gradient(180deg, hsl(264 100% 74%), hsl(264 90% 62%)) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35), var(--d-glow) !important;
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease, opacity 0.2s ease !important;
+}
+html[data-ui="minimal"]:not([data-tool]) :is(.ui-btn-ink, .ag-go, .btn-primary-grad):hover:not(:disabled) {
+  opacity: 1 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.4), 0 14px 32px -10px hsl(var(--primary) / 0.8), 0 3px 8px -2px hsl(var(--primary) / 0.5) !important;
+}
+html[data-ui="minimal"]:not([data-tool]) :is(.ui-btn-ink, .ag-go, .btn-primary-grad):active:not(:disabled) {
+  transform: translateY(1px) scale(0.98) !important;
+  box-shadow: inset 0 2px 4px rgb(0 0 0 / 0.2) !important;
+}
+html[data-ui="minimal"]:not([data-tool]) :is(.ui-btn-line, .ws-btn, .sh-btn) {
+  box-shadow: var(--d-hl), var(--d-e1) !important;
+}
+html[data-ui="minimal"]:not([data-tool]) :is(.ui-btn-line, .ws-btn):hover {
+  transform: translateY(-1px);
+  box-shadow: var(--d-hl), var(--d-e2) !important;
+}
+/* ชิปตัวเลือกที่เลือกอยู่: นูนเล็กน้อย */
+html[data-ui="minimal"]:not([data-tool]) :is(.ws-chip, .ws-look, .ws-char, .ag-srcbtn)[aria-pressed='true'],
+html[data-ui="minimal"]:not([data-tool]) .ag-srcbtn[aria-selected='true'] {
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.3), 0 6px 14px -8px hsl(var(--primary) / 0.7) !important;
+}
+
+/* ---------- ช่องกรอก: เว้าลงเล็กน้อย ---------- */
+html[data-ui="minimal"]:not([data-tool]) :is(.ui-input, .ag-input, .ag-search, .l5g-input, .l5g-search) {
+  box-shadow: inset 0 1px 2px rgb(17 17 17 / 0.06) !important;
+}
+html[data-ui="minimal"]:not([data-tool]) :is(.ui-input, .ag-input):focus {
+  box-shadow: inset 0 1px 2px rgb(17 17 17 / 0.06), 0 0 0 3px hsl(var(--primary) / 0.2) !important;
+}
+
+/* ---------- หัวข้อใหญ่: เงาตัวอักษรนุ่ม ให้ลอยจากพื้น ---------- */
+html[data-ui="minimal"]:not([data-tool]) :is(h1.ui-title, .ag-head h1) {
+  text-shadow: 0 1px 0 rgb(255 255 255 / 0.6), 0 14px 34px rgb(90 40 180 / 0.16) !important;
+}
+html.dark[data-ui="minimal"]:not([data-tool]) :is(h1.ui-title, .ag-head h1) {
+  text-shadow: 0 14px 40px rgb(157 92 255 / 0.28) !important;
+}
+
+/* ---------- แถบกลับสีหน้าแรก (Master): แสงสีม่วงมุมบน ---------- */
+html[data-ui="minimal"]:not([data-tool]) .ui-depth-invert {
+  background-image: radial-gradient(700px 360px at 85% 0%, hsl(var(--primary) / 0.28), transparent 65%) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-ui="minimal"]:not([data-tool]) :is(a.ui-card, button.ui-card, .ag-gcard, .ag-act, .sh-tpl, .sh-mode, .sh-size, .sh-feat, .l5g-gcard, .l5g-tcard, .l5g-stpl, .l5g-mode, .ui-btn-ink, .ag-go, .ui-btn-line):hover {
+    transform: none !important;
+  }
+}
