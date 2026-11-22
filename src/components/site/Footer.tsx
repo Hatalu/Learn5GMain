@@ -12,7 +12,7 @@ const COLS = [
     ],
   },
   {
-    title: 'AI',
+    title: 'บริการ',
     links: [
       { href: '/ai-game', label: 'คลังเกม' },
       { href: '/innovation', label: 'สั่งทำนวัตกรรม' },

@@ -27,7 +27,7 @@ const display = IBM_Plex_Sans_Thai_Looped({
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
   title: 'Learn5G - สร้างสื่อการสอนและเกมสำหรับครู',
-  description: 'เครื่องมือสำหรับครู สร้างสื่อการสอน สร้างเกมห้องเรียน และใช้ AI ช่วยเตรียมการสอน',
+  description: 'เครื่องมือสำหรับครู สร้างสื่อการสอน สร้างเกมห้องเรียน และคลังเกม 3D พร้อมใช้ในห้องเรียน',
   icons: {
     icon: '/logo.png',
   },

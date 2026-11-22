@@ -85,7 +85,7 @@ export function buildGameHtml({ recipe, items, topic, three, preview }: BuildOpt
     `<html lang="${recipe.lang === 'en' ? 'en' : 'th'}"><head><meta charset="utf-8">`,
     '<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">',
     `<title>${esc(meta.title)}</title>`,
-    preview ? '' : '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mali:wght@500;700&display=swap">',
+    preview ? '' : '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mali:wght@500;700&display=swap" media="print" onload="this.media=&quot;all&quot;">',
     `<style>${ENGINE_CSS}</style>`,
     '</head><body data-state="boot">',
     ENGINE_HTML,

@@ -504,11 +504,11 @@ const K3 = {
     el.addEventListener('click', (e) => { e.stopPropagation(); K3.choose(i); }); return el;
   },
   choiceCards(list, ids) { K3.cards(list, (j) => K3.choose(ids ? ids[j] : j)); if (ids) ids.forEach((id, j) => K3.card(j).style.setProperty('--c', COLORS[id % COLORS.length])); },
-  /* which choices to show: unanswered correct ones first, then wrong ones, at most max, in their original order */
+  /* which choices to show: every unanswered correct one first, then wrong ones, at most max, in their original order */
   subset(q, max) {
     const ok = q.ordered ? [q.correct[G.picked.size]] : q.correct.filter((c) => !G.picked.has(c));
     const wrong = shuffle(q.choices.map((_, i) => i).filter((i) => q.correct.indexOf(i) < 0));
-    return ok.slice(0, 1).concat(wrong).slice(0, max).sort((a, b) => a - b);
+    return ok.concat(wrong).slice(0, Math.max(max, ok.length)).sort((a, b) => a - b);
   },
   /* jump/throw along an arc in sec seconds */
   arc(obj, to, h, sec, done) {
