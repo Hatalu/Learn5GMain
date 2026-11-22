@@ -5,9 +5,9 @@
  *   แล้วตามช่วงชั้น แล้วค่อยใช้ชุดตัวอย่างของวิชา · ความยากตัดจำนวนหมวด/ขั้นลง
  * ฟังก์ชันล้วน (selftest เรียกได้) ยกเว้น demoItems ที่โหลดคลังแบบ dynamic
  */
-import { LEVELS, gradeLabel, subjectOf, type SubjectId } from '@/lib/worksheet/options';
+import { LEVELS, gradeLabel, subjectOf, type SubjectId } from './options';
 import type { Act } from './games';
-import { quizToItems, topicLabel, type GameRecipe, type GItem } from './prompt';
+import { quizToItems, topicLabel, type GameRecipe, type GItem } from './recipe';
 import { ORDER_SAMPLES, SAMPLES, SORT_SAMPLES } from './samples';
 
 const BANK = new Set<SubjectId>(['math', 'sci', 'eng', 'thai', 'social']);

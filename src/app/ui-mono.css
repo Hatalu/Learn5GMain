@@ -9,19 +9,29 @@ html:not([data-tool]) {
   --l5g-ink: hsl(var(--foreground));
   --l5g-paper: hsl(var(--card));
   --l5g-paper2: hsl(var(--muted));
-  --l5g-sun: hsl(var(--muted));
-  --l5g-orange: hsl(var(--muted));
-  --l5g-coral: hsl(var(--muted));
-  --l5g-mint: hsl(var(--muted));
-  --l5g-violet: hsl(var(--muted));
-  --l5g-blue: hsl(var(--muted));
-  --l5g-sky: hsl(var(--muted));
+  /* 22 พ.ย. 2026: สีประจำส่วนกลับมาเป็นพาสเทลรุ้งอ่อน (ผู้ใช้ขอให้มีสีสันขึ้น) */
+  --l5g-sun: #fff0bf;
+  --l5g-orange: #ffe1c6;
+  --l5g-coral: #ffd8d3;
+  --l5g-mint: #cff3e2;
+  --l5g-violet: #e6dcff;
+  --l5g-blue: #d6e9ff;
+  --l5g-sky: #d9f1ff;
   --min-accent: hsl(var(--primary));
   --min-bg: hsl(var(--background));
   --min-ink: hsl(var(--foreground));
   --min-mute: hsl(var(--muted-foreground));
   --min-line: hsl(var(--border));
   --min-soft: hsl(var(--muted));
+}
+html.dark:not([data-tool]) {
+  --l5g-sun: rgb(255 205 60 / 0.16);
+  --l5g-orange: rgb(255 162 76 / 0.16);
+  --l5g-coral: rgb(255 111 97 / 0.16);
+  --l5g-mint: rgb(52 201 142 / 0.16);
+  --l5g-violet: rgb(154 123 255 / 0.18);
+  --l5g-blue: rgb(63 176 242 / 0.16);
+  --l5g-sky: rgb(63 176 242 / 0.12);
 }
 
 /* ---------- พื้นหลังหน้า ---------- */

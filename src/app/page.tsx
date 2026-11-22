@@ -1,22 +1,19 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { ArrowRight, ArrowUpRight, FileText, Gamepad2, Layers, Sparkles } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, Boxes, Gamepad2, Layers } from 'lucide-react';
 import { Navbar } from '@/components/navbar/Navbar';
 import { Footer } from '@/components/site/Footer';
 import { WaveBackdrop } from '@/components/ui/wave-backdrop';
 import { useAuth } from '@/context/AuthContext';
 import { useMembership } from '@/components/membership/MembershipProvider';
 import { PLANS } from '@/lib/plans';
-import { isRoomCode } from '@/lib/game-creator/templates';
 
 const TOOLS = [
-  { href: '/create', icon: Gamepad2, no: '01', title: 'สร้างเกม', desc: 'ทำชุดคำถามครั้งเดียว เปิดห้องให้นักเรียนเล่นได้หลายรูปแบบ ผ่านเลขห้อง 6 หลัก พร้อมรายงานผลรายข้อ' },
-  { href: '/studio', icon: Layers, no: '02', title: 'สร้างสื่อการสอน', desc: 'ใบงาน ใบความรู้ ป้าย และสไลด์ แบบ Canva หรือแบบ Word พร้อมแม่แบบหลายร้อยแบบ ส่งออก PDF ได้' },
-  { href: '/ai-game', icon: Sparkles, no: '03', title: 'เกม AI', desc: 'เลือกแบบเกมและคำถาม ระบบเขียนคำสั่งให้ AI สร้างเกมเฉพาะบทเรียนของคุณ' },
-  { href: '/worksheet', icon: FileText, no: '04', title: 'ใบงาน AI', desc: 'กำหนดหัวข้อ ระดับชั้น และรูปแบบ แล้วให้ AI ช่วยร่างใบงานที่พร้อมพิมพ์' },
+  { href: '/create', icon: Gamepad2, no: '01', color: 'var(--c-pink)', title: 'สร้างเกม', desc: 'ทำชุดคำถามครั้งเดียว เปิดห้องให้นักเรียนเล่นได้หลายรูปแบบ ผ่านเลขห้อง 6 หลัก พร้อมรายงานผลรายข้อ' },
+  { href: '/studio', icon: Layers, no: '02', color: 'var(--c-sky)', title: 'สร้างสื่อการสอน', desc: 'ใบงาน ใบความรู้ ป้าย และสไลด์ แบบ Canva หรือแบบ Word พร้อมแม่แบบหลายร้อยแบบ ส่งออก PDF ได้' },
+  { href: '/ai-game', icon: Boxes, no: '03', color: 'var(--c-mint)', title: 'คลังเกม 3D', desc: 'เกม 3D 9 แบบ ใส่เนื้อหาบทเรียนของคุณ แล้วบันทึกเป็นไฟล์ไปเปิดบนจอห้องเรียน ไม่ต้องต่ออินเทอร์เน็ต' },
 ];
 
 const STEPS = [
@@ -28,9 +25,6 @@ const STEPS = [
 export default function HomePage() {
   const { user } = useAuth();
   const { ents } = useMembership();
-  const router = useRouter();
-  const [code, setCode] = useState('');
-  const okCode = isRoomCode(code);
 
   return (
     <>
@@ -39,13 +33,19 @@ export default function HomePage() {
         {/* hero */}
         <section className="relative overflow-hidden border-b">
           <WaveBackdrop />
+          <div className="ui-stripes" aria-hidden>
+            <i />
+            <i />
+            <i />
+            <i />
+          </div>
           <div className="relative mx-auto max-w-6xl px-4 pb-28 pt-20 sm:px-6 sm:pb-36 sm:pt-28">
             <p className="ui-kicker ui-rise">สำหรับครู</p>
             <h1 className="ui-title ui-rise mt-5 max-w-4xl text-[2.6rem] leading-[1.12] sm:text-7xl sm:leading-[1.05]" style={{ animationDelay: '60ms' }}>
               สร้างสื่อการสอน
               <br />
               และเกมห้องเรียน
-              <span className="text-primary whitespace-nowrap"> ในที่เดียว</span>
+              <span className="ui-rainbow-text whitespace-nowrap"> ในที่เดียว</span>
             </h1>
             <p className="ui-rise mt-7 max-w-xl text-base ui-muted sm:text-lg" style={{ animationDelay: '120ms' }}>
               เครื่องมือที่ทำให้การเตรียมสอนเร็วขึ้น ตั้งแต่ใบงาน เกมตอบคำถาม จนถึงนวัตกรรมตามแผนการสอนของคุณ
@@ -69,11 +69,13 @@ export default function HomePage() {
               <h2 className="ui-title mt-3 text-3xl sm:text-5xl">ทุกอย่างที่ครูต้องใช้</h2>
             </div>
           </div>
-          <div className="ui-depth-grid mt-12 grid gap-px overflow-hidden rounded-3xl border bg-border sm:grid-cols-2">
+          <div className="ui-depth-grid mt-12 grid gap-px overflow-hidden rounded-3xl border bg-border sm:grid-cols-3">
             {TOOLS.map((t) => (
               <Link key={t.href} href={t.href} className="group relative bg-background p-8 transition-colors hover:bg-muted/60 sm:p-10">
                 <div className="flex items-start justify-between">
-                  <t.icon className="h-6 w-6" strokeWidth={1.5} />
+                  <span className="ui-tool-ic" style={{ ['--tc' as string]: t.color }}>
+                    <t.icon className="h-6 w-6" strokeWidth={1.75} />
+                  </span>
                   <span className="text-xs tabular-nums ui-muted">{t.no}</span>
                 </div>
                 <h3 className="mt-12 font-display text-2xl font-normal">{t.title}</h3>
@@ -113,32 +115,8 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* join room + pricing teaser */}
-        <section className="mx-auto grid max-w-6xl gap-6 px-4 py-24 sm:px-6 sm:py-32 lg:grid-cols-2">
-          <div className="ui-card p-8 sm:p-10">
-            <p className="ui-kicker">นักเรียน</p>
-            <h2 className="ui-title mt-3 text-3xl">เข้าห้องเกมด้วยเลข 6 หลัก</h2>
-            <p className="mt-3 text-sm ui-muted">ไม่ต้องสมัคร ไม่ต้องเข้าสู่ระบบ</p>
-            <form
-              className="mt-8 flex gap-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (okCode) router.push(`/play?code=${code}`);
-              }}
-            >
-              <input
-                value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                inputMode="numeric"
-                aria-label="เลขห้อง 6 หลัก"
-                placeholder="000000"
-                className="ui-input h-12 flex-1 text-center font-display text-xl tracking-[0.4em]"
-              />
-              <button type="submit" disabled={!okCode} className="ui-btn ui-btn-ink h-12 px-6">
-                เข้าห้อง
-              </button>
-            </form>
-          </div>
+        {/* pricing teaser */}
+        <section className="mx-auto max-w-6xl px-4 py-24 sm:px-6 sm:py-32">
           <div className="ui-card flex flex-col p-8 sm:p-10">
             <p className="ui-kicker">แพ็กเกจ</p>
             <h2 className="ui-title mt-3 text-3xl">เริ่มต้น {PLANS[0].price} บาท / เดือน</h2>

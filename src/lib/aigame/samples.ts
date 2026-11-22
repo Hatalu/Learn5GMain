@@ -2,8 +2,8 @@
  * คำถามตัวอย่างสำหรับ "เกมตัวอย่าง" ตอนครูให้ AI แต่งคำถามเอง (ยังไม่มีข้อจริงให้เล่น)
  * สั้น ตอบถูกข้อเดียว ใช้วางบนวัตถุในเกมได้
  */
-import type { SubjectId } from '@/lib/worksheet/options';
-import type { GItem } from './prompt';
+import type { SubjectId } from './options';
+import type { GItem } from './recipe';
 
 const q = (text: string, right: string, ...wrong: string[]): GItem => {
   // วางข้อถูกสลับตำแหน่งตามความยาวคำถาม (คงที่ ไม่สุ่ม) จะได้ไม่อยู่ข้อแรกเสมอ

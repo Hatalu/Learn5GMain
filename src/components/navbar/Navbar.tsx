@@ -15,8 +15,7 @@ import { Logo } from './Logo';
 export const NAV_LINKS = [
   { href: '/create', label: 'สร้างเกม' },
   { href: '/studio', label: 'สร้างสื่อการสอน' },
-  { href: '/ai-game', label: 'เกม AI' },
-  { href: '/worksheet', label: 'ใบงาน AI' },
+  { href: '/ai-game', label: 'คลังเกม' },
   { href: '/innovation', label: 'สั่งทำนวัตกรรม' },
   { href: '/pricing', label: 'แพ็กเกจ' },
 ];

@@ -14,8 +14,7 @@ const COLS = [
   {
     title: 'AI',
     links: [
-      { href: '/ai-game', label: 'เกม AI' },
-      { href: '/worksheet', label: 'ใบงาน AI' },
+      { href: '/ai-game', label: 'คลังเกม' },
       { href: '/innovation', label: 'สั่งทำนวัตกรรม' },
     ],
   },

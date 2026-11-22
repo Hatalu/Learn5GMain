@@ -456,7 +456,7 @@ function StudioHub() {
 
             {tab === 'new' ? (
               <section className="max-w-6xl mx-auto px-4 pt-6 pb-12">
-                {/* ทางเลือกหลัก: ทำเอง / ให้ AI วาด */}
+                {/* ทางเลือกหลัก: ทำเอง / คลังเกม */}
                 <div className="grid sm:grid-cols-2 gap-4 mb-8">
                   <button
                     type="button"
@@ -475,7 +475,7 @@ function StudioHub() {
                     </span>
                   </button>
                   <Link
-                    href="/worksheet"
+                    href="/ai-game"
                     onClick={() => gsfx.tap()}
                     className="group flex items-center gap-4 p-5 rounded-[1.6rem] border-[3px] border-[#2a2350] bg-gradient-to-br from-[#ffe08a] to-[#ffb3cf] text-[#2a2350] text-left shadow-[0_6px_0_#2a2350] hover:-translate-y-1 active:translate-y-1 active:shadow-[0_2px_0_#2a2350] transition-transform"
                   >
@@ -483,8 +483,8 @@ function StudioHub() {
                       <Wand2 className="w-8 h-8" />
                     </span>
                     <span>
-                      <b className="block font-display text-2xl leading-tight">สร้างจาก AI</b>
-                      <small className="block mt-1 text-sm font-semibold opacity-80">แต่งใบงานแบบแต่งตัวละคร ให้ Gemini วาดภาพ แล้วนำมาพิมพ์ต่อที่นี่</small>
+                      <b className="block font-display text-2xl leading-tight">คลังเกม 3D</b>
+                      <small className="block mt-1 text-sm font-semibold opacity-80">เลือกเกม ใส่เนื้อหาของบทเรียน แล้วบันทึกไฟล์ไปเปิดเล่นในห้องเรียน</small>
                     </span>
                   </Link>
                 </div>

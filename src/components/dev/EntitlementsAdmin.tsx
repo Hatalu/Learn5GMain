@@ -12,10 +12,9 @@ const CAPS: { k: NumKey; label: string; unit: string }[] = [
   { k: 'sets', label: 'ชุดคำถาม/เกม', unit: 'ชุด' },
   { k: 'designs', label: 'สื่อการสอน', unit: 'ชิ้น' },
 ];
-const FLAGS: { k: 'discover' | 'ai_game' | 'worksheet'; label: string }[] = [
+const FLAGS: { k: 'discover' | 'ai_game'; label: string }[] = [
   { k: 'discover', label: 'ใช้ผลงานในคลังครู (Discover)' },
-  { k: 'ai_game', label: 'เกม AI' },
-  { k: 'worksheet', label: 'ใบงาน AI' },
+  { k: 'ai_game', label: 'คลังเกม' },
 ];
 
 /** Dev > แพ็กเกจและสิทธิ์: ตั้งว่าแต่ละแพ็กเกจได้อะไร เท่าไร (ตาราง plan_entitlements) */

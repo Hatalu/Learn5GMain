@@ -1883,257 +1883,77 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
     console.log('  ok  บันทึกการเข้าเว็บ: ป้ายเครื่อง + path ไม่มี query');
   }
   {
-    const O = await import('../src/lib/worksheet/options');
-    const R = await import('../src/lib/worksheet/recipe');
-    const C = await import('../src/lib/worksheet/contest');
-    // 9 วิชาตามที่ผู้ใช้สั่ง ทุกวิชามีหัวข้อ + กิจกรรม id ไม่ซ้ำ
-    assert.deepEqual(O.SUBJECTS.map((s) => s.id).sort(), ['chinese', 'eng', 'health', 'japanese', 'math', 'pe', 'sci', 'social', 'thai']);
-    for (const s of O.SUBJECTS) {
-      assert.ok(s.topics.length >= 8, s.id);
-      assert.equal(new Set(s.topics.map((t) => t.id)).size, s.topics.length, s.id);
-      for (const t of s.topics) assert.match(t.id, /^[a-z0-9-]+$/, t.id);
-      assert.ok(O.activitiesFor(s.id).length >= 16, s.id);
-    }
-    for (const list of [O.ACTIVITIES, O.THEMES, O.STYLES, O.FRAMES, O.DECOS, O.HEADS, O.SCENES, O.PATTERNS, O.CHARS, O.LAYOUTS, O.LOOKS] as unknown as { id: string }[][]) assert.equal(new Set(list.map((x) => x.id)).size, list.length);
-    // ห้ามอิโมจิ/ลูกศรที่กลายเป็นอิโมจิ ในข้อความทุกตัวเลือกและ prompt
-    const bad = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}↔️]/u;
-    assert.ok(!bad.test(JSON.stringify([O.SUBJECTS, O.ACTIVITIES, O.THEMES, O.STYLES, O.FRAMES, R.PRESETS, O.HEADS, O.SCENES, O.PATTERNS, O.CHARS, O.LAYOUTS])));
-    // cleanRecipe: ค่าขยะได้สูตรที่ใช้ได้, ไปกลับผ่าน URL ได้ค่าเดิม, prompt คงที่
-    const junk = R.cleanRecipe({ s: 'x', g: 99, a: 'tian', n: 500, txt: 'evil', note: 'hi "there"\n<script>', cu: '' });
-    assert.equal(junk.s, 'math');
-    assert.equal(junk.g, 12);
-    assert.notEqual(junk.a, 'tian'); // กิจกรรมเฉพาะจีน ใช้กับคณิตไม่ได้
-    assert.equal(junk.n, O.COUNT_MAX);
-    assert.equal(junk.txt, 'blank');
-    assert.ok(!/["<>\n]/.test(junk.note));
-    assert.equal(R.cleanRecipe({ s: 'chinese', a: 'tian' }).a, 'tian');
-    assert.equal(R.cleanRecipe({ tp: 'custom', cu: '' }).tp, 'count'); // พิมพ์เองแต่ว่าง = กลับเป็นหัวข้อแรก
-    for (let i = 0; i < 60; i++) {
-      let seed = i * 7919 + 1;
-      const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-      const r = R.randomRecipe(rnd);
-      assert.deepEqual(R.decodeRecipe(R.encodeRecipe(r)), r);
-      const p = R.buildPrompt(r);
-      assert.equal(p, R.buildPrompt(R.cleanRecipe(JSON.parse(JSON.stringify(r)))));
-      assert.ok(!bad.test(p) && p.includes('A4') && p.length < 8000);
-    }
-    for (const p of R.PRESETS) assert.equal(R.presetRecipe(p).a, p.r.a, p.id); // ชุดสำเร็จรูปไม่ถูกซ่อมทิ้ง
-    assert.equal(R.decodeRecipe('***'), null);
-    assert.ok(R.buildPrompt({ ...R.defaultRecipe(), txt: 'blank' }).includes('Leave every box'));
-    // prompt บอกโครงหน้าตามกระดาษตัวอย่าง: จำนวนชิ้นเท่ากับ itemCount, ช่องที่ปิดไว้ไม่ถูกสั่ง
-    const lay = R.buildPrompt({ ...R.defaultRecipe(), a: 'match', n: 14, score: false, mascot: false });
-    assert.ok(lay.includes(`${R.itemCount('match', 14)} empty rounded boxes`) && lay.includes('EXACT LAYOUT'));
-    assert.ok(!lay.includes('score circle') && !lay.includes('mascot'));
-    assert.equal(R.itemCount('fill', 17), 17);
-    // ธีม+ของตกแต่งเพิ่ม 70+ แบบ (เดิม 16 ธีม) ทุกชิ้นมีหมวด/ไอคอนที่วาดได้
-    const L = await import('../src/lib/worksheet/layout');
-    assert.ok(O.THEMES.length - 16 + O.DECOS.length >= 70);
-    for (const t of O.THEMES) {
-      assert.ok(O.THEME_CATS.some((c) => c.id === t.cat), t.id);
-      assert.ok(t.motif === '' || (O.MOTIFS as readonly string[]).includes(t.motif), t.id);
-      for (const c of t.pal) assert.match(c, /^#[0-9a-f]{6}$/, t.id);
-    }
-    for (const d of O.DECOS) {
-      assert.ok((O.MOTIFS as readonly string[]).includes(d.motif) && O.DECO_PLACES.some((p) => p.id === d.place), d.id);
-      assert.ok(d.color === 'a' || d.color === 'b' || /^#[0-9a-f]{6}$/.test(d.color), d.id);
-    }
-    for (const m of O.MOTIFS) assert.ok(O.MOTIF_EN[m], m);
-    assert.deepEqual(R.cleanRecipe({ dz: ['d-heart-c', 'x', 'd-heart-c', 'd-star-c', 'd-bow-c', 'd-crown-c'] }).dz, ['d-heart-c', 'd-star-c', 'd-bow-c']);
-    // ลูกเต๋า: วิชา/ชั้นคงเดิม และแท็บอื่นเปลี่ยนเฉพาะช่องของแท็บนั้น
-    const base = R.cleanRecipe({ ...R.defaultRecipe(), s: 'sci', g: 5, tp: 'solar', a: 'lablog', th: 'robot', st: 'flat' });
-    for (let i = 0; i < 40; i++) {
-      let seed = i * 104729 + 3;
-      const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-      for (const part of ['subject', 'topic', 'act', 'look', 'theme', 'style', 'page', 'extra'] as const) {
-        const x = R.randomPart(base, part, rnd, part === 'theme' ? ['ocean', 'beach'] : undefined);
-        assert.equal(x.s, 'sci');
-        assert.equal(x.g, 5);
-        const changed = (Object.keys(base) as (keyof typeof base)[]).filter((k) => JSON.stringify(x[k]) !== JSON.stringify(base[k]));
-        const allow: Record<string, string[]> = { topic: ['tp', 'cu'], act: ['a', 'n', 'lv'], look: ['th', 'hd', 'fr', 'sc', 'pt', 'ch', 'mascot'], theme: ['th'], style: ['st', 'fr', 'hd', 'sc', 'pt'], page: ['o', 'lang', 'big'], extra: ['name', 'score', 'mascot', 'sticker', 'key', 'dz', 'ch'] };
-        if (part !== 'subject') for (const k of changed) assert.ok(allow[part].includes(k), `${part} changed ${k}`);
-        if (part === 'theme') assert.ok(['ocean', 'beach'].includes(x.th));
-      }
-    }
-    // prompt บอกตำแหน่งเป็นมิลลิเมตรจาก geometry ตัวเดียวกับกระดาษตัวอย่าง
-    const rr = R.cleanRecipe({ ...R.defaultRecipe(), dz: ['d-heart-c'] });
-    const gg = L.geometry(rr);
-    const pp = R.buildPrompt(rr);
-    assert.ok(pp.includes(`y ${gg.body.y} to ${Math.round((gg.body.y + gg.body.h) * 10) / 10} mm`));
-    assert.ok(pp.includes(`radius ${gg.score!.r} mm`) && pp.includes('heart') && pp.includes('EXACT LAYOUT'));
-    assert.equal(L.decoPoints('corners', 210, 297, 10).length, 4);
-    // แบบสำเร็จรูป 500+ (ผู้ใช้สั่ง 13 พ.ย. 2026): นับจากรายการจริง ทุกแบบต่างกันจริง ผ่าน cleanRecipe และส่งผ่านลิงก์ได้
-    assert.ok(O.LOOKS.length >= 500, `looks ${O.LOOKS.length}`);
-    assert.equal(O.LOOKS.length, O.THEMES.length * O.LAYOUTS.length);
-    const lookSig = new Set<string>();
-    const artIds = new Set([...(await import('../src/lib/studio/char')).ANIMAL_PRESETS, ...(await import('../src/lib/studio/char')).CHAR_PRESETS].map((x) => x.id));
-    for (const c of O.CHARS) assert.ok(artIds.has(c.id) && c.en.length > 20, c.id); // ทุกตัวมีภาพให้วาด + คำบรรยาย
-    for (const y of O.LAYOUTS) {
-      assert.ok(O.HEADS.some((x) => x.id === y.hd) && O.FRAMES.some((x) => x.id === y.fr) && O.SCENES.some((x) => x.id === y.sc) && O.PATTERNS.some((x) => x.id === y.pt), y.id);
-    }
-    assert.equal(new Set(O.LAYOUTS.map((y) => [y.hd, y.fr, y.sc, y.pt].join())).size, O.LAYOUTS.length);
-    for (const l of O.LOOKS) {
-      const x = R.applyLook(R.defaultRecipe(), l);
-      assert.equal(x.th, l.theme.id);
-      assert.equal(x.hd, l.layout.hd);
-      assert.equal(x.ch, l.ch);
-      assert.deepEqual(R.cleanRecipe(JSON.parse(JSON.stringify(x))), x);
-      assert.equal(R.lookOf(x)?.id, l.id);
-      const enc = R.encodeRecipe(x);
-      assert.ok(enc.length <= 2000 && R.decodeRecipe(enc)?.hd === x.hd, l.id);
-      lookSig.add([x.th, x.hd, x.fr, x.sc, x.pt].join());
-      const gl = L.geometry(x);
-      assert.ok(gl.body.h >= 120 && gl.body.y + gl.body.h <= gl.H - gl.m, l.id); // เนื้อหายังมีที่พอ ไม่ล้นแผ่น
-      if (gl.char) assert.ok(gl.char.box.y + gl.char.box.h <= gl.body.y && gl.char.bubble.x >= gl.char.box.x + gl.char.box.w, l.id);
-      if (gl.scene.top) assert.ok(gl.scene.top.y + gl.scene.top.h <= gl.head.y, l.id);
-      if (gl.scene.bottom) assert.ok(gl.scene.bottom.y >= gl.body.y + gl.body.h, l.id);
-    }
-    assert.equal(lookSig.size, O.LOOKS.length);
-    // สูตรเก่า (ก่อนมีช่อง hd/sc/pt/ch) ได้หน้าตาเดิม: ไม่มีฉาก ไม่มีตัวการ์ตูน prompt แบบเดิม
-    const old = R.cleanRecipe({ v: 1, s: 'math', g: 3, tp: 'frac', a: 'color', th: 'space', st: 'cartoon', fr: 'theme', mascot: true });
-    assert.deepEqual([old.hd, old.sc, old.pt, old.ch], ['bar', 'none', 'plain', '']);
-    const og = L.geometry(old);
-    assert.ok(!og.rich && og.mascot && !og.char && og.head.y === 16 && og.body.y === 72);
-    const op = R.buildPrompt(old);
-    assert.ok(op.includes('do not add, remove or move anything') && op.includes('7 mm corner radius') && op.includes('one original mascot face') && !op.includes('decoration strip'));
-    // แบบใหม่: prompt บอกทรงหัว ตัวการ์ตูน ฉาก ตามตำแหน่งเดียวกับกระดาษตัวอย่าง และไม่ห้ามตกแต่ง
-    const nw = R.applyLook(R.defaultRecipe(), O.lookById('ocean.hill')!);
-    const ng = L.geometry(nw);
-    const np = R.buildPrompt(nw);
-    assert.ok(ng.rich && ng.char && ng.scene.bottom);
-    assert.ok(np.includes('paint-blob') && np.includes(ng.char!.en) && np.includes('Bottom decoration strip') && np.includes(`y ${ng.scene.bottom!.y} to`));
-    assert.ok(!np.includes('do not add, remove or move anything') && !np.includes('extra decorations') && np.includes('EXACT LAYOUT'));
-    // อันดับ: ใจมากก่อน เท่ากัน = ส่งก่อนชนะ, 1 คน 1 รางวัล, 0 ใจไม่ได้รางวัล
-    const rows = [
-      { id: 'a', owner_id: 'u1', created_at: '2026-11-02', like_count: 5 },
-      { id: 'b', owner_id: 'u2', created_at: '2026-11-01', like_count: 5 },
-      { id: 'c', owner_id: 'u1', created_at: '2026-11-01', like_count: 4 },
-      { id: 'd', owner_id: 'u3', created_at: '2026-11-03', like_count: 0 },
-    ];
-    assert.deepEqual(C.rankEntries(rows).map((r) => r.id), ['b', 'a', 'c', 'd']);
-    assert.deepEqual(C.pickWinners(rows, 3).map((r) => r.id), ['b', 'a']);
-    assert.deepEqual(C.cleanPrizes([90, '60', -5, 9]), [90, 60, 0]);
-    const ct = { starts_at: '2026-11-10T00:00:00Z', ends_at: '2026-11-20T00:00:00Z', awarded_at: null };
-    assert.equal(C.phaseOf(ct, Date.parse('2026-11-09T00:00:00Z')), 'soon');
-    assert.equal(C.phaseOf(ct, Date.parse('2026-11-15T00:00:00Z')), 'open');
-    assert.equal(C.phaseOf(ct, Date.parse('2026-11-20T00:00:00Z')), 'ended');
-    assert.equal(C.phaseOf({ ...ct, awarded_at: 'x' }), 'awarded');
-    passed++;
-    console.log('  ok  ตู้ใบงาน AI: 9 วิชา ตัวเลือก/prompt ไม่มีอิโมจิ สูตรไปกลับ URL + อันดับประกวด');
-  }
-  {
-    // สร้างเกมด้วย AI: ทุกเกม x ทุกวิชา prompt ครบ ไม่มีอิโมจิ ใช้ชุดคำถามแล้วมีครบทุกข้อ
     const G = await import('../src/lib/aigame/games');
-    const P = await import('../src/lib/aigame/prompt');
+    const R = await import('../src/lib/aigame/recipe');
     const S = await import('../src/lib/aigame/samples');
-    const O = await import('../src/lib/worksheet/options');
-    const ids = G.AI_GAMES.map((g) => g.id);
-    assert.equal(new Set(ids).size, ids.length, 'id เกมซ้ำ');
-    assert.ok(G.AI_GAMES.length >= 12);
-    // ทุกการกระทำการเรียนรู้มีทั้งเกม 2D และ 3D
-    for (const a of G.ACTS) for (const d of ['2D', '3D']) assert.ok(G.AI_GAMES.some((g) => g.act === a.id && g.dim === d), a.id + d);
-    for (const g of G.AI_GAMES) {
-      const text = [g.name, g.pitch, g.fit, g.scene, ...g.how, ...g.core, ...g.controls, ...g.progression, ...g.juice].join(' ');
-      assert.ok(!P.hasEmoji(text), g.id);
-      for (const s of O.SUBJECTS) {
-        const r = P.cleanGameRecipe({ game: g.id, s: s.id, g: 4, topic: P.topicsFor(s.id, 4)[0].id });
-        const p = P.buildGamePrompt(r);
-        assert.ok(!P.hasEmoji(p), `${g.id}/${s.id} emoji`);
-        assert.ok(p.includes(g.name) && p.includes(s.th) && p.includes('ป.4') && p.includes(P.topicLabel(r)), `${g.id}/${s.id}`);
-        assert.ok(p.includes('const QUESTIONS') && p.includes('NO EMOJI') && p.includes('const CONFIG') && p.includes('Learning action: ' + G.actOf(g.act).en));
-        assert.ok(p.includes(g.act === 'sort' ? 'write 10 items' : g.act === 'order' ? 'Write 10 sequences' : 'Write 10 questions'), g.id + ' content');
-        assert.equal(p.includes('keepOrder: 1,'), g.act === 'sort', g.id + ' keepOrder');
-        assert.equal(p.includes('const K3 = {'), g.dim === '3D', g.id + ' K3');
-        // ทุกชื่อ CONFIG ที่ข้อความเกมอ้างถึง ต้องมีค่าในบล็อก CONFIG
-        for (const k of P.configRefs(g)) assert.ok(new RegExp('\n  ' + k + ': [0-9.]+,').test(p), `${g.id} CONFIG.${k}`);
-        assert.equal(p.includes('readMinSec:'), !g.noRead, g.id);
-        assert.equal(p.includes('three.js'), g.dim === '3D');
-      }
-      for (const items of Object.values(S.SAMPLES)) for (const it of items) assert.ok(it.choices[it.correct[0]] !== undefined && !P.hasEmoji(it.q));
-      for (const items of Object.values(S.SORT_SAMPLES)) for (const it of items) assert.ok(it.choices.length >= 2 && it.choices.length <= 3 && it.choices[it.correct[0]] !== undefined && !P.hasEmoji(it.q + it.choices.join('')));
-      for (const items of Object.values(S.ORDER_SAMPLES))
-        for (const it of items) assert.ok(it.ordered && it.choices.length >= 3 && it.correct.join() === it.choices.map((_, i) => i).join() && new Set(it.choices).size === it.choices.length && !P.hasEmoji(it.q + it.choices.join('')));
-    }
-    // ชุดคำถามของเว็บ: ทุกข้อเข้า prompt, ข้อพิมพ์ตอบ/หลายคำตอบ/รูปอย่างเดียว
-    const quiz = {
-      v: 1 as const,
-      questions: [
-        { id: 'a', text: [{ t: 'x' as const, v: 'ครึ่งของ ' }, { t: 'm' as const, v: '\\frac{1}{2}' }], media: null, multi: false, time: 20, points: 1 as const, choices: [{ id: '1', text: [{ t: 'x' as const, v: '1/4' }], media: null, correct: true }, { id: '2', text: [{ t: 'x' as const, v: '1' }], media: null, correct: false }] },
-        { id: 'b', text: [{ t: 'x' as const, v: 'เลือกจำนวนคู่' }], media: null, multi: true, time: 20, points: 1 as const, choices: [2, 3, 4].map((n) => ({ id: String(n), text: [{ t: 'x' as const, v: String(n) }], media: null, correct: n % 2 === 0 })) },
-        { id: 'c', text: [{ t: 'x' as const, v: 'สะกด cat' }], media: null, multi: false, time: 20, points: 1 as const, choices: [], kind: 'text' as const, answers: ['cat'] },
-        { id: 'd', text: [], media: null, multi: false, time: 20, points: 1 as const, choices: [] },
-      ],
-    };
-    const { items, skipped } = P.quizToItems(quiz);
-    assert.equal(items.length, 3);
-    assert.equal(skipped, 1);
-    assert.deepEqual(items[1].correct, [0, 2]);
-    assert.deepEqual(items[2].accept, ['cat']);
-    const p = P.buildGamePrompt(P.cleanGameRecipe({ game: 'balloon', s: 'math', g: 3, source: 'mine' }), { items, setTitle: 'ชุดทดสอบ' });
-    for (const it of items) assert.ok(p.includes(JSON.stringify(it.q)), it.q);
-    assert.ok(p.includes('"answers":[0,2]') && p.includes('"type":"text"') && p.includes('ชุดทดสอบ') && p.includes('Use ALL 3 questions'));
-    assert.ok(!p.includes('Write 10 questions'));
-    // ลูกเล่น: ความเร็วช้า = เวลายาวขึ้น, ทุกตัวเลือกเปลี่ยน prompt, เวลา/หัวใจโผล่ครั้งเดียว, ยาวไม่เกินเพดาน
-    const cfgOf = (pace: string) => Number(/riseSec: ([0-9.]+)/.exec(P.buildGamePrompt(P.cleanGameRecipe({ game: 'balloon', pace: pace as never })))![1]);
-    assert.ok(cfgOf('calm') > cfgOf('normal') && cfgOf('normal') > cfgOf('fast'));
-    const base = P.buildGamePrompt(P.defaultGameRecipe());
-    const variants: Partial<import('../src/lib/aigame/prompt').GameRecipe>[] = [
-      ...P.PACES.map((x) => ({ pace: x.id })),
-      ...P.TIMERS.map((x) => ({ timer: x.id })),
-      ...P.LIVES.map((x) => ({ lives: x.id as 'on' | 'off' })),
-      ...P.MODES.map((x) => ({ mode: x.id })),
-      ...P.ARTS.map((x) => ({ art: x.id })),
-      ...P.HEROES.map((x) => ({ hero: x.id })),
-      ...P.EXTRAS.map((x) => ({ extras: [x.id] })),
-    ];
-    const d0 = P.defaultGameRecipe();
-    for (const v of variants) {
-      const k = Object.keys(v)[0] as keyof typeof d0;
-      if (JSON.stringify(d0[k]) === JSON.stringify(v[k])) continue;
-      assert.notEqual(P.buildGamePrompt(P.cleanGameRecipe({ ...d0, ...v })), base, JSON.stringify(v));
-    }
-    const full = P.buildGamePrompt(P.cleanGameRecipe({ game: 'runner', timer: 20, lives: 'on', count: 20, extras: P.EXTRAS.map((e) => e.id) }));
-    assert.equal(full.match(/timerSec: /g)!.length, 1);
-    assert.ok(full.includes('timerSec: 20,') && full.includes('lives: 3,'));
-    assert.ok(full.length < 42000, String(full.length));
-    // เกมจัดกลุ่ม/เรียงลำดับใช้ชุดคำถามแบบเลือกตอบไม่ได้: บังคับให้ AI เตรียมเนื้อหา
-    assert.equal(P.cleanGameRecipe({ game: 'belt', source: 'mine' }).source, 'ai');
-    assert.equal(P.cleanGameRecipe({ game: 'stack', source: 'bank' }).source, 'ai');
-    assert.equal(P.cleanGameRecipe({ game: 'balloon', source: 'bank' }).source, 'bank');
-    const E = await import('../src/lib/aigame/engine');
-    assert.ok(full.includes(E.ENGINE_JS) && full.includes(E.KIT3D_JS) && full.includes('K3.init().then(') && full.includes('const WORDS = {') && full.includes('no3d:'));
-    assert.ok(!/\$\{|\x60/.test(E.ENGINE_JS + E.ENGINE_HTML + E.ENGINE_CSS + E.HOOKS_JS + E.KIT3D_JS), 'engine must not contain template syntax');
-    for (const k of ['function answerText', 'const FX = {', 'q.ordered ? i === q.correct[G.picked.size]', 'CONFIG.keepOrder']) assert.ok(E.ENGINE_JS.includes(k), k);
-    // เนื้อหาเกมตัวอย่างตามตัวเลือก: ทุกวิชา x ชั้น x เรื่อง x ความยาก ได้ชุดที่ใช้ได้ และความยากมีผล
+    const O = await import('../src/lib/aigame/options');
+    const B = await import('../src/lib/aigame/build');
+    const H = await import('../src/lib/aigame/hooks');
     const DC = await import('../src/lib/aigame/demoContent');
-    for (const s of O.SUBJECTS)
-      for (const g of O.GRADES)
-        for (const t of P.topicsFor(s.id, g))
-          for (const lv of O.LEVELS) {
-            const r = P.cleanGameRecipe({ game: 'belt', s: s.id, g, topic: t.id, lv: lv.id });
-            const so = DC.actItems(r, 'sort');
-            assert.ok(so.length >= 4, `sort ${s.id}/${g}/${t.id}`);
-            for (const it of so) assert.ok(it.choices.length >= 2 && it.choices[it.correct[0]] !== undefined && !P.hasEmoji(it.q + it.choices.join('')), `sort item ${s.id}/${g}/${t.id}`);
-            const or = DC.actItems(r, 'order');
-            assert.ok(or.length >= 1, `order ${s.id}/${g}/${t.id}`);
-            for (const it of or) assert.ok(it.ordered && it.choices.length >= 3 && new Set(it.choices).size === it.choices.length && it.correct.join() === it.choices.map((_, i) => i).join(), `order item ${s.id}/${g}/${t.id} ${it.choices.join()}`);
-          }
-    const nOrd = (lv: string) => DC.actItems(P.cleanGameRecipe({ game: 'train', s: 'sci', g: 3, topic: 'lifecycle', lv: lv as never }), 'order')[0].choices.length;
-    assert.ok(nOrd('easy') < nOrd('hard'));
-    assert.ok(DC.topicScore('สมการอย่างง่าย', 'สมการเชิงเส้นตัวแปรเดียว') > 0 && DC.topicScore('สมการอย่างง่าย', 'ทฤษฎีบทพีทาโกรัส') === 0);
-    const flat = P.buildGamePrompt(P.cleanGameRecipe({ game: 'balloon' }));
-    assert.ok(flat.includes(E.HOOKS_JS) && !flat.includes('K3'));
-    assert.equal(P.cleanGameRecipe({ extras: ['tts', 'tts', 'zzz', 'boss', 'map', 'cert', 'best'] }).extras.join(), 'tts,boss,map,cert');
-    for (const x of P.FIXES) assert.ok(!P.hasEmoji(x.en + x.th));
-    // ค่าแปลกปลอมกลับเป็นค่าเริ่มต้น และตัดอิโมจิจากข้อความครู
-    const bad = P.cleanGameRecipe({ game: 'zzz', s: 'xx' as never, g: 99, count: 7, note: 'สนุก\u{1F600}มาก' });
-    assert.equal(bad.game, G.AI_GAMES[0].id);
-    assert.equal(bad.s, 'math');
-    assert.equal(bad.count, 10);
-    const bad2 = P.cleanGameRecipe({ pace: 'zz' as never, timer: 7, lives: 'x' as never, mode: 'x' as never, art: 'x', hero: 'x', extras: 'tts' as never });
-    assert.deepEqual([bad2.pace, bad2.timer, bad2.lives, bad2.mode, bad2.art, bad2.hero, bad2.extras.length], ['normal', 0, 'off', 'solo', 'cartoon', 'auto', 0]);
-    assert.ok(!P.hasEmoji(bad.note) && bad.note.includes('สนุก'));
+    const TX = await import('../src/lib/aigame/text');
+    const { readFileSync, writeFileSync, mkdtempSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const { tmpdir } = await import('node:os');
+    const { execFileSync } = await import('node:child_process');
+    // คลังเกม: 9 เกม 3D ทุกการกระทำมีอย่างน้อย 2 เกม ทุกเกมมีโค้ดเกม + รูปปก
+    assert.equal(G.AI_GAMES.length, 9);
+    assert.equal(new Set(G.AI_GAMES.map((g) => g.id)).size, G.AI_GAMES.length);
+    for (const a of G.ACTS) assert.ok(G.AI_GAMES.filter((g) => g.act === a.id).length >= 2, 'act ' + a.id);
+    const three = B.threeToScript(readFileSync(join(__dirname, '../node_modules/three/build/three.module.min.js'), 'utf8'));
+    assert.ok(three.startsWith('window.__THREE=') && /WebGLRenderer:/.test(three));
+    const dir = mkdtempSync(join(tmpdir(), 'aigame-'));
+    for (const g of G.AI_GAMES) {
+      assert.ok(H.HOOKS[g.id], 'hooks ' + g.id);
+      assert.ok(readFileSync(join(__dirname, '../public/aigame/' + g.id + '.webp')).length > 1000, 'thumb ' + g.id);
+      for (const s of ['math', 'sci', 'eng', 'thai'] as const) {
+        const r = R.cleanGameRecipe({ game: g.id, s, lang: s === 'eng' ? 'en' : 'th', lives: 'on', timer: 20 });
+        const items = g.act === 'pick' ? S.SAMPLES[s] : DC.actItems(r, g.act);
+        assert.ok(items.length >= 2, `items ${g.id} ${s}`);
+        const html = B.buildGameHtml({ recipe: r, items, topic: 'เรื่อง </script> ทดสอบ', three });
+        assert.ok(!R.hasEmoji(html.replace(three, '')), 'emoji ' + g.id);
+        // สคริปต์เกมต้องไม่ถูกตัดด้วยเนื้อหาของครู และต้อง parse ได้
+        const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+        assert.equal(scripts.length, 2, 'scripts ' + g.id);
+        if (s === 'math') {
+          const f = join(dir, g.id + '.js');
+          writeFileSync(f, scripts[1]);
+          execFileSync(process.execPath, ['--check', f]);
+        }
+        assert.ok(scripts[1].includes('const QUESTIONS = ') && scripts[1].includes('K3.init('));
+      }
+    }
+    // ข้อความของครูที่มี </script> ไม่หลุดออกจากสคริปต์
+    assert.ok(!B.jsonForScript({ a: '</script><b>' }).includes('</'));
+    // CONFIG: ความเร็วช้า = เวลานานขึ้น, จัดกลุ่มล็อกตำแหน่งบ้าน
+    const calm = B.configOf(R.cleanGameRecipe({ game: 'runner', pace: 'calm' }), G.gameById('runner')!);
+    const fast = B.configOf(R.cleanGameRecipe({ game: 'runner', pace: 'fast' }), G.gameById('runner')!);
+    assert.ok(calm.gateTravelSec > fast.gateTravelSec);
+    assert.equal(B.configOf(R.cleanGameRecipe({ game: 'roll' }), G.gameById('roll')!).keepOrder, 1);
+    // สูตร: เกมเก่าที่ลบแล้ว (?g=balloon) กลับเป็นเกมแรก, เกมจัดกลุ่มใช้ชุดคำถามไม่ได้
+    assert.equal(R.cleanGameRecipe({ game: 'balloon' }).game, G.AI_GAMES[0].id);
+    assert.equal(R.cleanGameRecipe({ game: 'roll', source: 'bank' }).source, 'auto');
+    assert.equal(R.cleanGameRecipe({ game: 'bowl', source: 'mine' }).source, 'mine');
+    assert.ok(O.SUBJECTS.length >= 5 && O.GRADES.length === 12);
+    // ข้อความแก้เอง ไป-กลับ ทั้ง 3 แบบ + บรรทัดเสียถูกรายงาน
+    const pick = TX.textToItems('pick', 'สามคูณสี่ | 12 | 7 | 14\nไม่มีตัวเลือก\n\n2+2 | 4 | 5');
+    assert.equal(pick.items.length, 2);
+    assert.deepEqual(pick.bad, [2]);
+    assert.deepEqual(pick.items[0], { q: 'สามคูณสี่', choices: ['12', '7', '14'], correct: [0] });
+    assert.deepEqual(TX.textToItems('pick', TX.itemsToText('pick', pick.items)).items, pick.items);
+    const sort = TX.textToItems('sort', 'หมวด: คู่ | คี่\n4 | คู่\n7 | คี่\n9 | ไม่มีหมวดนี้');
+    assert.deepEqual(sort.items.map((x) => x.correct[0]), [0, 1]);
+    assert.deepEqual(sort.bad, [4]);
+    assert.deepEqual(TX.textToItems('sort', TX.itemsToText('sort', sort.items)).items, sort.items);
+    const ord = TX.textToItems('order', 'วัฏจักรผีเสื้อ | ไข่ | หนอน | ดักแด้ | ผีเสื้อ');
+    assert.deepEqual(ord.items[0].correct, [0, 1, 2, 3]);
+    assert.ok(ord.items[0].ordered);
+    assert.deepEqual(TX.textToItems('order', TX.itemsToText('order', ord.items)).items, ord.items);
+    for (const s of O.SUBJECTS) for (const act of ['sort', 'order'] as const) {
+      const it = DC.actItems(R.cleanGameRecipe({ s: s.id, game: act === 'sort' ? 'roll' : 'stack' }), act);
+      assert.ok(it.length >= 2 && it.every((x) => x.choices.length >= 2 && x.correct.every((c) => c < x.choices.length)), `${s.id} ${act}`);
+    }
     passed++;
-    console.log('  ok  สร้างเกมด้วย AI: 12 เกม (เลือกตอบ/จัดกลุ่ม/เรียงลำดับ x 2D/3D) x 9 วิชา prompt ครบ ไม่มีอิโมจิ ชุดคำถามเข้าครบทุกข้อ + CONFIG/ชุด 3D/ลูกเล่นครบ');
+    console.log('  ok  คลังเกม: 9 เกม 3D ประกอบไฟล์ได้ทุกวิชา สคริปต์ parse ผ่าน ไม่มีอิโมจิ + ข้อความแก้เองไป-กลับ');
   }
   console.log(`\n${passed} tests passed`);
 })().catch((e) => {

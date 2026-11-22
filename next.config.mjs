@@ -67,6 +67,7 @@ const nextConfig = {
       { source: '/buddy', destination: '/', permanent: false },
       { source: '/puzzle', destination: '/', permanent: false },
       { source: '/report', destination: '/', permanent: false },
+      { source: '/worksheet', destination: '/ai-game', permanent: false },
     ];
   },
   async headers() {

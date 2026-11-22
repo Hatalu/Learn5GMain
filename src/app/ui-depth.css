@@ -14,8 +14,10 @@
   --d-glow: 0 10px 26px -10px hsl(var(--primary) / 0.7), 0 2px 6px -2px hsl(var(--primary) / 0.5);
   --d-card-top: hsl(var(--card));
   --d-card-bot: hsl(270 30% 98.5%);
-  --d-aura-a: hsl(var(--primary) / 0.1);
-  --d-aura-b: hsl(var(--brand-soft) / 0.22);
+  --d-aura-a: rgb(255 111 174 / 0.14);
+  --d-aura-b: rgb(63 176 242 / 0.16);
+  --d-aura-c: rgb(255 205 60 / 0.16);
+  --d-aura-d: rgb(52 201 142 / 0.12);
 }
 .dark {
   --d-hl: inset 0 1px 0 rgb(255 255 255 / 0.07);
@@ -25,15 +27,19 @@
   --d-glow: 0 10px 28px -8px hsl(var(--primary) / 0.75), 0 0 0 1px hsl(var(--primary) / 0.35);
   --d-card-top: hsl(0 0% 12%);
   --d-card-bot: hsl(0 0% 9%);
-  --d-aura-a: hsl(var(--primary) / 0.16);
-  --d-aura-b: hsl(var(--brand-soft) / 0.07);
+  --d-aura-a: rgb(255 111 174 / 0.12);
+  --d-aura-b: rgb(63 176 242 / 0.12);
+  --d-aura-c: rgb(154 123 255 / 0.12);
+  --d-aura-d: rgb(52 201 142 / 0.08);
 }
 
 /* ---------- แสงฟุ้งหลังหน้า (ตรึงกับจอ ไม่ขยับ) ---------- */
 html[data-ui="minimal"]:not([data-tool]) body {
   background:
-    radial-gradient(900px 520px at 8% -8%, var(--d-aura-a), transparent 62%),
-    radial-gradient(760px 480px at 100% 4%, var(--d-aura-b), transparent 60%),
+    radial-gradient(900px 520px at 6% -8%, var(--d-aura-a), transparent 62%),
+    radial-gradient(760px 480px at 100% 2%, var(--d-aura-b), transparent 60%),
+    radial-gradient(700px 520px at 0% 100%, var(--d-aura-c), transparent 60%),
+    radial-gradient(700px 520px at 100% 100%, var(--d-aura-d), transparent 60%),
     hsl(var(--background)) !important;
   background-attachment: fixed !important;
 }
@@ -90,7 +96,9 @@ html[data-ui="minimal"]:not([data-tool]) .ui-depth-grid > *:hover {
 
 /* ---------- ปุ่ม ---------- */
 html[data-ui="minimal"]:not([data-tool]) :is(.ui-btn-ink, .ag-go, .btn-primary-grad) {
-  background-image: linear-gradient(180deg, hsl(264 100% 74%), hsl(264 90% 62%)) !important;
+  background-image: var(--rainbow) !important;
+  background-size: 140% 100% !important;
+  color: #fff !important;
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35), var(--d-glow) !important;
   transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease, opacity 0.2s ease !important;
 }
@@ -134,7 +142,54 @@ html.dark[data-ui="minimal"]:not([data-tool]) :is(h1.ui-title, .ag-head h1) {
 
 /* ---------- แถบกลับสีหน้าแรก (Master): แสงสีม่วงมุมบน ---------- */
 html[data-ui="minimal"]:not([data-tool]) .ui-depth-invert {
-  background-image: radial-gradient(700px 360px at 85% 0%, hsl(var(--primary) / 0.28), transparent 65%) !important;
+  background-image: radial-gradient(700px 360px at 85% 0%, rgb(255 111 174 / 0.3), transparent 65%), radial-gradient(600px 360px at 10% 100%, rgb(63 176 242 / 0.28), transparent 65%) !important;
+}
+
+/* ---------- สีสันตามแบนเนอร์ (22 พ.ย. 2026): หัวข้อเล็กไล่สีรุ้ง แถบรุ้งเฉียงในหัวหน้าแรก ไอคอนเครื่องมือมีสีประจำ ---------- */
+html:not([data-tool]) .ui-kicker {
+  background: var(--rainbow);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  width: fit-content;
+}
+html:not([data-tool]) .ui-rainbow-text {
+  background: var(--rainbow);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.ui-stripes {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.ui-stripes i {
+  position: absolute;
+  width: 34%;
+  height: 140px;
+  border-radius: 999px;
+  transform: rotate(-38deg);
+  opacity: 0.55;
+}
+.dark .ui-stripes i {
+  opacity: 0.22;
+}
+.ui-stripes i:nth-child(1) { right: -6%; top: 4%; background: linear-gradient(90deg, #ffcd3c, #ffa24c); }
+.ui-stripes i:nth-child(2) { right: -12%; top: 26%; background: linear-gradient(90deg, #34c98e, #3fb0f2); }
+.ui-stripes i:nth-child(3) { right: -2%; top: 52%; background: linear-gradient(90deg, #ff6fae, #9a7bff); }
+.ui-stripes i:nth-child(4) { left: -14%; bottom: 6%; background: linear-gradient(90deg, #ff6f61, #ffa24c); width: 26%; }
+@media (max-width: 640px) { .ui-stripes i { height: 80px; opacity: 0.35; } }
+.ui-tool-ic {
+  display: inline-grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 1rem;
+  color: #fff;
+  background: var(--tc, hsl(var(--primary)));
+  box-shadow: 0 10px 24px -10px var(--tc, hsl(var(--primary)));
 }
 
 @media (prefers-reduced-motion: reduce) {

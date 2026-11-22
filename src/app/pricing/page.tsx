@@ -17,8 +17,7 @@ const ROWS: Row[] = [
   { label: 'สื่อการสอน', get: (e, f) => capText(e.designs, 'ชิ้น') + (f && e.designs !== null ? ' ตลอดอายุบัญชี' : '') },
   { label: 'พื้นที่รูปและคลิป', get: (e) => `${e.upload_mb} MB` },
   { label: 'คลังผลงานครู (Discover)', get: (e) => e.discover },
-  { label: 'เกม AI', get: (e) => e.ai_game },
-  { label: 'ใบงาน AI', get: (e) => e.worksheet },
+  { label: 'คลังเกม 3D (บันทึกไฟล์เกม)', get: (e) => e.ai_game },
   { label: 'สั่งทำนวัตกรรมตามแผนการสอน', get: (e) => (e.innovation_jobs > 0 ? `${e.innovation_jobs} งาน/เดือน` : false) },
   { label: 'แก้ไขงานนวัตกรรม', get: (e) => (e.innovation_jobs > 0 ? `${e.innovation_revisions} ครั้ง/งาน` : false) },
 ];

@@ -17,7 +17,6 @@ export interface Ent {
   upload_mb: number;
   discover: boolean;
   ai_game: boolean;
-  worksheet: boolean;
   innovation_jobs: number;
   innovation_revisions: number;
   extra: string;
@@ -26,10 +25,10 @@ export type EntTable = Record<Tier, Ent>;
 
 /** ค่าเริ่มต้น (ใช้เมื่อยังไม่ได้รัน migration 030 หรือโหลดไม่สำเร็จ) ต้องตรงกับแถวเริ่มต้นใน migration */
 export const DEFAULT_ENTS: EntTable = {
-  free: { sets: 2, designs: 3, upload_mb: 5, discover: false, ai_game: true, worksheet: true, innovation_jobs: 0, innovation_revisions: 0, extra: '' },
-  plus: { sets: null, designs: null, upload_mb: 30, discover: true, ai_game: true, worksheet: true, innovation_jobs: 0, innovation_revisions: 0, extra: '' },
-  pro: { sets: null, designs: null, upload_mb: 60, discover: true, ai_game: true, worksheet: true, innovation_jobs: 0, innovation_revisions: 0, extra: '' },
-  master: { sets: null, designs: null, upload_mb: 100, discover: true, ai_game: true, worksheet: true, innovation_jobs: 2, innovation_revisions: 3, extra: '' },
+  free: { sets: 2, designs: 3, upload_mb: 5, discover: false, ai_game: true, innovation_jobs: 0, innovation_revisions: 0, extra: '' },
+  plus: { sets: null, designs: null, upload_mb: 30, discover: true, ai_game: true, innovation_jobs: 0, innovation_revisions: 0, extra: '' },
+  pro: { sets: null, designs: null, upload_mb: 60, discover: true, ai_game: true, innovation_jobs: 0, innovation_revisions: 0, extra: '' },
+  master: { sets: null, designs: null, upload_mb: 100, discover: true, ai_game: true, innovation_jobs: 2, innovation_revisions: 3, extra: '' },
 };
 
 /** เพดานกันสแปมเมื่อ "ไม่จำกัด" (ตรงกับ trigger) */
@@ -56,7 +55,6 @@ export function cleanEnt(raw: Partial<Record<keyof Ent, unknown>> | null | undef
     upload_mb: num(r.upload_mb, 0, 2000, d.upload_mb),
     discover: typeof r.discover === 'boolean' ? r.discover : d.discover,
     ai_game: typeof r.ai_game === 'boolean' ? r.ai_game : d.ai_game,
-    worksheet: typeof r.worksheet === 'boolean' ? r.worksheet : d.worksheet,
     innovation_jobs: num(r.innovation_jobs, 0, 50, d.innovation_jobs),
     innovation_revisions: num(r.innovation_revisions, 0, 50, d.innovation_revisions),
     extra: typeof r.extra === 'string' ? r.extra.slice(0, 1000) : d.extra,
@@ -91,8 +89,7 @@ export function entLines(tier: Tier, e: Ent): string[] {
     `พื้นที่รูปและคลิป ${e.upload_mb} MB`,
   ];
   if (e.discover) out.push('ใช้ผลงานจากคลังครูทั่วประเทศ (Discover)');
-  if (e.ai_game) out.push('สร้างเกมด้วย AI');
-  if (e.worksheet) out.push('ใบงาน AI');
+  if (e.ai_game) out.push('คลังเกม 3D');
   if (e.innovation_jobs > 0) out.push(`สั่งทำนวัตกรรมตามแผนการสอน ${e.innovation_jobs} งาน/เดือน แก้ได้ ${e.innovation_revisions} ครั้ง/งาน`);
   for (const l of e.extra.split('\n').map((s) => s.trim()).filter(Boolean)) out.push(l);
   return out;

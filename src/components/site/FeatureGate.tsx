@@ -11,7 +11,7 @@ import type { Ent } from '@/lib/entitlements';
  * ปิดหน้าเครื่องมือตามสิทธิ์ของแพ็กเกจ (Dev ตั้งในหน้า Dev > แพ็กเกจและสิทธิ์)
  * shortcut: กันฝั่งหน้าเว็บอย่างเดียว เพราะเครื่องมือ AI สร้างแค่ข้อความคำสั่งในเครื่อง ไม่มี API ให้กัน, ถ้ามี API ที่มีต้นทุนจริงค่อยตรวจที่เซิร์ฟเวอร์ด้วย
  */
-export function FeatureGate({ flag, name, children }: { flag: 'ai_game' | 'worksheet'; name: string; children: React.ReactNode }) {
+export function FeatureGate({ flag, name, children }: { flag: 'ai_game'; name: string; children: React.ReactNode }) {
   const { ent } = useMembership();
   const { isDev, user } = useAuth();
   if (ent[flag as keyof Ent] || isDev) return <>{children}</>;

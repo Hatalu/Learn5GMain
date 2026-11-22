@@ -3,46 +3,55 @@
 @tailwind utilities;
 
 /* ============================================================================
- * ธีมหลักของเว็บ (16 พ.ย. 2026): ขาว-ดำ มินิมอล พรีเมียม มีแค่ Light / Dark
+ * ธีมหลักของเว็บ: มินิมอล พรีเมียม Light / Dark (22 พ.ย. 2026: ตัวหนังสือกรมท่า + สีพาสเทลรุ้งตามแบนเนอร์ที่ผู้ใช้ให้)
  * สีทั้งหมดมาจากตัวแปรชุดนี้ + พาเลตต์ indigo/violet/gray ใน tailwind.config.ts ที่ถูกเปลี่ยนเป็นโทนเทา
  * ========================================================================== */
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 0 0% 7%;
+    --foreground: 228 42% 17%;
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 7%;
+    --card-foreground: 228 42% 17%;
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 7%;
+    --popover-foreground: 228 42% 17%;
     --primary: 264 100% 68%;
     --primary-foreground: 0 0% 100%;
     --brand-soft: 267 100% 83%;
     --muted: 270 30% 97%;
-    --muted-foreground: 0 0% 40%;
+    --muted-foreground: 228 14% 42%;
     --accent: 268 100% 96%;
     --accent-foreground: 264 70% 48%;
-    --border: 0 0% 89%;
-    --input: 0 0% 82%;
+    --border: 240 22% 89%;
+    --input: 240 18% 82%;
     --ring: 264 100% 68%;
     --radius: 0.875rem;
+    /* พาสเทลรุ้งของแบรนด์ */
+    --c-coral: #ff6f61;
+    --c-orange: #ffa24c;
+    --c-yellow: #ffcd3c;
+    --c-mint: #34c98e;
+    --c-sky: #3fb0f2;
+    --c-pink: #ff6fae;
+    --c-lav: #9a7bff;
+    --rainbow: linear-gradient(100deg, #ff6f61, #ff6fae 30%, #9a7bff 60%, #3fb0f2);
   }
 
   .dark {
-    --background: 0 0% 7%;
+    --background: 232 28% 8%;
     --foreground: 0 0% 96%;
-    --card: 0 0% 10%;
+    --card: 232 24% 11%;
     --card-foreground: 0 0% 96%;
     --popover: 0 0% 11%;
     --popover-foreground: 0 0% 96%;
     --primary: 264 100% 68%;
     --primary-foreground: 0 0% 100%;
     --brand-soft: 267 100% 83%;
-    --muted: 0 0% 13%;
-    --muted-foreground: 0 0% 71%;
+    --muted: 232 20% 14%;
+    --muted-foreground: 230 12% 72%;
     --accent: 264 35% 18%;
     --accent-foreground: 267 100% 83%;
-    --border: 0 0% 18%;
-    --input: 0 0% 24%;
+    --border: 232 16% 20%;
+    --input: 232 14% 26%;
     --ring: 267 100% 83%;
   }
 }
