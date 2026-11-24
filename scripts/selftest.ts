@@ -1895,8 +1895,10 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
     const { join } = await import('node:path');
     const { tmpdir } = await import('node:os');
     const { execFileSync } = await import('node:child_process');
-    // คลังเกม: 9 เกม 3D ทุกการกระทำมีอย่างน้อย 2 เกม ทุกเกมมีโค้ดเกม + รูปปก
-    assert.equal(G.AI_GAMES.length, 9);
+    // คลังเกม: 14 เกม 3D (5 เกมทักษะที่วิธีตอบคือตัวเกม) ทุกการกระทำมีอย่างน้อย 2 เกม ทุกเกมมีโค้ดเกม + รูปปก
+    assert.equal(G.AI_GAMES.length, 14);
+    assert.equal(G.AI_GAMES.filter((g) => g.skill).length, 5);
+    for (const g of G.AI_GAMES.filter((x) => x.skill)) assert.equal(B.configOf(R.cleanGameRecipe({ game: g.id }), g).aim, 1, 'skill aim ' + g.id);
     assert.equal(new Set(G.AI_GAMES.map((g) => g.id)).size, G.AI_GAMES.length);
     for (const a of G.ACTS) assert.ok(G.AI_GAMES.filter((g) => g.act === a.id).length >= 2, 'act ' + a.id);
     const three = B.threeToScript(readFileSync(join(__dirname, '../node_modules/three/build/three.module.min.js'), 'utf8'));
@@ -1973,7 +1975,7 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
     assert.deepEqual([cf.perGame, cf.teams, cf.aim, cf.gfx, cf.mood], [5, 2, 1, 2, 2]);
     assert.equal(G.AI_GAMES.filter((g) => g.aim).length, 7);
     passed++;
-    console.log('  ok  คลังเกม: 9 เกม 3D ประกอบไฟล์ได้ทุกวิชา สคริปต์ parse ผ่าน ไม่มีอิโมจิ + ข้อความแก้เองไป-กลับ');
+    console.log('  ok  คลังเกม: 14 เกม 3D ประกอบไฟล์ได้ทุกวิชา สคริปต์ parse ผ่าน ไม่มีอิโมจิ + ข้อความแก้เองไป-กลับ');
   }
   console.log(`\n${passed} tests passed`);
 })().catch((e) => {

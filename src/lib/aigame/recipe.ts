@@ -222,6 +222,12 @@ const UI_WORDS: Record<string, [string, string]> = {
   aimHint: ['ลากเพื่อเล็ง แล้วปล่อย', 'Drag to aim, then let go'],
   holdHint: ['แตะให้ตรงจังหวะ', 'Tap at the right moment'],
   chargeHint: ['กดค้างที่ใบบัว ยิ่งค้างยิ่งกระโดดไกล', 'Hold on a lily pad to charge the jump'],
+  castHint: ['ลากเล็งไปที่ปลาตัวที่ถูก แล้วปล่อยเหวี่ยงเบ็ด', 'Drag toward the right fish and let go to cast'],
+  reelHint: ['ปลากินเบ็ด! กดค้างดึง ปล่อยเมื่อสายตึงแดง', 'Fish on! Hold to reel, let go when the line turns red'],
+  snap: ['สายขาด! ค่อยๆ ดึงนะ', 'The line snapped! Reel gently'],
+  flyHint: ['กดค้างเพื่อบินขึ้น ปล่อยเพื่อร่อนลง', 'Hold to climb, let go to glide down'],
+  steerHint: ['แตะค้างนำทางหนอน กินตามลำดับ', 'Hold to guide the worm and eat in order'],
+  tiltHint: ['ลากเพื่อเอียงโต๊ะ พาลูกแก้วลงหลุมที่ถูก', 'Drag to tilt the table into the right hole'],
   driveHint: ['ขับไปจอดหน้าบ้าน แล้วกดลูกศรขึ้น', 'Drive to the house, then press Up'],
   no3d: ['เครื่องนี้แสดงภาพ 3 มิติไม่ได้ ลองเปิดด้วย Chrome หรือเครื่องอื่นนะ', 'This device cannot show 3D. Please try Chrome or another device.'],
 };

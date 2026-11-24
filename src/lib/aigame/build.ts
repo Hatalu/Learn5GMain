@@ -57,7 +57,7 @@ export function configOf(r: GameRecipe, game: AiGame): Record<string, number> {
     lives: r.lives === 'on' ? 3 : 0,
     perGame: r.count,
     teams: r.teams,
-    aim: game.aim ? r.aim : 0,
+    aim: game.skill ? 1 : game.aim ? r.aim : 0,
     gfx: r.gfx,
     mood: r.mood,
   };

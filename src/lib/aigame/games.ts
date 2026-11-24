@@ -42,6 +42,8 @@ export interface AiGame {
   noRead?: boolean;
   /** มีโหมดเล็ง/กะจังหวะเอง: คำอธิบายวิธีเล่นในโหมดนั้น */
   aim?: string;
+  /** เกมทักษะล้วน: วิธีตอบคือตัวเกมเอง ไม่มีโหมดแตะเลือก (CONFIG.aim = 1 เสมอ) */
+  skill?: boolean;
 }
 
 export const AI_GAMES: AiGame[] = [
@@ -170,6 +172,77 @@ export const AI_GAMES: AiGame[] = [
     howEn: 'Read what to put in order and tap the planks in order to build the bridge.',
     fit: 'เรียงลำดับ · วัฏจักร ขั้นตอน ประโยค',
     cfg: { plankSec: 0.8 },
+  },
+  {
+    id: 'plinko',
+    skill: true,
+    name: 'ปล่อยลูกแก้วลงช่องคำตอบ',
+    en: 'Answer Drop',
+    act: 'pick',
+    color: '#ff9f43',
+    sky: '#fff1d6',
+    pitch: 'เครื่องปล่อยลูกแก้วแกว่งไปมา กะจังหวะปล่อยให้ลูกเด้งผ่านหมุดลงช่องคำตอบที่ถูก',
+    how: ['อ่านคำถาม ดูช่องคำตอบด้านล่าง', 'แตะจอตอนเครื่องปล่อยอยู่ตรงที่ต้องการ', 'ลูกแก้วเด้งผ่านหมุดลงช่องไหน ตอบช่องนั้น'],
+    howEn: 'Tap to drop the marble when the dropper is above the right slot. It bounces down through the pegs.',
+    fit: 'ทุกวิชา · ชอบลุ้น',
+    cfg: { swaySec: 3.2 },
+  },
+  {
+    id: 'fish',
+    skill: true,
+    name: 'ตกปลาคำตอบ',
+    en: 'Answer Fishing',
+    act: 'pick',
+    color: '#2fb5c9',
+    sky: '#d8f4ff',
+    pitch: 'เหวี่ยงเบ็ดไปหาปลาคำตอบที่ถูก แล้วค่อยๆ กดค้างดึงสาย อย่าให้สายตึงจนขาด',
+    how: ['อ่านคำถาม ดูป้ายบนตัวปลา', 'ลากเล็งแล้วปล่อย เหวี่ยงทุ่นไปใกล้ปลาที่ถูก', 'ปลากินเบ็ดแล้วกดค้างดึง ปล่อยเมื่อสายตึงแดง'],
+    howEn: 'Drag to aim and cast near the right fish, then hold to reel. Let go when the line gets too tight.',
+    fit: 'ทุกวิชา · ฝึกใจเย็น',
+    cfg: { biteSec: 1 },
+  },
+  {
+    id: 'plane',
+    skill: true,
+    name: 'เครื่องบินกระดาษ',
+    en: 'Paper Plane',
+    act: 'pick',
+    color: '#3fb0f2',
+    sky: '#cdeeff',
+    pitch: 'กดค้างให้เครื่องบินเชิดขึ้น ปล่อยให้ร่อนลง บังคับให้บินลอดวงแหวนคำตอบที่ถูก',
+    how: ['อ่านคำถาม', 'กดค้าง = บินขึ้น ปล่อย = ร่อนลง', 'บินลอดวงแหวนคำตอบที่ถูกก่อนถึงตัว'],
+    howEn: 'Hold to climb, let go to glide down. Fly through the ring with the right answer.',
+    fit: 'ทุกวิชา · ป.2 ขึ้นไป',
+    cfg: { gateSec: 6.5 },
+  },
+  {
+    id: 'worm',
+    skill: true,
+    name: 'หนอนน้อยกินตามลำดับ',
+    en: 'Hungry Worm Order',
+    act: 'order',
+    color: '#34c98e',
+    sky: '#e6f9d6',
+    pitch: 'บังคับหนอนเลื้อยไปกินผลไม้ทีละลูกตามลำดับที่ถูก ตัวหนอนยาวขึ้นเป็นลำดับให้เห็น',
+    how: ['อ่านโจทย์ว่าให้เรียงอะไร', 'แตะค้างหรือลากนิ้วนำทาง หนอนเลื้อยตาม (หรือกดลูกศร)', 'กินผลไม้ตามลำดับ ตัวหนอนจะยาวขึ้นทีละปล้อง'],
+    howEn: 'Guide the worm with your finger or arrow keys and eat the fruits in the right order.',
+    fit: 'เรียงลำดับ · ขั้นตอน ตัวเลข วัฏจักร',
+    cfg: { crawlSec: 5 },
+  },
+  {
+    id: 'tilt',
+    skill: true,
+    name: 'เอียงโต๊ะลูกแก้ว',
+    en: 'Tilt Table Sort',
+    act: 'sort',
+    color: '#ff6f61',
+    sky: '#ffe6dc',
+    pitch: 'เอียงโต๊ะให้ลูกแก้วที่ถือป้ายของกลิ้งลงหลุมหมวดที่ถูก ใช้แท็บเล็ตเอียงเครื่องจริงได้',
+    how: ['ดูของบนลูกแก้ว', 'ลากนิ้วหรือกดลูกศรเพื่อเอียงโต๊ะ (แท็บเล็ตเอียงเครื่องได้)', 'พาลูกแก้วลงหลุมหมวดที่ถูก'],
+    howEn: 'Drag or use the arrow keys (or tilt your tablet) to roll the marble into the right hole.',
+    fit: 'จัดกลุ่ม · ทุกวิชา',
+    cfg: { tiltSec: 1 },
+    noRead: true,
   },
 ];
 

@@ -301,6 +301,7 @@ export function GameLibrary() {
                 <i className="gl-act" data-act={g.act}>
                   {actOf(g.act).th}
                 </i>
+                {g.skill && <i className="gl-skill">เกมทักษะ</i>}
                 {g.id === r.game && (
                   <i className="gl-picked">
                     <Check className="w-3.5 h-3.5" strokeWidth={4} /> เลือกอยู่
