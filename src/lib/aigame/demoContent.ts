@@ -81,6 +81,7 @@ const ORDER_UPPER: Partial<Record<SubjectId, GItem[]>> = {
 
 const fmt = (n: number) => n.toLocaleString('en-US');
 function uniqNums(r: () => number, k: number, lo: number, hi: number) {
+  k = Math.min(k, hi - lo + 1);
   const s = new Set<number>();
   while (s.size < k) s.add(lo + Math.floor(r() * (hi - lo + 1)));
   return [...s];
@@ -89,7 +90,7 @@ function uniqNums(r: () => number, k: number, lo: number, hi: number) {
 function mathSort(r: GameRecipe): GItem[] {
   const R = rng(`${r.g}-${r.topic}-${r.lv}-sort`);
   const lv = lvOf(r);
-  const N = 10;
+  const N = 40; // คลังใหญ่ เกมสุ่มเล่นทีละชุด
   const t = r.custom ? '' : r.topic;
   if (t === 'frac') {
     const out: [string, number][] = [];
@@ -138,7 +139,7 @@ function mathOrder(r: GameRecipe): GItem[] {
   const steps = 3 + lv;
   const t = r.custom ? '' : r.topic;
   const out: GItem[] = [];
-  for (let k = 0; k < 4; k++) {
+  for (let k = 0; k < 16; k++) {
     const up = k % 2 === 0;
     const dir = up ? 'เรียงจากน้อยไปมาก' : 'เรียงจากมากไปน้อย';
     let vals: number[];
@@ -188,8 +189,10 @@ export function actItems(r: GameRecipe, act: Exclude<Act, 'pick'>): GItem[] {
     const base = r.s === 'math' ? mathSort(r) : SORT_TOPIC[topic] || (r.g >= 4 && SORT_UPPER[r.s]) || SORT_SAMPLES[r.s];
     return trimSort(base, lv);
   }
-  const base = r.s === 'math' ? mathOrder(r) : ORDER_TOPIC[topic] || (r.g >= 4 && ORDER_UPPER[r.s]) || ORDER_SAMPLES[r.s];
-  return trimOrder(base, lv);
+  // ชุดตามเรื่องมาก่อน แล้วต่อด้วยคลังของวิชา (ลำดับแต่ละชุดไม่เกี่ยวกัน รวมกันได้)
+  const base = r.s === 'math' ? mathOrder(r) : [...(ORDER_TOPIC[topic] || []), ...((r.g >= 4 && ORDER_UPPER[r.s]) || []), ...ORDER_SAMPLES[r.s]];
+  const seen = new Set<string>();
+  return trimOrder(base.filter((it) => !seen.has(it.q + it.choices.join()) && seen.add(it.q + it.choices.join())), lv);
 }
 
 /* ---------------------------------------------------------------- เลือกตอบ: จากคลังชุดคำถาม */
@@ -209,19 +212,19 @@ export async function pickItems(r: GameRecipe): Promise<GItem[]> {
   const lv = lvOf(r) + 1;
   const topic = r.custom || topicLabel(r);
   const pool = allSets().filter((m) => m.subject === r.s);
-  let best = pool[0];
-  let bs = -Infinity;
-  // ตรงเรื่องสำคัญที่สุด แล้วชั้นใกล้ที่สุด แล้วระดับตรง
-  for (const m of pool) {
+  // ตรงเรื่องสำคัญที่สุด แล้วชั้นใกล้ที่สุด แล้วระดับตรง · รวม 4 ชุดที่ตรงที่สุด (คลังใหญ่ขึ้น 4 เท่า เกมสุ่มเล่นทีละชุด)
+  const score = (m: (typeof pool)[number]) => {
     const gap = r.g < m.g ? m.g - r.g : r.g > (m.g2 || m.g) ? r.g - (m.g2 || m.g) : 0;
-    const s = topicScore(topic, `${m.title} ${m.note} ${m.cat}`) * 10 - gap * 6 + (m.level === lv ? 3 : m.level ? 0 : 1);
-    if (s > bs) {
-      bs = s;
-      best = m;
-    }
-  }
-  const set = best ? buildSet(best.id) : null;
-  const items = set ? quizToItems(set.content).items.filter((x) => x.choices.length >= 2) : [];
+    return topicScore(topic, `${m.title} ${m.note} ${m.cat}`) * 10 - gap * 6 + (m.level === lv ? 3 : m.level ? 0 : 1);
+  };
+  const best = pool.map((m) => ({ m, s: score(m) })).sort((x, y) => y.s - x.s).slice(0, 4);
+  const seen = new Set<string>();
+  const items = best
+    .flatMap(({ m }) => {
+      const set = buildSet(m.id);
+      return set ? quizToItems(set.content).items.filter((x) => x.choices.length >= 2) : [];
+    })
+    .filter((x) => !seen.has(x.q) && seen.add(x.q));
   return items.length >= 3 ? items : SAMPLES[r.s];
 }
 

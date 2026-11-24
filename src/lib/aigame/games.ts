@@ -40,6 +40,8 @@ export interface AiGame {
   cfg: Record<string, number>;
   /** ไม่มีช่วงอ่านโจทย์ก่อนเล่น (โจทย์สั้น เล่นต่อเนื่อง) */
   noRead?: boolean;
+  /** มีโหมดเล็ง/กะจังหวะเอง: คำอธิบายวิธีเล่นในโหมดนั้น */
+  aim?: string;
 }
 
 export const AI_GAMES: AiGame[] = [
@@ -71,6 +73,7 @@ export const AI_GAMES: AiGame[] = [
   },
   {
     id: 'roll',
+    aim: 'ลากถอยหลังจากบอลแล้วปล่อยเหมือนดีดลูกแก้ว บอลกลิ้งเด้งขอบโต๊ะ เข้าประตูบ้านไหนนับบ้านนั้น',
     name: 'บอลกลิ้งกลับบ้าน',
     en: 'Roll Home Sort',
     act: 'sort',
@@ -85,6 +88,7 @@ export const AI_GAMES: AiGame[] = [
   },
   {
     id: 'stack',
+    aim: 'แตะบล็อกที่ถูก บล็อกจะห้อยเครนแกว่งไปมา แตะจอให้ปล่อยตอนตรงตึก',
     name: 'ต่อตึกบล็อกเรียงลำดับ',
     en: 'Block Tower Order',
     act: 'order',
@@ -98,6 +102,7 @@ export const AI_GAMES: AiGame[] = [
   },
   {
     id: 'bowl',
+    aim: 'ลากจากลูกโบว์ลิ่งไปทางพินที่จะโยน แล้วปล่อย ลูกกลิ้งตรงตามแนว พลาดตกร่อง',
     name: 'โบว์ลิ่งคำตอบ',
     en: 'Answer Bowling',
     act: 'pick',
@@ -111,6 +116,7 @@ export const AI_GAMES: AiGame[] = [
   },
   {
     id: 'frog',
+    aim: 'กดค้างที่ใบบัวที่จะไป ยิ่งค้างนานยิ่งกระโดดไกล ไม่ถึงใบ = ตกน้ำ',
     name: 'กบกระโดดใบบัว',
     en: 'Lily Pad Hop',
     act: 'pick',
@@ -124,6 +130,7 @@ export const AI_GAMES: AiGame[] = [
   },
   {
     id: 'hoop',
+    aim: 'ปัดขึ้นจากลูกบาส เอียงซ้าย/ขวาเพื่อเลือกห่วง ปัดยาว = แรง ต้องพอดีจึงลงห่วง',
     name: 'ชู้ตบาสคำตอบ',
     en: 'Hoop Shot Quiz',
     act: 'pick',
@@ -137,6 +144,7 @@ export const AI_GAMES: AiGame[] = [
   },
   {
     id: 'truck',
+    aim: 'ขับรถเองด้วยลูกศรซ้าย/ขวา จอดหน้าบ้านที่ถูกแล้วกดลูกศรขึ้นเพื่อส่ง',
     name: 'รถส่งของเข้าบ้าน',
     en: 'Delivery Sort',
     act: 'sort',
@@ -151,6 +159,7 @@ export const AI_GAMES: AiGame[] = [
   },
   {
     id: 'bridge',
+    aim: 'แตะแผ่นไม้ที่ถูก แผ่นจะแกว่งเหนือช่องว่าง แตะจอให้ปล่อยตอนตรงช่อง',
     name: 'สร้างสะพานเรียงลำดับ',
     en: 'Bridge Builder',
     act: 'order',

@@ -4,6 +4,7 @@
  */
 import type { SubjectId } from './options';
 import type { GItem } from './recipe';
+import { MORE_ORDER, MORE_PICK, MORE_SORT } from './samplesMore';
 
 const q = (text: string, right: string, ...wrong: string[]): GItem => {
   // วางข้อถูกสลับตำแหน่งตามความยาวคำถาม (คงที่ ไม่สุ่ม) จะได้ไม่อยู่ข้อแรกเสมอ
@@ -13,7 +14,7 @@ const q = (text: string, right: string, ...wrong: string[]): GItem => {
   return { q: text, choices, correct: [at] };
 };
 
-export const SAMPLES: Record<SubjectId, GItem[]> = {
+const BASE_PICK: Record<SubjectId, GItem[]> = {
   math: [q('3 x 4 = ?', '12', '7', '10', '14'), q('25 + 17 = ?', '42', '32', '41', '52'), q('ครึ่งหนึ่งของ 18 คือ?', '9', '6', '8', '36'), q('56 - 29 = ?', '27', '33', '37', '25'), q('36 ÷ 6 = ?', '6', '5', '7', '30')],
   eng: [q('"cat" แปลว่า?', 'แมว', 'หมา', 'นก', 'ปลา'), q('I ___ a student.', 'am', 'is', 'are', 'be'), q('Opposite of "big"', 'small', 'tall', 'long', 'fast'), q('"Red" คือสีอะไร', 'แดง', 'เขียว', 'ฟ้า', 'เหลือง'), q('She ___ to school.', 'goes', 'go', 'going', 'gone')],
   sci: [q('พืชสร้างอาหารจากอะไร', 'แสงแดด', 'ดิน', 'ลม', 'หิน'), q('น้ำแข็งละลายเป็น?', 'น้ำ', 'ไอน้ำ', 'หิน', 'ทราย'), q('ดาวที่ใกล้โลกที่สุด', 'ดวงอาทิตย์', 'ดาวอังคาร', 'ดาวศุกร์', 'ดวงจันทร์'), q('สัตว์ที่ออกลูกเป็นไข่', 'ไก่', 'สุนัข', 'แมว', 'วัว'), q('แม่เหล็กดูดอะไร', 'เหล็ก', 'ไม้', 'พลาสติก', 'แก้ว')],
@@ -25,10 +26,15 @@ export const SAMPLES: Record<SubjectId, GItem[]> = {
   pe: [q('ก่อนออกกำลังกายควร?', 'อบอุ่นร่างกาย', 'กินอิ่ม', 'นอน', 'ดูทีวี'), q('ฟุตบอลทีมละกี่คน', '11', '5', '7', '9'), q('วิ่งเร็วใช้กล้ามเนื้อส่วนใด', 'ขา', 'หู', 'คอ', 'นิ้ว'), q('ดื่มอะไรหลังออกกำลังกาย', 'น้ำเปล่า', 'น้ำอัดลม', 'กาแฟ', 'ชา'), q('ห่วงบาสเกตบอลสูงประมาณ', '3 เมตร', '1 เมตร', '6 เมตร', '10 เมตร')],
 };
 
+const each = <T, U>(o: Record<SubjectId, T>, f: (v: T, k: SubjectId) => U) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, f(v as T, k as SubjectId)])) as Record<SubjectId, U>;
+
+/** เลือกตอบ: ชุดเดิม + คลังเพิ่ม (วิชาละ 20 ข้อ) */
+export const SAMPLES: Record<SubjectId, GItem[]> = each(BASE_PICK, (v, k) => [...v, ...MORE_PICK[k].map(([t, r, ...w]) => q(t, r, ...w))]);
+
 /** เกมจัดกลุ่ม: ทุกชิ้นใช้หมวดชุดเดียวกัน (choices = หมวด, correct = หมวดของชิ้นนั้น) */
 const sort = (cats: string[], items: [string, number][]): GItem[] => items.map(([it, k]) => ({ q: it, choices: cats, correct: [k] }));
 
-export const SORT_SAMPLES: Record<SubjectId, GItem[]> = {
+const BASE_SORT: Record<SubjectId, GItem[]> = {
   math: sort(['จำนวนคู่', 'จำนวนคี่'], [['12', 0], ['7', 1], ['30', 0], ['15', 1], ['48', 0], ['99', 1], ['26', 0], ['53', 1]]),
   sci: sort(['ไม้', 'โลหะ', 'พลาสติก'], [['ตะเกียบ', 0], ['ช้อนสเตนเลส', 1], ['ขวดน้ำดื่ม', 2], ['กุญแจ', 1], ['ไม้บรรทัดไม้', 0], ['ถุงหิ้ว', 2], ['กระป๋องน้ำอัดลม', 1], ['หลอดดูด', 2], ['โต๊ะไม้', 0]]),
   eng: sort(['Noun', 'Verb'], [['dog', 0], ['run', 1], ['book', 0], ['eat', 1], ['apple', 0], ['swim', 1], ['school', 0], ['jump', 1]]),
@@ -40,10 +46,13 @@ export const SORT_SAMPLES: Record<SubjectId, GItem[]> = {
   pe: sort(['ใช้ลูกบอล', 'ไม่ใช้ลูกบอล'], [['ฟุตบอล', 0], ['ว่ายน้ำ', 1], ['บาสเกตบอล', 0], ['กระโดดเชือก', 1], ['วอลเลย์บอล', 0], ['ยิมนาสติก', 1], ['แฮนด์บอล', 0], ['วิ่งเปี้ยว', 1]]),
 };
 
+/** จัดกลุ่ม: ชุดเดิม + ชิ้นเพิ่มในหมวดเดิม (วิชาละ 32 ชิ้น) */
+export const SORT_SAMPLES: Record<SubjectId, GItem[]> = each(BASE_SORT, (v, k) => [...v, ...MORE_SORT[k].map(([t, i]) => ({ q: t, choices: v[0].choices, correct: [i] }))]);
+
 /** เกมเรียงลำดับ: choices เรียงถูกแล้ว (เกมสลับเอง) */
 const ord = (text: string, ...steps: string[]): GItem => ({ q: text, choices: steps, correct: steps.map((_, i) => i), ordered: true });
 
-export const ORDER_SAMPLES: Record<SubjectId, GItem[]> = {
+const BASE_ORDER: Record<SubjectId, GItem[]> = {
   math: [ord('เรียงจากน้อยไปมาก', '18', '45', '71', '90'), ord('เรียงจากมากไปน้อย', '500', '250', '125', '60'), ord('เรียงเศษส่วนจากน้อยไปมาก', '1/4', '1/2', '3/4')],
   sci: [ord('วัฏจักรชีวิตของกบ', 'ไข่', 'ลูกอ๊อด', 'ลูกกบมีขา', 'กบ'), ord('วัฏจักรชีวิตผีเสื้อ', 'ไข่', 'หนอน', 'ดักแด้', 'ผีเสื้อ'), ord('การเติบโตของพืช', 'เมล็ด', 'งอกราก', 'ต้นกล้า', 'ออกดอก')],
   eng: [ord('Put the words in order', 'I', 'like', 'red', 'apples'), ord('Days of the week', 'Monday', 'Tuesday', 'Wednesday'), ord('Put the words in order', 'She', 'is', 'my', 'sister')],
@@ -54,3 +63,6 @@ export const ORDER_SAMPLES: Record<SubjectId, GItem[]> = {
   health: [ord('ขั้นตอนล้างมือ', 'ทำมือให้เปียก', 'ฟอกสบู่', 'ถูให้ทั่ว', 'ล้างน้ำ', 'เช็ดให้แห้ง'), ord('ขั้นตอนแปรงฟัน', 'บีบยาสีฟัน', 'แปรงให้ทั่ว', 'บ้วนปาก'), ord('ดูแลแผลถลอก', 'ล้างแผล', 'ซับให้แห้ง', 'ปิดแผล')],
   pe: [ord('ลำดับการออกกำลังกาย', 'อบอุ่นร่างกาย', 'ออกกำลังกาย', 'คลายกล้ามเนื้อ'), ord('ท่ากระโดดไกล', 'วิ่งเข้าหา', 'ก้าวกระโดด', 'ลอยตัว', 'ลงพื้น'), ord('ลำดับการส่งลูกบอล', 'มองเพื่อน', 'ส่งบอล', 'ตามไปช่วย')],
 };
+
+/** เรียงลำดับ: ชุดเดิม + คลังเพิ่ม (วิชาละ 12 ชุด) */
+export const ORDER_SAMPLES: Record<SubjectId, GItem[]> = each(BASE_ORDER, (v, k) => [...v, ...MORE_ORDER[k].map(([t, ...st]) => ord(t, ...st))]);

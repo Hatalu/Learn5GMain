@@ -50,6 +50,30 @@ export const LIVES: Opt[] = [
   { id: 'on', th: '3 หัวใจ' },
 ];
 
+/** ผู้เล่น: คนเดียว / 2 ทีมผลัดกันตอบบนจอเดียว (โปรเจกเตอร์) */
+export const TEAMS: Opt<number>[] = [
+  { id: 0, th: 'เล่นคนเดียว' },
+  { id: 2, th: '2 ทีมแข่งกัน', sub: 'ผลัดกันตอบ' },
+];
+
+/** วิธีตอบ: แตะเลือก หรือเล็ง/กะจังหวะเอง (เกมที่มี aim ใน games.ts) */
+export const AIMS: Opt<number>[] = [
+  { id: 0, th: 'แตะเลือกคำตอบ', sub: 'ง่าย' },
+  { id: 1, th: 'เล็ง/กะจังหวะเอง', sub: 'ท้าทาย' },
+];
+
+/** ภาพ: คุณภาพ (ลื่น = เครื่องช้า) และบรรยากาศ */
+export const GFXS: Opt<number>[] = [
+  { id: 0, th: 'ลื่น', sub: 'เครื่องช้า' },
+  { id: 1, th: 'ปกติ' },
+  { id: 2, th: 'คมชัด', sub: 'เครื่องแรง' },
+];
+export const MOODS: Opt<number>[] = [
+  { id: 0, th: 'กลางวัน' },
+  { id: 1, th: 'ยามเย็น' },
+  { id: 2, th: 'กลางคืน' },
+];
+
 export interface GameRecipe {
   game: string;
   s: SubjectId;
@@ -66,6 +90,10 @@ export interface GameRecipe {
   /** วินาทีต่อข้อ (0 = ไม่จับเวลา) */
   timer: number;
   lives: 'off' | 'on';
+  teams: number;
+  aim: number;
+  gfx: number;
+  mood: number;
 }
 
 export const COUNT_OPTIONS = [5, 10, 15, 20];
@@ -83,6 +111,10 @@ export const defaultGameRecipe = (game = AI_GAMES[0].id): GameRecipe => ({
   pace: 'normal',
   timer: 0,
   lives: 'off',
+  teams: 0,
+  aim: 0,
+  gfx: 1,
+  mood: 0,
 });
 
 /** เรื่องที่เหมาะกับชั้นนี้ (ถ้าไม่มีเลยคืนทั้งหมดของวิชา) */
@@ -123,6 +155,10 @@ export function cleanGameRecipe(raw: Partial<GameRecipe>): GameRecipe {
     pace: pick(PACES, raw.pace, d.pace),
     timer: pick(TIMERS, Number(raw.timer), d.timer),
     lives: pick(LIVES, raw.lives, d.lives) as GameRecipe['lives'],
+    teams: pick(TEAMS, Number(raw.teams), d.teams),
+    aim: gameById(raw.game)?.aim ? pick(AIMS, Number(raw.aim), d.aim) : 0,
+    gfx: pick(GFXS, Number(raw.gfx), d.gfx),
+    mood: pick(MOODS, Number(raw.mood), d.mood),
   };
 }
 
@@ -177,6 +213,16 @@ const UI_WORDS: Record<string, [string, string]> = {
   wrong: ['เกือบแล้ว ลองอีกครั้งนะ', 'So close, try again!'],
   reveal: ['คำตอบคือ', 'The answer is'],
   again: ['เล่นอีกครั้ง', 'Play again'],
+  team1: ['ทีม A', 'Team A'],
+  team2: ['ทีม B', 'Team B'],
+  turn: ['ตาของ X', 'X, your turn'],
+  win: ['X ชนะ!', 'X wins!'],
+  draw: ['เสมอกัน! เก่งทั้งสองทีม', 'A draw! Both teams did great'],
+  miss: ['พลาดเป้า ลองเล็งใหม่นะ', 'Missed! Aim again'],
+  aimHint: ['ลากเพื่อเล็ง แล้วปล่อย', 'Drag to aim, then let go'],
+  holdHint: ['แตะให้ตรงจังหวะ', 'Tap at the right moment'],
+  chargeHint: ['กดค้างที่ใบบัว ยิ่งค้างยิ่งกระโดดไกล', 'Hold on a lily pad to charge the jump'],
+  driveHint: ['ขับไปจอดหน้าบ้าน แล้วกดลูกศรขึ้น', 'Drive to the house, then press Up'],
   no3d: ['เครื่องนี้แสดงภาพ 3 มิติไม่ได้ ลองเปิดด้วย Chrome หรือเครื่องอื่นนะ', 'This device cannot show 3D. Please try Chrome or another device.'],
 };
 

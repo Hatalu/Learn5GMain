@@ -1952,6 +1952,26 @@ t('ตัดเนื้อหาที่ยาวเกินที่รอ�
       const it = DC.actItems(R.cleanGameRecipe({ s: s.id, game: act === 'sort' ? 'roll' : 'stack' }), act);
       assert.ok(it.length >= 2 && it.every((x) => x.choices.length >= 2 && x.correct.every((c) => c < x.choices.length)), `${s.id} ${act}`);
     }
+    // คลังโจทย์ 4 เท่า: ทุกวิชา เลือกตอบ >= 20 / จัดกลุ่ม >= 32 / เรียงลำดับ >= 12 ข้อมูลถูกรูป ไม่มีอิโมจิ ไม่ซ้ำ
+    for (const sub of O.SUBJECTS) {
+      const P = S.SAMPLES[sub.id], So = S.SORT_SAMPLES[sub.id], Or = S.ORDER_SAMPLES[sub.id];
+      assert.ok(P.length >= 20 && So.length >= 32 && Or.length >= 12, 'size ' + sub.id);
+      for (const it of [...P, ...So, ...Or]) {
+        assert.ok(it.choices.length >= 2 && it.correct.length >= 1 && it.correct.every((k) => k >= 0 && k < it.choices.length), 'shape ' + sub.id + ' ' + it.q);
+        assert.ok(!R.hasEmoji(it.q + it.choices.join('')), 'emoji ' + it.q);
+        assert.equal(new Set(it.choices).size, it.choices.length, 'dup choice ' + it.q);
+      }
+      assert.ok(So.every((it) => it.choices === So[0].choices || it.choices.join() === So[0].choices.join()), 'sort cats ' + sub.id);
+      assert.equal(new Set(P.map((x) => x.q + x.choices.join())).size, P.length, 'dup pick ' + sub.id);
+    }
+    // ตัวเลือกใหม่: 2 ทีม / เล็งเอง (เฉพาะเกมที่มี) / ภาพ / สุ่มรอบละ count จากคลัง
+    const rr = R.cleanGameRecipe({ game: 'bowl', aim: 1, teams: 2, gfx: 2, mood: 2, count: 5 });
+    assert.deepEqual([rr.aim, rr.teams, rr.gfx, rr.mood], [1, 2, 2, 2]);
+    assert.equal(R.cleanGameRecipe({ game: 'runner', aim: 1 }).aim, 0);
+    assert.equal(R.cleanGameRecipe({ game: 'bowl', teams: 7, gfx: 9 }).teams, 0);
+    const cf = B.configOf(rr, G.gameById('bowl')!);
+    assert.deepEqual([cf.perGame, cf.teams, cf.aim, cf.gfx, cf.mood], [5, 2, 1, 2, 2]);
+    assert.equal(G.AI_GAMES.filter((g) => g.aim).length, 7);
     passed++;
     console.log('  ok  คลังเกม: 9 เกม 3D ประกอบไฟล์ได้ทุกวิชา สคริปต์ parse ผ่าน ไม่มีอิโมจิ + ข้อความแก้เองไป-กลับ');
   }

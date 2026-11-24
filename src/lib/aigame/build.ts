@@ -55,6 +55,11 @@ export function configOf(r: GameRecipe, game: AiGame): Record<string, number> {
     maxSpeedUp: p.up,
     timerSec: r.timer,
     lives: r.lives === 'on' ? 3 : 0,
+    perGame: r.count,
+    teams: r.teams,
+    aim: game.aim ? r.aim : 0,
+    gfx: r.gfx,
+    mood: r.mood,
   };
   for (const [k, v] of Object.entries(game.cfg)) c[k] = Math.round(v * p.f * 100) / 100;
   return c;

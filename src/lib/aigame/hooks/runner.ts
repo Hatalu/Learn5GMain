@@ -1,7 +1,7 @@
 /** วิ่งผ่านประตูคำตอบ: วิ่งอัตโนมัติ 3 เลน แถวประตูวิ่งเข้าหา ตัดสินตอนแถวมาถึงตามเลนที่ยืน */
 export const RUNNER = String.raw`
 const LANE_X = [-2.1, 0, 2.1], PZ = 2.4, FAR = -60;
-const R = { movers: [], me: null, lane: 1, rows: [], row: null, wait: 0, lean: 0, spin: 0, slots: [] };
+const R = { movers: [], me: null, lane: 1, rows: [], row: null, wait: 0, lean: 0, spin: 0, slots: [], coins: [], coinT: 0 };
 
 function rnCam() {
   const p = K3.portrait();
@@ -67,7 +67,7 @@ const Hooks = {
     rnCam(); window.addEventListener('resize', rnCam);
     K3.scene.fog = new T.Fog('#ffe1f0', 26, 70);
     const grass = K3.part(new T.PlaneGeometry(80, 160), '#9be08a', 0, -0.02, -60); grass.rotation.x = -Math.PI / 2;
-    K3.part(new T.BoxGeometry(6.8, 0.2, 160), '#8a7be0', 0, 0, -60).castShadow = false;
+    K3.part(new T.BoxGeometry(6.8, 0.2, 160), '#66748f', 0, 0, -60).castShadow = false;
     [-3.5, 3.5].forEach((x) => K3.part(new T.BoxGeometry(0.3, 0.32, 160), '#ffffff', x, 0.08, -60));
     const dash = new T.BoxGeometry(0.14, 0.04, 1.6);
     for (let z = 6; z > -100; z -= 4) [-1.05, 1.05].forEach((x) => R.movers.push(K3.part(dash, '#ffffff', x, 0.12, z)));
@@ -76,7 +76,7 @@ const Hooks = {
       R.movers.push((i + (s > 0 ? 1 : 0)) % 3 === 0 ? K3.bush(x, zz, i) : K3.tree(x, zz, i));
     });
     [[-10, 9, -40], [9, 11, -50], [0, 13, -70]].forEach((p) => K3.cloud(p[0], p[1], p[2]));
-    R.me = K3.buddy('#ff6b7a'); R.me.g.position.set(0, 0, PZ); R.me.g.rotation.y = Math.PI; R.me.g.scale.setScalar(0.72);
+    R.me = K3.buddy('#ff6b7a'); R.me.g.position.set(0, 0, PZ); R.me.g.rotation.y = Math.PI; R.me.g.scale.setScalar(0.6);
     K3.sun.position.set(6, 14, 8);
     window.addEventListener('keydown', (e) => {
       if (G.state !== 'play' && G.state !== 'feedback') return;
@@ -102,6 +102,15 @@ const Hooks = {
       if (r.g.position.z > 12) rnDropRow(r);
     });
     if (G.state === 'play' && !R.row) { R.wait -= d; if (R.wait <= 0) rnSpawn(G.q); }
+    // เหรียญระหว่างแถวประตู: เปลี่ยนเลนไปเก็บได้ (แค่ความสนุก ไม่นับคะแนนความรู้)
+    R.coinT -= d;
+    if (R.coinT <= 0 && G.state !== 'read') { R.coinT = 1.1; const T = K3.THREE, c = K3.part(new T.CylinderGeometry(0.28, 0.28, 0.08, 18), '#ffcd3c', LANE_X[Math.floor(Math.random() * 3)], 0.7, FAR * 0.6); c.rotation.z = Math.PI / 2; K3.outline(c, 0.08); R.coins.push(c); }
+    R.coins = R.coins.filter((c) => {
+      c.position.z += speed * d; c.rotation.y += dt * 4;
+      if (Math.abs(c.position.z - PZ) < 0.5 && Math.abs(c.position.x - R.me.g.position.x) < 0.8) { const p = K3.toScreen(c, 0); FX.burst(p.x, p.y, ['#ffcd3c', '#fff1a8'], 10); Sound.tone(1200, 0.08, 'triangle', 0.12); K3.remove(c); return false; }
+      if (c.position.z > 10) { K3.remove(c); return false; }
+      return true;
+    });
     // ตัวละคร: เลื่อนเลน + วิ่งเด้ง
     const me = R.me.g, tx = LANE_X[R.lane];
     me.position.x += (tx - me.position.x) * Math.min(1, dt * 12);
@@ -118,7 +127,7 @@ const Hooks = {
   },
   onWrong() {},
   onPartial() {},
-  clear() { R.rows.slice().forEach(rnDropRow); R.slots = []; K3.clearCards(); },
+  clear() { R.coins.forEach((c) => K3.remove(c)); R.coins = []; R.rows.slice().forEach(rnDropRow); R.slots = []; K3.clearCards(); },
   onEnd() {},
 };
 `;

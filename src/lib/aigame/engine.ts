@@ -13,7 +13,7 @@ export const ENGINE_HTML = String.raw`<div id="app">
   <div id="labels"></div>
   <canvas id="fx"></canvas>
   <header id="hud">
-    <div class="hud-l"><div class="pill" id="score">0</div><div class="pill" id="progress"></div><div id="combo"></div></div>
+    <div class="hud-l"><div class="pill" id="score">0</div><div id="teams"><b id="t0"></b><b id="t1"></b></div><div class="pill" id="progress"></div><div id="combo"></div></div>
     <div class="hud-r"><div id="hearts"><i></i><i></i><i></i></div><button id="btn-pause" aria-label="pause"><i></i><i></i></button></div>
     <div id="timebar"><i></i></div>
   </header>
@@ -21,6 +21,7 @@ export const ENGINE_HTML = String.raw`<div id="app">
   <div id="bubble"></div>
   <div id="cards"></div>
   <div id="pad"></div>
+  <div id="power"><i></i></div>
   <section id="screen-start" class="screen"><div class="panel">
     <p class="kick" id="s-topic"></p><h1 id="s-title"></h1><p class="how" id="s-how"></p>
     <button id="btn-start" class="btn big"></button>
@@ -36,6 +37,7 @@ export const ENGINE_HTML = String.raw`<div id="app">
     <div id="stars"><i></i><i></i><i></i></div>
     <p class="kick" id="r-title"></p>
     <p class="big-n" id="result-score"></p>
+    <p id="r-team"></p>
     <p id="result-count"></p>
     <ul id="missed"></ul>
     <button id="btn-again" class="btn big"></button>
@@ -57,6 +59,18 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .hud-l, .hud-r { display: flex; gap: 8px; align-items: center; }
 .pill { background: #fff; border: 3px solid #2a2350; border-radius: 999px; padding: 4px 14px; font-weight: 800; font-size: 18px; box-shadow: 0 4px 0 rgba(42,35,80,.25); min-width: 34px; text-align: center; }
 #score { background: #ffd166; }
+#teams { display: none; gap: 6px; }
+body[data-teams="2"] #teams { display: flex; }
+body[data-teams="2"] #score { display: none; }
+#teams b { border: 3px solid #2a2350; border-radius: 999px; padding: 4px 14px; font-weight: 800; font-size: 17px; background: #fff; opacity: .55; transition: transform .25s, opacity .25s; }
+#teams b:first-child { background: #ffb3c1; } #teams b:last-child { background: #a9d8ff; }
+#teams b[data-on="1"] { opacity: 1; transform: scale(1.12); box-shadow: 0 4px 0 rgba(42,35,80,.3); }
+#r-team { font-size: 24px; font-weight: 900; margin: 4px 0; }
+#r-team:empty { display: none; }
+body[data-aim="1"] .card { pointer-events: none; }
+.aimline { position: absolute; z-index: 6; left: 0; top: 0; height: 8px; border-radius: 8px; transform-origin: 0 50%; pointer-events: none; background: repeating-linear-gradient(90deg, #fff 0 14px, transparent 14px 22px); filter: drop-shadow(0 2px 0 rgba(42,35,80,.5)); display: none; }
+#power { position: absolute; z-index: 11; left: 50%; bottom: 84px; width: min(60vw, 280px); height: 16px; transform: translateX(-50%); border: 3px solid #2a2350; border-radius: 999px; background: #fff; overflow: hidden; display: none; }
+#power i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #3fd6a8, #ffd166, #ff6b7a); }
 #combo { font-weight: 900; font-size: 22px; color: #ff5f8f; text-shadow: 0 2px 0 #fff; }
 #hearts { display: flex; gap: 4px; }
 #hearts i { width: 22px; height: 22px; background: #ff5f8f; border: 3px solid #2a2350; border-radius: 50%; box-sizing: border-box; transition: opacity .3s, transform .3s; }
@@ -120,6 +134,7 @@ body[data-state="read"] #qcard { top: 36%; font-size: 1.3em; }
 body[data-state="read"] :is(#cards, #pad, #labels) { visibility: hidden; }
 body:not([data-state="read"]) #qcard { top: 78px; }
 body:not([data-state="read"]) #btn-ready, #btn-ready[data-on="0"] { display: none; }
+@media (max-height: 440px) { .panel { padding: 12px 16px; border-radius: 22px; } .panel h1 { font-size: 24px; margin: 2px 0 4px; } .how { font-size: 13px; margin-bottom: 8px; } .btn.big { font-size: 18px; padding: 6px 26px; } .row { margin-top: 6px; } #stars i { width: 34px; height: 34px; } .big-n { font-size: 30px; } }
 @media (max-height: 520px) { body:not([data-state="read"]) #qcard { top: 58px; padding: 6px 14px; } #timebar { top: 54px; } .card { min-height: 44px; } #pad { bottom: 70px; } #bubble { top: 120px; } }`;
 
 export const ENGINE_JS = String.raw`/* ================= STARTER ENGINE: keep this code, only add to it ================= */
@@ -155,6 +170,9 @@ function boot() {
    ['p-title', W.pause], ['btn-resume', W.resume], ['btn-restart', W.restart], ['btn-again', W.again], ['btn-sound', W.sound], ['btn-sound2', W.sound],
    ['btn-full', W.full], ['l-speed', W.speed]].forEach((p) => txt(p[0], p[1]));
   document.body.dataset.lives = String(CONFIG.lives || 0);
+  document.body.dataset.teams = String(CONFIG.teams || 0);
+  document.body.dataset.aim = CONFIG.aim ? '1' : '0';
+  txt('t0', W.team1 + ' 0'); txt('t1', W.team2 + ' 0');
   document.body.dataset.sound = '1';
   on('btn-full', () => { const d = document.documentElement; if (document.fullscreenElement) document.exitFullscreen(); else if (d.requestFullscreen) d.requestFullscreen().catch(() => {}); });
   on('btn-start', startGame);
@@ -168,6 +186,7 @@ function boot() {
   document.addEventListener('visibilitychange', () => { if (document.hidden && (G.state === 'play' || G.state === 'read')) pause(true); });
   safe(FX.size); window.addEventListener('resize', () => safe(FX.size));
   safe(() => Hooks.setup());
+  if (typeof K3 !== 'undefined') safe(K3.mood);
   setState('start');
   requestAnimationFrame(frame);   // started exactly once
 }
@@ -211,7 +230,9 @@ function readTime(q) { return Math.max(CONFIG.readMinSec || 0, q.q.length * (CON
 function startGame() {
   safe(Sound.init);
   pause(false);
-  G.order = shuffle(QUESTIONS.map((_, i) => i));
+  // คลังข้อมีมากกว่าจำนวนที่เล่น: สุ่มชุดใหม่ทุกครั้งที่เริ่มเกม โจทย์จะไม่ซ้ำเดิม
+  G.order = shuffle(QUESTIONS.map((_, i) => i)).slice(0, CONFIG.perGame || QUESTIONS.length);
+  G.tscore = [0, 0]; G.team = 0;
   G.idx = 0; G.score = 0; G.combo = 0; G.wrongRow = 0; G.firstTry = 0; G.missed = []; G.hearts = CONFIG.lives;
   safe(() => Hooks.onStart());
   nextQuestion();
@@ -223,7 +244,8 @@ function nextQuestion() {
   G.q = prepare(QUESTIONS[G.order[G.idx]]);
   txt('qtext', G.q.q);
   txt('progress', (G.idx + 1) + ' / ' + G.order.length);
-  say('');
+  G.team = G.idx % 2;
+  say(CONFIG.teams ? WORDS.turn.replace('X', G.team ? WORDS.team2 : WORDS.team1) : '');
   if (!CONFIG.readMinSec) return beginPlay();
   setState('read');
   attr('btn-ready', 'on', '0');
@@ -246,7 +268,9 @@ function answer(i) {
     G.picked.add(i);
     if (G.picked.size < q.correct.length) { safe(() => Hooks.onPartial(i)); Sound.play('pop'); return true; }
     const bonus = CONFIG.timerSec && G.timeLeft > 0 ? Math.round(50 * G.timeLeft / CONFIG.timerSec) : 0;
-    G.score += 100 + G.combo * 20 + bonus; G.combo++; G.wrongRow = 0;
+    const pts = 100 + G.combo * 20 + bonus;
+    G.score += pts; G.combo++; G.wrongRow = 0;
+    if (CONFIG.teams) G.tscore[G.team] += G.tries === 0 ? pts : 50;
     if (G.tries === 0) G.firstTry++;
     if (CONFIG.lives && G.combo >= 2 && G.hearts === 0) G.hearts = CONFIG.lives;
     setState('feedback');
@@ -269,10 +293,11 @@ function answer(i) {
 
 function endGame() {
   setState('result');
+  txt('r-team', CONFIG.teams ? (G.tscore[0] === G.tscore[1] ? WORDS.draw : WORDS.win.replace('X', G.tscore[0] > G.tscore[1] ? WORDS.team1 : WORDS.team2)) : '');
   const n = G.order.length, acc = n ? G.firstTry / n : 0;
   const stars = acc >= 0.9 ? 3 : acc >= 0.6 ? 2 : 1;
   attr('stars', 'stars', String(stars));
-  txt('result-score', String(G.score));
+  txt('result-score', CONFIG.teams ? G.tscore[0] + ' : ' + G.tscore[1] : String(G.score));
   txt('result-count', G.firstTry + ' / ' + n);
   const ul = $('missed'); if (ul) ul.innerHTML = '';
   if (ul) G.missed.forEach((q) => { const li = document.createElement('li'); li.textContent = q.q + '  ->  ' + q.correct.map((c) => q.choices[c]).join(q.ordered ? ' > ' : ', '); ul.appendChild(li); });
@@ -284,6 +309,7 @@ function say(text) { txt('bubble', text); attr('bubble', 'on', text ? '1' : '0')
 
 function hud() {
   txt('score', String(G.score));
+  if (CONFIG.teams) [0, 1].forEach((k) => { txt('t' + k, (k ? WORDS.team2 : WORDS.team1) + ' ' + G.tscore[k]); attr('t' + k, 'on', G.team === k ? '1' : '0'); });
   txt('combo', G.combo > 1 ? 'x' + G.combo : '');
   attr('hearts', 'n', String(G.hearts));
   const bar = $('timebar');
@@ -395,18 +421,20 @@ function on(id, fn) {
  * three.js มาจาก window.__THREE (ฝังในไฟล์เกม) ถ้าไม่มีค่อย import('three')
  */
 export const KIT3D_JS = String.raw`/* ================= 3D KIT ================= */
-const COLORS = ['#ffb3c1', '#ffe08a', '#a8eccb', '#a9d8ff', '#d7c4ff', '#ffc9a3'];
+const COLORS = ['#ffb3c1', '#ffe08a', '#a8eccb', '#a9d8ff', '#ffc9a3', '#d4f5a0'];
 const INK = '#2a2350';
 const K3 = {
-  THREE: null, scene: null, camera: null, renderer: null, sun: null, ray: null, ramp: null, ink: null, mats: {}, labels: [], runs: [],
+  THREE: null, scene: null, camera: null, renderer: null, sun: null, ray: null, ramp: null, ink: null, mats: {}, labels: [], runs: [], bodies: [],
   async init(sky) {
     try {
       const T = window.__THREE || (await import('three'));
       K3.THREE = T;
       const small = Math.min(innerWidth, innerHeight) < 500;
-      const r = new T.WebGLRenderer({ antialias: (window.devicePixelRatio || 1) < 2, powerPreference: 'high-performance' });
-      r.setPixelRatio(Math.min(window.devicePixelRatio || 1, small ? 1.5 : 2));
-      r.shadowMap.enabled = true; r.shadowMap.type = T.PCFSoftShadowMap;
+      // คุณภาพภาพ: 0 ลื่น (เครื่องช้า) / 1 ปกติ / 2 คมชัด
+      const q = CONFIG.gfx === undefined ? 1 : CONFIG.gfx, dpr = window.devicePixelRatio || 1;
+      const r = new T.WebGLRenderer({ antialias: q === 2 || (q === 1 && dpr < 2), powerPreference: 'high-performance' });
+      r.setPixelRatio(q === 0 ? 1 : Math.min(dpr, q === 2 ? 2.5 : small ? 1.5 : 2));
+      r.shadowMap.enabled = q > 0; r.shadowMap.type = T.PCFSoftShadowMap;
       r.outputColorSpace = T.SRGBColorSpace;
       $('world').appendChild(r.domElement);
       K3.renderer = r;
@@ -418,9 +446,9 @@ const K3 = {
       K3.scene = s;
       K3.camera = new T.PerspectiveCamera(48, 1, 0.1, 200);
       K3.camera.position.set(0, 9, 13); K3.camera.lookAt(0, 0, 0);
-      s.add(new T.HemisphereLight('#ffffff', '#c9b8ff', 1.25));
+      K3.hemi = new T.HemisphereLight('#ffffff', '#c9d6ff', 1.25); s.add(K3.hemi);
       const sun = new T.DirectionalLight('#fff4dc', 1.7);
-      sun.position.set(7, 14, 9); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
+      sun.position.set(7, 14, 9); sun.castShadow = true; sun.shadow.mapSize.set(q === 2 ? 2048 : 1024, q === 2 ? 2048 : 1024);
       Object.assign(sun.shadow.camera, { left: -18, right: 18, top: 18, bottom: -18, near: 1, far: 70 });
       sun.shadow.bias = -0.0006; sun.shadow.radius = 3;
       s.add(sun); s.add(sun.target); K3.sun = sun;
@@ -437,6 +465,47 @@ const K3 = {
       return false;
     }
   },
+  /* บรรยากาศ: 0 กลางวัน / 1 ยามเย็น / 2 กลางคืน (เรียกหลัง Hooks.setup ทับสีฟ้า หมอก และแสงของฉาก) */
+  mood() {
+    const m = CONFIG.mood || 0; if (!m) return;
+    const T = K3.THREE, s = K3.scene;
+    const tint = m === 1 ? new T.Color('#ff9f6e') : new T.Color('#0b1030'), k = m === 1 ? 0.55 : 0.93;
+    if (s.background && s.background.isColor) s.background.lerp(tint, k);
+    if (s.fog) s.fog.color.lerp(tint, k);
+    document.body.style.background = '#' + (s.background && s.background.isColor ? s.background.getHexString() : '10163a');
+    if (m === 1) { K3.hemi.color.set('#ffd9bd'); K3.hemi.intensity = 1.05; K3.sun.color.set('#ffb070'); K3.sun.intensity = 1.6; K3.sun.position.set(-10, 6, 6); }
+    else {
+      K3.hemi.color.set('#9fb3ff'); K3.hemi.groundColor.set('#2a2f5a'); K3.hemi.intensity = 0.75; K3.sun.color.set('#c8d6ff'); K3.sun.intensity = 0.9;
+      const n = 400, pos = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) { const a = Math.random() * 6.283, b = Math.random() * 1.2 + 0.15, r = 60; pos[i * 3] = Math.cos(a) * Math.cos(b) * r; pos[i * 3 + 1] = Math.sin(b) * r; pos[i * 3 + 2] = Math.sin(a) * Math.cos(b) * r - 20; }
+      const g = new T.BufferGeometry(); g.setAttribute('position', new T.BufferAttribute(pos, 3));
+      s.add(new T.Points(g, new T.PointsMaterial({ color: '#ffffff', size: 0.35, fog: false })));
+    }
+  },
+  /* โหมดเล็งเอง: ลากบนฉาก K3.drag({ start(p), move(p), end(p) }) p = { x, y, dx, dy, t } เป็นพิกเซล */
+  drag(h) {
+    const c = K3.renderer.domElement; let st = null;
+    const pt = (e) => ({ x: e.clientX, y: e.clientY, dx: st ? e.clientX - st.x : 0, dy: st ? e.clientY - st.y : 0, t: st ? (performance.now() - st.t) / 1000 : 0 });
+    c.addEventListener('pointerdown', (e) => { if (G.state !== 'play' || G.paused || !CONFIG.aim) return; st = { x: e.clientX, y: e.clientY, t: performance.now() }; c.setPointerCapture(e.pointerId); safe(() => h.start && h.start(pt(e))); });
+    c.addEventListener('pointermove', (e) => { if (st) safe(() => h.move && h.move(pt(e))); });
+    const up = (e) => { if (!st) return; const p = pt(e); st = null; if (G.state === 'play') safe(() => h.end && h.end(p)); else safe(() => h.cancel && h.cancel()); };
+    c.addEventListener('pointerup', up); c.addEventListener('pointercancel', up);
+  },
+  /* จุดบนพื้นราบความสูง y ที่อยู่ใต้ตำแหน่งจอ (x, y พิกเซล) */
+  groundAt(px, py, y) {
+    const T = K3.THREE, v = new T.Vector2((px / innerWidth) * 2 - 1, -(py / innerHeight) * 2 + 1);
+    K3.ray.setFromCamera(v, K3.camera);
+    const out = new T.Vector3(); return K3.ray.ray.intersectPlane(new T.Plane(new T.Vector3(0, 1, 0), -(y || 0)), out) ? out : null;
+  },
+  /* เส้นเล็งบนจอ (พิกเซล) */
+  aimLine(x1, y1, x2, y2) {
+    let el = $('aimline'); if (!el) { el = document.createElement('div'); el.id = 'aimline'; el.className = 'aimline'; $('app').appendChild(el); }
+    if (x1 === null) { el.style.display = 'none'; return; }
+    const len = Math.hypot(x2 - x1, y2 - y1), a = Math.atan2(y2 - y1, x2 - x1);
+    el.style.display = 'block'; el.style.width = len + 'px';
+    el.style.transform = 'translate(' + x1 + 'px,' + (y1 - 4) + 'px) rotate(' + a + 'rad)';
+  },
+  power(v) { const b = $('power'); if (!b) return; b.style.display = v === null ? 'none' : 'block'; if (v !== null) b.firstChild.style.width = Math.round(Math.max(0, Math.min(1, v)) * 100) + '%'; },
   portrait() { return innerWidth < innerHeight * 1.1; },
   resize() { const w = innerWidth, h = innerHeight; K3.renderer.setSize(w, h); K3.camera.aspect = w / h; K3.camera.fov = K3.portrait() ? 64 : 48; K3.camera.updateProjectionMatrix(); },
   mat(color) { if (!K3.mats[color]) K3.mats[color] = new K3.THREE.MeshToonMaterial({ color: color, gradientMap: K3.ramp }); return K3.mats[color]; },
@@ -498,7 +567,7 @@ const K3 = {
   /* tap-to-choose: K3.tappable(group, i) + K3.onPick = (i) => ... ; labels and cards call the same onPick */
   pickables: [], onPick: null,
   tappable(obj, i) { obj.userData.i = i; K3.pickables.push(obj); return obj; },
-  choose(i) { if (K3.onPick && G.state === 'play' && !G.paused) safe(() => K3.onPick(i)); },
+  choose(i, aimed) { if (CONFIG.aim && K3.aimGame && !aimed) return; if (K3.onPick && G.state === 'play' && !G.paused) safe(() => K3.onPick(i)); },
   choiceLabel(obj, text, i, dy) {
     const el = K3.label(obj, text, '', dy); el.style.setProperty('--c', COLORS[i % COLORS.length]);
     el.addEventListener('click', (e) => { e.stopPropagation(); K3.choose(i); }); return el;
@@ -517,6 +586,29 @@ const K3 = {
   },
   wiggle(obj, sec) { const r = obj.rotation.z; K3.run(sec || 0.5, (k) => { obj.rotation.z = r + Math.sin(k * Math.PI * 6) * 0.3 * (1 - k); }); },
   pop(obj, s) { s = s || 1; obj.scale.setScalar(0.01); K3.run(0.45, (k) => obj.scale.setScalar(s * ease.outBack(k))); },
+  /* ฟิสิกส์ง่ายๆ: แรงโน้มถ่วง เด้งพื้น แรงเสียดทาน หมุน
+     K3.fling(obj, { vx, vy, vz, r: รัศมีจากจุดหมุนถึงพื้น, floor: ความสูงพื้น (พิกัดของ parent), bounce, fric, spin: [x,y,z], life, done }) */
+  fling(obj, o) {
+    const b = Object.assign({ vx: 0, vy: 0, vz: 0, g: 20, r: 0, floor: 0, bounce: 0.35, fric: 0.75, spin: [0, 0, 0], life: 3, t: 0, obj: obj }, o);
+    K3.bodies = K3.bodies.filter((x) => x.obj !== obj); K3.bodies.push(b); return b;
+  },
+  stopBody(obj) { K3.bodies = K3.bodies.filter((x) => x.obj !== obj); },
+  stepBodies(dt) {
+    const fin = [];
+    K3.bodies = K3.bodies.filter((b) => {
+      const p = b.obj.position; b.t += dt;
+      b.vy -= b.g * dt; p.x += b.vx * dt; p.y += b.vy * dt; p.z += b.vz * dt;
+      b.obj.rotation.x += b.spin[0] * dt; b.obj.rotation.y += b.spin[1] * dt; b.obj.rotation.z += b.spin[2] * dt;
+      if (p.y < b.floor + b.r) {
+        p.y = b.floor + b.r;
+        if (Math.abs(b.vy) > 1.2) { b.vy = -b.vy * b.bounce; if (b.land) safe(() => b.land(b)); } else b.vy = 0;
+        const f = Math.pow(1 - b.fric, dt * 4); b.vx *= f; b.vz *= f; b.spin = b.spin.map((w) => w * f);
+      }
+      if (b.t >= b.life) { if (b.done) fin.push(b.done); return false; }
+      return true;
+    });
+    fin.forEach((f) => safe(f));
+  },
   /* time-based animation: K3.run(0.5, (k) => {...}, done). k goes 0..1, real time (menus still animate) */
   run(sec, step, done) { const r = { t: 0, sec: Math.max(0.01, sec), step: step, done: done }; K3.runs.push(r); return r; },
   /* bottom answer cards: K3.cards(['a','b'], (i) => ...) ; K3.cardOn(i) highlights one */
@@ -540,6 +632,7 @@ const K3 = {
     dirs.forEach((d) => { const b = document.createElement('button'); b.className = d; b.setAttribute('aria-label', d); b.addEventListener('pointerdown', (e) => { e.preventDefault(); safe(() => fn(d)); }); box.appendChild(b); });
   },
   render(dt) {
+    K3.stepBodies(Math.min(dt, 0.05));
     const fin = [];
     K3.runs = K3.runs.filter((r) => { r.t = Math.min(1, r.t + dt / r.sec); safe(() => r.step(r.t)); if (r.t >= 1 && r.done) fin.push(r.done); return r.t < 1; });
     fin.forEach((f) => safe(f));

@@ -9,7 +9,7 @@ import type { Act } from './games';
 import { stripEmoji, type GItem } from './recipe';
 
 export const TEXT_MAX = 12000;
-const MAX_ITEMS = 40;
+const MAX_ITEMS = 80;
 const cell = (s: string) => stripEmoji(s).replace(/\s+/g, ' ').trim().slice(0, 120);
 const split = (line: string) => line.split('|').map(cell).filter(Boolean);
 

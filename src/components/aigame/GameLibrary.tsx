@@ -15,7 +15,7 @@ import { mediaPrefix } from '@/lib/game-creator/prefix';
 import type { SetMeta } from '@/lib/game-creator/setBank';
 import { GRADES, LANGS, LEVELS, SUBJECTS, gradeLabel, subjectOf } from '@/lib/aigame/options';
 import { ACTS, AI_GAMES, actOf, gameById, type Act } from '@/lib/aigame/games';
-import { COUNT_OPTIONS, LIVES, PACES, TIMERS, cleanGameRecipe, defaultGameRecipe, quizToItems, topicLabel, topicsFor, type GItem, type GameRecipe, type Source } from '@/lib/aigame/recipe';
+import { AIMS, COUNT_OPTIONS, GFXS, LIVES, MOODS, PACES, TEAMS, TIMERS, cleanGameRecipe, defaultGameRecipe, quizToItems, topicLabel, topicsFor, type GItem, type GameRecipe, type Source } from '@/lib/aigame/recipe';
 import { actItems, pickItems } from '@/lib/aigame/demoContent';
 import { buildGameHtml, threeToScript } from '@/lib/aigame/build';
 import { TEXT_HELP, TEXT_MAX, itemsToText, textToItems } from '@/lib/aigame/text';
@@ -23,6 +23,8 @@ import './aigame.css';
 
 const BANK_SUBJECTS = new Set(['math', 'sci', 'eng', 'thai', 'social']);
 const PAGE = 24;
+/** จำนวนข้อสูงสุดที่ฝังในไฟล์เกม (ยิ่งมาก แต่ละรอบยิ่งไม่ซ้ำ) */
+const POOL = 80;
 
 /** three.js แบบสคริปต์ธรรมดา (โหลดครั้งเดียวต่อการเปิดหน้า) */
 let threeCache: Promise<string> | null = null;
@@ -206,12 +208,12 @@ export function GameLibrary() {
   // ครูแก้ข้อความเอง: ใช้ข้อความนั้นแทนจนกว่าจะกดใช้เนื้อหาจากระบบ (เปลี่ยนวิชา/ชั้น/เรื่อง/แหล่ง = ล้างที่แก้)
   const [edited, setEdited] = useState<string | null>(null);
   useEffect(() => setEdited(null), [contentKey]);
-  const autoText = useMemo(() => (baseItems ? itemsToText(game.act, baseItems.slice(0, 40)) : ''), [baseItems, game.act]);
+  const autoText = useMemo(() => (baseItems ? itemsToText(game.act, baseItems.slice(0, POOL)) : ''), [baseItems, game.act]);
   const parsed = useMemo(() => (edited !== null ? textToItems(game.act, edited) : null), [edited, game.act]);
   const items = useMemo(() => {
-    const list = parsed ? parsed.items : baseItems || [];
-    return list.slice(0, r.count);
-  }, [parsed, baseItems, r.count]);
+    // ทั้งคลังเข้าไฟล์เกม แต่ละรอบเกมสุ่มเล่น r.count ข้อ (CONFIG.perGame)
+    return (parsed ? parsed.items : baseItems || []).slice(0, POOL);
+  }, [parsed, baseItems]);
 
   /* ---------- ไฟล์เกม ---------- */
   const topic = picked && game.act === 'pick' ? picked.title : `${subjectOf(r.s).th} ${gradeLabel(r.g)} · ${topicLabel(r)}`;
@@ -341,7 +343,7 @@ export function GameLibrary() {
             )}
           </div>
           <ol className="gl-how">
-            {game.how.map((h, i) => (
+            {(r.aim && game.aim ? [game.how[0], game.aim, game.how[2]] : game.how).map((h, i) => (
               <li key={i}>
                 <b>{i + 1}</b>
                 {h}
@@ -502,7 +504,7 @@ export function GameLibrary() {
               />
               <div className="gl-edit-foot">
                 <span>
-                  ใช้ในเกม {items.length} {act.unit}
+                  คลัง {items.length} {act.unit} · เกมสุ่มเล่นรอบละ {Math.min(r.count, items.length)} {act.unit}
                   {parsed && parsed.bad.length > 0 && <em> · บรรทัด {parsed.bad.slice(0, 5).join(', ')} รูปแบบไม่ถูก (ข้ามไป)</em>}
                 </span>
                 {edited !== null && (
@@ -525,6 +527,23 @@ export function GameLibrary() {
               <Row label="หัวใจ" list={LIVES} value={r.lives} onPick={(lives) => set({ lives: lives as GameRecipe['lives'] })} />
             </div>
             <Row label="ภาษาบนปุ่มในเกม" list={LANGS} value={r.lang} onPick={(lang) => set({ lang })} />
+          </section>
+
+          <section className="gl-step">
+            <h3>
+              <span>4</span> รูปแบบการเล่นและภาพ
+            </h3>
+            <Row label="ผู้เล่น" list={TEAMS} value={r.teams} onPick={(teams) => set({ teams })} />
+            {game.aim && (
+              <>
+                <Row label="วิธีตอบ" list={AIMS} value={r.aim} onPick={(aim) => set({ aim })} />
+                {r.aim === 1 && <p className="gl-note">{game.aim}</p>}
+              </>
+            )}
+            <div className="gl-two">
+              <Row label="คุณภาพภาพ" list={GFXS} value={r.gfx} onPick={(gfx) => set({ gfx })} />
+              <Row label="บรรยากาศ" list={MOODS} value={r.mood} onPick={(mood) => set({ mood })} />
+            </div>
           </section>
 
           <section className="gl-out" aria-live="polite">

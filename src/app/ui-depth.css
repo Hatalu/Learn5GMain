@@ -9,11 +9,11 @@
 :root {
   --d-hl: inset 0 1px 0 rgb(255 255 255 / 0.75);
   --d-e1: 0 1px 2px rgb(17 17 17 / 0.05), 0 2px 6px -2px rgb(17 17 17 / 0.06);
-  --d-e2: 0 1px 2px rgb(17 17 17 / 0.04), 0 6px 16px -6px rgb(17 17 17 / 0.1), 0 18px 40px -20px rgb(60 20 120 / 0.14);
-  --d-e3: 0 2px 4px rgb(17 17 17 / 0.05), 0 14px 30px -10px rgb(17 17 17 / 0.14), 0 30px 60px -28px rgb(90 40 180 / 0.28);
-  --d-glow: 0 10px 26px -10px hsl(var(--primary) / 0.7), 0 2px 6px -2px hsl(var(--primary) / 0.5);
+  --d-e2: 0 1px 2px rgb(17 17 17 / 0.04), 0 6px 16px -6px rgb(17 17 17 / 0.1), 0 18px 40px -20px rgb(20 40 90 / 0.12);
+  --d-e3: 0 2px 4px rgb(17 17 17 / 0.05), 0 14px 30px -10px rgb(17 17 17 / 0.14), 0 30px 60px -28px rgb(20 50 110 / 0.24);
+  --d-glow: 0 10px 24px -12px rgb(20 30 70 / 0.6), 0 2px 6px -2px rgb(20 30 70 / 0.35);
   --d-card-top: hsl(var(--card));
-  --d-card-bot: hsl(270 30% 98.5%);
+  --d-card-bot: hsl(220 30% 98.5%);
   --d-aura-a: rgb(255 111 174 / 0.14);
   --d-aura-b: rgb(63 176 242 / 0.16);
   --d-aura-c: rgb(255 205 60 / 0.16);
@@ -22,9 +22,9 @@
 .dark {
   --d-hl: inset 0 1px 0 rgb(255 255 255 / 0.07);
   --d-e1: 0 1px 2px rgb(0 0 0 / 0.4), 0 2px 8px -2px rgb(0 0 0 / 0.45);
-  --d-e2: 0 1px 2px rgb(0 0 0 / 0.45), 0 10px 24px -8px rgb(0 0 0 / 0.6), 0 24px 50px -24px rgb(120 60 255 / 0.22);
-  --d-e3: 0 2px 4px rgb(0 0 0 / 0.5), 0 20px 40px -12px rgb(0 0 0 / 0.7), 0 36px 70px -30px rgb(140 80 255 / 0.4);
-  --d-glow: 0 10px 28px -8px hsl(var(--primary) / 0.75), 0 0 0 1px hsl(var(--primary) / 0.35);
+  --d-e2: 0 1px 2px rgb(0 0 0 / 0.45), 0 10px 24px -8px rgb(0 0 0 / 0.6), 0 24px 50px -24px rgb(0 0 0 / 0.3);
+  --d-e3: 0 2px 4px rgb(0 0 0 / 0.5), 0 20px 40px -12px rgb(0 0 0 / 0.7), 0 36px 70px -30px rgb(0 0 0 / 0.45);
+  --d-glow: 0 10px 28px -10px rgb(255 255 255 / 0.25), 0 0 0 1px rgb(255 255 255 / 0.2);
   --d-card-top: hsl(232 24% 12.5%);
   --d-card-bot: hsl(232 26% 9.5%);
   --d-aura-a: rgb(255 111 174 / 0.12);
@@ -96,16 +96,16 @@ html[data-ui="minimal"]:not([data-tool]) .ui-depth-grid > *:hover {
 
 /* ---------- ปุ่ม ---------- */
 html[data-ui="minimal"]:not([data-tool]) :is(.ui-btn-ink, .ag-go, .btn-primary-grad) {
-  background-image: var(--rainbow) !important;
-  background-size: 140% 100% !important;
-  color: #fff !important;
+  background-color: hsl(var(--primary)) !important;
+  background-image: linear-gradient(180deg, rgb(255 255 255 / 0.14), rgb(255 255 255 / 0)) !important;
+  color: hsl(var(--primary-foreground)) !important;
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35), var(--d-glow) !important;
   transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease, opacity 0.2s ease !important;
 }
 html[data-ui="minimal"]:not([data-tool]) :is(.ui-btn-ink, .ag-go, .btn-primary-grad):hover:not(:disabled) {
   opacity: 1 !important;
   transform: translateY(-1px) !important;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.4), 0 14px 32px -10px hsl(var(--primary) / 0.8), 0 3px 8px -2px hsl(var(--primary) / 0.5) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.4), 0 14px 30px -12px rgb(20 30 70 / 0.55), 0 3px 8px -2px rgb(20 30 70 / 0.3) !important;
 }
 html[data-ui="minimal"]:not([data-tool]) :is(.ui-btn-ink, .ag-go, .btn-primary-grad):active:not(:disabled) {
   transform: translateY(1px) scale(0.98) !important;
@@ -134,10 +134,10 @@ html[data-ui="minimal"]:not([data-tool]) :is(.ui-input, .ag-input):focus {
 
 /* ---------- หัวข้อใหญ่: เงาตัวอักษรนุ่ม ให้ลอยจากพื้น ---------- */
 html[data-ui="minimal"]:not([data-tool]) :is(h1.ui-title, .ag-head h1) {
-  text-shadow: 0 1px 0 rgb(255 255 255 / 0.6), 0 14px 34px rgb(90 40 180 / 0.16) !important;
+  text-shadow: 0 1px 0 rgb(255 255 255 / 0.6), 0 14px 34px rgb(20 40 90 / 0.12) !important;
 }
 html.dark[data-ui="minimal"]:not([data-tool]) :is(h1.ui-title, .ag-head h1) {
-  text-shadow: 0 14px 40px rgb(157 92 255 / 0.28) !important;
+  text-shadow: 0 14px 40px rgb(63 176 242 / 0.18) !important;
 }
 
 /* ---------- แถบกลับสีหน้าแรก (Master): แสงสีม่วงมุมบน ---------- */
@@ -168,22 +168,51 @@ html:not([data-tool]) .ui-rainbow-text {
   pointer-events: none;
   overflow: hidden;
 }
+/* แถบรุ้งเฉียง: ลอยไปมาช้าๆ ตามแนวเฉียง + แสงเงาวาบผ่านเหมือนพลาสติกมันวาว (ขยับเฉพาะ transform/translate ไม่กินเครื่อง) */
 .ui-stripes i {
   position: absolute;
   width: 34%;
   height: 140px;
   border-radius: 999px;
   transform: rotate(-38deg);
-  opacity: 0.55;
+  opacity: 0.62;
+  overflow: hidden;
+  box-shadow: inset 0 2px 0 rgb(255 255 255 / 0.45), inset 0 -10px 24px rgb(0 0 0 / 0.06), 0 30px 60px -30px var(--g, rgb(0 0 0 / 0.2));
+  animation: uiDrift var(--d, 18s) ease-in-out var(--dl, 0s) infinite alternate;
+  will-change: translate;
+}
+.ui-stripes i::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 30%, rgb(255 255 255 / 0.55) 48%, transparent 62%);
+  transform: translateX(-120%);
+  animation: uiSheen 7s cubic-bezier(0.4, 0, 0.2, 1) var(--sl, 0s) infinite;
 }
 .dark .ui-stripes i {
-  opacity: 0.22;
+  opacity: 0.55;
+  mix-blend-mode: screen;
+  box-shadow: inset 0 2px 0 rgb(255 255 255 / 0.3), 0 0 60px -10px var(--g, transparent);
 }
-.ui-stripes i:nth-child(1) { right: -6%; top: 4%; background: linear-gradient(90deg, #ffcd3c, #ffa24c); }
-.ui-stripes i:nth-child(2) { right: -12%; top: 26%; background: linear-gradient(90deg, #34c98e, #3fb0f2); }
-.ui-stripes i:nth-child(3) { right: -2%; top: 52%; background: linear-gradient(90deg, #ff6fae, #9a7bff); }
-.ui-stripes i:nth-child(4) { left: -14%; bottom: 6%; background: linear-gradient(90deg, #ff6f61, #ffa24c); width: 26%; }
-@media (max-width: 640px) { .ui-stripes i { height: 80px; opacity: 0.35; } }
+.dark .ui-stripes i::after {
+  background: linear-gradient(100deg, transparent 30%, rgb(255 255 255 / 0.35) 48%, transparent 62%);
+}
+.ui-stripes i:nth-child(1) { right: -6%; top: 4%; background: linear-gradient(90deg, #ffd24a, #ff9f45); --g: #ffb347; --d: 17s; --sl: 0.6s; }
+.ui-stripes i:nth-child(2) { right: -12%; top: 26%; background: linear-gradient(90deg, #2fd39a, #3aaef5); --g: #3aaef5; --d: 21s; --dl: -6s; --sl: 2.4s; }
+.ui-stripes i:nth-child(3) { right: -2%; top: 52%; background: linear-gradient(90deg, #ff6fae, #ff8f6b); --g: #ff6fae; --d: 19s; --dl: -11s; --sl: 4.2s; }
+.ui-stripes i:nth-child(4) { left: -14%; bottom: 6%; background: linear-gradient(90deg, #ff6f61, #ffa24c); width: 26%; --g: #ff6f61; --d: 23s; --dl: -3s; --sl: 5.6s; }
+@keyframes uiDrift {
+  0% { translate: 0 0; }
+  50% { translate: -38px 26px; }
+  100% { translate: 22px -18px; }
+}
+@keyframes uiSheen {
+  0%, 55% { transform: translateX(-120%); }
+  100% { transform: translateX(120%); }
+}
+@media (max-width: 640px) { .ui-stripes i { height: 80px; opacity: 0.4; } }
+@media (prefers-reduced-motion: reduce) { .ui-stripes i, .ui-stripes i::after { animation: none; } }
+html[data-gfx='lite'] .ui-stripes i, html[data-gfx='lite'] .ui-stripes i::after { animation: none; }
 .ui-tool-ic {
   display: inline-grid;
   place-items: center;
@@ -200,3 +229,21 @@ html:not([data-tool]) .ui-rainbow-text {
     transform: none !important;
   }
 }
+
+/* ui-minimal ตัดแอนิเมชันวน/เงาทุกอย่าง: แถบรุ้งหน้าแรกได้รับยกเว้น (ผู้ใช้สั่ง 24 พ.ย. 2026 ให้มี motion) */
+html[data-ui="minimal"]:not([data-tool]) .ui-stripes i,
+html[data-ui="minimal"]:not([data-tool]) .ui-stripes i::after {
+  animation-iteration-count: infinite !important;
+}
+html[data-ui="minimal"]:not([data-tool]) .ui-stripes i {
+  box-shadow: inset 0 2px 0 rgb(255 255 255 / 0.45), inset 0 -10px 24px rgb(0 0 0 / 0.06), 0 30px 60px -30px var(--g, rgb(0 0 0 / 0.2)) !important;
+}
+html.dark[data-ui="minimal"]:not([data-tool]) .ui-stripes i {
+  box-shadow: inset 0 2px 0 rgb(255 255 255 / 0.3), 0 0 60px -10px var(--g, transparent) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-ui="minimal"]:not([data-tool]) .ui-stripes i,
+  html[data-ui="minimal"]:not([data-tool]) .ui-stripes i::after { animation: none !important; }
+}
+html[data-gfx='lite'][data-ui="minimal"]:not([data-tool]) .ui-stripes i,
+html[data-gfx='lite'][data-ui="minimal"]:not([data-tool]) .ui-stripes i::after { animation: none !important; }
