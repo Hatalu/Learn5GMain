@@ -42,7 +42,8 @@ export const BONES: [number, number][] = [
   [16, 20],
 ];
 
-const VIS = 0.5;
+/** เกณฑ์ความชัดของจุด (เดิม 0.5): 0.4 = มือที่ขอบจอ/เบลอเพราะขยับเร็วยังนับ */
+const VIS = 0.4;
 export const seen = (l: Lm | undefined, min = VIS) => !!l && (l.visibility ?? 1) >= min;
 
 /** ขนาดภาพวิดีโอบนจอแบบ object-fit: cover */
@@ -146,7 +147,7 @@ export function toBody(lms: Lm[], v: View): Body | null {
 
 /**
  * กรองร่างกาย 1 คนให้นิ่ง: ทุกจุดผ่าน One Euro (นิ่งตอนอยู่กับที่ ตามทันตอนขยับเร็ว)
- * จุดที่ชัดน้อยชั่วขณะ (มือบังกันแวบเดียว) ใช้ค่าเดิมต่อได้ 250ms แทนการกระโดด
+ * จุดที่ชัดน้อยชั่วขณะ (มือบังกันแวบเดียว) ใช้ค่าเดิมต่อได้ 400ms แทนการกระโดด
  * ไหล่กลาง/ความกว้างไหล่ (ใช้อ้างอิง) กรองหนักกว่า เพราะตัวคนขยับช้ากว่ามือ
  */
 export class BodySmoother {
@@ -170,7 +171,7 @@ export class BodySmoother {
     const pts = b.pts.map((p, i) => {
       const f = (this.f[i] ||= [new OneEuro(this.minCutoff, this.beta), new OneEuro(this.minCutoff, this.beta)]);
       const prev = this.last[i];
-      if (p.v < VIS && prev && prev.v >= VIS && now - prev.t < 250) return { x: prev.x, y: prev.y, v: prev.v };
+      if (p.v < VIS && prev && prev.v >= VIS && now - prev.t < 400) return { x: prev.x, y: prev.y, v: prev.v };
       const q = { x: f[0].filter(p.x, dt), y: f[1].filter(p.y, dt), v: p.v };
       this.last[i] = { ...q, t: p.v >= VIS ? now : prev?.t ?? now };
       return q;

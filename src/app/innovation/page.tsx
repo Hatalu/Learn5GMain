@@ -157,12 +157,12 @@ export default function InnovationPage() {
       <Navbar />
       <main>
         <section className="mx-auto max-w-6xl px-4 pb-14 pt-16 sm:px-6 sm:pt-24">
-          <p className="ui-kicker ui-rise">เฉพาะแพ็กเกจ Master</p>
+          <p className="ui-kicker ui-rise">แพ็กเกจ Pro และ Master</p>
           <h1 className="ui-title ui-rise mt-4 max-w-3xl text-4xl sm:text-6xl" style={{ animationDelay: '60ms' }}>
             สั่งทำนวัตกรรมตามแผนการสอน
           </h1>
           <p className="ui-rise mt-5 max-w-xl ui-muted" style={{ animationDelay: '120ms' }}>
-            ส่งแผนการสอนมา ทีมงานทำนวัตกรรมให้ภายใน {INNOV_WAIT} แล้วส่งลิงก์ไปทางอีเมล สั่งได้เดือนละ {ents.master.innovation_jobs} งาน แก้ไขได้งานละ {ents.master.innovation_revisions} ครั้ง
+            ส่งแผนการสอนมา ทีมงานทำนวัตกรรมให้ภายใน {INNOV_WAIT} แล้วส่งลิงก์ไปทางอีเมล Pro สั่งได้เดือนละ {ents.pro.innovation_jobs} งาน Master เดือนละ {ents.master.innovation_jobs} งาน แก้ไขได้งานละ {ents.master.innovation_revisions} ครั้ง
           </p>
         </section>
 
@@ -171,7 +171,7 @@ export default function InnovationPage() {
             <Loader2 className="mx-auto my-16 h-6 w-6 animate-spin" />
           ) : !user ? (
             <div className="ui-card flex flex-col items-start gap-4 p-8 sm:flex-row sm:items-center sm:justify-between">
-              <p>เข้าสู่ระบบด้วยบัญชีแพ็กเกจ Master เพื่อส่งแผนการสอน</p>
+              <p>เข้าสู่ระบบด้วยบัญชีแพ็กเกจ Pro หรือ Master เพื่อส่งแผนการสอน</p>
               <Link href="/login?redirect=%2Finnovation" className="ui-btn ui-btn-ink">
                 เข้าสู่ระบบ
               </Link>
@@ -180,11 +180,11 @@ export default function InnovationPage() {
             <div className="ui-card p-8 text-sm ui-muted">ระบบนี้กำลังเตรียมพร้อม ลองใหม่อีกครั้งภายหลัง</div>
           ) : !master ? (
             <div className="rounded-3xl bg-foreground p-8 text-background sm:p-12">
-              <h2 className="ui-title text-3xl">อัปเกรดเป็น Master เพื่อสั่งทำนวัตกรรม</h2>
-              <p className="mt-3 max-w-lg text-background/65">นอกจากสั่งทำนวัตกรรม ยังได้สิทธิ์สูงสุดของระบบสร้างเกมและสื่อการสอนทั้งหมด</p>
+              <h2 className="ui-title text-3xl">อัปเกรดเป็น Pro ขึ้นไปเพื่อสั่งทำนวัตกรรม</h2>
+              <p className="mt-3 max-w-lg text-background/65">Pro สั่งได้เดือนละ {ents.pro.innovation_jobs} งาน พร้อมคลังเกม 3D ส่วน Master สั่งได้เดือนละ {ents.master.innovation_jobs} งาน</p>
               <div className="mt-8 flex flex-wrap gap-3">
-                <button type="button" onClick={() => openCheckout('master')} className="ui-btn h-12 bg-background px-7 text-foreground hover:opacity-85">
-                  สมัคร Master <ArrowRight className="h-4 w-4" />
+                <button type="button" onClick={() => openCheckout('pro')} className="ui-btn h-12 bg-background px-7 text-foreground hover:opacity-85">
+                  สมัคร Pro <ArrowRight className="h-4 w-4" />
                 </button>
                 <Link href="/pricing" className="ui-btn h-12 border border-background/30 px-7">
                   เทียบแพ็กเกจ

@@ -20,8 +20,8 @@ export function FeatureGate({ flag, name, children }: { flag: 'ai_game'; name: s
       <span className="mx-auto grid h-12 w-12 place-items-center rounded-full border">
         <Lock className="h-5 w-5" />
       </span>
-      <h1 className="ui-title mt-6 text-3xl">{name} ใช้ได้ในแพ็กเกจที่สูงขึ้น</h1>
-      <p className="mt-3 ui-muted">อัปเกรดแพ็กเกจเพื่อเปิดใช้งานเครื่องมือนี้</p>
+      <h1 className="ui-title mt-6 text-3xl">{name} ใช้ได้ตั้งแต่แพ็กเกจ Pro ขึ้นไป</h1>
+      <p className="mt-3 ui-muted">อัปเกรดเป็น Pro หรือ Master เพื่อเปิดใช้งานเครื่องมือนี้</p>
       <div className="mt-8 flex justify-center gap-2">
         <Link href="/pricing" className="ui-btn ui-btn-ink">
           ดูแพ็กเกจ

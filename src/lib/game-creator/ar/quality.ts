@@ -16,8 +16,8 @@ export function faceScore(b: Body): number {
   return s / FACE.length;
 }
 
-/** คนที่เล็กกว่านี้ (ไหล่แคบกว่า 4.5% ของความกว้างจอ) = ยืนไกล/คนข้างหลัง ไม่นับ */
-export const MIN_SW = 0.045;
+/** คนที่เล็กกว่านี้ (ไหล่แคบกว่า 3% ของความกว้างจอ, เดิม 4.5%) = ยืนไกลมาก/คนข้างหลัง ไม่นับ ยืนห่างกล้องได้ไกลขึ้นราว 1.5 เท่า */
+export const MIN_SW = 0.03;
 
 export interface Lock {
   x: number;

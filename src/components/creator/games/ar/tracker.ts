@@ -16,8 +16,10 @@ export class PoseTracker {
   private lm: PoseLandmarker | null = null;
   private lastVideoTime = -1;
   private lastTs = 0;
-  /** เว้นระยะการตรวจขั้นต่ำ (ms): ลื่น 15 ภาพ/วิ อื่นๆ 20 ภาพ/วิ ตรวจถี่กว่านี้ไม่แม่นขึ้นแต่ร้อนขึ้นมาก */
-  private gap = getGfx() === 'lite' ? 66 : 50;
+  /** เว้นระยะการตรวจขั้นต่ำ (ms): ลื่น 20 ภาพ/วิ อื่นๆ 30 ภาพ/วิ (26 พ.ย. เพิ่มจาก 15/20 ให้ตามท่าเร็วทัน) */
+  private gap = getGfx() === 'lite' ? 50 : 33;
+  /** เวลาที่เห็นคนครั้งล่าสุด: ผลว่างแวบเดียว (ภาพเบลอ/แสงวูบ) ใช้ผลเดิมต่อ ไม่ให้ตัวหาย */
+  private seenTs = 0;
   /** ผลล่าสุด: ร่างกายที่ตรวจเจอ (สูงสุดตาม numPoses) */
   poses: Lm[][] = [];
   /** เวลา (performance.now) ที่ได้ผลล่าสุด */
@@ -37,8 +39,8 @@ export class PoseTracker {
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({
         audio: false,
-        // 960x540 คงความแม่นตอนเด็กยืนไกล (ขั้นจับจุดตัดภาพเฉพาะตัวคนจากภาพเต็ม) ลดร้อนด้วยกล้อง 24 ภาพ/วิ + ตรวจไม่เกิน 20 ภาพ/วิ แทน
-        video: { facingMode: 'user', width: { ideal: 960 }, height: { ideal: 540 }, frameRate: { ideal: 24, max: 30 } },
+        // 1280x720 (ลื่น 960x540): ภาพละเอียดขึ้น = เด็กยืนไกล/ตัวเล็กยังตรวจเจอ (ขั้นจับจุดตัดภาพเฉพาะตัวคนจากภาพเต็ม)
+        video: getGfx() === 'lite' ? { facingMode: 'user', width: { ideal: 960 }, height: { ideal: 540 }, frameRate: { ideal: 24, max: 30 } } : { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
       });
     } catch (e) {
       const n = (e as { name?: string })?.name;
@@ -64,9 +66,10 @@ export class PoseTracker {
         baseOptions: { modelAssetPath: model, delegate },
         runningMode: 'VIDEO' as const,
         numPoses,
-        minPoseDetectionConfidence: 0.55,
-        minPosePresenceConfidence: 0.55,
-        minTrackingConfidence: 0.6,
+        // เกณฑ์ต่ำลง (เดิม 0.55/0.55/0.6) = จับคนไกล แสงน้อย ใส่เสื้อสีกลืนฉาก ตัวบังบางส่วนได้ ส่วนจุดเพี้ยนมีตัวกรองนิ่ง + ล็อกผู้เล่น + ตัวเตือนคุณภาพกันอยู่แล้ว
+        minPoseDetectionConfidence: 0.35,
+        minPosePresenceConfidence: 0.35,
+        minTrackingConfidence: 0.4,
       });
       try {
         this.lm = await PoseLandmarker.createFromOptions(files, opts('GPU'));
@@ -108,7 +111,10 @@ export class PoseTracker {
     this.lastTs = ts;
     try {
       const r = this.lm.detectForVideo(v, ts);
-      this.poses = (r.landmarks || []) as Lm[][];
+      const got = (r.landmarks || []) as Lm[][];
+      // ไม่เห็นใครเลยแวบเดียว (ไม่เกิน 300ms) = ใช้ผลเดิมต่อ กันตัวหาย-โผล่กระพริบ (เห็นบางคนใช้ผลใหม่ทันที เกมยึดผู้เล่นเดิมเองอยู่แล้ว)
+      if (got.length || now - this.seenTs > 300) this.poses = got;
+      if (got.length) this.seenTs = now;
       this.stamp = now;
     } catch {
       return false;

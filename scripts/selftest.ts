@@ -467,6 +467,9 @@ t('แพ็กเกจ: ราคา 99/199/299 ต่อ 30 วัน, สิ
   assert.equal(DEFAULT_ENTS.master.innovation_jobs, 2);
   assert.equal(DEFAULT_ENTS.master.innovation_revisions, 3);
   assert.equal(DEFAULT_ENTS.plus.innovation_jobs, 0);
+  // 031: คลังเกม Pro ขึ้นไป, Pro สั่งทำนวัตกรรม 1 งาน/เดือน
+  assert.deepEqual((['free', 'plus', 'pro', 'master'] as const).map((t) => DEFAULT_ENTS[t].ai_game), [false, false, true, true]);
+  assert.equal(DEFAULT_ENTS.pro.innovation_jobs, 1);
   // ค่าแปลกถูกบีบเข้าช่วง, null = ไม่จำกัด, ไม่ส่งมา = ค่าเดิม
   const c = cleanEnt({ sets: -5, designs: null, upload_mb: 99999, innovation_jobs: 7.9, discover: 'yes', extra: 'x'.repeat(2000) }, DEFAULT_ENTS.plus);
   assert.equal(c.sets, 0);

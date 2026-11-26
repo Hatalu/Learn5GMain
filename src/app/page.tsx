@@ -13,7 +13,7 @@ import { PLANS } from '@/lib/plans';
 const TOOLS = [
   { href: '/create', icon: Gamepad2, no: '01', color: 'var(--c-pink)', title: 'สร้างเกม', desc: 'ทำชุดคำถามครั้งเดียว เปิดห้องให้นักเรียนเล่นได้หลายรูปแบบ ผ่านเลขห้อง 6 หลัก พร้อมรายงานผลรายข้อ' },
   { href: '/studio', icon: Layers, no: '02', color: 'var(--c-sky)', title: 'สร้างสื่อการสอน', desc: 'ใบงาน ใบความรู้ ป้าย และสไลด์ แบบ Canva หรือแบบ Word พร้อมแม่แบบหลายร้อยแบบ ส่งออก PDF ได้' },
-  { href: '/ai-game', icon: Boxes, no: '03', color: 'var(--c-mint)', title: 'คลังเกม 3D', desc: 'เกม 3D 9 แบบ ใส่เนื้อหาบทเรียนของคุณ แล้วบันทึกเป็นไฟล์ไปเปิดบนจอห้องเรียน ไม่ต้องต่ออินเทอร์เน็ต' },
+  { href: '/ai-game', icon: Boxes, no: '03', color: 'var(--c-mint)', title: 'คลังเกม 3D', desc: 'แพ็กเกจ Pro ขึ้นไป เกม 3D 14 แบบ ใส่เนื้อหาบทเรียนของคุณ แล้วบันทึกเป็นไฟล์ไปเปิดบนจอห้องเรียน ไม่ต้องต่ออินเทอร์เน็ต' },
 ];
 
 const STEPS = [
@@ -88,14 +88,14 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* innovation (Master) */}
+        {/* innovation (Pro + Master) */}
         <section className="ui-depth-invert bg-foreground text-background">
           <div className="mx-auto grid max-w-6xl gap-14 px-4 py-24 sm:px-6 sm:py-32 lg:grid-cols-[1.1fr_1fr]">
             <div>
-              <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-background/55">เฉพาะแพ็กเกจ Master</p>
+              <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-background/55">แพ็กเกจ Pro และ Master</p>
               <h2 className="ui-title mt-4 text-3xl sm:text-5xl">สั่งทำนวัตกรรม ตามแผนการสอนของคุณ</h2>
               <p className="mt-6 max-w-md text-background/65">
-                ส่งแผนการสอนมา ทีมงานจะทำนวัตกรรมให้เหมาะกับบทเรียนจริงของห้องคุณ เดือนละ {ents.master.innovation_jobs} งาน แก้ไขได้งานละ {ents.master.innovation_revisions} ครั้ง
+                ส่งแผนการสอนมา ทีมงานจะทำนวัตกรรมให้เหมาะกับบทเรียนจริงของห้องคุณ Pro เดือนละ {ents.pro.innovation_jobs} งาน Master เดือนละ {ents.master.innovation_jobs} งาน แก้ไขได้งานละ {ents.master.innovation_revisions} ครั้ง
               </p>
               <Link href="/innovation" className="ui-btn mt-10 h-12 bg-background px-7 text-foreground hover:opacity-85">
                 ส่งแผนการสอน <ArrowRight className="h-4 w-4" />

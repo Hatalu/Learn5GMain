@@ -17,8 +17,8 @@ export const PLAN_DAYS = 30;
 
 export const PLANS: Plan[] = [
   { id: 'plus', name: 'Plus', price: 99, tagline: 'เริ่มสร้างสื่อและเกมของตัวเอง' },
-  { id: 'pro', name: 'Pro', price: 199, tagline: 'สำหรับครูที่สร้างสื่อทุกสัปดาห์', popular: true },
-  { id: 'master', name: 'Master', price: 299, tagline: 'ครบทุกอย่าง และสั่งทำนวัตกรรมตามแผนการสอน' },
+  { id: 'pro', name: 'Pro', price: 199, tagline: 'คลังเกม 3D และสั่งทำนวัตกรรม 1 งาน/เดือน', popular: true },
+  { id: 'master', name: 'Master', price: 299, tagline: 'ครบทุกอย่าง สั่งทำนวัตกรรมได้มากที่สุด' },
 ];
 
 export const PLAN_IDS = PLANS.map((p) => p.id);
