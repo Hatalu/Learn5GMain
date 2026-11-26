@@ -91,11 +91,11 @@ const Hooks = {
     const h = WM.head, speed = (WM_W * 2) / CONFIG.crawlSec;
     if (G.state === 'play' || G.state === 'feedback') {
       // เลี้ยวเข้าหาเป้า ไม่เกิน 3.2 เรเดียน/วินาที
-      let turn = WM.keys * 3.2 * d;
+      let turn = WM.keys * 4.5 * d;
       if (WM.aim) {
         const want = Math.atan2(WM.aim.x - h.position.x, WM.aim.z - h.position.z);
         let df = want - WM.ang; while (df > Math.PI) df -= 6.283; while (df < -Math.PI) df += 6.283;
-        turn = Math.max(-3.2 * d, Math.min(3.2 * d, df));
+        turn = Math.max(-5 * d, Math.min(5 * d, df));
       }
       WM.ang += turn;
       h.position.x += Math.sin(WM.ang) * speed * d; h.position.z += Math.cos(WM.ang) * speed * d;
@@ -116,7 +116,7 @@ const Hooks = {
     WM.fruits.forEach((f) => {
       if (f.eaten) return;
       f.g.rotation.y += dt; f.g.position.y = 0.35 + Math.sin(G.t * 2 + f.bob) * 0.05;
-      if (G.state === 'play' && WM.cool <= 0 && Math.hypot(f.g.position.x - h.position.x, f.g.position.z - h.position.z) < 0.7) wmEat(f);
+      if (G.state === 'play' && WM.cool <= 0 && Math.hypot(f.g.position.x - h.position.x, f.g.position.z - h.position.z) < 0.95) wmEat(f);
     });
   },
   draw(dt) { K3.render(dt); },

@@ -6,7 +6,7 @@
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { Check, Download, Expand, Library, Loader2, RotateCcw, Search, Sparkles, UserRound } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { createClient } from '@/lib/supabase/client';
@@ -80,7 +80,6 @@ function Row<T extends string | number>({ label, list, value, onPick }: { label:
 const fileName = (s: string) => s.replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60) || 'game';
 
 export function GameLibrary() {
-  const router = useRouter();
   const params = useSearchParams();
   const { user } = useAuth();
   const [r, setR] = useState<GameRecipe>(() => cleanGameRecipe({ ...defaultGameRecipe(), game: params.get('g') || undefined }));
@@ -101,8 +100,8 @@ export function GameLibrary() {
       setEdited(null);
     }
     set({ game: id });
-    router.replace(`/ai-game?g=${id}`, { scroll: false });
-    setTimeout(() => builderRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+    // เปลี่ยนแค่ URL ไม่ผ่าน router (router ทำให้หน้ารีเรนเดอร์/เลื่อน) และไม่เลื่อนหน้าจอ (ผู้ใช้สั่ง 26 พ.ย. 2026)
+    window.history.replaceState(null, '', `/ai-game?g=${id}`);
   };
 
   /* ---------- ชุดคำถาม ---------- */

@@ -185,7 +185,7 @@ export const AI_GAMES: AiGame[] = [
     how: ['อ่านคำถาม ดูช่องคำตอบด้านล่าง', 'แตะจอตอนเครื่องปล่อยอยู่ตรงที่ต้องการ', 'ลูกแก้วเด้งผ่านหมุดลงช่องไหน ตอบช่องนั้น'],
     howEn: 'Tap to drop the marble when the dropper is above the right slot. It bounces down through the pegs.',
     fit: 'ทุกวิชา · ชอบลุ้น',
-    cfg: { swaySec: 3.2 },
+    cfg: { swaySec: 4.6 },
   },
   {
     id: 'fish',
@@ -227,7 +227,7 @@ export const AI_GAMES: AiGame[] = [
     how: ['อ่านโจทย์ว่าให้เรียงอะไร', 'แตะค้างหรือลากนิ้วนำทาง หนอนเลื้อยตาม (หรือกดลูกศร)', 'กินผลไม้ตามลำดับ ตัวหนอนจะยาวขึ้นทีละปล้อง'],
     howEn: 'Guide the worm with your finger or arrow keys and eat the fruits in the right order.',
     fit: 'เรียงลำดับ · ขั้นตอน ตัวเลข วัฏจักร',
-    cfg: { crawlSec: 5 },
+    cfg: { crawlSec: 6 },
   },
   {
     id: 'tilt',

@@ -10,7 +10,7 @@ function pkCam() { const p = K3.portrait(); K3.camera.position.set(0, 5.3, p ? 2
 const pkSlotW = () => (PK.W * 2) / PK.ids.length;
 function pkDrop() {
   if (PK.busy || G.state !== 'play' || G.paused || !PK.ids.length) return;
-  PK.busy = true; PK.v = { x: (Math.random() - 0.5) * 0.3, y: 0 };
+  PK.busy = true; PK.v = { x: (Math.random() - 0.5) * 0.3, y: 0 }; PK.dropX = PK.dropper.position.x;
   PK.ball.position.set(PK.dropper.position.x, PK_TOP - 0.5, 0.25);
   Sound.tone(500, 0.08, 'sine', 0.15);
 }
@@ -28,6 +28,9 @@ function pkLand() {
 function pkStep(h) {
   const b = PK.ball.position, v = PK.v;
   v.y -= PK_G * h;
+  // เล่นง่าย (ผู้ใช้สั่ง 26 พ.ย. 2026): ดึงลูกกลับเข้าแนวที่ปล่อยเบาๆ หมุดแค่ทำให้เด้งสนุก ลูกลงช่องตรงที่เล็ง
+  v.x += (PK.dropX - b.x) * 7 * h;
+  v.x *= Math.pow(0.2, h);
   b.x += v.x * h; b.y += v.y * h;
   // หมุด: ดันออก + สะท้อนความเร็วตามแนวตั้งฉาก (e = 0.5) + สุ่มเล็กน้อยกันค้างบนหัวหมุด
   for (const p of PK.pegs) {
@@ -35,7 +38,7 @@ function pkStep(h) {
     if (d < m && d > 1e-4) {
       const nx = dx / d, ny = dy / d; b.x = p.x + nx * m; b.y = p.y + ny * m;
       const vn = v.x * nx + v.y * ny;
-      if (vn < 0) { v.x -= 1.3 * vn * nx; v.y -= 1.3 * vn * ny; v.x += (Math.random() - 0.5) * 0.2; v.x *= 0.8; if (performance.now() - PK.last > 60) { PK.last = performance.now(); Sound.tone(700 + b.y * 60, 0.05, 'triangle', 0.08); } }
+      if (vn < 0) { v.x -= 1.3 * vn * nx; v.y -= 1.3 * vn * ny; v.x += (Math.random() - 0.5) * 0.12; v.x *= 0.7; if (performance.now() - PK.last > 60) { PK.last = performance.now(); Sound.tone(700 + b.y * 60, 0.05, 'triangle', 0.08); } }
     }
   }
   // ผนังข้าง

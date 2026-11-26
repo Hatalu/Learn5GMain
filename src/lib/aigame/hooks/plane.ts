@@ -27,7 +27,7 @@ function plDrop(gt) { gt.rings.forEach((r) => K3.unlabel(r.el)); K3.remove(gt.g)
 function plPass(gt) {
   gt.done = true; PL.gate = null; PL.wait = 0.8;
   gt.rings.forEach((r) => { r.el.style.opacity = '0'; });
-  const y = PL.plane.position.y, hit = gt.rings.find((r) => Math.abs(r.y - y) < 0.72);
+  const y = PL.plane.position.y, hit = gt.rings.slice().sort((a, b) => Math.abs(a.y - y) - Math.abs(b.y - y)).find((r) => Math.abs(r.y - y) < 1);
   if (!hit) { say(G.q.hint || WORDS.miss); Sound.tone(220, 0.2, 'sine', 0.1); return; }
   const k = PL.ids.indexOf(hit.ci); K3.cardOn(k);
   const res = answer(hit.ci);
@@ -62,9 +62,14 @@ const Hooks = {
   update(d, dt) {
     const speed = (PL_FAR - PL_X) / CONFIG.gateSec;
     // แรงยก/แรงโน้มถ่วง + แรงต้านอากาศ (ความเร็วแนวตั้งมีเพดาน)
-    if (G.state !== 'read') { PL.vy += (PL.hold ? 13 : -8) * d; PL.vy *= Math.pow(0.35, d); }
-    else PL.vy *= Math.pow(0.05, dt);
-    PL.vy = Math.max(-5, Math.min(5, PL.vy));
+    // ง่าย (ผู้ใช้สั่ง 26 พ.ย. 2026): กดค้าง = ขึ้นทันทีด้วยความเร็วคงที่ ปล่อย = ร่อนลงช้าๆ ไม่ต้องกดรัว
+    const want = G.state === 'read' ? 0 : PL.hold ? 4.5 : -2;
+    PL.vy += (want - PL.vy) * Math.min(1, d * 8);
+    // ช่วยเล็งเบาๆ: ใกล้วงแหวนไหน ค่อยๆ ดูดเข้ากลางวงนั้น
+    if (PL.gate && !PL.hold && PL.gate.g.position.x < PL_X + 6) {
+      const ny = PL.gate.rings.slice().sort((a, b) => Math.abs(a.y - PL.plane.position.y) - Math.abs(b.y - PL.plane.position.y))[0];
+      if (ny && Math.abs(ny.y - PL.plane.position.y) < 1.1) PL.vy += (ny.y - PL.plane.position.y) * 6 * d;
+    }
     const p = PL.plane;
     p.position.y = Math.max(PL_LO, Math.min(PL_HI, p.position.y + PL.vy * d));
     if (p.position.y <= PL_LO || p.position.y >= PL_HI) PL.vy *= 0.3;

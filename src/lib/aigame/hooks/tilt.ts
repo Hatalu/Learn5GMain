@@ -100,8 +100,8 @@ const Hooks = {
     if (dd > 1e-5) TL.body.rotateOnWorldAxis(new K3.THREE.Vector3(dz / dd, 0, -dx / dd), dd / TL_R);
     // ตกหลุม: ศูนย์กลางลูกอยู่ในหลุม และไม่เร็วเกินไป
     const sp = Math.hypot(TL.v.x, TL.v.z);
-    const i = TL.holes.findIndex((h) => Math.hypot(h.x - b.x, h.z - b.z) < 0.5);
-    if (i >= 0 && sp < 6) tlFall(i);
+    const i = TL.holes.findIndex((h) => Math.hypot(h.x - b.x, h.z - b.z) < 0.68);
+    if (i >= 0 && sp < 9) tlFall(i);
   },
   draw(dt) { K3.render(dt); },
   onCorrect(i) {

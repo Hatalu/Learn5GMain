@@ -46,8 +46,9 @@ const FEEDBACK = { pick: 1.5, sort: 0.9, order: 2.4 } as const;
 export function configOf(r: GameRecipe, game: AiGame): Record<string, number> {
   const p = PACES.find((x) => x.id === r.pace)!;
   const c: Record<string, number> = {
-    readMinSec: game.noRead ? 0 : p.read,
-    readPerCharSec: game.noRead ? 0 : p.perChar,
+    // ไม่มีช่วงรออ่าน/ปุ่มพร้อม: ข้อถัดไปเล่นต่อทันที โจทย์อยู่บนการ์ดด้านบนตลอด (ผู้ใช้สั่ง 26 พ.ย. 2026)
+    readMinSec: 0,
+    readPerCharSec: 0,
     inputLockSec: 0.4,
     keepOrder: game.act === 'sort' ? 1 : 0,
     feedbackCorrectSec: FEEDBACK[game.act],

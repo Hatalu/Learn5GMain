@@ -80,7 +80,14 @@ const Hooks = {
       const m = { ArrowLeft: [-1, 0], a: [-1, 0], ArrowRight: [1, 0], d: [1, 0], ArrowUp: [0, 1], w: [0, 1], ArrowDown: [0, -1], s: [0, -1] }[e.key];
       if (m) { e.preventDefault(); spDir(m[0], m[1]); }
     });
-    K3.pad(['l', 'r'], (d) => spDir(d === 'l' ? -1 : 1, 0));
+    K3.pad(['l', 'u', 'd', 'r'], (d) => spDir(d === 'l' ? -1 : d === 'r' ? 1 : 0, d === 'u' ? 1 : d === 'd' ? -1 : 0));
+    // แตะตรงไหนบนจอ ยานบินไปวงแหวนที่ใกล้จุดนั้นทันที (ไม่ต้องกดหลายครั้ง)
+    K3.renderer.domElement.addEventListener('pointerdown', (e) => {
+      if (!SP.pos.length || (G.state !== 'play' && G.state !== 'feedback')) return;
+      let best = -1, bd = 1e9;
+      SP.pos.forEach((q, k) => { const v = new K3.THREE.Vector3(q[0], q[1], SP.ship.position.z - 6).project(K3.camera); const x = (v.x + 1) / 2 * innerWidth, y = (1 - v.y) / 2 * innerHeight, dd = Math.hypot(x - e.clientX, y - e.clientY); if (dd < bd) { bd = dd; best = k; } });
+      if (best >= 0) spGo(best);
+    });
   },
   onStart() {},
   onRead() {},

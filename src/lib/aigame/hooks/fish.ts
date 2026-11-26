@@ -40,7 +40,7 @@ function fsCast(x, z) {
     K3.run(0.3, (k) => { FS.rod.rotation.x = 0.5 - k * 1.1; });
     Sound.tone(260, 0.12, 'sine', 0.15, 120); K3.burst(FS.bob, 0, 8);
     // ปลาที่ใกล้ที่สุดในระยะว่ายมากิน
-    const near = FS.fish.map((f) => ({ f: f, d: Math.hypot(f.g.position.x - x, f.g.position.z - z) })).filter((o) => o.d < 2.3).sort((a, b) => a.d - b.d)[0];
+    const near = FS.fish.map((f) => ({ f: f, d: Math.hypot(f.g.position.x - x, f.g.position.z - z) })).filter((o) => o.d < 3.2).sort((a, b) => a.d - b.d)[0];
     if (!near) { FS.phase = 'wait'; after(1.4, () => { say(WORDS.miss); fsBobHome(); }); return; }
     FS.phase = 'bite'; FS.hooked = near.f; FS.biteT = CONFIG.biteSec;
   });
@@ -132,7 +132,7 @@ const Hooks = {
       const f = FS.hooked;
       // ปลาดิ้นเป็นจังหวะ: ช่วงดิ้นดึงสายแรง
       FS.pullT -= d; if (FS.pullT <= 0) { FS.pull = FS.pull > 0 ? 0 : 1; FS.pullT = FS.pull ? 0.5 + Math.random() * 0.4 : 0.8 + Math.random() * 0.8; }
-      if (FS.hold) { FS.prog += 0.32 * d; FS.tension += (0.45 + FS.pull * 1.3) * d; } else { FS.prog = Math.max(0, FS.prog - 0.06 * d); FS.tension = Math.max(0, FS.tension - 0.9 * d); }
+      if (FS.hold) { FS.prog += 0.5 * d; FS.tension += (0.22 + FS.pull * 0.6) * d; } else { FS.prog = Math.max(0, FS.prog - 0.03 * d); FS.tension = Math.max(0, FS.tension - 1.2 * d); }
       K3.power(FS.tension);
       const pb = document.getElementById('power'); if (pb) pb.firstChild.style.background = FS.tension > 0.8 ? '#ff4d5e' : '';
       const sx = FS.bob.position.x, sz = FS.bob.position.z;
